@@ -1,0 +1,34 @@
+# Lo que no debe entrar en el contexto de construcción.
+#
+# Además de acelerar el build, esto evita el accidente clásico: copiar un `.env`
+# con credenciales reales dentro de una imagen que después se publica en un
+# registro.
+
+.env
+.env.*
+!.env.example
+
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Bases locales de desarrollo.
+*.db
+*.sqlite3
+
+# Las pruebas no se ejecutan dentro de la imagen: las corre el CI antes de
+# construirla.
+tests/
+
+.git/
+.gitignore
+.dockerignore
+Dockerfile

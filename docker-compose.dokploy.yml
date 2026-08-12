@@ -1,0 +1,121 @@
+# Despliegue de SIGREP en Dokploy (modo «Stack», Docker Swarm).
+#
+# No incluye PostgreSQL: en Dokploy la base es un servicio propio de la
+# plataforma, con sus respaldos y su ciclo de vida. Este archivo solo define los
+# dos procesos de la aplicación y se conecta a esa base por variables.
+#
+# ── Por qué Swarm y no `docker compose` ──────────────────────────────────────
+#
+# El Traefik de este servidor corre con `--providers.docker.swarmMode=true`, y
+# en ese modo solo ve servicios de Swarm: los contenedores que crea
+# `docker compose` le son invisibles y el dominio responde 404 aunque todo esté
+# sano. Por eso el servicio de Dokploy debe ser de tipo **Stack**.
+#
+# ── Por qué no hay `build:` ──────────────────────────────────────────────────
+#
+# `docker stack deploy` ignora `build:` y exige imágenes ya publicadas. Las
+# construye y publica el CI en GHCR (.github/workflows/ci.yml) en cada push a
+# `main`, después de que pasen las pruebas. Producción despliega lo que el CI
+# validó, nunca compila por su cuenta.
+#
+# ── Puesta en marcha ─────────────────────────────────────────────────────────
+#
+#   1. Servicio de tipo «Compose» con Compose Type = **Stack**.
+#   2. Provider: este repositorio, rama `main`, Compose Path este archivo.
+#   3. Environment: el bloque de docs/DESPLIEGUE.md §3.
+#   4. Domains: servicio `web`, puerto 8080, HTTPS con Let's Encrypt.
+#
+# Requisito de una sola vez: los paquetes `sigrep-api` y `sigrep-web` deben ser
+# **públicos** en GHCR, o el servidor no podrá descargarlos. Se cambia en
+# GitHub → Packages → cada paquete → Package settings → Change visibility.
+
+services:
+  api:
+    image: ${SIGREP_REGISTRO:-ghcr.io/johnnyr-beep}/sigrep-api:${SIGREP_VERSION:-latest}
+    environment:
+      SIGREP_ENTORNO: produccion
+      SIGREP_SECRET_KEY: ${SIGREP_SECRET_KEY}
+      # `SIGREP_DB_URL_OVERRIDE` admite la cadena tal cual la entrega el panel
+      # de Dokploy, incluido el esquema `postgres://` heredado: la aplicación lo
+      # normaliza al driver correcto.
+      SIGREP_DB_URL_OVERRIDE: ${SIGREP_DB_URL_OVERRIDE}
+      SIGREP_CORS_ORIGENES: ${SIGREP_CORS_ORIGENES}
+      # Si el `Host` público no coincide con el origen CORS, la API responde 400
+      # «Invalid host header» a todo el tráfico. Declararlo evita ese diagnóstico.
+      SIGREP_HOSTS_PERMITIDOS: ${SIGREP_HOSTS_PERMITIDOS:-${SIGREP_DOMINIO:-sigrep.grupo-santacruz.com}}
+      # Reglas de negocio (§8 de la especificación): pendientes de confirmar.
+      SIGREP_FACTOR_SEMAFORO_AMARILLO: ${SIGREP_FACTOR_SEMAFORO_AMARILLO:-0.90}
+      SIGREP_DIAS_HABILES_POR_DEFECTO: ${SIGREP_DIAS_HABILES_POR_DEFECTO:-28}
+      SIGREP_FUENTE_VENTA: ${SIGREP_FUENTE_VENTA:-excel}
+      SIGREP_MAX_FILAS_REPORTE_CLIENTES: ${SIGREP_MAX_FILAS_REPORTE_CLIENTES:-500}
+      SIGREP_ACCESS_TOKEN_MINUTOS: ${SIGREP_ACCESS_TOKEN_MINUTOS:-30}
+      SIGREP_MAX_INTENTOS_LOGIN: ${SIGREP_MAX_INTENTOS_LOGIN:-5}
+      SIGREP_WORKERS: ${SIGREP_WORKERS:-2}
+    networks:
+      - interna
+    deploy:
+      # SIGREP no tiene tareas periódicas ni proceso planificador: escalar la
+      # API es seguro, no hay estado en memoria que se duplique. El único
+      # cuidado es que varias réplicas arrancando a la vez ejecutan `alembic
+      # upgrade head` en paralelo; Alembic bloquea su tabla de versión, así que
+      # la segunda espera y encuentra el esquema al día.
+      replicas: ${SIGREP_REPLICAS_API:-1}
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        # Levanta la nueva antes de retirar la vieja: sin esto, cada despliegue
+        # deja unos segundos sin API.
+        order: start-first
+
+  web:
+    image: ${SIGREP_REGISTRO:-ghcr.io/johnnyr-beep}/sigrep-web:${SIGREP_VERSION:-latest}
+    networks:
+      # `interna` para que nginx resuelva `api:8000` en su proxy_pass;
+      # `dokploy-network` para que Traefik lo alcance. Sin la segunda, el router
+      # existe pero no llega a ningún sitio.
+      - interna
+      - dokploy-network
+    deploy:
+      replicas: ${SIGREP_REPLICAS_WEB:-1}
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: start-first
+      # En modo Swarm, Traefik lee las etiquetas del *servicio*, no las del
+      # contenedor: por eso van bajo `deploy` y no al nivel de arriba. Esta
+      # distinción es la que hace que el dominio responda 404 con todo sano.
+      labels:
+        - "traefik.enable=true"
+        # El contenedor está en dos redes; sin esta etiqueta Traefik puede
+        # quedarse con la IP de la interna, que no alcanza.
+        - "traefik.docker.network=dokploy-network"
+
+        # ⚠️ DOMINIO PENDIENTE DE DEFINIR POR EL USUARIO.
+        # `SIGREP_DOMINIO` se fija en el panel de Dokploy (Environment) y debe
+        # coincidir con el dominio dado de alta en la pestaña «Domains». El
+        # valor por defecto es solo un marcador coherente con el de GSC ONE
+        # (`gsc.grupo-santacruz.com`); no es un dominio confirmado.
+        - "traefik.http.routers.sigrep.rule=Host(`${SIGREP_DOMINIO:-sigrep.grupo-santacruz.com}`)"
+        - "traefik.http.routers.sigrep.entrypoints=websecure"
+        - "traefik.http.routers.sigrep.tls.certresolver=letsencrypt"
+        - "traefik.http.services.sigrep.loadbalancer.server.port=8080"
+
+        # El puerto 80 solo redirige: la aplicación envía HSTS y no debe
+        # servirse en claro. `@file` porque `redirect-to-https` lo define
+        # `dynamic/middlewares.yml`, que carga el proveedor de archivos; sin el
+        # sufijo del proveedor, Traefik descarta el router entero.
+        - "traefik.http.routers.sigrep-http.rule=Host(`${SIGREP_DOMINIO:-sigrep.grupo-santacruz.com}`)"
+        - "traefik.http.routers.sigrep-http.entrypoints=web"
+        - "traefik.http.routers.sigrep-http.middlewares=redirect-to-https@file"
+
+networks:
+  # Solo para que los dos procesos se hablen entre sí. `api` no es alcanzable
+  # desde el proxy: al exterior solo se expone nginx.
+  interna:
+    driver: overlay
+
+  # La crea Dokploy al instalarse; aquí solo se referencia.
+  dokploy-network:
+    external: true

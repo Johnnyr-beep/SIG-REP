@@ -1,0 +1,20 @@
+# Lo que no debe entrar en el contexto de construcción.
+#
+# `node_modules` es lo importante: copiarlo desde Windows a una imagen Linux
+# lleva binarios de la plataforma equivocada además de cientos de megabytes.
+# `npm ci` los reinstala dentro del contenedor con la plataforma correcta.
+
+node_modules/
+dist/
+*.tsbuildinfo
+.vite/
+npm-debug.log*
+
+.env
+.env.*
+!.env.example
+
+.git/
+.gitignore
+.dockerignore
+Dockerfile

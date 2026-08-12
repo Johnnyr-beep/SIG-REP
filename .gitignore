@@ -1,0 +1,37 @@
+# Secretos — nunca se versionan
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.db
+*.sqlite3
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+npm-debug.log*
+
+# Datos de origen — pesados y con información comercial del negocio
+datos/
+*.xlsx
+*.xls
+*.csv
+!docs/**/*.csv
+
+# Editores y sistema
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

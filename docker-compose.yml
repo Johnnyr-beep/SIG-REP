@@ -1,0 +1,106 @@
+# Orquestación local de SIGREP (desarrollo y pruebas piloto).
+#
+# Para desplegar en Dokploy use `docker-compose.dokploy.yml`, que omite la base
+# de datos porque allí PostgreSQL es un servicio administrado por la plataforma.
+#
+#   cp .env.example .env      → complete SIGREP_SECRET_KEY y SIGREP_DB_PASSWORD
+#   docker compose up -d --build
+
+name: sigrep
+
+services:
+  postgres:
+    # Misma versión mayor que la de producción en Dokploy: alinear esto es lo
+    # que evita que una diferencia de motor aparezca solo al desplegar.
+    image: postgres:18-alpine
+    container_name: sigrep-postgres
+    environment:
+      POSTGRES_DB: ${SIGREP_DB_NOMBRE:-sigrep}
+      POSTGRES_USER: ${SIGREP_DB_USUARIO:-sigrep_app}
+      POSTGRES_PASSWORD: ${SIGREP_DB_PASSWORD:?Defina SIGREP_DB_PASSWORD en el archivo .env}
+      # Intercalación en español sin distinción de mayúsculas ni acentos: buscar
+      # «visceras» debe encontrar «VISCERAS» y «vísceras».
+      POSTGRES_INITDB_ARGS: "--locale=es_CO.UTF-8 --encoding=UTF8"
+      LANG: es_CO.utf8
+    ports:
+      # Publicado para poder inspeccionar la base con un cliente SQL durante el
+      # desarrollo. En producción la base nunca se expone al host.
+      - "5433:5432"
+    volumes:
+      # El punto de montaje es `/var/lib/postgresql`, NO `/var/lib/postgresql/data`.
+      #
+      # A partir de la imagen 18 los datos viven en un subdirectorio por versión
+      # mayor (`/var/lib/postgresql/18/docker`) para que `pg_upgrade --link`
+      # pueda trabajar sin cruzar el límite del montaje. Montar sobre `data`
+      # hace que el contenedor aborte al arrancar con «there appears to be
+      # PostgreSQL data in: /var/lib/postgresql/data (unused mount/volume)», y
+      # el mensaje habla de actualizaciones, no de un montaje mal puesto.
+      - datos_postgres:/var/lib/postgresql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${SIGREP_DB_USUARIO:-sigrep_app} -d ${SIGREP_DB_NOMBRE:-sigrep}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./backend
+      target: produccion
+    container_name: sigrep-api
+    depends_on:
+      postgres:
+        # `service_healthy`, no `service_started`: el contenedor de PostgreSQL
+        # existe varios segundos antes de aceptar conexiones, y arrancar la API
+        # en esa ventana la manda directa a la espera de reintentos de Alembic.
+        condition: service_healthy
+    environment:
+      SIGREP_ENTORNO: ${SIGREP_ENTORNO:-desarrollo}
+      SIGREP_SECRET_KEY: ${SIGREP_SECRET_KEY:?Defina SIGREP_SECRET_KEY con al menos 32 caracteres}
+      SIGREP_DB_MOTOR: postgresql
+      SIGREP_DB_SERVIDOR: postgres
+      SIGREP_DB_PUERTO: "5432"
+      SIGREP_DB_NOMBRE: ${SIGREP_DB_NOMBRE:-sigrep}
+      SIGREP_DB_USUARIO: ${SIGREP_DB_USUARIO:-sigrep_app}
+      SIGREP_DB_PASSWORD: ${SIGREP_DB_PASSWORD}
+      # Tráfico interno de la red Docker: TLS si está disponible, sin exigirlo.
+      SIGREP_DB_ENCRYPT: "false"
+      SIGREP_CORS_ORIGENES: ${SIGREP_CORS_ORIGENES:-http://localhost:8080}
+      # Reglas de negocio pendientes de confirmar con el usuario (§8 de la
+      # especificación). Se dejan visibles aquí para que se ajusten sin tocar
+      # código ni reconstruir la imagen.
+      SIGREP_FACTOR_SEMAFORO_AMARILLO: ${SIGREP_FACTOR_SEMAFORO_AMARILLO:-0.90}
+      SIGREP_DIAS_HABILES_POR_DEFECTO: ${SIGREP_DIAS_HABILES_POR_DEFECTO:-28}
+      SIGREP_FUENTE_VENTA: ${SIGREP_FUENTE_VENTA:-excel}
+      SIGREP_MAX_FILAS_REPORTE_CLIENTES: ${SIGREP_MAX_FILAS_REPORTE_CLIENTES:-500}
+      SIGREP_WORKERS: ${SIGREP_WORKERS:-2}
+    ports:
+      # Expuesto en local para abrir /docs y probar la API con curl. El servicio
+      # `web` no lo necesita: llega por la red interna.
+      - "8000:8000"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+      target: produccion
+    container_name: sigrep-web
+    depends_on:
+      # `service_started` basta: nginx difiere la resolución de `api` a cada
+      # petición, así que sirve la interfaz aunque la API todavía esté migrando.
+      api:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  # Nombrado explícitamente para que `docker compose down` sin `-v` conserve los
+  # datos y para poder respaldarlo por nombre (ver docs/DESPLIEGUE.md §7).
+  datos_postgres:
+    name: sigrep_datos_postgres

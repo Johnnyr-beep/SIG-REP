@@ -1,0 +1,47 @@
+# Normalización de finales de línea.
+#
+# El equipo trabaja en Windows y despliega en contenedores Linux. Sin estas
+# reglas, Git entregaría los scripts con CRLF y el contenedor fallaría con
+# `bad interpreter: /bin/sh^M` — un error que no dice nada sobre su causa real y
+# que cuesta horas de diagnóstico.
+
+* text=auto eol=lf
+
+# Scripts y archivos que el contenedor ejecuta o interpreta: LF obligatorio.
+*.sh            text eol=lf
+Dockerfile      text eol=lf
+*.conf          text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+.env.example    text eol=lf
+.dockerignore   text eol=lf
+
+# Código y documentación.
+*.py            text eol=lf
+*.ts            text eol=lf
+*.tsx           text eol=lf
+*.css           text eol=lf
+*.html          text eol=lf
+*.json          text eol=lf
+*.toml          text eol=lf
+*.ini           text eol=lf
+*.md            text eol=lf
+*.mako          text eol=lf
+
+# Archivos de Windows que sí deben conservar CRLF.
+*.bat           text eol=crlf
+*.ps1           text eol=crlf
+
+# Binarios: Git no debe tocarlos.
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.ico           binary
+*.pdf           binary
+*.xlsx          binary
+*.xls           binary
+*.db            binary
+
+# `package-lock.json` genera diffs enormes y no se revisa a mano.
+package-lock.json  -diff linguist-generated=true
