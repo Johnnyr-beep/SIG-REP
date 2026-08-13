@@ -46,6 +46,9 @@ def test_la_semilla_carga_la_estructura_real_del_negocio(
 
     assert [g["codigo"] for g in grupos] == ["001", "002", "003", "004"]
     assert len(puntos) == 16
+    # Las once categorías reales de SIESA. `OTROS` ya no existe: las cuatro que
+    # antes plegaba —QUESO Y LACTEOS, HUEVOS, VIVERES y DOMICILIOS— son ahora
+    # categorías de pleno derecho.
     assert {c["nombre"] for c in categorias} == {
         "RES",
         "CERDO",
@@ -54,7 +57,10 @@ def test_la_semilla_carga_la_estructura_real_del_negocio(
         "EMBUTIDOS",
         "VISCERAS",
         "ASADERO",
-        "OTROS",
+        "QUESO Y LACTEOS",
+        "HUEVOS",
+        "VIVERES",
+        "DOMICILIOS",
     }
 
 

@@ -8,11 +8,17 @@ Hay **dos** cosas distintas que registrar y la diferencia importa:
 1. **Rechazos.** La fila no entró: un punto de venta desconocido, una fecha
    ilegible. El número tiene que cuadrar: `leidas = aceptadas + rechazadas`.
 2. **Anotaciones de calidad.** La fila sí entró, pero degradada: la clase de
-   cliente venía corrupta y se guardó como `SIN CLASIFICAR`, la categoría no
-   estaba mapeada y se fue a `OTROS`. No son rechazos —contarlas como tales
+   cliente venía corrupta y se guardó como `SIN CLASIFICAR`, el domicilio venía
+   en blanco y se guardó como `NULL`. No son rechazos —contarlas como tales
    diría que se perdió venta que no se perdió— pero **tienen que dejar
-   constancia**: la diferencia entre reclasificar por decisión y por accidente
-   es que la primera se ve en alguna parte.
+   constancia**: la diferencia entre degradar por decisión y por accidente es
+   que la primera se ve en alguna parte.
+
+Una categoría de SIESA sin mapeo era hasta hace poco el ejemplo canónico del
+punto 2 —entraba clasificada como `OTROS` y quedaba anotada—. Ya no: `OTROS`
+desapareció con la taxonomía nueva y esas filas son ahora **rechazos** (§3.1).
+El cambio se nota aquí porque mueve venta de `aceptadas` a `rechazadas`, y eso
+es exactamente lo que se quería que se notara.
 
 Y hay un problema de escala que ninguna implementación ingenua sobrevive. En el
 archivo real, 95 907 de 131 819 filas traen la clase de cliente vacía: una fila

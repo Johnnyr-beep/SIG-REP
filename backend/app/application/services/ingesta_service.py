@@ -19,7 +19,12 @@ Las cinco invariantes que esta implementación hace cumplir:
    clase de cliente contra catálogo, `Domicilio` en blanco a `NULL`. Vive en
    `app/domain/normalizacion.py`, con pruebas propias.
 4. **Categoría por mapeo, no por código.** Se resuelve contra `mapeo_categorias`
-   por texto exacto; lo que no está mapeado va a `OTROS` **y queda registrado**.
+   por texto exacto; lo que no está mapeado **rechaza la fila**, nombrando el
+   texto que no se reconoció. Ya no existe la categoría `OTROS` a la que antes
+   aterrizaba, y no se sustituye por otra: asignar una categoría arbitraria
+   mueve venta a un renglón que no le corresponde y nadie lo nota. El remedio
+   está a un `POST /catalogos/mapeo-categorias` y a una reingesta del rango,
+   que es idempotente.
 5. **Un punto de venta sin presupuesto no rompe nada.** 432 EVENTOS BUCARAMANGA
    se ingiere como cualquier otro; es el reporte quien lo muestra aparte.
 6. **Lo que la fuente no entrega se persiste como `NULL`, no como cero.** Vale
@@ -48,7 +53,6 @@ from app.core.errors import ErrorNoEncontrado, ErrorValidacion
 from app.core.logging import obtener_logger
 from app.domain.enums import EstadoCorrida, FuenteIngesta
 from app.domain.normalizacion import (
-    CATEGORIA_POR_DEFECTO,
     SIN_CLASIFICAR,
     normalizar_centro_operacion,
     normalizar_clase_cliente,
@@ -66,7 +70,7 @@ from app.infrastructure.fuentes import (
     FuenteVentaSiesa,
     RechazoFuente,
 )
-from app.infrastructure.models.catalogo import Categoria, MapeoCategoria
+from app.infrastructure.models.catalogo import MapeoCategoria
 from app.infrastructure.models.ingesta import CorridaIngesta, RechazoIngesta
 from app.infrastructure.models.organizacion import PuntoVenta
 from app.infrastructure.models.usuario import Usuario
@@ -165,16 +169,23 @@ class _Catalogo:
     """Los catálogos que la ingesta consulta una vez por fila.
 
     Se cargan enteros al empezar y se resuelven en memoria. Son 17 puntos de
-    venta, 8 categorías, una docena de mapeos y unos cientos de clientes: ir a
+    venta, 11 categorías, una docena de mapeos y unos cientos de clientes: ir a
     la base 440 000 veces al mes para preguntar lo mismo sería el cuello de
     botella de toda la carga.
+
+    **No hay categoría de respaldo y por eso `cargar` ya no aborta por su
+    ausencia.** Mientras existió `OTROS`, este método exigía encontrarla porque
+    era donde aterrizaba todo lo no mapeado; sin ella, una corrida entera moría
+    con un `ErrorNoEncontrado`. Ahora lo no mapeado se rechaza fila a fila con
+    su motivo, así que una base sin sembrar no revienta la corrida: rechaza
+    todas sus filas diciendo qué texto no reconoció, que es exactamente el
+    diagnóstico que hacía falta.
     """
 
     sesion: Session
     puntos: dict[str, int] = field(default_factory=dict)
     categorias: dict[str, int] = field(default_factory=dict)
     clientes: dict[str, int] = field(default_factory=dict)
-    id_otros: int = 0
     _periodos: dict[tuple[int, int], int] = field(default_factory=dict)
 
     @classmethod
@@ -189,15 +200,6 @@ class _Catalogo:
             .all()
         )
         catalogo.clientes = dict(sesion.execute(select(Cliente.nit, Cliente.id)).tuples().all())
-        id_otros = sesion.execute(
-            select(Categoria.id).where(Categoria.nombre == CATEGORIA_POR_DEFECTO)
-        ).scalar_one_or_none()
-        if id_otros is None:
-            raise ErrorNoEncontrado(
-                f"Falta la categoría {CATEGORIA_POR_DEFECTO}, que es donde aterriza toda "
-                "categoría de SIESA sin mapeo. Siembre la estructura antes de ingerir."
-            )
-        catalogo.id_otros = id_otros
         return catalogo
 
     def periodo(self, fecha: date) -> int:
@@ -443,7 +445,11 @@ class IngestaService:
             )
             return None
 
-        categoria_id, categoria_cruda = self._resolver_categoria(linea, catalogo, bitacora)
+        resuelta = self._resolver_categoria(linea, catalogo, bitacora)
+        if resuelta is None:
+            return None
+        categoria_id, categoria_cruda = resuelta
+
         clase = self._resolver_clase(linea, bitacora)
         domicilio = normalizar_domicilio(linea.domicilio)
         if domicilio is None:
@@ -483,38 +489,47 @@ class IngestaService:
 
     def _resolver_categoria(
         self, linea: LineaVenta, catalogo: _Catalogo, bitacora: BitacoraIngesta
-    ) -> tuple[int, str | None]:
-        """Categoría por la tabla `mapeo_categorias`, nunca por un `dict` del código.
+    ) -> tuple[int, str] | None:
+        """Categoría por la tabla `mapeo_categorias`, o `None` si hay que rechazar.
 
         El mapeo es por **texto exacto**: existen `0006 - QUESO Y LACTEOS` y
         `0006 - QUESOS Y LACTEOS`, con distinta ortografía, y ambos están
-        sembrados como filas separadas. Normalizar el texto para «arreglarlo»
-        escondería un problema de origen que el negocio necesita ver.
+        sembrados como filas separadas que apuntan a la **misma** categoría
+        —es el mismo producto escrito de dos formas en el origen—. Normalizar el
+        texto para «arreglarlo» aquí escondería un problema que el negocio
+        necesita ver.
 
-        Lo que no está mapeado va a `OTROS` **y deja constancia**. Esa constancia
-        es la diferencia entre reclasificar por decisión y por accidente.
+        Lo que no está mapeado **rechaza la fila**, y el motivo nombra el texto
+        exacto que no se reconoció para que quien lo lea pueda copiarlo tal cual
+        al alta del mapeo. Esto era antes una anotación y una fila en `OTROS`;
+        al desaparecer el cajón no queda ninguna categoría a la que mandarla, y
+        elegir una cualquiera sería mentir con más confianza que rechazar. El
+        rechazo es visible en el informe de la corrida; una fila mal clasificada
+        no lo es.
         """
         cruda = normalizar_texto(linea.categoria_siesa, limite=120)
         if cruda is None:
-            bitacora.anotar(
+            bitacora.rechazar(
                 linea.fila_origen,
                 "CATEGORIA",
-                None,
-                f"Fila sin categoría en el origen; se clasifica como {CATEGORIA_POR_DEFECTO}.",
+                linea.categoria_siesa,
+                "La fila no trae categoría en el origen y ya no existe una categoría de "
+                "respaldo a la que mandarla. Corrija el dato en SIESA y reingiera el "
+                "rango; la ingesta es idempotente por día y punto de venta.",
             )
-            return catalogo.id_otros, None
+            return None
 
         categoria_id = catalogo.categorias.get(cruda)
         if categoria_id is None:
-            bitacora.anotar(
+            bitacora.rechazar(
                 linea.fila_origen,
                 "CATEGORIA",
                 cruda,
-                "Texto sin mapeo en `mapeo_categorias`; se clasifica como "
-                f"{CATEGORIA_POR_DEFECTO}. Añada el mapeo en Catálogos si corresponde a "
-                "otra categoría.",
+                f"La categoría de SIESA «{cruda}» no está mapeada a ninguna categoría de "
+                "SIGREP. Dé de alta ese texto exacto en Catálogos "
+                "(POST /catalogos/mapeo-categorias) y reingiera el rango.",
             )
-            return catalogo.id_otros, cruda
+            return None
         return categoria_id, cruda
 
     @staticmethod

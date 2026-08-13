@@ -2,9 +2,16 @@
 
 Es **idempotente**: se puede correr sobre una base ya inicializada sin duplicar
 nada. Los datos que siembra no son de ejemplo, son los reales del negocio: los
-4 grupos, los 16 puntos de venta con su C.O. de SIESA, las 8 categorías, el
+4 grupos, los 16 puntos de venta con su C.O. de SIESA, las 11 categorías, el
 mapeo de categorías —con las dos variantes ortográficas de `0006`— y las zonas
 de calendario.
+
+Sobre la idempotencia del mapeo: lo que ya existe **no se reescribe**. El mapeo
+es parametrizable por `POST /catalogos/mapeo-categorias` y el negocio lo usa
+para reclasificar; una semilla que «corrigiera» cada texto a su destino de esta
+lista desharía en el siguiente arranque la decisión que alguien tomó ayer por
+pantalla. Reubicar el mapeo heredado es trabajo de la migración `0004`, que se
+corre una vez y deja rastro, no de un script que corre en cada despliegue.
 
 Uso:
 
@@ -78,6 +85,18 @@ PUNTO_SIN_PRESUPUESTO: tuple[str, str, str] = (
 )
 
 # ── §3.1 Categorías de negocio ────────────────────────────────────────────────
+#
+# **Once categorías, una por cada categoría real de SIESA.** No hay cajón de
+# sastre: `OTROS` no existe. Plegar `QUESO Y LACTEOS`, `HUEVOS`, `VIVERES` y
+# `DOMICILIOS` en un único `OTROS` hacía que el 3 % del presupuesto de la
+# compañía —616 millones de 20 000— fuera un renglón sin dueño y sin lectura
+# posible: nadie puede decidir sobre una cifra que mezcla huevos con domicilios.
+#
+# `0010 - RESTAURANTE` sigue llamándose ASADERO en SIGREP y **eso no se toca**:
+# es el nombre con el que el negocio captura y lee su presupuesto.
+#
+# El `orden` es el del reporte. Las cuatro nuevas van detrás de las siete que ya
+# existían para no reordenar una pantalla que la gerencia ya tiene memorizada.
 
 CATEGORIAS: list[tuple[str, str, int]] = [
     ("RES", "RES", 1),
@@ -87,15 +106,29 @@ CATEGORIAS: list[tuple[str, str, int]] = [
     ("EMBUTIDOS", "EMBUTIDOS", 5),
     ("VISCERAS", "VISCERAS", 6),
     ("ASADERO", "ASADERO", 7),
-    ("OTROS", "OTROS", 8),
+    ("QUESO Y LACTEOS", "QUESO Y LACTEOS", 8),
+    ("HUEVOS", "HUEVOS", 9),
+    ("VIVERES", "VIVERES", 10),
+    ("DOMICILIOS", "DOMICILIOS", 11),
 ]
+
+# Las categorías que **existieron y ya no** —hoy solo `OTROS`— viven en
+# `app/domain/normalizacion.py::CATEGORIAS_RETIRADAS`. No se siembran, se
+# reconocen: es lo que permite que la carga del presupuesto del negocio, que
+# todavía trae ese renglón, se rechace con un motivo que dice qué hacer.
 
 # ── §3.1 Mapeo de categorías crudas de SIESA ──────────────────────────────────
 #
 # El mapeo es por **texto exacto**. Nótese que hay dos códigos `0006` con
-# distinta ortografía y ambos deben estar sembrados: si faltara uno, esa venta
-# caería en «desconocido» y el reporte de quesos y lácteos saldría a la mitad
-# sin que nadie sepa por qué.
+# distinta ortografía y ambos deben estar sembrados apuntando a la **misma**
+# categoría: es el mismo producto escrito de dos formas en el origen. Si faltara
+# uno, esa venta caería en «desconocido» y el reporte de quesos y lácteos
+# saldría a la mitad sin que nadie sepa por qué.
+#
+# Lo que no está en esta tabla **no tiene categoría**: la ingesta rechaza la
+# fila nombrando el texto que no reconoció (§7). Antes iba a `OTROS`, y esa red
+# de seguridad se retiró a propósito con el cajón. El remedio no es adivinar:
+# es `POST /catalogos/mapeo-categorias`, que no necesita despliegue.
 
 MAPEO_CATEGORIAS: list[tuple[str, str]] = [
     ("0001 - RES", "RES"),
@@ -103,13 +136,13 @@ MAPEO_CATEGORIAS: list[tuple[str, str]] = [
     ("0003 - POLLO", "POLLO"),
     ("0004 - PESCADO", "PESCADO"),
     ("0005 - EMBUTIDOS", "EMBUTIDOS"),
+    ("0006 - QUESO Y LACTEOS", "QUESO Y LACTEOS"),
+    ("0006 - QUESOS Y LACTEOS", "QUESO Y LACTEOS"),  # variante con typo, así viene de SIESA
+    ("0007 - HUEVOS", "HUEVOS"),
+    ("0008 - VIVERES", "VIVERES"),
     ("0009 - VISCERAS", "VISCERAS"),
     ("0010 - RESTAURANTE", "ASADERO"),
-    ("0006 - QUESO Y LACTEOS", "OTROS"),
-    ("0006 - QUESOS Y LACTEOS", "OTROS"),  # variante con typo, así viene de SIESA
-    ("0007 - HUEVOS", "OTROS"),
-    ("0008 - VIVERES", "OTROS"),
-    ("0014 - DOMICILIOS", "OTROS"),
+    ("0014 - DOMICILIOS", "DOMICILIOS"),
 ]
 
 # ── §3.2 Zonas de calendario ──────────────────────────────────────────────────

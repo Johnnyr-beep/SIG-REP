@@ -299,7 +299,11 @@ def test_el_domicilio_en_blanco_se_guarda_nulo_y_deja_constancia(
 
 
 def test_la_categoria_se_resuelve_por_la_tabla_de_mapeo(estructura: None, sesion: Session) -> None:
-    """Incluidas las dos variantes ortográficas de `0006`, que ambas van a OTROS."""
+    """Incluidas las dos variantes ortográficas de `0006`.
+
+    Ambas apuntan a QUESO Y LACTEOS: es el mismo producto escrito de dos formas
+    en el origen. Antes las dos caían en `OTROS`, que ya no existe.
+    """
     salida = ingerir(
         sesion,
         [
@@ -314,28 +318,56 @@ def test_la_categoria_se_resuelve_por_la_tabla_de_mapeo(estructura: None, sesion
         sesion.get(Categoria, linea.categoria_id).nombre  # type: ignore[union-attr]
         for linea in lineas(sesion)
     ]
-    assert nombres == ["RES", "ASADERO", "OTROS", "OTROS"]
+    assert nombres == ["RES", "ASADERO", "QUESO Y LACTEOS", "QUESO Y LACTEOS"]
     # Un mapeo que existe no genera ruido en la bitácora.
     assert not motivos(sesion, salida.id, "CATEGORIA")
 
 
-def test_la_categoria_sin_mapeo_va_a_otros_y_deja_constancia(
+def test_la_categoria_sin_mapeo_rechaza_la_fila_con_su_motivo(
     estructura: None, sesion: Session
 ) -> None:
-    """Es la diferencia entre reclasificar por decisión y por accidente (§3.1)."""
+    """Al desaparecer `OTROS` desapareció el cajón donde aterrizaba lo no mapeado.
+
+    Antes, una categoría desconocida se reclasificaba a `OTROS` y la venta
+    entraba. Ya no hay ninguna categoría de respaldo, y **no se sustituye por
+    otra**: asignar una arbitraria mueve venta a un renglón que no le
+    corresponde y nadie lo nota. Se rechaza la fila nombrando el texto exacto
+    que no se reconoció, que es accionable —se amplía el mapeo por
+    `POST /catalogos/mapeo-categorias` y se reingiere el rango, que es
+    idempotente—.
+    """
     salida = ingerir(sesion, [fila_venta(categoria="0099 - CAVIAR"), fila_venta(categoria=None)])
 
-    otros = sesion.scalars(select(Categoria).where(Categoria.nombre == "OTROS")).one()
-    assert [linea.categoria_id for linea in lineas(sesion)] == [otros.id, otros.id]
-    # El texto crudo se conserva junto a la clasificación: sin él no se puede
-    # auditar un mapeo mal hecho.
-    assert lineas(sesion)[0].categoria_siesa == "0099 - CAVIAR"
+    # Ninguna de las dos entró: no hay categoría a la que asignarlas.
+    assert lineas(sesion) == []
+    assert salida.aceptadas == 0
+    assert salida.rechazadas == 2
 
     registrados = IngestaService(sesion).rechazos(salida.id)
     sin_mapeo = [r for r in registrados if r.campo == "CATEGORIA"]
     assert len(sin_mapeo) == 2
+    # El motivo nombra el texto crudo: sin él nadie sabe qué mapeo añadir.
     assert any(r.valor == "0099 - CAVIAR" for r in sin_mapeo)
-    assert salida.rechazadas == 0  # la venta entró; solo se reclasificó
+
+
+def test_una_fila_sin_mapeo_no_tumba_las_demas(estructura: None, sesion: Session) -> None:
+    """§7: una fila mala se rechaza; la corrida sigue."""
+    salida = ingerir(
+        sesion,
+        [
+            fila_venta(categoria="0001 - RES"),
+            fila_venta(categoria="0099 - CAVIAR"),
+            fila_venta(categoria="0002 - CERDO"),
+        ],
+    )
+
+    assert salida.aceptadas == 2
+    assert salida.rechazadas == 1
+    nombres = sorted(
+        sesion.get(Categoria, linea.categoria_id).nombre  # type: ignore[union-attr]
+        for linea in lineas(sesion)
+    )
+    assert nombres == ["CERDO", "RES"]
 
 
 # ── §5 y §7 Idempotencia: la regla crítica ───────────────────────────────────

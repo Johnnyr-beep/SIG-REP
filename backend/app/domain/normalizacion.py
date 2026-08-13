@@ -32,8 +32,35 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 #: Valor con el que entra una clase de cliente que no supera el catálogo (§3.4).
 SIN_CLASIFICAR = "SIN CLASIFICAR"
-#: Categoría de destino de todo texto de SIESA sin mapeo (§3.1).
-CATEGORIA_POR_DEFECTO = "OTROS"
+
+# No existe `CATEGORIA_POR_DEFECTO` y su ausencia es la decisión, no un olvido.
+# Hubo una constante `"OTROS"` a la que aterrizaba todo texto de SIESA sin
+# mapeo. Se retiró junto con el cajón: una categoría de SIESA sin mapeo ahora
+# **rechaza la fila nombrando el texto que no se reconoció** (§3.1, §7). Dar por
+# defecto una de las once categorías reales sería peor que el cajón —engordaría
+# la venta de RES o de VIVERES con producto que no es— y ninguna es «la
+# neutral». Quien eche de menos la red de seguridad tiene
+# `POST /catalogos/mapeo-categorias`, que resuelve el caso en un minuto y sin
+# despliegue; 200 filas en el informe de rechazos son visibles, 200 filas en la
+# categoría equivocada no lo son.
+
+#: Categorías que **existieron en SIGREP y ya no**, con las categorías reales
+#: entre las que hay que repartir lo que llevaban.
+#:
+#: Se conservan aquí porque el sistema tiene que **reconocerlas para poder
+#: rechazarlas bien**. La hoja `CUMPLIMIENTO PPTO` del libro que el negocio usa
+#: hoy sigue trayendo el renglón `OTROS` con 616 000 000 de un total de
+#: 20 000 000 000, y quien la suba merece leer «reparta ese presupuesto entre
+#: VIVERES, HUEVOS, QUESO Y LACTEOS y DOMICILIOS» en vez de un
+#: «No existe la categoría 'OTROS'» que es cierto y no dice qué hacer.
+#:
+#: El reparto **lo decide el negocio**, no el sistema: repartir a partes iguales
+#: o a prorrata de la venta del año pasado sería inventar un criterio y
+#: publicarlo como si alguien lo hubiera aprobado. SIGREP ya tiene el
+#: presupuesto parametrizable por pantalla, que es donde se captura la decisión.
+CATEGORIAS_RETIRADAS: dict[str, tuple[str, ...]] = {
+    "OTROS": ("VIVERES", "HUEVOS", "QUESO Y LACTEOS", "DOMICILIOS"),
+}
 
 #: Escalas de persistencia, iguales a las de `models/mixins.py`.
 ESCALA_DINERO = Decimal("0.01")

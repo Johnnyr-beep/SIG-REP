@@ -213,7 +213,7 @@ def test_el_mapeo_de_categorias_lo_reclasifica_quien_parametriza(
 ) -> None:
     respuesta = cliente_http.post(
         "/api/v1/catalogos/mapeo-categorias",
-        json={"texto_siesa": f"0099 - PRUEBA {rol}", "categoria": "OTROS"},
+        json={"texto_siesa": f"0099 - PRUEBA {rol}", "categoria": "VIVERES"},
         headers=cabeceras(request, rol),
     )
     assert respuesta.status_code == 200, respuesta.text

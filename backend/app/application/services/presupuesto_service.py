@@ -35,7 +35,7 @@ from app.core.errors import (
     ErrorValidacion,
 )
 from app.core.logging import obtener_logger
-from app.domain.normalizacion import clave_columna, normalizar_texto
+from app.domain.normalizacion import CATEGORIAS_RETIRADAS, clave_columna, normalizar_texto
 from app.infrastructure.models.catalogo import Categoria
 from app.infrastructure.models.mixins import ahora_utc
 from app.infrastructure.models.organizacion import PuntoVenta
@@ -77,6 +77,27 @@ _ALIAS_COLUMNAS: dict[str, str] = {
     "ppto en kilo": "kilos",
     "ppto kilos": "kilos",
 }
+
+
+def motivo_categoria_retirada(nombre: str, destinos: Sequence[str]) -> str:
+    """El motivo con el que se rechaza una fila de una categoría que ya no existe.
+
+    Tiene que ser **accionable**, no solo cierto. `OTROS` desapareció y el libro
+    que el negocio usa hoy todavía trae ese renglón con 616 000 000 de los
+    20 000 000 000 del presupuesto de la compañía. Esas filas no se pueden
+    cargar, y hay tres salidas posibles de las cuales dos son inaceptables:
+    descartarlas en silencio —el consolidado quedaría 616 millones corto y el
+    cumplimiento de la compañía saldría inflado sin que nadie sepa por qué— o
+    repartirlas por cuenta del sistema con un criterio inventado. Queda la
+    tercera: rechazarlas diciendo exactamente qué hay que hacer.
+    """
+    reparto = ", ".join(destinos[:-1]) + " y " + destinos[-1] if len(destinos) > 1 else destinos[0]
+    return (
+        f"La categoría {nombre} ya no existe: SIGREP usa las categorías reales de SIESA. "
+        f"Reparta ese presupuesto entre {reparto} en la fila que corresponda del archivo, "
+        "o captúrelo por pantalla en Presupuesto. El sistema no lo reparte solo porque el "
+        "criterio del reparto lo decide el negocio."
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -285,6 +306,13 @@ class PresupuestoService:
         rechaza **con su motivo**, como cualquier otro error de fila. Rechazarla
         en silencio dejaría a quien carga creyendo que ese presupuesto quedó
         puesto.
+
+        Lo mismo vale, y con más razón, para las filas de una categoría
+        **retirada**: el libro vigente trae `OTROS` con 616 000 000 de los
+        20 000 000 000 del presupuesto de la compañía, y esas filas salen
+        rechazadas con el reparto propuesto en el motivo. Se pierde la carga de
+        esas filas, no el dato: sigue en el archivo y sale en esta respuesta con
+        su número de fila.
         """
         periodo = obtener_o_crear_periodo(self._sesion, codigo_periodo)
         self._exigir_periodo_abierto(periodo)
@@ -414,10 +442,19 @@ class PresupuestoService:
         código—, y así una categoría nueva que el negocio añada mañana no se
         pierde en silencio: llega hasta el validador y sale como error de fila
         con su motivo.
+
+        «Categoría conocida» incluye a propósito las **retiradas**. El libro
+        vigente trae el renglón `OTROS` y esa fila tiene que llegar entera al
+        validador para salir con el motivo que explica el reparto; si además
+        fuera la primera de su bloque —un PDV cuyo presupuesto solo tuviera esa
+        categoría—, sin esta salvedad se confundiría con un total y se
+        descartaría en silencio, que es justo lo que no puede pasar con 616
+        millones de presupuesto.
         """
         categorias = {
             nombre.upper() for nombre in self._sesion.execute(select(Categoria.nombre)).scalars()
         }
+        categorias |= set(CATEGORIAS_RETIRADAS)
 
         columnas: dict[str, int] = {}
         filas: list[tuple[int, dict[str, object]]] = []
@@ -604,12 +641,20 @@ class PresupuestoService:
         return punto
 
     def _categoria_por_nombre(self, nombre: str) -> Categoria:
+        limpio = nombre.strip().upper()
         categoria = self._sesion.execute(
-            select(Categoria).where(Categoria.nombre == nombre.strip().upper())
+            select(Categoria).where(Categoria.nombre == limpio)
         ).scalar_one_or_none()
-        if categoria is None:
-            raise ErrorNoEncontrado(f"No existe la categoría {nombre!r}.")
-        return categoria
+        if categoria is not None:
+            return categoria
+
+        destinos = CATEGORIAS_RETIRADAS.get(limpio)
+        if destinos:
+            # No es «no existe»: es «existió y el negocio decidió retirarla».
+            # Decirlo así, con el reparto delante, es la diferencia entre una
+            # carga que alguien arregla en diez minutos y una que se abandona.
+            raise ErrorValidacion(motivo_categoria_retirada(limpio, destinos))
+        raise ErrorNoEncontrado(f"No existe la categoría {nombre!r}.")
 
 
 def _clave(titulo: object) -> str:
