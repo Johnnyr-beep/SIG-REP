@@ -5,7 +5,7 @@ Revises: 0002
 Create Date: 2026-08-13
 
 409 PEREIRA —el segundo punto de venta de la compañia— registra en el modulo de
-POS que solo sirve `GET /ventas/pos-vendedor-detalle`, y ese endpoint **no
+POS que llega marcado como `Origen = SIN ACUMULAR`, y ese modulo **no
 entrega el costo**: llega vacio en el 100 % de sus filas. Con la columna
 `NOT NULL`, esas lineas entraban con costo cero y §4.4 calculaba
 

@@ -131,7 +131,7 @@ class VentaLinea(Base):
     #:
     #: **Anulable a propósito. No es una relajación de la integridad: es la
     #: única forma de no publicar un número falso.** `GET
-    #: /ventas/pos-vendedor-detalle` —el único endpoint donde registra 409
+    #: costos-razon-social`, cuyo módulo `SIN ACUMULAR` es donde registra 409
     #: PEREIRA, el segundo punto de venta de la compañía— **no entrega el
     #: costo**: llega vacío en el 100 % de sus filas. Mientras esta columna fue
     #: `NOT NULL`, esas líneas entraban con costo cero y §4.4 calculaba

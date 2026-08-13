@@ -224,7 +224,8 @@ def margen_porcentaje(
     porcentaje con pinta de completo que en realidad ignora una parte de la
     venta, y un número creíble y falso es peor que un hueco visible.
 
-    De dónde viene: `GET /ventas/pos-vendedor-detalle` —el único endpoint donde
+    De dónde viene: las filas de `Origen = SIN ACUMULAR` de
+    `GET /ventas/costos-razon-social` —el módulo donde
     registra 409 PEREIRA, el segundo punto de venta de la compañía— no entrega
     el costo. Antes de esta regla, esas líneas entraban con costo cero y el
     margen de PEREIRA se publicaba como **100 %**.

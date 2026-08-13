@@ -46,7 +46,7 @@ class LineaVenta:
     fecha: date
     valor_subtotal: Decimal
     #: `None` cuando **la fuente no entrega el costo**, que es el caso de
-    #: `GET /ventas/pos-vendedor-detalle` —el endpoint de 409 PEREIRA— en el
+    #: el módulo `SIN ACUMULAR` de `costos-razon-social` —el de 409 PEREIRA— en el
     #: 100 % de sus filas. No es lo mismo que `Decimal("0")`: aquel afirma que
     #: vender no costó nada y este dice que nadie lo sabe. La distinción viaja
     #: intacta hasta `venta_lineas.costo_promedio`, que es anulable por eso, y

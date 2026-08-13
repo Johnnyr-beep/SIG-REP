@@ -414,10 +414,11 @@ class IngestaService:
             resumen.leidas += 1
             bitacora.rechazar(rechazo.fila, rechazo.campo, rechazo.valor, rechazo.motivo)
 
-        # Y lo que la fuente sabe y nadie más puede saber: de cuál de los dos
-        # endpoints de SIESA vino cada fila, que PEREIRA no trae costo. No son
-        # filas perdidas, así que se anotan sin tocar el recuento —contarlas como
-        # rechazos diría que se perdió venta que no se perdió—.
+        # Y lo que la fuente sabe y nadie más puede saber: de qué módulo de
+        # SIESA vino cada fila —el `Origen` de `costos-razon-social`— y que el
+        # de PEREIRA no trae costo. No son filas perdidas, así que se anotan sin
+        # tocar el recuento: contarlas como rechazos diría que se perdió venta
+        # que no se perdió.
         for anotacion in getattr(implementacion, "anotaciones", ()):
             if not isinstance(anotacion, AnotacionFuente):  # pragma: no cover - defensa
                 continue

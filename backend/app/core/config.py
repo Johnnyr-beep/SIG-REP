@@ -159,8 +159,9 @@ class Settings(BaseSettings):
 
     # ── API de consulta de SIESA (§5) ─────────────────────────────────────────
     #
-    # Lo consume `FuenteVentaSiesa`. Su encabezado explica por qué son dos
-    # endpoints y por qué `fecha_fin` es inclusiva; aquí solo viven los valores.
+    # Lo consume `FuenteVentaSiesa` contra `/ventas/costos-razon-social`. Su
+    # encabezado explica por qué `fecha_fin` es inclusiva y por qué los dos
+    # valores de `Origen` se suman; aquí solo viven los valores.
 
     siesa_url_base: str = "https://apiconsulta.grupo-santacruz.com"
 
@@ -170,20 +171,16 @@ class Settings(BaseSettings):
     #: `SecretStr` para que no aparezca en un `repr`, un log ni una traza.
     siesa_token: SecretStr = SecretStr("")
 
-    #: Compañías a consultar. **Vacío es lo correcto**: omitir `id_cia` devuelve
-    #: las tres compañías de carnes (4, 6 y 7) en una sola consulta. Fijarlas
-    #: parte la descarga en una petición por compañía, que sirve para acotar una
-    #: incidencia sin desplegar.
-    siesa_companias: list[int] = Field(default_factory=list)
-
-    #: Centros de operación que **solo** sirve `/ventas/pos-vendedor-detalle`.
-    #: Hoy `409 PEREIRA`, que registra en otro módulo de POS. El reparto entre
-    #: los dos endpoints es excluyente: es lo que impide que unirlos duplique
-    #: venta. Si la API unifica los módulos, se vacía esta lista.
-    siesa_centros_pos_detalle: list[str] = Field(default_factory=lambda: ["409"])
+    #: Compañías a consultar, una petición por cada una. **Es obligatorio**:
+    #: `id_cia` no es opcional en `/ventas/costos-razon-social` y omitirlo no
+    #: devuelve «todas» —eso lo hacía el endpoint anterior—. Las de carnes son
+    #: la 4, la 6 y la 7; nunca la 3 ni la 8, cuya venta agropecuaria se reporta
+    #: en otra instancia. Dejar la lista vacía es un error de configuración y la
+    #: fuente se niega a arrancar diciéndolo.
+    siesa_companias: list[int] = Field(default_factory=lambda: [4, 6, 7])
 
     siesa_timeout_conexion_seg: float = Field(default=15.0, gt=0, le=120)
-    #: Un mes son ~1 000 000 de filas en streaming. Diez minutos no es
+    #: Un mes son cientos de miles de filas en streaming. Diez minutos no es
     #: generosidad: es lo que cuesta la descarga real.
     siesa_timeout_lectura_seg: float = Field(default=600.0, gt=0, le=3600)
     siesa_reintentos: int = Field(default=3, ge=1, le=10)

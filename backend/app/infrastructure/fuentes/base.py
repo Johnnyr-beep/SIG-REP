@@ -36,10 +36,10 @@ class AnotacionFuente:
     """Algo que la fuente necesita contar y que **no** es un rechazo.
 
     La misma distinción que hace `BitacoraIngesta`, un piso más abajo: hay cosas
-    que la fuente sabe y que nadie más puede saber —de cuál de los dos endpoints
-    de SIESA vino cada fila, que PEREIRA no trae costo— y que no son filas
-    perdidas. Meterlas por `rechazos` haría que `leidas = aceptadas + rechazadas`
-    dejara de cuadrar y diría que se perdió venta que no se perdió.
+    que la fuente sabe y que nadie más puede saber —de qué `Origen` de SIESA
+    vino cada fila, que PEREIRA no trae costo— y que no son filas perdidas.
+    Meterlas por `rechazos` haría que `leidas = aceptadas + rechazadas` dejara de
+    cuadrar y diría que se perdió venta que no se perdió.
 
     La ingesta las recoge junto a los rechazos y las manda a `bitacora.anotar`.
     """
