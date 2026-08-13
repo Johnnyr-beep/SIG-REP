@@ -55,10 +55,50 @@ negocio usa hoy, sumando `Valor subtotal` por centro de operación del
 | 702 OLAYA | 45 727 676 | 45 828 109 | — |
 | **TOTAL** | **861 410 972** | **704 645 012** | — |
 
-**`GET /ventas/poscarnes` es la fuente correcta.** Reproduce el Excel dentro
-del 0,5 % en 10 de 13 puntos, y en dos de ellos —ALAMEDA 1 y SAN FELIPE— al
-peso exacto. `agropecuaria` mide otra cosa: infla entre 1,4 y 1,6 veces y no
-cuadra con el reporte del negocio en ningún punto.
+**`GET /ventas/poscarnes` es la fuente correcta para SIGREP.** Reproduce el
+Excel dentro del 0,5 % en 10 de 13 puntos, y en dos de ellos —ALAMEDA 1 y
+SAN FELIPE— al peso exacto.
+
+### `agropecuaria` no es la misma venta mal contada: es otro canal
+
+Conviene no leer la tercera columna como un error. Las descripciones de la
+propia API nombran la tabla de Siesa que hay detrás de cada endpoint, y ahí está
+la explicación:
+
+| Endpoint | Tabla | Qué es |
+|---|---|---|
+| `poscarnes` | `t9930` | **POS**, venta de mostrador |
+| `agropecuaria` | `t470` | Módulo agropecuario: **facturación** |
+| `pos-vendedor-detalle` | `t9830`/`t9820` | POS línea a línea |
+| `vendedor-acumulada` | `t461`/`t470` | Ventas **facturadas** |
+| `canales-vendedor` | `t460`/`t470` | **Remisiones** de venta |
+
+Las `t98xx` son punto de venta; las `t46x`/`t47x`, documentos de facturación.
+Por eso `agropecuaria` trae `Cliente`, `CodigoVendedor`, `NombreVendedor`,
+`TipoItem`, `Especie` y `Grupo` —una factura va a un cliente con nombre y
+vendedor asignado— y `poscarnes` no trae nada de eso: la venta de mostrador es
+anónima. El nombre del endpoint viene de `id_cia=3`, `AGROPECUARIA SANTACRUZ
+LTDA`, la empresa que estrenó el módulo; hoy sirve a las compañías 3, 4, 6, 7 y 8.
+
+> **DECISIÓN DEL NEGOCIO (13-ago-2026): la venta agropecuaria se reporta en una
+> instancia aparte, con sus propios reportes.** Esta instancia de SIGREP cubre
+> exclusivamente el POS de carnes y consume solo `poscarnes`. No hay que
+> conciliar las dos cifras ni sumarlas: son negocios distintos.
+
+### Centros de operación fuera del alcance de esta instancia
+
+`agropecuaria` expone centros que el presupuesto de SIGREP no contempla y que
+pertenecen a la otra instancia:
+
+| C.O. | Compañía | Venta 1-ago |
+|---|---|---:|
+| 301 | AGROPECUARIA SANTACRUZ LTDA (cia 3) | 684 907 232 |
+| 302 | DISTRIBUCIÓN SANTACRUZ MONTERÍA (cia 3) | 5 267 052 |
+| 801 | MALAMBO (cia 8) | 115 766 314 |
+
+Ojo con el 801: **hay dos MALAMBO**, el `402` de la compañía 4 —el que sí
+presupuesta esta instancia— y el `801` de la compañía 8. Son puntos distintos y
+no deben sumarse.
 
 ### El C.O. lleva la compañía en el primer dígito
 
@@ -74,18 +114,40 @@ SIGREP hará.
 
 ## 4. Los tres asuntos abiertos — para el administrador de la API
 
-### 4.1 PEREIRA no existe en la API · **bloqueante**
+### 4.1 PEREIRA reporta por otro módulo de POS · **bloqueante**
 
-`409 PEREIRA` vendió 101 453 550 el 1 de agosto según el Excel y devuelve
-**cero filas** en los dos endpoints, también consultando por `id_co=409` en un
-rango de diez días y sin filtro de compañía. En el mes lleva 497 438 844 de
-venta y 1 968 185 977 de presupuesto: es el segundo punto más grande.
+> **Corrección de una versión anterior de este documento**, que afirmaba que
+> PEREIRA «no existe en la API». Era falso: no estaba en los dos endpoints que
+> se habían mirado. **Sí está en `GET /ventas/pos-vendedor-detalle`.**
 
-`415 CARTAGENA` está en el mismo caso: 32 577 346 en el Excel, cero en
-`poscarnes` y una única fila de 780 000 en `agropecuaria`.
+`409 PEREIRA` devuelve cero filas en `poscarnes` (t9930) y en `agropecuaria`
+(t470), también consultando `id_co=409` en un rango de diez días y sin filtro de
+compañía. Pero `pos-vendedor-detalle` —**t9830/t9820, otro módulo de POS**— el
+1 de agosto devuelve 6671 filas y **todas son PEREIRA**: ningún otro punto de
+venta aparece ahí, en ninguna compañía (se probó 3, 4, 5, 6, 7 y 8).
 
-**Juntos son el 15,5 % del presupuesto de la compañía.** ¿En qué compañía o
-endpoint viven? ¿Operan sobre otro ERP?
+Es decir: los 13 puntos restantes registran en `t9930` y **PEREIRA registra en
+`t9830/t9820`**. Dos módulos de punto de venta conviviendo.
+
+Dos cosas que siguen sin cuadrar:
+
+- **El importe no coincide.** `pos-vendedor-detalle` da 135 201 210 y el Excel
+  101 453 550 para el mismo día: **33 747 660 de más, un 33 %**.
+- **No trae costo.** `costo_promedio` viene nulo en **el 100 %** de las 6671
+  filas, así que por ese endpoint no se puede calcular el margen (§4.4 de la
+  especificación), que sí se calcula para los demás puntos.
+
+`415 CARTAGENA` sigue sin aparecer: 32 577 346 en el Excel, cero en `poscarnes`,
+cero en `pos-vendedor-detalle` y una única fila de 780 000 en `agropecuaria`.
+
+**Las preguntas:**
+
+1. ¿Por qué PEREIRA registra en otro módulo? ¿Es definitivo o está en migración?
+2. ¿Puede `poscarnes` incluir también `t9830/t9820`, de modo que un solo
+   endpoint devuelva los 14 puntos?
+3. ¿Se puede exponer el costo en `pos-vendedor-detalle`? Sin él, PEREIRA no
+   tiene margen.
+4. ¿Dónde registra CARTAGENA?
 
 ### 4.2 Dos puntos no cuadran · **bloqueante**
 
@@ -107,11 +169,18 @@ SIGREP reporta por punto de venta **y categoría** (RES, CERDO, POLLO,
 VÍSCERAS, EMBUTIDOS, PESCADO, ASADERO, OTROS), en pesos **y en kilos**.
 
 - **No hay categoría.** `poscarnes` entrega `referencia` y
-  `descripcion_producto`, no el `0001 - RES` que trae el Excel. Hace falta una
-  tabla `referencia → categoría`. `GET /ventas/subproductos` devuelve
-  exactamente ese par (`referencia`, `categoria`, `descripcion_criterio_mayor`)
-  pero solo para 133 referencias de subproducto: **¿existe el mapeo completo
-  para todas las referencias?** Es lo que falta para cerrar la integración.
+  `descripcion_producto`, no el `0001 - RES` que trae el Excel.
+
+  Y sin embargo **la categoría existe en Siesa y la API ya la publica en otros
+  dos endpoints, en el formato exacto del Excel**: `pos-vendedor-detalle`
+  devuelve `categoria: "0001 - RES"` para PEREIRA, y `agropecuaria` devuelve
+  `TipoItem_Id`/`TipoItem`. También `subproductos` da el par
+  (`referencia`, `categoria`), aunque solo para 133 referencias de subproducto.
+
+  Así que no falta el dato: falta exponerlo en el endpoint que sirve a los otros
+  trece puntos. **¿Puede `poscarnes` devolver la categoría, como ya hace
+  `pos-vendedor-detalle`?** Es, con diferencia, lo más barato de resolver de
+  esta lista, y desbloquea la mitad del reporte.
 - **Los kilos vienen mezclados.** `total_cantidad` convive con `unidad`, que
   toma los valores `KG`, `U` y `UN`. Sumar esa columna mezcla kilos con
   unidades y corrompe la mitad del reporte. Se necesita o bien un campo de
