@@ -28,13 +28,20 @@ periodos_router = APIRouter(prefix="/periodos", tags=["Presupuesto"])
 
 PeriodoQuery = Query(pattern=r"^\d{4}-(0[1-9]|1[0-2])$", examples=["2026-08"])
 
-#: Tope del archivo de carga masiva. El presupuesto de un mes son 128 filas;
-#: cualquier cosa de más de 5 MB no es un presupuesto.
-MAX_BYTES_CARGA = 5 * 1024 * 1024
+#: Tope del archivo de carga masiva.
+#:
+#: El presupuesto de un mes son 128 filas, pero **no llega en un archivo de 128
+#: filas**: el negocio sube el mismo libro que usa para todo, donde la hoja
+#: `CUMPLIMIENTO PPTO` convive con las 131 819 filas de la hoja `VENTA`. Ese
+#: libro pesa 18 MB, de modo que un tope de 5 MB rechazaba precisamente el
+#: archivo real —comprobado contra la base: «El archivo supera el tamaño máximo
+#: admitido (5 MB)»—. Se alinea con el de la ingesta de venta, que ya cubre este
+#: caso.
+MAX_BYTES_CARGA = 60 * 1024 * 1024
 
 #: Tope de lo que ese archivo puede declarar al descomprimirse. Un `.xlsx` es
-#: un ZIP: sin este límite, 5 MB de subida pueden ser gigabytes en memoria.
-MAX_DESCOMPRIMIDO_CARGA = 120 * 1024 * 1024
+#: un ZIP: sin este límite, la subida admitida puede ser gigabytes en memoria.
+MAX_DESCOMPRIMIDO_CARGA = 800 * 1024 * 1024
 
 EXTENSIONES_CARGA = (".xlsx", ".xlsm", ".csv")
 

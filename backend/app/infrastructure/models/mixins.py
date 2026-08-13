@@ -56,7 +56,14 @@ Kilos = Numeric(18, 3)
 #: `Numeric` y no `Integer`. Es el detalle que más veces se ha implementado mal.
 Dias = Numeric(5, 2)
 #: Porcentaje que envía SIESA línea a línea. Se guarda solo para conciliación.
-Porcentaje = Numeric(9, 6)
+#:
+#: 12 dígitos y no 9. El `MARGEN` de SIESA **no está acotado a ±100**: una venta
+#: por debajo del costo da un porcentaje arbitrariamente negativo, y el archivo
+#: real trae un −1152,6997 entre 131 819 filas. Con `Numeric(9, 6)` —tope
+#: 999,999999— esa única fila aborta el `executemany` de todo el lote y la carga
+#: entera queda en cero. SQLite no valida la precisión y no lo detecta; solo
+#: aparece en PostgreSQL, que sí la exige.
+Porcentaje = Numeric(12, 6)
 
 CERO_DINERO = Decimal("0.00")
 CERO_KILOS = Decimal("0.000")
