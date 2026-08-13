@@ -24,7 +24,7 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.application.services.periodos import obtener_o_crear_periodo, obtener_periodo
@@ -35,13 +35,27 @@ from app.core.errors import (
     ErrorValidacion,
 )
 from app.core.logging import obtener_logger
-from app.domain.normalizacion import CATEGORIAS_RETIRADAS, clave_columna, normalizar_texto
+from app.domain.normalizacion import (
+    CATEGORIAS_RETIRADAS,
+    ESCALA_DINERO,
+    ESCALA_KILOS,
+    clave_columna,
+    destinos_de_categoria_retirada,
+    normalizar_texto,
+)
+from app.domain.reparto import (
+    DESCRIPCION_NIVEL,
+    Nivel,
+    elegir_pesos,
+    repartir_proporcional,
+)
 from app.infrastructure.models.catalogo import Categoria
-from app.infrastructure.models.mixins import ahora_utc
+from app.infrastructure.models.mixins import CERO_DINERO, CERO_KILOS, ahora_utc
 from app.infrastructure.models.organizacion import PuntoVenta
 from app.infrastructure.models.periodo import Periodo
 from app.infrastructure.models.presupuesto import Presupuesto, PresupuestoHistorial
 from app.infrastructure.models.usuario import Usuario
+from app.infrastructure.models.venta import VentaLinea
 from app.schemas.presupuesto import (
     ErrorFila,
     HistorialSalida,
@@ -100,6 +114,39 @@ def motivo_categoria_retirada(nombre: str, destinos: Sequence[str]) -> str:
     )
 
 
+def motivo_reparto(
+    codigo_periodo: str,
+    nombre_categoria: str,
+    nivel_monto: Nivel,
+    nivel_kilos: Nivel,
+) -> str:
+    """El motivo con el que queda historiado cada renglón del reparto (§3.3).
+
+    Tiene que decir tres cosas y las dice: **de dónde viene el número** (reparto
+    proporcional a la venta del período, y con qué base se hizo cada magnitud),
+    **de dónde salía** (el presupuesto de la categoría retirada) y **qué vale**
+    (una cifra de partida que la gerencia tiene que confirmar). Un historial que
+    solo dijera «reparto automático» obligaría a reconstruir a mano, dentro de
+    seis meses, si esos 4 300 000 de HUEVOS los decidió alguien o los calculó una
+    división.
+
+    Cabe en `presupuesto_historial.motivo`, que es `String(400)`; la prueba
+    `test_el_motivo_cabe_en_la_columna` lo fija para que nadie lo alargue sin
+    darse cuenta.
+    """
+    if nivel_monto == nivel_kilos:
+        base = f"Base del reparto: {DESCRIPCION_NIVEL[nivel_monto]}."
+    else:
+        base = (
+            f"Base del reparto: monto, {DESCRIPCION_NIVEL[nivel_monto]}; "
+            f"kilos, {DESCRIPCION_NIVEL[nivel_kilos]}."
+        )
+    return (
+        f"Reparto proporcional a la venta del período {codigo_periodo} del presupuesto de "
+        f"«{nombre_categoria}», retirada. {base} Cifra de partida: la gerencia debe confirmarla."
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class FilaCarga:
     """Una fila ya normalizada del archivo de carga masiva."""
@@ -109,6 +156,69 @@ class FilaCarga:
     nombre_categoria: str
     monto: Decimal
     kilos: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class ParteReparto:
+    """Lo que una categoría destino recibe en un punto de venta."""
+
+    categoria: str
+    monto: Decimal
+    kilos: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class RepartoPunto:
+    """El reparto completo del presupuesto de un punto de venta."""
+
+    punto_venta: str
+    monto_origen: Decimal
+    kilos_origen: Decimal
+    nivel_monto: Nivel
+    nivel_kilos: Nivel
+    partes: tuple[ParteReparto, ...]
+
+    @property
+    def monto_repartido(self) -> Decimal:
+        return sum((p.monto for p in self.partes), CERO_DINERO)
+
+    @property
+    def kilos_repartidos(self) -> Decimal:
+        return sum((p.kilos for p in self.partes), CERO_KILOS)
+
+
+@dataclass(frozen=True, slots=True)
+class ResultadoReparto:
+    """Lo que hizo —o haría, en simulación— una pasada del reparto."""
+
+    periodo: str
+    categoria_retirada: str
+    destinos: tuple[str, ...]
+    simulacion: bool
+    puntos: tuple[RepartoPunto, ...]
+
+    @property
+    def monto_origen(self) -> Decimal:
+        return sum((p.monto_origen for p in self.puntos), CERO_DINERO)
+
+    @property
+    def kilos_origen(self) -> Decimal:
+        return sum((p.kilos_origen for p in self.puntos), CERO_KILOS)
+
+    @property
+    def monto_repartido(self) -> Decimal:
+        return sum((p.monto_repartido for p in self.puntos), CERO_DINERO)
+
+    @property
+    def kilos_repartidos(self) -> Decimal:
+        return sum((p.kilos_repartidos for p in self.puntos), CERO_KILOS)
+
+    @property
+    def cuadra(self) -> bool:
+        """Lo único que no se negocia: no se pierde ni se inventa un peso."""
+        return (
+            self.monto_repartido == self.monto_origen and self.kilos_repartidos == self.kilos_origen
+        )
 
 
 class PresupuestoService:
@@ -279,6 +389,297 @@ class PresupuestoService:
             actualizado_en=fila.actualizado_en,
             actualizado_por=usuario.usuario if usuario else None,
         )
+
+    # ── Reparto de una categoría retirada ─────────────────────────────────────
+
+    def repartir_categoria_retirada(
+        self,
+        *,
+        codigo_periodo: str,
+        nombre_categoria: str,
+        destinos: Sequence[str] | None = None,
+        usuario: Usuario | None = None,
+        simulacion: bool = False,
+    ) -> ResultadoReparto:
+        """Reparte el presupuesto de una categoría retirada y la deja vacía.
+
+        Es la ejecución de una decisión que ya tomó el negocio: `OTROS` se
+        retira y sus 616 000 000 se reparten **a prorrata de la venta real ya
+        cargada** entre las cuatro categorías que la sustituyen. El sistema no
+        elige el criterio; lo aplica y deja dicho en el historial que la cifra es
+        un punto de partida a confirmar por pantalla.
+
+        Cuatro reglas mandan aquí:
+
+        1. **El reparto es por punto de venta.** Cada uno de los 15 PDV tiene su
+           propio monto en la categoría retirada y se reparte con **la venta de
+           ese PDV**. Usar la proporción global le pondría a MALAMBO el perfil de
+           consumo de BUCARAMANGA, que es exactamente el error que hace inútil un
+           presupuesto por punto.
+        2. **El monto sigue la venta en pesos; los kilos, la venta en kilos.**
+           No es un adorno: DOMICILIOS pesa el 6 % de la venta en dinero de las
+           cuatro categorías y el 19 % en kilos. Repartir los kilos con la
+           proporción del dinero le daría a DOMICILIOS un presupuesto en kilos
+           que no tiene nada que ver con lo que mueve. Cada magnitud se reparte
+           con su propia magnitud, y la cascada de `elegir_pesos` se aplica a
+           cada una por separado —de ahí que el motivo pueda nombrar dos bases
+           distintas—.
+        3. **No se pierde ni se inventa un peso.** Ver `domain/reparto.py`.
+        4. **Todo queda historiado** (§3.3) y **un período cerrado se rechaza**
+           (§7), las dos por `guardar`, que es por donde pasa cada renglón.
+
+        Al terminar, las filas de presupuesto de la categoría retirada **se
+        borran**: es lo que permite que la migración `0005` elimine la categoría
+        sin destruir nada. Antes de borrarlas se historia su vaciado
+        (`monto → 0`) y se desliga el historial que las apuntaba —
+        `presupuesto_historial.presupuesto_id` es anulable justo para esto, ver
+        el modelo—, de modo que el rastro sobrevive a la fila.
+
+        Es **idempotente**: una segunda pasada no encuentra filas que repartir y
+        devuelve un resultado vacío sin tocar nada.
+
+        Con `simulacion=True` calcula y devuelve el reparto sin escribir. Es lo
+        que imprime `--simular` en la línea de órdenes, y es la forma de que
+        alguien mire los números **antes** de moverlos.
+        """
+        periodo = obtener_periodo(self._sesion, codigo_periodo)
+        self._exigir_periodo_abierto(periodo)
+
+        retirada = self._categoria_exacta(nombre_categoria)
+        nombres_destino = tuple(destinos or destinos_de_categoria_retirada(retirada.nombre) or ())
+        if not nombres_destino:
+            raise ErrorValidacion(
+                f"No se sabe entre qué categorías repartir «{retirada.nombre}». "
+                "Indíquelas explícitamente o dé de alta la categoría retirada en "
+                "CATEGORIAS_RETIRADAS."
+            )
+        categorias_destino = [self._categoria_exacta(nombre) for nombre in nombres_destino]
+        if retirada.id in {categoria.id for categoria in categorias_destino}:
+            raise ErrorValidacion(f"«{retirada.nombre}» no puede ser destino de su propio reparto.")
+
+        filas = list(
+            self._sesion.execute(
+                select(Presupuesto)
+                .join(PuntoVenta, Presupuesto.punto_venta_id == PuntoVenta.id)
+                .where(
+                    Presupuesto.periodo_id == periodo.id,
+                    Presupuesto.categoria_id == retirada.id,
+                )
+                .order_by(PuntoVenta.codigo_co)
+            ).scalars()
+        )
+
+        ids_destino = [categoria.id for categoria in categorias_destino]
+        venta = self._venta_por_punto_y_categoria(periodo.id, ids_destino)
+        globales = self._pesos_globales(venta, ids_destino)
+
+        repartos = [
+            self._repartir_una_fila(
+                fila=fila,
+                periodo_codigo=codigo_periodo,
+                retirada=retirada,
+                categorias_destino=categorias_destino,
+                venta=venta,
+                globales=globales,
+                usuario=usuario,
+                simulacion=simulacion,
+            )
+            for fila in filas
+        ]
+
+        resultado = ResultadoReparto(
+            periodo=codigo_periodo,
+            categoria_retirada=retirada.nombre,
+            destinos=nombres_destino,
+            simulacion=simulacion,
+            puntos=tuple(repartos),
+        )
+        if not resultado.cuadra:  # pragma: no cover - lo impide `repartir_proporcional`
+            raise ErrorValidacion(
+                "El reparto no cuadra: se repartieron "
+                f"{resultado.monto_repartido} de {resultado.monto_origen}. No se aplica."
+            )
+
+        logger.info(
+            "reparto_categoria_retirada",
+            periodo=codigo_periodo,
+            categoria=retirada.nombre,
+            puntos=len(repartos),
+            monto=str(resultado.monto_origen),
+            simulacion=simulacion,
+        )
+        return resultado
+
+    @staticmethod
+    def _pesos_globales(
+        venta: dict[tuple[int, int], tuple[Decimal, Decimal]],
+        ids_destino: Sequence[int],
+    ) -> tuple[list[Decimal], list[Decimal]]:
+        """Venta de todo el período por categoría destino: el segundo escalón."""
+        monto = [
+            sum((v[0] for (_, c), v in venta.items() if c == categoria), CERO_DINERO)
+            for categoria in ids_destino
+        ]
+        kilos = [
+            sum((v[1] for (_, c), v in venta.items() if c == categoria), CERO_KILOS)
+            for categoria in ids_destino
+        ]
+        return monto, kilos
+
+    def _repartir_una_fila(
+        self,
+        *,
+        fila: Presupuesto,
+        periodo_codigo: str,
+        retirada: Categoria,
+        categorias_destino: Sequence[Categoria],
+        venta: dict[tuple[int, int], tuple[Decimal, Decimal]],
+        globales: tuple[list[Decimal], list[Decimal]],
+        usuario: Usuario | None,
+        simulacion: bool,
+    ) -> RepartoPunto:
+        """El reparto del presupuesto de **un** punto de venta."""
+        punto_id = fila.punto_venta_id
+        del_punto_monto = [
+            venta.get((punto_id, categoria.id), (CERO_DINERO, CERO_KILOS))[0]
+            for categoria in categorias_destino
+        ]
+        del_punto_kilos = [
+            venta.get((punto_id, categoria.id), (CERO_DINERO, CERO_KILOS))[1]
+            for categoria in categorias_destino
+        ]
+
+        pesos_monto, nivel_monto = elegir_pesos(del_punto_monto, globales[0])
+        pesos_kilos, nivel_kilos = elegir_pesos(del_punto_kilos, globales[1])
+
+        monto_origen, kilos_origen = fila.monto, fila.kilos
+        partes_monto = repartir_proporcional(monto_origen, pesos_monto, ESCALA_DINERO)
+        partes_kilos = repartir_proporcional(kilos_origen, pesos_kilos, ESCALA_KILOS)
+
+        motivo = motivo_reparto(periodo_codigo, retirada.nombre, nivel_monto, nivel_kilos)
+
+        if not simulacion:
+            for categoria, monto, kilos in zip(
+                categorias_destino, partes_monto, partes_kilos, strict=True
+            ):
+                if monto == 0 and kilos == 0:
+                    # Un destino que no vendió nada recibe cero, y cero no se
+                    # escribe: crearía una fila de presupuesto vacía y dos
+                    # renglones de historial que no cuentan nada. El resultado
+                    # devuelto sí lleva la parte en cero, que es donde hay que
+                    # poder verla.
+                    continue
+                actual = self._fila_presupuesto(fila.periodo_id, punto_id, categoria.id)
+                self.guardar(
+                    codigo_periodo=periodo_codigo,
+                    punto_venta_id=punto_id,
+                    categoria_id=categoria.id,
+                    # **Se suma a lo que ya hubiera.** Reemplazar destruiría el
+                    # presupuesto que alguien capturó antes en QUESO Y LACTEOS.
+                    monto=(actual.monto if actual is not None else CERO_DINERO) + monto,
+                    kilos=(actual.kilos if actual is not None else CERO_KILOS) + kilos,
+                    motivo=motivo,
+                    usuario=usuario,
+                    alcance=None,
+                )
+            self._vaciar_y_borrar(fila, motivo, usuario)
+
+        return RepartoPunto(
+            punto_venta=fila.punto_venta.codigo_co,
+            monto_origen=monto_origen,
+            kilos_origen=kilos_origen,
+            nivel_monto=nivel_monto,
+            nivel_kilos=nivel_kilos,
+            partes=tuple(
+                ParteReparto(categoria=categoria.nombre, monto=monto, kilos=kilos)
+                for categoria, monto, kilos in zip(
+                    categorias_destino, partes_monto, partes_kilos, strict=True
+                )
+            ),
+        )
+
+    def _vaciar_y_borrar(self, fila: Presupuesto, motivo: str, usuario: Usuario | None) -> None:
+        """Historia el vaciado de la fila de origen y la borra.
+
+        El orden importa. Primero se historia (`19 551 895,23 → 0`), porque ese
+        renglón es la contrapartida de los cuatro que acaban de entrar y sin él
+        el historial contaría cuatro altas sin ninguna baja. Después se anula el
+        `presupuesto_id` de **todo** el historial que apuntaba a esta fila —el
+        recién escrito y el que ya existía de la carga inicial— para que el
+        `DELETE` no choque con la clave foránea. El historial sobrevive: sus
+        claves de período, punto de venta y categoría son las que lo hacen
+        legible, y el modelo lo dice desde el primer día.
+        """
+        self._historiar(fila, "monto", fila.monto, CERO_DINERO, motivo, usuario)
+        self._historiar(fila, "kilos", fila.kilos, CERO_KILOS, motivo, usuario)
+        self._sesion.flush()
+
+        self._sesion.execute(
+            update(PresupuestoHistorial)
+            .where(PresupuestoHistorial.presupuesto_id == fila.id)
+            .values(presupuesto_id=None)
+        )
+        self._sesion.delete(fila)
+        self._sesion.flush()
+
+    def _venta_por_punto_y_categoria(
+        self, periodo_id: int, ids_categoria: Sequence[int]
+    ) -> dict[tuple[int, int], tuple[Decimal, Decimal]]:
+        """Venta del período agregada por (punto de venta, categoría).
+
+        Una sola consulta agrupada, no una por PDV: son 15 puntos × 4 categorías
+        y `venta_lineas` tiene 131 819 filas para nueve días. El índice
+        `ix_venta_periodo_pdv_categoria` cubre exactamente este `WHERE` y este
+        `GROUP BY`.
+        """
+        if not ids_categoria:
+            return {}
+        filas = self._sesion.execute(
+            select(
+                VentaLinea.punto_venta_id,
+                VentaLinea.categoria_id,
+                func.sum(VentaLinea.valor_subtotal),
+                func.sum(VentaLinea.cantidad_inv),
+            )
+            .where(
+                VentaLinea.periodo_id == periodo_id,
+                VentaLinea.categoria_id.in_(ids_categoria),
+            )
+            .group_by(VentaLinea.punto_venta_id, VentaLinea.categoria_id)
+        ).all()
+        return {
+            (int(punto), int(categoria)): (
+                Decimal(monto or 0),
+                Decimal(kilos or 0),
+            )
+            for punto, categoria, monto, kilos in filas
+        }
+
+    def _fila_presupuesto(
+        self, periodo_id: int, punto_venta_id: int, categoria_id: int
+    ) -> Presupuesto | None:
+        return self._sesion.execute(
+            select(Presupuesto).where(
+                Presupuesto.periodo_id == periodo_id,
+                Presupuesto.punto_venta_id == punto_venta_id,
+                Presupuesto.categoria_id == categoria_id,
+            )
+        ).scalar_one_or_none()
+
+    def _categoria_exacta(self, nombre: str) -> Categoria:
+        """Categoría por nombre exacto, **incluidas las desactivadas**.
+
+        `_categoria_por_nombre` sirve a la carga masiva y traduce una categoría
+        retirada en un error accionable. Aquí hace falta lo contrario: encontrar
+        precisamente la retirada, que es la que hay que vaciar.
+        """
+        limpio = (normalizar_texto(nombre) or "").upper()
+        categoria = self._sesion.execute(
+            select(Categoria).where(Categoria.nombre == limpio)
+        ).scalar_one_or_none()
+        if categoria is None:
+            raise ErrorNoEncontrado(f"No existe la categoría {nombre!r}.")
+        return categoria
 
     # ── Carga masiva ──────────────────────────────────────────────────────────
 
@@ -648,7 +1049,7 @@ class PresupuestoService:
         if categoria is not None:
             return categoria
 
-        destinos = CATEGORIAS_RETIRADAS.get(limpio)
+        destinos = destinos_de_categoria_retirada(limpio)
         if destinos:
             # No es «no existe»: es «existió y el negocio decidió retirarla».
             # Decirlo así, con el reparto delante, es la diferencia entre una

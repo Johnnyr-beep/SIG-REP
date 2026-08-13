@@ -87,6 +87,15 @@ class PresupuestoHistorial(Base):
     No se borra ni se actualiza nunca. Las claves apuntan al período, al punto
     de venta y a la categoría —no solo al presupuesto— para que el historial
     sobreviva si algún día se depura la tabla de presupuestos.
+
+    `presupuesto_id` y `categoria_id` son **anulables**, y por el mismo motivo:
+    el historial tiene que sobrevivir a lo que historia. El reparto de una
+    categoría retirada borra la fila de presupuesto de origen (anula
+    `presupuesto_id`) y la migración `0005` borra la categoría misma (anula
+    `categoria_id`). Lo que queda —período, punto de venta, campo, valor
+    anterior, valor nuevo, motivo, autor e instante— sigue contando la historia
+    entera; lo único que se pierde es el vínculo con una fila que ya no existe.
+    Ver `alembic/versions/0005_borrar_categoria_retirada.py`.
     """
 
     __tablename__ = "presupuesto_historial"
@@ -96,7 +105,7 @@ class PresupuestoHistorial(Base):
     presupuesto_id: Mapped[int | None] = mapped_column(ForeignKey("presupuestos.id"), index=True)
     periodo_id: Mapped[int] = mapped_column(ForeignKey("periodos.id"), nullable=False)
     punto_venta_id: Mapped[int] = mapped_column(ForeignKey("puntos_venta.id"), nullable=False)
-    categoria_id: Mapped[int] = mapped_column(ForeignKey("categorias.id"), nullable=False)
+    categoria_id: Mapped[int | None] = mapped_column(ForeignKey("categorias.id"))
 
     #: `monto` o `kilos`.
     campo: Mapped[str] = mapped_column(String(20), nullable=False)

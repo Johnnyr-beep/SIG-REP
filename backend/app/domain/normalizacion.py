@@ -54,13 +54,29 @@ SIN_CLASIFICAR = "SIN CLASIFICAR"
 #: VIVERES, HUEVOS, QUESO Y LACTEOS y DOMICILIOS» en vez de un
 #: «No existe la categoría 'OTROS'» que es cierto y no dice qué hacer.
 #:
-#: El reparto **lo decide el negocio**, no el sistema: repartir a partes iguales
-#: o a prorrata de la venta del año pasado sería inventar un criterio y
-#: publicarlo como si alguien lo hubiera aprobado. SIGREP ya tiene el
-#: presupuesto parametrizable por pantalla, que es donde se captura la decisión.
+#: El reparto lo decidió el negocio, no el sistema, y lo decidió así: **a
+#: prorrata de la venta real ya cargada, punto de venta por punto de venta**.
+#: Esa decisión la ejecuta `PresupuestoService.repartir_categoria_retirada`
+#: —invocable por `python -m app.infrastructure.reparto_presupuesto`— y deja en
+#: `presupuesto_historial` un motivo que dice de dónde salió cada cifra y que la
+#: gerencia tiene que confirmarla por pantalla. El reparto es un **punto de
+#: partida**, no una verdad; lo que no era admisible era dejar 616 000 000
+#: colgando de una categoría que ya no existe.
+#:
+#: Este diccionario sigue vivo después del reparto porque el libro que el
+#: negocio usa **sigue trayendo el renglón `OTROS`**: la carga masiva lo tiene
+#: que reconocer para rechazarlo con un motivo que diga qué hacer.
 CATEGORIAS_RETIRADAS: dict[str, tuple[str, ...]] = {
     "OTROS": ("VIVERES", "HUEVOS", "QUESO Y LACTEOS", "DOMICILIOS"),
 }
+
+#: Marca con la que la migración `0004` renombró la categoría que retiraba en
+#: lugar de borrarla. Se declara aquí, y no solo en la migración, porque el
+#: reparto tiene que **encontrar la categoría por el nombre que hoy tiene en la
+#: base** —`OTROS (RETIRADA - REUBICAR)`— y saber que sus destinos son los de
+#: `OTROS`. Sin esto, quien ejecute el reparto tendría que teclear los cuatro
+#: destinos a mano, que es la forma más segura de que un día falte uno.
+SUFIJO_RETIRADA = " (RETIRADA - REUBICAR)"
 
 #: Escalas de persistencia, iguales a las de `models/mixins.py`.
 ESCALA_DINERO = Decimal("0.01")
@@ -223,6 +239,29 @@ def a_fecha(valor: object) -> date | None:
         except ValueError:
             continue
     return None
+
+
+def nombre_sin_marca_de_retirada(nombre: object) -> str:
+    """`'OTROS (RETIRADA - REUBICAR)'` → `'OTROS'`. Lo demás, en mayúsculas.
+
+    La marca la puso la migración `0004` sobre el **nombre**, que es la columna
+    única de `categorias`, así que es lo único de lo que se dispone para volver
+    al nombre original.
+    """
+    limpio = (normalizar_texto(nombre) or "").upper()
+    if limpio.endswith(SUFIJO_RETIRADA):
+        return limpio[: -len(SUFIJO_RETIRADA)].strip()
+    return limpio
+
+
+def destinos_de_categoria_retirada(nombre: object) -> tuple[str, ...] | None:
+    """Categorías entre las que se reparte lo que llevaba una categoría retirada.
+
+    Acepta tanto el nombre original (`OTROS`, el que trae el libro del negocio)
+    como el marcado (`OTROS (RETIRADA - REUBICAR)`, el que tiene hoy la fila en
+    la base). `None` si esa categoría no está retirada.
+    """
+    return CATEGORIAS_RETIRADAS.get(nombre_sin_marca_de_retirada(nombre))
 
 
 def sin_acentos(texto: str) -> str:
