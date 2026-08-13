@@ -640,17 +640,25 @@ def test_el_rol_de_consulta_no_puede_ingerir(
     assert respuesta.status_code == 403
 
 
-def test_la_fuente_siesa_responde_501_porque_su_api_no_se_ha_entregado(
+def test_la_fuente_siesa_sin_token_configurado_dice_que_configurar(
     cliente_http: TestClient, analista: dict[str, str]
 ) -> None:
-    """Un «no implementado» honesto vale más que cero filas en verde (§5)."""
+    """`FuenteVentaSiesa` ya está implementada, pero necesita credenciales.
+
+    Hasta el 13-ago-2026 esta prueba exigía un 501 «la API de SIESA no se ha
+    entregado». Ya se entregó y la fuente la consume —ver
+    `tests/test_fuente_siesa.py`—, así que lo que queda por comprobar aquí es lo
+    mismo que para la fuente Excel sin ruta: que un fallo de configuración diga
+    **qué** configurar en lugar de devolver cero filas en verde. El entorno de
+    pruebas no lleva `SIGREP_SIESA_TOKEN`, que es justo ese escenario.
+    """
     respuesta = cliente_http.post(
         "/api/v1/ingesta/ejecutar",
         json={"desde": "2026-08-01", "hasta": "2026-08-09", "fuente": "siesa"},
         headers=analista,
     )
-    assert respuesta.status_code == 501
-    assert "SIESA" in respuesta.json()["detalle"]
+    assert respuesta.status_code == 422
+    assert "SIGREP_SIESA_TOKEN" in respuesta.json()["detalle"]
 
 
 def test_la_fuente_excel_sin_ruta_configurada_dice_que_configurar(

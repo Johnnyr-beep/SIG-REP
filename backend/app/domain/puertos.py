@@ -45,7 +45,14 @@ class LineaVenta:
     centro_operacion: str
     fecha: date
     valor_subtotal: Decimal
-    costo_promedio: Decimal
+    #: `None` cuando **la fuente no entrega el costo**, que es el caso de
+    #: `GET /ventas/pos-vendedor-detalle` —el endpoint de 409 PEREIRA— en el
+    #: 100 % de sus filas. No es lo mismo que `Decimal("0")`: aquel afirma que
+    #: vender no costó nada y este dice que nadie lo sabe. La distinción viaja
+    #: intacta hasta `venta_lineas.costo_promedio`, que es anulable por eso, y
+    #: decide si §4.4 publica el margen o pinta «—». Una fuente que rellene esto
+    #: con cero devuelve el sistema al 100 % de margen inventado.
+    costo_promedio: Decimal | None
     cantidad_inv: Decimal
     categoria_siesa: str | None = None
     nit_cliente: str | None = None
@@ -54,6 +61,15 @@ class LineaVenta:
     domicilio: str | None = None
     clase_cliente: str | None = None
     condicion_pago: str | None = None
+    #: Vendedor de la línea, tal como lo entrega la API de SIESA
+    #: (`codigo_vendedor` / `nombre_vendedor`). El libro de Excel no los trae y
+    #: la API sí, en los dos endpoints; se transportan aquí para no perderlos en
+    #: la frontera. **Todavía no se persisten**: `venta_lineas` no tiene columnas
+    #: de vendedor y hoy el reporte por vendedor se resuelve por el catálogo de
+    #: clientes. Guardarlos por línea es lo que permitirá el reporte por vendedor
+    #: del POS, donde la venta es anónima y no hay cliente al que colgarla.
+    codigo_vendedor: str | None = None
+    nombre_vendedor: str | None = None
     #: Número de fila en el origen. Es lo que hace útil un rechazo: sin él, el
     #: usuario sabe que algo falló pero no dónde mirar.
     fila_origen: int | None = None

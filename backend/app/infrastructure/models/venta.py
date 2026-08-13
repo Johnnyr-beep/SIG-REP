@@ -128,7 +128,26 @@ class VentaLinea(Base):
     #: `Valor subtotal` de SIESA. Es **la** medida contra presupuesto.
     valor_subtotal: Mapped[Decimal] = mapped_column(Dinero, nullable=False)
     #: `Costo promedio` de la línea. Insumo del margen ponderado (§4.4).
-    costo_promedio: Mapped[Decimal] = mapped_column(Dinero, nullable=False)
+    #:
+    #: **Anulable a propósito. No es una relajación de la integridad: es la
+    #: única forma de no publicar un número falso.** `GET
+    #: /ventas/pos-vendedor-detalle` —el único endpoint donde registra 409
+    #: PEREIRA, el segundo punto de venta de la compañía— **no entrega el
+    #: costo**: llega vacío en el 100 % de sus filas. Mientras esta columna fue
+    #: `NOT NULL`, esas líneas entraban con costo cero y §4.4 calculaba
+    #: `margen = (Σ subtotal − 0) / Σ subtotal` = **100 %** para PEREIRA. Un
+    #: 100 % de margen no es una cifra alta: es una cifra falsa, y llega a la
+    #: pantalla donde alguien decide.
+    #:
+    #: `NULL` significa «la fuente no entregó el costo» y `0` significa «costó
+    #: cero», que son afirmaciones distintas y el reporte las trata distinto: un
+    #: agregado que contenga una sola línea sin costo publica el margen como
+    #: `None` —«—» en pantalla—, mientras que el resto de sus indicadores se
+    #: calculan con toda normalidad (ver `app/domain/indicadores.py`).
+    #:
+    #: Quien vuelva a ponerla `NOT NULL` «por limpieza» reintroduce ese 100 %
+    #: inventado en el consolidado de la compañía.
+    costo_promedio: Mapped[Decimal | None] = mapped_column(Dinero)
     #: `Cantidad inv.` de SIESA: los kilos. Admite decimales (370.83).
     cantidad_inv: Mapped[Decimal] = mapped_column(Kilos, nullable=False)
 

@@ -190,21 +190,56 @@ def crecimiento(
 # ── §4.4 Margen ───────────────────────────────────────────────────────────────
 
 
-def margen_valor(venta: Decimal | None, costo: Decimal | None) -> Decimal | None:
-    """`Σ valor_subtotal − Σ costo_promedio`."""
+def margen_valor(
+    venta: Decimal | None, costo: Decimal | None, *, costo_completo: bool = True
+) -> Decimal | None:
+    """`Σ valor_subtotal − Σ costo_promedio`, o `None` si falta algún costo.
+
+    `costo_completo=False` significa que **alguna línea del agregado no trae
+    costo**, y entonces la resta no se puede hacer: lo que se restaría es la
+    suma de los costos que sí llegaron, que no es `Σ costo_promedio` del
+    conjunto. Ver la regla completa en el encabezado de esta sección.
+    """
+    if not costo_completo:
+        return None
     if venta is None or costo is None:
         return None
     return venta - costo
 
 
-def margen_porcentaje(venta: Decimal | None, costo: Decimal | None) -> Decimal | None:
+def margen_porcentaje(
+    venta: Decimal | None, costo: Decimal | None, *, costo_completo: bool = True
+) -> Decimal | None:
     """`margen_valor / Σ valor_subtotal`, **ponderado sobre los totales**.
 
     Nunca se promedia el porcentaje `MARGEN` que envía SIESA línea a línea:
     promediar porcentajes de líneas de distinto tamaño da un número falso. Ese
     campo se conserva solo para conciliación (§4.4).
+
+    ── La regla: cualquier línea sin costo ⇒ margen `None` ────────────────────
+
+    Si **una sola** línea del conjunto no trae costo, el margen del conjunto es
+    `None` y la pantalla pinta «—». No se calcula «sobre las líneas que sí
+    tienen costo», y esa es la parte que importa: ese cálculo publicaría un
+    porcentaje con pinta de completo que en realidad ignora una parte de la
+    venta, y un número creíble y falso es peor que un hueco visible.
+
+    De dónde viene: `GET /ventas/pos-vendedor-detalle` —el único endpoint donde
+    registra 409 PEREIRA, el segundo punto de venta de la compañía— no entrega
+    el costo. Antes de esta regla, esas líneas entraban con costo cero y el
+    margen de PEREIRA se publicaba como **100 %**.
+
+    Consecuencia **deliberada y correcta**: mientras PEREIRA no traiga costo, el
+    consolidado de la compañía —que lo incluye— publica su margen como «—».
+    Efectivamente no se puede calcular; que se vea es lo que crea la presión
+    para que la API entregue el dato. Lo que no se pierde es nada más: la venta,
+    el presupuesto, el cumplimiento, el ideal, la proyección y el crecimiento no
+    dependen del costo y siguen publicándose para PEREIRA con toda normalidad.
+
+    `costo = 0` **sí** tiene margen: cero es un dato —«costó cero»— y su
+    ausencia es otra cosa. Solo la ausencia anula el cálculo.
     """
-    return dividir(margen_valor(venta, costo), venta)
+    return dividir(margen_valor(venta, costo, costo_completo=costo_completo), venta)
 
 
 # ── Armado de la fila completa ────────────────────────────────────────────────
@@ -236,6 +271,10 @@ class InsumosIndicadores:
 
     venta: Decimal
     costo: Decimal
+    #: ¿Traen costo **todas** las líneas que se sumaron en `costo`? Con `False`
+    #: —una sola línea sin costo en el agregado— el margen viaja como `None` y
+    #: ningún otro indicador se ve afectado. Ver `margen_porcentaje`.
+    costo_completo: bool = True
     presupuesto: Decimal | None = None
     venta_anio_anterior: Decimal | None = None
     dias_habiles: Decimal | None = None
@@ -356,10 +395,17 @@ def calcular_indicadores(
             crecimiento(insumos.base_crecimiento, insumos.venta_anio_anterior)
         ),
         # El margen siempre es dinero: 2 decimales, y ponderado sobre la venta
-        # en pesos aunque el reporte se esté mirando en kilos.
-        margen_valor=redondear(margen_valor(insumos.base_margen, insumos.costo), 2),
+        # en pesos aunque el reporte se esté mirando en kilos. Si al agregado le
+        # falta el costo de alguna línea, viaja vacío: «—», nunca un porcentaje
+        # calculado sobre una parte del conjunto.
+        margen_valor=redondear(
+            margen_valor(insumos.base_margen, insumos.costo, costo_completo=insumos.costo_completo),
+            2,
+        ),
         margen_porcentaje=redondear_porcentaje(
-            margen_porcentaje(insumos.base_margen, insumos.costo)
+            margen_porcentaje(
+                insumos.base_margen, insumos.costo, costo_completo=insumos.costo_completo
+            )
         ),
         # Aquí, y solo aquí, se redondean los días: el cálculo de arriba usó los
         # valores exactos.

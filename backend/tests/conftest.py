@@ -186,9 +186,16 @@ def dar_venta(
     codigo_categoria: str,
     dia: int,
     valor: str,
-    costo: str = "0",
+    costo: str | None = "0",
     kilos: str = "0",
 ) -> None:
+    """Una línea de venta del período de pruebas.
+
+    `costo=None` es el caso de PEREIRA: la fuente **no entrega el costo** y la
+    línea se persiste con `costo_promedio` nulo. No es lo mismo que `costo="0"`
+    —eso afirma que vender no costó nada— y §4.4 los trata distinto: el conjunto
+    que contiene una línea sin costo no tiene margen calculable.
+    """
     sesion.add(
         VentaLinea(
             periodo_id=id_periodo(sesion),
@@ -196,7 +203,7 @@ def dar_venta(
             punto_venta_id=id_punto_venta(sesion, codigo_co),
             categoria_id=id_categoria(sesion, codigo_categoria),
             valor_subtotal=Decimal(valor),
-            costo_promedio=Decimal(costo),
+            costo_promedio=Decimal(costo) if costo is not None else None,
             cantidad_inv=Decimal(kilos),
         )
     )

@@ -17,6 +17,10 @@ dependencies = [
     "argon2-cffi>=23.1.0",
     "python-multipart>=0.0.12",
     "openpyxl>=3.1.5",
+    # Cliente HTTP de `FuenteVentaSiesa`. Es dependencia de ejecución, no solo
+    # de pruebas: la ingesta desde la API descarga el CSV en streaming —un mes
+    # son ~1 000 000 de filas— con timeouts separados de conexión y de lectura.
+    "httpx>=0.27.0",
     "structlog>=24.4.0",
     "email-validator>=2.1.0",
 ]

@@ -157,6 +157,38 @@ class Settings(BaseSettings):
     #: Tope de filas que devuelve un reporte de clientes sin paginar.
     max_filas_reporte_clientes: int = Field(default=500, ge=10, le=5000)
 
+    # ── API de consulta de SIESA (§5) ─────────────────────────────────────────
+    #
+    # Lo consume `FuenteVentaSiesa`. Su encabezado explica por qué son dos
+    # endpoints y por qué `fecha_fin` es inclusiva; aquí solo viven los valores.
+
+    siesa_url_base: str = "https://apiconsulta.grupo-santacruz.com"
+
+    #: Token de la API. Se envía en la cabecera `Authorization` con el valor
+    #: pelado —sin `Bearer`—. Se admite con y sin el prefijo `1-`, que es un
+    #: identificador de clave y no parte del secreto: la fuente lo quita.
+    #: `SecretStr` para que no aparezca en un `repr`, un log ni una traza.
+    siesa_token: SecretStr = SecretStr("")
+
+    #: Compañías a consultar. **Vacío es lo correcto**: omitir `id_cia` devuelve
+    #: las tres compañías de carnes (4, 6 y 7) en una sola consulta. Fijarlas
+    #: parte la descarga en una petición por compañía, que sirve para acotar una
+    #: incidencia sin desplegar.
+    siesa_companias: list[int] = Field(default_factory=list)
+
+    #: Centros de operación que **solo** sirve `/ventas/pos-vendedor-detalle`.
+    #: Hoy `409 PEREIRA`, que registra en otro módulo de POS. El reparto entre
+    #: los dos endpoints es excluyente: es lo que impide que unirlos duplique
+    #: venta. Si la API unifica los módulos, se vacía esta lista.
+    siesa_centros_pos_detalle: list[str] = Field(default_factory=lambda: ["409"])
+
+    siesa_timeout_conexion_seg: float = Field(default=15.0, gt=0, le=120)
+    #: Un mes son ~1 000 000 de filas en streaming. Diez minutos no es
+    #: generosidad: es lo que cuesta la descarga real.
+    siesa_timeout_lectura_seg: float = Field(default=600.0, gt=0, le=3600)
+    siesa_reintentos: int = Field(default=3, ge=1, le=10)
+    siesa_espera_reintento_seg: float = Field(default=2.0, ge=0, le=60)
+
     @field_validator("secret_key")
     @classmethod
     def _validar_secret_key(cls, valor: SecretStr) -> SecretStr:

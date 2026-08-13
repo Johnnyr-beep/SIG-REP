@@ -14,6 +14,10 @@ Dos decisiones que conviene tener presentes al leer el código:
 - Los porcentajes de un nivel superior **se recalculan sobre los totales**,
   nunca se promedian los de sus hijos (§7). Por eso cada nivel vuelve a llamar
   a `calcular_indicadores` con sus propias sumas.
+- De la venta no se agrega solo cuánto: también **si el conjunto tiene el costo
+  completo**. `SUM(costo_promedio)` ignora los nulos, y una fuente que no
+  entrega costo —la de 409 PEREIRA— hacía que el margen saliera al 100 %. Ver
+  `Totales.costo_completo` y §4.4.
 """
 
 from __future__ import annotations
@@ -99,14 +103,58 @@ class Totales:
     valor: Decimal = CERO
     kilos: Decimal = CERO
     costo: Decimal = CERO
+    #: ¿Traen costo **todas** las líneas que se sumaron aquí?
+    #:
+    #: `SUM(costo_promedio)` ignora los nulos en silencio, así que la suma sola
+    #: no distingue «costó 100» de «no sé cuánto costó». La distinción importa:
+    #: 409 PEREIRA llega por el único endpoint de la API que no entrega el
+    #: costo, y sin este indicador su margen se publicaba como 100 % (§4.4).
+    #: Basta una línea sin costo para que el conjunto entero deje de tener
+    #: margen calculable, por eso se propaga con `and` al agregar.
+    costo_completo: bool = True
 
     def sumar(self, otro: Totales) -> None:
         self.valor += otro.valor
         self.kilos += otro.kilos
         self.costo += otro.costo
+        self.costo_completo = self.costo_completo and otro.costo_completo
 
     def medida(self, medida: Medida) -> Decimal:
         return self.valor if medida is Medida.VALOR else self.kilos
+
+
+#: Las cinco columnas con las que se arma un `Totales` desde un `GROUP BY` sobre
+#: `venta_lineas`.
+#:
+#: Las dos últimas son el indicador de costo completo: `COUNT(*)` cuenta las
+#: líneas del grupo y `COUNT(costo_promedio)` **no cuenta los nulos**, así que
+#: son iguales si y solo si todas las líneas traen costo. Se resuelve en la base
+#: y en la misma pasada —una consulta aparte para preguntarlo sería otro barrido
+#: de la tabla caliente— y funciona igual en PostgreSQL, SQL Server y SQLite,
+#: que es más de lo que se puede decir de `FILTER (WHERE ...)`.
+COLUMNAS_TOTALES = (
+    func.sum(VentaLinea.valor_subtotal),
+    func.sum(VentaLinea.cantidad_inv),
+    func.sum(VentaLinea.costo_promedio),
+    func.count(),
+    func.count(VentaLinea.costo_promedio),
+)
+
+
+def _totales_de(
+    valor: Decimal | None,
+    kilos: Decimal | None,
+    costo: Decimal | None,
+    lineas: int | None,
+    lineas_con_costo: int | None,
+) -> Totales:
+    """Una fila de `COLUMNAS_TOTALES` a `Totales`."""
+    return Totales(
+        valor=Decimal(valor or 0),
+        kilos=Decimal(kilos or 0),
+        costo=Decimal(costo or 0),
+        costo_completo=(lineas or 0) == (lineas_con_costo or 0),
+    )
 
 
 @dataclass
@@ -329,13 +377,7 @@ class ReportesService:
 
         clave, nombre = _columnas_agrupacion(por)
         consulta = (
-            select(
-                clave,
-                nombre,
-                func.sum(VentaLinea.valor_subtotal),
-                func.sum(VentaLinea.cantidad_inv),
-                func.sum(VentaLinea.costo_promedio),
-            )
+            select(clave, nombre, *COLUMNAS_TOTALES)
             .join(Cliente, VentaLinea.cliente_id == Cliente.id, isouter=True)
             .where(*criterios)
             .group_by(clave, nombre)
@@ -349,18 +391,22 @@ class ReportesService:
         )
 
         filas: list[FilaClientes] = []
-        for valor_clave, valor_nombre, venta, kilos, costo in crudas:
-            venta_dec = Decimal(venta or 0)
+        for valor_clave, valor_nombre, venta, kilos, costo, lineas, con_costo in crudas:
+            totales = _totales_de(venta, kilos, costo, lineas, con_costo)
             filas.append(
                 FilaClientes(
                     clave=str(valor_clave) if valor_clave is not None else "SIN DATO",
                     nombre=str(valor_nombre) if valor_nombre is not None else "SIN DATO",
-                    venta=redondear_no_nulo(venta_dec, 2),
-                    kilos=redondear_no_nulo(Decimal(kilos or 0), 3),
+                    venta=redondear_no_nulo(totales.valor, 2),
+                    kilos=redondear_no_nulo(totales.kilos, 3),
+                    # La misma regla que en el resto de los reportes: una línea
+                    # sin costo deja el grupo sin margen calculable (§4.4).
                     margen_porcentaje=redondear_porcentaje(
-                        margen_porcentaje(venta_dec, Decimal(costo or 0))
+                        margen_porcentaje(
+                            totales.valor, totales.costo, costo_completo=totales.costo_completo
+                        )
                     ),
-                    participacion=redondear_porcentaje(dividir(venta_dec, total_venta)),
+                    participacion=redondear_porcentaje(dividir(totales.valor, total_venta)),
                 )
             )
 
@@ -461,13 +507,7 @@ class ReportesService:
         agrupación.
         """
         consulta = (
-            select(
-                VentaLinea.punto_venta_id,
-                VentaLinea.categoria_id,
-                func.sum(VentaLinea.valor_subtotal),
-                func.sum(VentaLinea.cantidad_inv),
-                func.sum(VentaLinea.costo_promedio),
-            )
+            select(VentaLinea.punto_venta_id, VentaLinea.categoria_id, *COLUMNAS_TOTALES)
             .where(VentaLinea.periodo_id == periodo.id, VentaLinea.fecha <= corte)
             .group_by(VentaLinea.punto_venta_id, VentaLinea.categoria_id)
         )
@@ -476,12 +516,10 @@ class ReportesService:
             consulta = consulta.where(VentaLinea.categoria_id == categoria_id)
 
         return {
-            (punto_id, cat_id): Totales(
-                valor=Decimal(valor or 0),
-                kilos=Decimal(kilos or 0),
-                costo=Decimal(costo or 0),
+            (punto_id, cat_id): _totales_de(valor, kilos, costo, lineas, con_costo)
+            for punto_id, cat_id, valor, kilos, costo, lineas, con_costo in self._sesion.execute(
+                consulta
             )
-            for punto_id, cat_id, valor, kilos, costo in self._sesion.execute(consulta)
         }
 
     def _agregar_presupuesto(
@@ -531,12 +569,7 @@ class ReportesService:
             return {}
 
         consulta = (
-            select(
-                VentaLinea.punto_venta_id,
-                func.sum(VentaLinea.valor_subtotal),
-                func.sum(VentaLinea.cantidad_inv),
-                func.sum(VentaLinea.costo_promedio),
-            )
+            select(VentaLinea.punto_venta_id, *COLUMNAS_TOTALES)
             .where(
                 VentaLinea.periodo_id == ctx.periodo.id,
                 VentaLinea.fecha <= ctx.fecha_corte,
@@ -547,12 +580,8 @@ class ReportesService:
         if ctx.categoria_id is not None:
             consulta = consulta.where(VentaLinea.categoria_id == ctx.categoria_id)
         return {
-            punto_id: Totales(
-                valor=Decimal(valor or 0),
-                kilos=Decimal(kilos or 0),
-                costo=Decimal(costo or 0),
-            )
-            for punto_id, valor, kilos, costo in self._sesion.execute(consulta)
+            punto_id: _totales_de(valor, kilos, costo, lineas, con_costo)
+            for punto_id, valor, kilos, costo, lineas, con_costo in self._sesion.execute(consulta)
         }
 
     def _aplicar_filtro_puntos(self, consulta: Select, ctx: _Contexto) -> Select:  # type: ignore[type-arg]
@@ -589,6 +618,7 @@ class ReportesService:
                 venta=venta.medida(ctx.medida),
                 venta_valor=venta.valor,
                 costo=venta.costo,
+                costo_completo=venta.costo_completo,
                 presupuesto=presu.medida(ctx.medida),
                 venta_anio_anterior=anterior.medida(ctx.medida) if anterior else None,
                 dias_habiles=habiles,
@@ -638,6 +668,13 @@ class ReportesService:
                 venta=venta.medida(ctx.medida),
                 venta_valor=venta.valor,
                 costo=venta.costo,
+                # Basta una línea sin costo en cualquiera de los puntos del
+                # conjunto para que el agregado no tenga margen calculable. En
+                # el consolidado de la compañía eso significa, hoy, que PEREIRA
+                # deja al consolidado sin margen: es la consecuencia correcta
+                # —no se puede calcular— y la que crea la presión para que la
+                # API entregue el costo (§4.4).
+                costo_completo=venta.costo_completo,
                 presupuesto=presu.medida(ctx.medida),
                 venta_anio_anterior=anterior.medida(ctx.medida) if hay_anterior else None,
                 venta_comparable=comparable.medida(ctx.medida) if hay_anterior else None,

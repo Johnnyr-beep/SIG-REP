@@ -1,9 +1,9 @@
 """Ingesta de venta: carga, idempotencia y bitácora (§5).
 
 El servicio consume el puerto `FuenteVenta` de `app/domain/puertos.py` y nunca
-la fuente concreta. Hoy la implementación viva es `FuenteVentaExcel`; el día que
-llegue la API de SIESA se rellena `FuenteVentaSiesa` y se cambia
-`SIGREP_FUENTE_VENTA`. Aquí no hay que tocar nada.
+la fuente concreta. Hay dos vivas —`FuenteVentaExcel` y `FuenteVentaSiesa`— y
+elegir una es `SIGREP_FUENTE_VENTA`, no un refactor: todo lo que sigue funciona
+igual con cualquiera de las dos.
 
 Las cinco invariantes que esta implementación hace cumplir:
 
@@ -22,6 +22,9 @@ Las cinco invariantes que esta implementación hace cumplir:
    por texto exacto; lo que no está mapeado va a `OTROS` **y queda registrado**.
 5. **Un punto de venta sin presupuesto no rompe nada.** 432 EVENTOS BUCARAMANGA
    se ingiere como cualquier otro; es el reporte quien lo muestra aparte.
+6. **Lo que la fuente no entrega se persiste como `NULL`, no como cero.** Vale
+   para el costo, que la API no da para PEREIRA: `costo_promedio` viaja nulo
+   hasta la base y §4.4 lo convierte en «—» en lugar de en un 100 % de margen.
 
 Sobre el tamaño: 131 819 filas por nueve días, ~440 000 al mes. Se lee en
 streaming y se inserta por lotes de `TAMANO_LOTE` con `executemany`. Ni la
@@ -56,6 +59,7 @@ from app.domain.normalizacion import (
 )
 from app.domain.puertos import FuenteVenta, LineaVenta
 from app.infrastructure.fuentes import (
+    AnotacionFuente,
     ClienteFuente,
     FuenteConClientes,
     FuenteVentaExcel,
@@ -87,23 +91,43 @@ MENSAJE_RUTA_PENDIENTE = (
 )
 
 
-def obtener_fuente(fuente: FuenteIngesta | None = None) -> FuenteVenta:
+def obtener_fuente(
+    fuente: FuenteIngesta | None = None, sesion: Session | None = None
+) -> FuenteVenta:
     """Devuelve la implementación configurada del puerto `FuenteVenta`.
 
     Sin argumento manda `SIGREP_FUENTE_VENTA`. Es el **único** punto del sistema
     que conoce las dos implementaciones: cambiar de Excel a SIESA es una
     variable de entorno, no un refactor (§5).
+
+    `sesion` solo la necesita la fuente SIESA, y para una cosa concreta: la API
+    no entrega el código de centro de operación, solo su descripción (`desc_co`),
+    así que hay que pasarle el directorio `{descripción: C.O.}` que la semilla ya
+    guarda en `puntos_venta`. Se le pasa armado en lugar de dejar que la fuente
+    consulte la base: así la fuente se prueba entera sin montar un esquema.
     """
     settings = obtener_settings()
     elegida = fuente.value if fuente is not None else settings.fuente_venta
 
     if elegida == FuenteIngesta.SIESA.value:
-        return FuenteVentaSiesa()
+        return FuenteVentaSiesa(_descripciones_siesa(sesion))
 
     ruta = normalizar_texto(settings.ruta_archivo_venta)
     if ruta is None:
         raise ErrorValidacion(MENSAJE_RUTA_PENDIENTE)
     return FuenteVentaExcel(ruta)
+
+
+def _descripciones_siesa(sesion: Session | None) -> dict[str, str]:
+    """`{descripcion_siesa: codigo_co}` de los puntos que tienen descripción."""
+    if sesion is None:
+        return {}
+    filas = sesion.execute(
+        select(PuntoVenta.descripcion_siesa, PuntoVenta.codigo_co).where(
+            PuntoVenta.descripcion_siesa.is_not(None)
+        )
+    ).tuples()
+    return {descripcion: codigo for descripcion, codigo in filas if descripcion}
 
 
 @dataclass(frozen=True, slots=True)
@@ -205,10 +229,12 @@ class IngestaService:
     ) -> CorridaSalida:
         """Carga la venta del rango desde la fuente indicada.
 
-        Con `fuente="siesa"` sale un 501: la API no se ha entregado y decirlo es
-        más honesto que devolver cero filas como si todo hubiera ido bien.
+        Con `fuente="siesa"` se consulta la API de consulta de Grupo Santa Cruz;
+        si falta el token o la estructura no está sembrada, sale un 422 diciendo
+        qué configurar, y si la API falla, la corrida queda `FALLIDA` con su
+        motivo en la bitácora.
         """
-        implementacion = obtener_fuente(fuente)
+        implementacion = obtener_fuente(fuente, self._sesion)
         origen = getattr(implementacion, "nombre", type(implementacion).__name__)
         return self._correr(
             implementacion,
@@ -294,8 +320,11 @@ class IngestaService:
             with self._sesion.begin_nested():
                 self._cargar(implementacion, desde, hasta, corrida, bitacora, resumen)
         except NotImplementedError:
-            # La fuente SIESA. No se intentó nada, así que no hay corrida que
-            # contar: se deja subir y `core/errors.py` responde 501.
+            # Una fuente que declara el puerto pero no lo implementa. No se
+            # intentó nada, así que no hay corrida que contar: se deja subir y
+            # `core/errors.py` responde 501. Un fallo de la API de SIESA **no**
+            # entra por aquí: es `ErrorFuenteSiesa` y cierra la corrida como
+            # FALLIDA con su motivo, que es lo que exige §5.
             raise
         except Exception as exc:
             corrida.estado = EstadoCorrida.FALLIDA.value
@@ -385,6 +414,15 @@ class IngestaService:
             resumen.leidas += 1
             bitacora.rechazar(rechazo.fila, rechazo.campo, rechazo.valor, rechazo.motivo)
 
+        # Y lo que la fuente sabe y nadie más puede saber: de cuál de los dos
+        # endpoints de SIESA vino cada fila, que PEREIRA no trae costo. No son
+        # filas perdidas, así que se anotan sin tocar el recuento —contarlas como
+        # rechazos diría que se perdió venta que no se perdió—.
+        for anotacion in getattr(implementacion, "anotaciones", ()):
+            if not isinstance(anotacion, AnotacionFuente):  # pragma: no cover - defensa
+                continue
+            bitacora.anotar(anotacion.fila, anotacion.campo, anotacion.valor, anotacion.motivo)
+
     def _normalizar(
         self,
         linea: LineaVenta,
@@ -426,6 +464,11 @@ class IngestaService:
                 "cliente_id": catalogo.clientes.get(nit or ""),
                 "corrida_id": corrida_id,
                 "valor_subtotal": linea.valor_subtotal,
+                # **El nulo se persiste tal cual.** Si la fuente no entregó el
+                # costo —PEREIRA, en el 100 % de sus filas—, la columna queda en
+                # `NULL` y §4.4 publica «—» en todo agregado que contenga esa
+                # línea. Un `or CERO` aquí, por inocente que parezca, devuelve el
+                # 100 % de margen falso al tablero de la gerencia.
                 "costo_promedio": linea.costo_promedio,
                 "cantidad_inv": linea.cantidad_inv,
                 "margen_siesa": linea.margen_siesa,

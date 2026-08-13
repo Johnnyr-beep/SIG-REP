@@ -166,6 +166,55 @@ def test_margen_es_none_sin_venta() -> None:
     assert ind.margen_porcentaje(D(0), D(0)) is None
 
 
+def test_margen_es_none_si_alguna_linea_del_conjunto_no_tiene_costo() -> None:
+    """§4.4: sin el costo de una sola línea, el conjunto no tiene margen.
+
+    Es el caso de PEREIRA, cuyo endpoint no entrega el costo. Con la columna
+    sumada tal cual —las líneas sin costo aportando cero— el resultado sería
+    `1.0000`, un 100 % de margen que nadie ha ganado. La afirmación correcta es
+    «no se puede calcular»: `None`, y la pantalla pinta «—».
+    """
+    assert ind.margen_valor(D("10000"), D("6000"), costo_completo=False) is None
+    assert ind.margen_porcentaje(D("10000"), D("6000"), costo_completo=False) is None
+    # Y no se calcula sobre «las líneas que sí tienen costo»: eso daría 0.4000,
+    # un porcentaje que parece completo y no lo es.
+    assert ind.margen_porcentaje(D("10000"), D("6000")) == D("0.4")
+
+
+def test_un_costo_declarado_en_cero_si_da_margen() -> None:
+    """`0` es un dato; su ausencia es otra cosa. Solo la segunda anula el margen."""
+    assert ind.margen_porcentaje(D("10000"), D(0)) == D(1)
+    assert ind.margen_valor(D("10000"), D(0)) == D("10000")
+
+
+def test_la_fila_pierde_el_margen_pero_no_el_resto_de_indicadores() -> None:
+    """El costo incompleto se lleva el margen y **nada más** (§4.4).
+
+    Cumplimiento, ideal, proyección y crecimiento no dependen del costo: para un
+    punto de venta sin costo en el origen tienen que seguir publicándose.
+    """
+    resultado = ind.calcular_indicadores(
+        ind.InsumosIndicadores(
+            venta=D("500000"),
+            costo=D(0),
+            costo_completo=False,
+            presupuesto=D("1000000"),
+            venta_anio_anterior=D("400000"),
+            dias_habiles=D("27.5"),
+            dias_trabajados=D("7.5"),
+        ),
+        UMBRALES,
+    )
+
+    assert resultado.margen_valor is None
+    assert resultado.margen_porcentaje is None
+    assert resultado.cumplimiento == D("0.5000")
+    assert resultado.ideal == D("0.2727")
+    assert resultado.proyeccion == D("1833333.33")
+    assert resultado.crecimiento == D("0.2500")
+    assert resultado.semaforo is Semaforo.VERDE
+
+
 # ── Semáforo (§4.1) ───────────────────────────────────────────────────────────
 
 

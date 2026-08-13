@@ -117,8 +117,19 @@ _FORMULAS: dict[str, str] = {
     # anterior. Comparar la venta de todos contra la de unos pocos publicaría un
     # crecimiento inventado. `V` y `V_anio_anterior` se publican completos.
     "crecimiento": "V_comparable / V_anio_anterior - 1 (solo puntos con historia)",
-    "margen_valor": "suma(valor_subtotal) - suma(costo_promedio)",
-    "margen_porcentaje": "margen_valor / suma(valor_subtotal)",
+    # El margen de un conjunto al que le falta el costo de alguna línea es
+    # **indefinido**, y no el margen de las líneas que sí lo traen: ese
+    # porcentaje parecería completo sin serlo. Hoy le ocurre a 409 PEREIRA —el
+    # endpoint de la API que lo sirve no entrega el costo— y, por tanto, a todo
+    # agregado que lo contenga, el consolidado de la compañía incluido. La
+    # salvedad se publica junto a la fórmula para que quien lea el reporte sepa
+    # por qué ve «—» donde antes veía un 100 %.
+    "margen_valor": (
+        "suma(valor_subtotal) - suma(costo_promedio); indefinido si alguna linea no tiene costo"
+    ),
+    "margen_porcentaje": (
+        "margen_valor / suma(valor_subtotal); indefinido si alguna linea no tiene costo"
+    ),
     "presupuesto_diario": "presupuesto_mensual / H",
 }
 

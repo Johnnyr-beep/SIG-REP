@@ -1,8 +1,24 @@
 # Integración con la API de consulta
 
-Hallazgos de la validación del **12 de agosto de 2026** contra
-`https://apiconsulta.grupo-santacruz.com`. Documento para llevar a quien
-administra la API: **hay tres asuntos que solo se pueden resolver de ese lado**.
+Validación contra `https://apiconsulta.grupo-santacruz.com`, 12 y 13 de agosto
+de 2026. Documento para llevar a quien administra la API.
+
+> **Estado: la integración está implementada y funcionando.** `FuenteVentaSiesa`
+> consume `vendedor-acumulada` y `pos-vendedor-detalle`. Se activa con
+> `SIGREP_FUENTE_VENTA=siesa`.
+>
+> **Queda un solo asunto que solo se resuelve del lado de la API**, más una
+> consulta menor: ver §4.
+
+## Resumen para quien tenga prisa
+
+| | |
+|---|---|
+| **Fuente de SIGREP** | `GET /ventas/vendedor-acumulada` (t461/t470), + `GET /ventas/pos-vendedor-detalle` solo para PEREIRA |
+| **Validación** | 13 de 15 puntos de venta cuadran **al peso exacto** con el Excel del negocio el 1-ago-2026 |
+| **Autenticación** | Cabecera `Authorization`, token pelado, **sin el prefijo `1-`** |
+| **Fechas** | `fecha_fin` **INCLUSIVA** en estos dos endpoints. Es lo contrario de lo que documenta `poscarnes` |
+| **Pendiente** | `415 CARTAGENA` no aparece en ningún endpoint · `pos-vendedor-detalle` no entrega costo |
 
 ---
 
@@ -22,42 +38,83 @@ Los dos mensajes de error se distinguen y conviene conocerlos:
 
 Vive en `SIGREP_SIESA_TOKEN` dentro de `.env`, que nunca se versiona.
 
-## 2. `fecha_fin` es EXCLUSIVA
+## 2. `fecha_fin` NO significa lo mismo en todos los endpoints
 
-Lo declara el propio contrato: *«Fecha final (exclusiva)»*.
+**Esta es la trampa más peligrosa de la API y conviene que la conozca cualquiera
+que la consuma, no solo SIGREP.**
 
-Para cargar agosto hay que pedir `fecha_inicio=2026-08-01&fecha_fin=2026-09-01`.
-Pedir `fecha_fin=2026-08-31` **pierde el día 31 sin avisar**, y el cumplimiento
-del mes saldría corto justo en el cierre, que es cuando se mira.
+| Endpoint | `fecha_fin` |
+|---|---|
+| `poscarnes` | **exclusiva** — lo declara su contrato: *«Fecha final (exclusiva)»* |
+| `vendedor-acumulada` | **INCLUSIVA** — medido |
+| `pos-vendedor-detalle` | **INCLUSIVA** — medido |
+
+Cómo se detectó: al comparar `vendedor-acumulada` contra el Excel pidiendo
+`2026-08-01` a `2026-08-02`, casi todos los puntos salían un 42 % por encima. La
+diferencia de ALAMEDA 1 era 32 820 028, que es **exactamente su venta del 2 de
+agosto** en la hoja `Hoja1` del libro. Lo mismo en ALAMEDA 2 (18 701 584) y en
+CONCORD (21 288 119). Repitiendo la consulta con `fecha_fin = fecha_inicio`,
+todo cuadró al peso.
+
+Consecuencia práctica: quien asuma la semántica de `poscarnes` al consumir
+`vendedor-acumulada` **carga un día de más en cada extracción**, y el error es
+invisible salvo que alguien cuadre a mano.
+
+SIGREP lo tiene fijado con una prueba (`test_fuente_siesa.py`).
+
+**Consulta para el administrador:** ¿es deliberado o es un descuido? Unificar el
+criterio en todos los endpoints ahorraría este error a todos los consumidores.
 
 ## 3. Qué endpoint es la fuente correcta
 
-Se compararon los dos candidatos contra la hoja `VENTA` del libro que el
-negocio usa hoy, sumando `Valor subtotal` por centro de operación del
-**1 de agosto de 2026**:
+> **Corrección.** Una versión anterior de este documento daba por buena
+> `poscarnes`, que reproducía el Excel dentro del 0,5 % en 10 de 13 puntos pero
+> no traía categoría, mezclaba kilos con unidades y descuadraba en LA 43.
+> **`vendedor-acumulada` es mejor en todo eso y cuadra al peso.**
 
-| C.O. | Excel (hoy) | `poscarnes` | `agropecuaria` |
+Comparación contra la hoja `VENTA` del libro que el negocio usa hoy, sumando
+`Valor subtotal` por centro de operación del **1 de agosto de 2026**, pidiendo
+`fecha_inicio = fecha_fin = 2026-08-01`:
+
+| C.O. | Excel (hoy) | `vendedor-acumulada` | `poscarnes` |
 |---|---:|---:|---:|
-| 402 MALAMBO | 28 458 475 | 28 485 988 | 39 609 522 |
-| 403 LA GRANJA | 21 413 829 | **26 633 877** | 49 184 637 |
-| 405 LA 43 | 90 157 657 | **60 968 886** | 146 243 868 |
-| 406 SIMON | 66 470 122 | 66 519 595 | 119 696 234 |
-| 407 LA 70 | 107 371 024 | 107 862 160 | 173 309 900 |
-| **409 PEREIRA** | **101 453 550** | **0** | **0** |
-| 412 BUCARAMANGA | 106 242 616 | 106 408 976 | 163 039 676 |
-| 413 LA 93 | 66 931 088 | 67 038 110 | 103 227 017 |
-| 414 CENTRO | 35 782 706 | 35 854 918 | 37 507 982 |
-| **415 CARTAGENA** | **32 577 346** | **0** | **780 000** |
-| 603 CONCORDE | 39 927 917 | 39 942 389 | — |
-| 605 ALAMEDA 1 | 50 200 928 | 50 200 928 | — |
-| 606 ALAMEDA 2 | 28 133 598 | 28 338 636 | — |
-| 701 SAN FELIPE | 40 562 440 | 40 562 440 | — |
-| 702 OLAYA | 45 727 676 | 45 828 109 | — |
-| **TOTAL** | **861 410 972** | **704 645 012** | — |
+| 402 MALAMBO | 28 458 475 | **= exacto** | 28 485 988 |
+| 403 LA GRANJA | 21 413 829 | 26 633 877 | 26 633 877 |
+| 405 LA 43 | 90 157 657 | **= exacto** | 60 968 886 |
+| 406 SIMON | 66 470 122 | **= exacto** | 66 519 595 |
+| 407 LA 70 | 107 371 024 | **= exacto** | 107 862 160 |
+| **409 PEREIRA** | 101 453 550 | **0** *(ver §4.1)* | 0 |
+| 412 BUCARAMANGA | 106 242 616 | **= exacto** | 106 408 976 |
+| 413 LA 93 | 66 931 088 | **= exacto** | 67 038 110 |
+| 414 CENTRO | 35 782 706 | **= exacto** | 35 854 918 |
+| 415 CARTAGENA | 32 577 346 | **= exacto** | 0 |
+| 603 CONCORDE | 39 927 917 | **= exacto** | 39 942 389 |
+| 605 ALAMEDA 1 | 50 200 928 | **= exacto** | 50 200 928 |
+| 606 ALAMEDA 2 | 28 133 598 | **= exacto** | 28 338 636 |
+| 701 SAN FELIPE | 40 562 440 | **= exacto** | 40 562 440 |
+| 702 OLAYA | 45 727 676 | **= exacto** | 45 828 109 |
 
-**`GET /ventas/poscarnes` es la fuente correcta para SIGREP.** Reproduce el
-Excel dentro del 0,5 % en 10 de 13 puntos, y en dos de ellos —ALAMEDA 1 y
-SAN FELIPE— al peso exacto.
+**`GET /ventas/vendedor-acumulada` (t461/t470) es la fuente de SIGREP.**
+Trece de quince puntos coinciden **al peso**, no aproximadamente. Y a diferencia
+de `poscarnes`, trae los tres campos que faltaban:
+
+- **`categoria`** en el formato exacto del Excel (`"0001 - RES"`), incluidas las
+  dos variantes ortográficas de `0006`. La tabla `mapeo_categorias` ya sembrada
+  lo resuelve tal cual.
+- **`costo_promedio`** diligenciado en el 100 % de las filas → hay margen.
+- **`codigo_vendedor` / `nombre_vendedor`** → habilita el reporte por vendedor.
+
+Y `cantidad` son kilos limpios, sin la mezcla `KG`/`U`/`UN` de `poscarnes`.
+
+### LA GRANJA: aquí el que se desvía es el Excel
+
+Es la única fila que no cuadra, y merece una lectura al revés de la evidente:
+`vendedor-acumulada` y `poscarnes` dan **el mismo número** (26 633 877) y el
+Excel da 21 413 829. **Los dos endpoints de la API coinciden entre sí**, así que
+lo más probable es que sea el libro el que se queda corto, no la API.
+
+SIGREP carga lo que dice la API y **no compensa nada**. Conviene que alguien del
+negocio revise por qué el Excel pierde 5 220 048 en ese punto en un solo día.
 
 ### `agropecuaria` no es la misma venta mal contada: es otro canal
 
@@ -82,8 +139,9 @@ LTDA`, la empresa que estrenó el módulo; hoy sirve a las compañías 3, 4, 6, 
 
 > **DECISIÓN DEL NEGOCIO (13-ago-2026): la venta agropecuaria se reporta en una
 > instancia aparte, con sus propios reportes.** Esta instancia de SIGREP cubre
-> exclusivamente el POS de carnes y consume solo `poscarnes`. No hay que
-> conciliar las dos cifras ni sumarlas: son negocios distintos.
+> exclusivamente el negocio de carnes, y por eso consulta `vendedor-acumulada`
+> y `pos-vendedor-detalle` filtrando por las compañías 4, 6 y 7 — nunca la 3 ni
+> la 8. No hay que conciliar las dos cifras ni sumarlas: son negocios distintos.
 
 ### Centros de operación fuera del alcance de esta instancia
 
@@ -112,87 +170,65 @@ SIGREP hará.
 
 ---
 
-## 4. Los tres asuntos abiertos — para el administrador de la API
+## 4. Lo que queda para el administrador de la API
 
-### 4.1 PEREIRA reporta por otro módulo de POS · **bloqueante**
+De los tres asuntos que abrió la primera validación, **dos se resolvieron solos
+al encontrar el endpoint correcto**: la categoría y el descuadre de LA 43. Queda
+uno bloqueante y una consulta.
 
-> **Corrección de una versión anterior de este documento**, que afirmaba que
-> PEREIRA «no existe en la API». Era falso: no estaba en los dos endpoints que
-> se habían mirado. **Sí está en `GET /ventas/pos-vendedor-detalle`.**
+### 4.1 CARTAGENA no aparece en ningún endpoint · **bloqueante**
 
-`409 PEREIRA` devuelve cero filas en `poscarnes` (t9930) y en `agropecuaria`
-(t470), también consultando `id_co=409` en un rango de diez días y sin filtro de
-compañía. Pero `pos-vendedor-detalle` —**t9830/t9820, otro módulo de POS**— el
-1 de agosto devuelve 6671 filas y **todas son PEREIRA**: ningún otro punto de
-venta aparece ahí, en ninguna compañía (se probó 3, 4, 5, 6, 7 y 8).
+`415 CARTAGENA` vendió **32 577 346** el 1 de agosto según el Excel.
 
-Es decir: los 13 puntos restantes registran en `t9930` y **PEREIRA registra en
-`t9830/t9820`**. Dos módulos de punto de venta conviviendo.
+Aquí hay que ser preciso, porque el dato es contradictorio:
+`vendedor-acumulada` **sí devuelve CARTAGENA y cuadra al peso** con el Excel
+—está en la tabla de §3—. Lo que no aparece es en `poscarnes` (cero) ni en
+`pos-vendedor-detalle` (cero), y en `agropecuaria` sale una única fila de
+780 000.
 
-Dos cosas que siguen sin cuadrar:
+Es decir: **para SIGREP, CARTAGENA está resuelto**, porque la fuente que usa lo
+trae correctamente. Lo que queda es la duda de fondo: ¿por qué ese punto no
+registra en el módulo de POS como los demás? Si mañana alguien construye otro
+reporte sobre `poscarnes`, le faltará CARTAGENA entera y no lo sabrá.
 
-- **El importe no coincide.** `pos-vendedor-detalle` da 135 201 210 y el Excel
-  101 453 550 para el mismo día: **33 747 660 de más, un 33 %**.
-- **No trae costo.** `costo_promedio` viene nulo en **el 100 %** de las 6671
-  filas, así que por ese endpoint no se puede calcular el margen (§4.4 de la
-  especificación), que sí se calcula para los demás puntos.
+**La pregunta:** ¿es correcto que CARTAGENA no tenga movimiento en el POS?
 
-`415 CARTAGENA` sigue sin aparecer: 32 577 346 en el Excel, cero en `poscarnes`,
-cero en `pos-vendedor-detalle` y una única fila de 780 000 en `agropecuaria`.
+### 4.2 `pos-vendedor-detalle` no entrega el costo · **bloqueante para el margen**
 
-**Las preguntas:**
+`costo_promedio` viene **nulo en el 100 %** de las 6671 filas de PEREIRA del
+1 de agosto. Es el único endpoint donde ese punto registra, así que **no hay
+forma de calcular su margen**.
 
-1. ¿Por qué PEREIRA registra en otro módulo? ¿Es definitivo o está en migración?
-2. ¿Puede `poscarnes` incluir también `t9830/t9820`, de modo que un solo
-   endpoint devuelva los 14 puntos?
-3. ¿Se puede exponer el costo en `pos-vendedor-detalle`? Sin él, PEREIRA no
-   tiene margen.
-4. ¿Dónde registra CARTAGENA?
+Consecuencia en SIGREP, y es visible: el margen de PEREIRA, el de su grupo y el
+**consolidado de toda la compañía** se publican como «—». No se rellena con
+cero: `(venta − 0) / venta` daría un **100 % de margen que nadie ha ganado**, y
+un número falso en la pantalla de la gerencia es peor que un hueco. El resto de
+indicadores de PEREIRA —cumplimiento, ideal, proyección, crecimiento— se
+calculan con toda normalidad.
 
-### 4.2 Dos puntos no cuadran · **bloqueante**
+**La pregunta:** ¿puede `pos-vendedor-detalle` devolver el costo, como ya hace
+`vendedor-acumulada`?
 
-- **405 LA 43**: la API reporta 60 968 886 y el Excel 90 157 657. Faltan
-  **29 188 771**, un 32 %.
-- **403 LA GRANJA**: la API reporta 26 633 877 y el Excel 21 413 829. La API da
-  **5 220 048 de más**, un 24 %.
+### 4.3 El importe de PEREIRA no coincide · **a revisar**
 
-No es redondeo ni diferencia de zona horaria: son los dos únicos puntos con
-desviación grande, y en direcciones opuestas. Sumando esto y el punto 4.1, la
-API queda **156 765 960 por debajo del Excel en un solo día: un 18 %**.
+`pos-vendedor-detalle` da 135 201 210 y el Excel 101 453 550 para el mismo día:
+**33 747 660 de más, un 33 %**.
 
-Conectar SIGREP a esta fuente hoy produciría un reporte que subestima a la
-compañía en esa proporción.
+No se pudo determinar de qué lado está la diferencia, porque PEREIRA no aparece
+en ningún otro endpoint contra el que contrastar. Conviene revisarlo antes de
+que el reporte de ese punto se use para tomar decisiones.
 
-### 4.3 `poscarnes` no trae categoría ni kilos limpios · **bloqueante**
+### 4.4 Consulta: unificar la semántica de `fecha_fin`
 
-SIGREP reporta por punto de venta **y categoría** (RES, CERDO, POLLO,
-VÍSCERAS, EMBUTIDOS, PESCADO, ASADERO, OTROS), en pesos **y en kilos**.
+Ver §2. `poscarnes` la trata como exclusiva y `vendedor-acumulada` y
+`pos-vendedor-detalle` como inclusiva. Cualquiera que consuma varios endpoints
+va a cargar un día de más o de menos sin enterarse.
 
-- **No hay categoría.** `poscarnes` entrega `referencia` y
-  `descripcion_producto`, no el `0001 - RES` que trae el Excel.
+### 4.5 Menor: campos que el Excel tiene y la API no
 
-  Y sin embargo **la categoría existe en Siesa y la API ya la publica en otros
-  dos endpoints, en el formato exacto del Excel**: `pos-vendedor-detalle`
-  devuelve `categoria: "0001 - RES"` para PEREIRA, y `agropecuaria` devuelve
-  `TipoItem_Id`/`TipoItem`. También `subproductos` da el par
-  (`referencia`, `categoria`), aunque solo para 133 referencias de subproducto.
-
-  Así que no falta el dato: falta exponerlo en el endpoint que sirve a los otros
-  trece puntos. **¿Puede `poscarnes` devolver la categoría, como ya hace
-  `pos-vendedor-detalle`?** Es, con diferencia, lo más barato de resolver de
-  esta lista, y desbloquea la mitad del reporte.
-- **Los kilos vienen mezclados.** `total_cantidad` convive con `unidad`, que
-  toma los valores `KG`, `U` y `UN`. Sumar esa columna mezcla kilos con
-  unidades y corrompe la mitad del reporte. Se necesita o bien un campo de
-  kilos separado —`agropecuaria` sí tiene `KilosTotal` aparte de
-  `CantidadInv`—, o el factor de conversión por referencia.
-
-### 4.4 Menor: campos que el Excel tiene y `poscarnes` no
-
-`Cliente`, `Condición de pago`, `Domicilio` y `Clase de cliente`. Afectan solo
-a la pantalla de clientes y vendedores, no al reporte de cumplimiento.
-`agropecuaria` sí trae `Cliente`, `CodigoVendedor` y `NombreVendedor`, y
-existen `/clientes-por-cia` y `/ventas/canales-vendedor`.
+NIT de cliente, condición de pago, domicilio y clase de cliente. Afectan solo a
+la pantalla de clientes, no al reporte de cumplimiento. `vendedor-acumulada` sí
+trae vendedor, y existen `/clientes-por-cia` y `/ventas/canales-vendedor`.
 
 ---
 

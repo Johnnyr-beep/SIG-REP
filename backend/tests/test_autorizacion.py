@@ -563,13 +563,20 @@ def test_nadie_mas_cierra_el_periodo(
 def test_la_ingesta_la_ejecuta_quien_parametriza(
     cliente_http: TestClient, analista: dict[str, str]
 ) -> None:
-    """501 es «pasó el control de acceso y llegó al servicio», que es lo que se prueba."""
+    """422 es «pasó el control de acceso y llegó al servicio», que es lo que se prueba.
+
+    Lo que devuelve el servicio da igual aquí —hoy es un 422 pidiendo
+    `SIGREP_SIESA_TOKEN`, que el entorno de pruebas no lleva—; lo que importa es
+    que **no** es un 403. Contrástese con el caso de los roles de solo lectura,
+    justo debajo, que ni siquiera llegan al servicio.
+    """
     respuesta = cliente_http.post(
         "/api/v1/ingesta/ejecutar",
         json={"desde": "2026-08-01", "hasta": "2026-08-09", "fuente": "siesa"},
         headers=analista,
     )
-    assert respuesta.status_code == 501
+    assert respuesta.status_code != 403
+    assert respuesta.status_code == 422
 
 
 @pytest.mark.parametrize("rol", ROLES_SOLO_LECTURA)
