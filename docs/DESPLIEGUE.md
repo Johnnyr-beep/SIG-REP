@@ -112,6 +112,38 @@ postgresql://usuario:clave@nombre-servicio:5432/basededatos
 SIGREP la acepta tal cual —incluso con el esquema `postgres://` heredado, que
 SQLAlchemy 2 ya no reconoce— porque la normaliza al driver instalado.
 
+#### Si el usuario o la base llevan espacios en el nombre
+
+Es el caso de esta instalación: el servicio de Dokploy se creó con el usuario y
+la base llamados `DB SIG-REP`, **con un espacio**. Funciona, pero hay dos cosas
+que saber, y la primera es contraintuitiva:
+
+1. **El espacio va literal, sin codificar.** Comprobado con el propio código:
+
+   | URL | Base que entiende SQLAlchemy |
+   |---|---|
+   | `…@host:5432/DB SIG-REP` | `'DB SIG-REP'` ✅ |
+   | `…@host:5432/DB%20SIG-REP` | `'DB%20SIG-REP'` ❌ |
+
+   Codificar el espacio como `%20` —el reflejo natural al ver un espacio en una
+   URL— **rompe la conexión**: el nombre no se decodifica y se intenta abrir una
+   base que no existe. Pegue la URL tal como la da Dokploy.
+
+2. **Fuera de la aplicación, el nombre necesita comillas.** Cualquier `psql`,
+   `pg_dump` o `pg_restore` sobre esta base se escribe así:
+
+   ```bash
+   psql -U "DB SIG-REP" -d "DB SIG-REP"
+   pg_dump -U "DB SIG-REP" -d "DB SIG-REP" -Fc -f respaldo.dump
+   ```
+
+   Sin las comillas, el intérprete parte el nombre en dos y el error que
+   devuelve no menciona el espacio por ningún lado. Es la clase de detalle que
+   aparece justo el día que hay que restaurar un respaldo con prisa.
+
+Si algún día se rehace la base, **póngale un nombre sin espacios** (`sigrep`).
+El espacio no aporta nada y cada herramienta que la toque tropieza con él.
+
 Si crea la base desde cero, hágalo con intercalación española sin distinción de
 mayúsculas ni acentos. Sin esto, buscar «visceras» no encontrará «VISCERAS» ni
 «vísceras», y los usuarios reportarán que «el buscador no funciona»:
