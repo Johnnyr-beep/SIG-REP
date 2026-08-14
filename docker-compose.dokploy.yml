@@ -47,6 +47,20 @@ services:
       SIGREP_FACTOR_SEMAFORO_AMARILLO: ${SIGREP_FACTOR_SEMAFORO_AMARILLO:-0.90}
       SIGREP_DIAS_HABILES_POR_DEFECTO: ${SIGREP_DIAS_HABILES_POR_DEFECTO:-28}
       SIGREP_FUENTE_VENTA: ${SIGREP_FUENTE_VENTA:-excel}
+      # ── API de consulta de SIESA ────────────────────────────────────────────
+      # Sin estas, `SIGREP_FUENTE_VENTA=siesa` arranca pero **toda ingesta
+      # falla**: la fuente no tiene con qué autenticarse. El síntoma llega
+      # tarde y en otro sitio —una corrida FALLIDA— así que se declaran aquí
+      # aunque solo sirvan a una de las dos fuentes.
+      SIGREP_SIESA_URL_BASE: ${SIGREP_SIESA_URL_BASE:-https://apiconsulta.grupo-santacruz.com}
+      SIGREP_SIESA_TOKEN: ${SIGREP_SIESA_TOKEN:-}
+      SIGREP_SIESA_COMPANIAS: ${SIGREP_SIESA_COMPANIAS:-4,6,7}
+      SIGREP_SIESA_TIMEOUT_CONEXION_SEG: ${SIGREP_SIESA_TIMEOUT_CONEXION_SEG:-15}
+      SIGREP_SIESA_TIMEOUT_LECTURA_SEG: ${SIGREP_SIESA_TIMEOUT_LECTURA_SEG:-600}
+      SIGREP_SIESA_REINTENTOS: ${SIGREP_SIESA_REINTENTOS:-3}
+      SIGREP_SIESA_ESPERA_REINTENTO_SEG: ${SIGREP_SIESA_ESPERA_REINTENTO_SEG:-2}
+      # Ruta del libro, solo si se usa la fuente `excel` con `/ingesta/ejecutar`.
+      SIGREP_RUTA_ARCHIVO_VENTA: ${SIGREP_RUTA_ARCHIVO_VENTA:-}
       SIGREP_MAX_FILAS_REPORTE_CLIENTES: ${SIGREP_MAX_FILAS_REPORTE_CLIENTES:-500}
       SIGREP_ACCESS_TOKEN_MINUTOS: ${SIGREP_ACCESS_TOKEN_MINUTOS:-30}
       SIGREP_MAX_INTENTOS_LOGIN: ${SIGREP_MAX_INTENTOS_LOGIN:-5}
