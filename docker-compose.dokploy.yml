@@ -66,7 +66,17 @@ services:
       SIGREP_MAX_INTENTOS_LOGIN: ${SIGREP_MAX_INTENTOS_LOGIN:-5}
       SIGREP_WORKERS: ${SIGREP_WORKERS:-2}
     networks:
+      # `interna` para hablar con `web`. `dokploy-network` porque **la base de
+      # datos es un servicio aparte de Dokploy y vive ahí**: sin esta red, el
+      # contenedor ni siquiera resuelve su nombre y el arranque muere con
+      # `failed to resolve host ...: Name or service not known`, que se lee como
+      # un problema de credenciales y no lo es.
+      #
+      # Estar en esta red NO expone la API al exterior: Traefik solo enruta lo
+      # que lleva la etiqueta `traefik.enable=true`, y este servicio no la
+      # tiene. Al mundo se sigue asomando únicamente nginx.
       - interna
+      - dokploy-network
     deploy:
       # SIGREP no tiene tareas periódicas ni proceso planificador: escalar la
       # API es seguro, no hay estado en memoria que se duplique. El único
