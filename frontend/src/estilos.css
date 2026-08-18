@@ -1651,3 +1651,22 @@ textarea.campo__control {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Logo de marca.
+   PROVISIONAL: recortado del tablero de marcas del grupo, 172x182 px. Sirve a
+   estos tamanos, pero se pixela por encima de ~120 px. Sustituir por el
+   original -SVG, o PNG transparente de 512 px- cuando este disponible: es
+   cambiar el archivo, no el codigo.
+   `object-fit: contain` para que no se deforme si cambia la proporcion.      */
+.marca__logo {
+  display: block;
+  width: 40px;
+  height: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.marca__logo--grande {
+  width: 96px;
+  margin: 0 auto 0.75rem;
+}

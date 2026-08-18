@@ -6,6 +6,7 @@ import type { FormEvent } from "react";
 import { MODO_EJEMPLOS } from "@/api/cliente";
 import { AvisoError } from "@/componentes/comunes";
 import { useAuth } from "@/auth/ContextoAuth";
+import logo from "@/recursos/carnes-santacruz.png";
 
 export function Acceso() {
   const { entrar } = useAuth();
@@ -31,9 +32,13 @@ export function Acceso() {
     <div className="acceso">
       <div className="acceso__tarjeta">
         <div className="acceso__marca">
-          <span className="marca__sigla" style={{ margin: "0 auto 0.75rem" }} aria-hidden="true">
-            SGR
-          </span>
+          <img
+            className="marca__logo marca__logo--grande"
+            src={logo}
+            alt="Carnes Santacruz"
+            width={96}
+            height={102}
+          />
           <h1>SIGREP</h1>
           <p className="tenue">Sistema Gerencial de Reportes · Grupo Santa Cruz</p>
         </div>

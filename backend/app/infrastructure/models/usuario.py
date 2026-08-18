@@ -89,6 +89,57 @@ class UsuarioPuntoVenta(Base):
     punto_venta: Mapped[PuntoVenta] = relationship(lazy="joined")
 
 
+class UsuarioAuditoria(Base):
+    """Rastro de la administración de cuentas: quién, sobre quién, qué y cuándo.
+
+    Sigue el patrón de `presupuesto_historial` (§3.3) porque el problema es el
+    mismo: «un permiso concedido sin rastro no se puede auditar», igual que un
+    presupuesto que cambia sin rastro no sirve para evaluar a nadie. De ahí las
+    tres decisiones que copia:
+
+    1. **Una fila por campo modificado**, con el valor anterior y el nuevo, para
+       poder leer el historial sin reconstruir estados intermedios.
+    2. **No se borra ni se actualiza nunca.** No hay endpoint que lo toque.
+    3. **Las claves ajenas son anulables** y el dato importante va además
+       desnormalizado: `usuario` y `actor` guardan el nombre de acceso tal como
+       era en ese momento. Así el rastro se lee entero aunque un día se depure
+       la tabla de usuarios, y sigue diciendo la verdad aunque después alguien
+       renombre la cuenta.
+
+    Lo que **nunca** entra aquí es la clave. `RESTABLECER_CLAVE` deja constancia
+    de que se restableció y de quién lo hizo; el valor no se guarda ni cifrado
+    ni en claro, porque el rastro de auditoría lo lee más gente que la que puede
+    entrar a la cuenta.
+    """
+
+    __tablename__ = "usuario_auditoria"
+    __table_args__ = (Index("ix_auditoria_usuario_cuando", "usuario_id", "cuando"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    #: Cuenta administrada.
+    usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"), index=True)
+    usuario: Mapped[str] = mapped_column(String(50), nullable=False)
+
+    #: Miembro de `app.domain.enums.AccionUsuario`.
+    accion: Mapped[str] = mapped_column(String(30), nullable=False)
+    #: Campo tocado (`rol`, `nombre`, `email`, `activo`, `alcance`) o nulo
+    #: cuando la acción no modifica un campo concreto.
+    campo: Mapped[str | None] = mapped_column(String(40))
+    valor_anterior: Mapped[str | None] = mapped_column(String(200))
+    valor_nuevo: Mapped[str | None] = mapped_column(String(200))
+
+    #: Quién la ejecutó. Nulo solo si el rastro lo dejó la semilla.
+    actor_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"), index=True)
+    actor: Mapped[str] = mapped_column(String(50), nullable=False)
+
+    ip_origen: Mapped[str | None] = mapped_column(String(45))
+    cuando: Mapped[datetime] = mapped_column(UtcDateTime, default=ahora_utc, nullable=False)
+
+    def __repr__(self) -> str:  # pragma: no cover - ayuda de depuración
+        return f"<UsuarioAuditoria {self.accion} {self.usuario} por {self.actor}>"
+
+
 class IntentoAcceso(Base):
     """Registro de intentos de autenticación para auditoría de seguridad."""
 

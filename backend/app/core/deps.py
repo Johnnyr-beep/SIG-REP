@@ -3,11 +3,12 @@
 Portado de GSC ONE. Se añade `alcance_puntos_venta`, que es la regla que hace
 cumplir el rol JEFE_PDV: consulta solo sus propios puntos de venta (§8.4).
 
-Aquí viven también las dos guardas que la frontera HTTP aplica antes de dejar
-pasar nada al dominio: el alcance de escritura (`alcance_escritura`) y la
-lectura validada de un archivo subido (`leer_subida`). Están en este módulo, y
-no duplicadas en cada router, porque una validación de frontera que existe en
-dos sitios acaba corregida en uno solo.
+Aquí viven también las guardas que la frontera HTTP aplica antes de dejar pasar
+nada al dominio: el alcance de escritura (`alcance_escritura`), la clave
+provisional pendiente de cambio (`ErrorClavePendiente`) y la lectura validada
+de un archivo subido (`leer_subida`). Están en este módulo, y no duplicadas en
+cada router, porque una validación de frontera que existe en dos sitios acaba
+corregida en uno solo.
 """
 
 from __future__ import annotations
@@ -61,12 +62,40 @@ def obtener_usuario_actual(
 UsuarioDep = Annotated[Usuario, Depends(obtener_usuario_actual)]
 
 
+class ErrorClavePendiente(ErrorAutorizacion):
+    """La cuenta arrastra una clave provisional sin cambiar.
+
+    Vive aquí, en la frontera, y no en `core/errors.py`, porque no es una regla
+    del dominio: es la puerta que `exigir_roles` cierra mientras la cuenta no
+    haya estrenado su clave definitiva.
+
+    Tiene código propio —`clave_pendiente`, no `no_autorizado`— porque el
+    frontend necesita distinguirlos: uno significa «no es su sitio» y el otro
+    «vaya a cambiar la clave y vuelva». Con el mismo código, la pantalla solo
+    podría enseñar un 403 anónimo a alguien que sí tiene permisos.
+    """
+
+    codigo = "clave_pendiente"
+
+
 def exigir_roles(*roles: Rol) -> Callable[[Usuario], Usuario]:
     """Dependencia que restringe un endpoint a ciertos roles.
 
     Ningún rol se incluye automáticamente: si un endpoint debe estar abierto a
     GERENTE, se declara. Los permisos implícitos son la principal fuente de
-    sorpresas en las auditorías.
+    sorpresas en las auditorías. `ADMIN` no es la excepción: donde entra, entra
+    porque el endpoint lo declara.
+
+    Aquí se cierra además la puerta de la clave provisional. Es el sitio
+    correcto y no `obtener_usuario_actual`: por `exigir_roles` pasan **todos**
+    los endpoints con RBAC y no pasan los dos que el usuario necesita
+    justamente para salir del atolladero —`GET /auth/yo`, que le dice a la
+    pantalla qué mostrar, y `POST /auth/cambiar-clave`, que resuelve el
+    problema—. Ponerla en `obtener_usuario_actual` habría dejado a quien
+    estrena cuenta sin forma de estrenarla.
+
+    El rol se comprueba **antes** que la clave: quien no tiene permisos recibe
+    403 sin llegar a saber si la cuenta que usó tiene o no una clave pendiente.
     """
     permitidos = {rol.value for rol in roles}
 
@@ -75,6 +104,11 @@ def exigir_roles(*roles: Rol) -> Callable[[Usuario], Usuario]:
             raise ErrorAutorizacion(
                 "No tiene permisos para esta operación.",
                 detalles={"roles_requeridos": sorted(permitidos)},
+            )
+        if usuario.debe_cambiar_password:
+            raise ErrorClavePendiente(
+                "Debe cambiar la clave provisional antes de usar el sistema.",
+                detalles={"debe_cambiar_password": True},
             )
         return usuario
 
@@ -88,6 +122,10 @@ def alcance_puntos_venta(usuario: Usuario) -> list[int] | None:
     nada —lista vacía—, que es lo correcto: dar acceso total «porque no le
     configuraron el alcance» es cómo se filtran los reportes de toda la
     compañía.
+
+    `ADMIN` va como GERENTE: `None`, la compañía entera. Es superusuario y
+    tiene que poder diagnosticar cualquier punto de venta sin pedir prestada
+    una cuenta ajena.
     """
     if usuario.rol != Rol.JEFE_PDV.value:
         return None
@@ -109,6 +147,11 @@ def alcance_escritura(usuario: Usuario) -> list[int] | None:
 
     Un JEFE_PDV queda restringido siempre, aunque no tenga ningún punto
     asignado: su lista vacía significa «ninguno», nunca «todos».
+
+    `ADMIN` no se exceptúa de la segunda regla, y es deliberado: si alguien le
+    asigna puntos a un ADMIN, esa asignación limita lo que ese ADMIN escribe,
+    igual que limitaría a un GERENTE. Un ADMIN recién creado no tiene ninguno,
+    así que su alcance natural es la compañía entera.
     """
     if usuario.rol == Rol.JEFE_PDV.value or usuario.puntos_venta_ids:
         return usuario.puntos_venta_ids

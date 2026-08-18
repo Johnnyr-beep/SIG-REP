@@ -9,6 +9,7 @@ import type { Rol } from "@/api/tipos";
 import { useAuth } from "@/auth/ContextoAuth";
 import { useFiltros } from "@/componentes/filtros";
 import { fechaLarga, periodoLargo } from "@/utilidades/formato";
+import logo from "@/recursos/carnes-santacruz.png";
 
 interface ItemNav {
   ruta: string;
@@ -98,9 +99,7 @@ function BarraLateral() {
   return (
     <aside className="barra-lateral">
       <div className="marca">
-        <span className="marca__sigla" aria-hidden="true">
-          SGR
-        </span>
+        <img className="marca__logo" src={logo} alt="Carnes Santacruz" width={40} height={42} />
         <span>
           <span className="marca__nombre">SIGREP</span>
           <br />

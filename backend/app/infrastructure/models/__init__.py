@@ -10,7 +10,12 @@ from app.infrastructure.models.ingesta import CorridaIngesta, RechazoIngesta
 from app.infrastructure.models.organizacion import Grupo, PuntoVenta, Zona
 from app.infrastructure.models.periodo import CalendarioZona, Periodo
 from app.infrastructure.models.presupuesto import Presupuesto, PresupuestoHistorial
-from app.infrastructure.models.usuario import IntentoAcceso, Usuario, UsuarioPuntoVenta
+from app.infrastructure.models.usuario import (
+    IntentoAcceso,
+    Usuario,
+    UsuarioAuditoria,
+    UsuarioPuntoVenta,
+)
 from app.infrastructure.models.venta import Cliente, VentaLinea
 
 __all__ = [
@@ -27,6 +32,7 @@ __all__ = [
     "PuntoVenta",
     "RechazoIngesta",
     "Usuario",
+    "UsuarioAuditoria",
     "UsuarioPuntoVenta",
     "VentaLinea",
     "Zona",
