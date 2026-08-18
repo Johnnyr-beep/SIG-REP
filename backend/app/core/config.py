@@ -41,6 +41,11 @@ class _CSVEnvSource(EnvSettingsSource):
         return super().prepare_field_value(field_name, field, value, value_is_complex)
 
 
+#: Nombres con los que el contenedor se consulta a sí mismo. Van siempre en
+#: `hosts_efectivos`: sin ellos la sonda de salud se rechaza y el contenedor
+#: nunca llega a estar sano. Ver `Settings.hosts_efectivos`.
+HOSTS_SONDA = ("127.0.0.1", "localhost")
+
 Entorno = Literal["local", "desarrollo", "pruebas", "produccion"]
 MotorBD = Literal["postgresql", "mssql"]
 #: Implementación del puerto `FuenteVenta` (§5 de la especificación). Cambiar de
@@ -201,15 +206,36 @@ class Settings(BaseSettings):
         Orden de resolución: lo declarado explícitamente, luego lo derivado de
         los orígenes CORS, y como último recurso `*`. Nunca se queda con una
         lista vacía, que dejaría la API rechazando todo el tráfico.
-        """
-        if self.hosts_permitidos:
-            return self.hosts_permitidos
 
-        derivados = [
+        **Siempre se añade el bucle local**, y no es un descuido de seguridad
+        sino el arreglo de un fallo que tumbó el primer despliegue en
+        producción. El contenedor se vigila a sí mismo con
+
+            HEALTHCHECK CMD curl -fsS http://127.0.0.1:8000/api/v1/salud
+
+        cuya cabecera `Host` es `127.0.0.1:8000`. Con la lista restringida al
+        dominio público, ese middleware respondía **400** a la propia sonda,
+        Docker marcaba el contenedor como no sano, Swarm lo reiniciaba sin
+        descanso y nginx devolvía 502 al mundo. El diagnóstico engaña porque
+        todo lo demás funciona: la base migra, Uvicorn arranca y el log solo
+        muestra `127.0.0.1 - "GET /api/v1/salud" 400 Bad Request`.
+
+        Admitir el bucle local no debilita la protección: `TrustedHostMiddleware`
+        defiende de un `Host` falsificado que llegue **desde fuera**, y SIGREP no
+        construye enlaces ni enruta a partir de esa cabecera, así que un
+        `Host: localhost` no habilita nada. Lo que sí produce quitarlo es un
+        contenedor que jamás llega a estar sano.
+        """
+        declarados = self.hosts_permitidos or [
             origen.replace("https://", "").replace("http://", "").rstrip("/")
             for origen in self.cors_origenes
         ]
-        return derivados or ["*"]
+        if not declarados:
+            return ["*"]
+
+        # `dict.fromkeys` en lugar de `set` para no barajar el orden: la lista se
+        # imprime en el log de arranque y se lee mejor con el dominio primero.
+        return list(dict.fromkeys([*declarados, *HOSTS_SONDA]))
 
     @computed_field  # type: ignore[prop-decorator]
     @property
