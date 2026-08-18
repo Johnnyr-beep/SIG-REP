@@ -40,9 +40,21 @@ services:
       # normaliza al driver correcto.
       SIGREP_DB_URL_OVERRIDE: ${SIGREP_DB_URL_OVERRIDE}
       SIGREP_CORS_ORIGENES: ${SIGREP_CORS_ORIGENES}
-      # Si el `Host` público no coincide con el origen CORS, la API responde 400
-      # «Invalid host header» a todo el tráfico. Declararlo evita ese diagnóstico.
-      SIGREP_HOSTS_PERMITIDOS: ${SIGREP_HOSTS_PERMITIDOS:-${SIGREP_DOMINIO:-sigrep.grupo-santacruz.com}}
+      # Si el `Host` público no coincide con lo declarado aquí, la API responde
+      # 400 «Invalid host header» a TODO el tráfico, sonda de salud incluida, y
+      # el contenedor parece sano mientras nginx devuelve 502.
+      #
+      # ⚠️ SIN ANIDAR. Este valor fue durante un despliegue
+      #     ${SIGREP_HOSTS_PERMITIDOS:-${SIGREP_DOMINIO:-...}}
+      # y Docker Compose **no resuelve expansiones anidadas**: corta en la
+      # primera llave de cierre y deja la segunda como texto literal. El
+      # resultado fue el host `sigrep.grupo-santacruz.com}` —con la llave
+      # pegada—, que no coincide con ninguna petición real. Se vio en el log:
+      #     {"hosts": ["sigrep.grupo-santacruz.com}"], "event": "hosts_permitidos"}
+      #
+      # Vacío es un valor válido y seguro: `Settings.hosts_efectivos` deriva
+      # entonces los hosts de `SIGREP_CORS_ORIGENES`.
+      SIGREP_HOSTS_PERMITIDOS: ${SIGREP_HOSTS_PERMITIDOS:-}
       # Reglas de negocio (§8 de la especificación): pendientes de confirmar.
       SIGREP_FACTOR_SEMAFORO_AMARILLO: ${SIGREP_FACTOR_SEMAFORO_AMARILLO:-0.90}
       SIGREP_DIAS_HABILES_POR_DEFECTO: ${SIGREP_DIAS_HABILES_POR_DEFECTO:-28}
