@@ -7,6 +7,7 @@ import type { Rol } from "@/api/tipos";
 import { useAuth } from "@/auth/ContextoAuth";
 import { Cargando, Vacio } from "@/componentes/comunes";
 import { Disposicion } from "@/componentes/Disposicion";
+import { useMarca } from "@/marca/ContextoMarca";
 
 import { Acceso } from "@/paginas/Acceso";
 import { Calendario } from "@/paginas/Calendario";
@@ -15,6 +16,7 @@ import { Clientes } from "@/paginas/Clientes";
 import { Cumplimiento } from "@/paginas/Cumplimiento";
 import { Ingesta } from "@/paginas/Ingesta";
 import { Presupuesto } from "@/paginas/Presupuesto";
+import { SelectorMarca } from "@/paginas/SelectorMarca";
 import { Tablero } from "@/paginas/Tablero";
 import { Usuarios } from "@/paginas/Usuarios";
 import { VentaDiaria } from "@/paginas/VentaDiaria";
@@ -43,7 +45,13 @@ function Restringido({ roles, children }: { roles: Rol[]; children: ReactNode })
 
 
 export function App() {
+  const { marca } = useMarca();
   const { autenticado, cargando, debeCambiarClave } = useAuth();
+
+  // Primer corte, antes que ninguno: sin unidad de negocio elegida no hay logo
+  // que enseñar ni paleta que aplicar, y el acceso pediría credenciales sin
+  // decir a qué. Va delante del resto de guardias, no dentro del enrutador.
+  if (!marca) return <SelectorMarca />;
 
   // Mientras se resuelve el perfil no se decide nada: renderizar el acceso por
   // un instante y sacarlo después produce un parpadeo desconcertante.

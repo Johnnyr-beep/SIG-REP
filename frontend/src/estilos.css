@@ -31,11 +31,9 @@
   --gris-900: #0f172a;
   --gris-950: #020617;
 
-  /* Identidad: verde institucional de Grupo Santa Cruz */
-  --marca-400: #34d399;
-  --marca-500: #10b981;
-  --marca-600: #059669;
-  --marca-700: #047857;
+  /* Identidad de la unidad de negocio: la rampa `--marca-*` se declara más
+     abajo, un bloque por marca, y se elige con `data-marca` en <html>. Aquí
+     solo se consume. */
 
   /* Semánticos */
   --exito: #16a34a;
@@ -54,8 +52,9 @@
   --texto-suave: var(--gris-600);
   --texto-tenue: var(--gris-500);
   --acento: var(--marca-600);
-  --acento-texto: #ffffff;
-  --acento-suave: #ecfdf5;
+  --acento-texto: var(--marca-contraste-600);
+  --acento-suave: var(--marca-suave-claro);
+  --acento-hover: var(--marca-700);
 
   --sombra-1: 0 1px 2px rgb(15 23 42 / 6%), 0 1px 3px rgb(15 23 42 / 4%);
   --sombra-2: 0 4px 12px rgb(15 23 42 / 8%);
@@ -82,6 +81,110 @@
   color-scheme: light;
 }
 
+/* ── Identidad de la unidad de negocio ───────────────────────────────────────
+ *
+ * El grupo son tres marcas y SIGREP se despliega una vez por cada una. Cambiar
+ * de marca es reasignar esta rampa: `data-marca` en <html> y nada más. Ni un
+ * componente ni otra regla de esta hoja escribe un color de marca —todos pasan
+ * por `--marca-*` y, a través del bloque de tema, por `--acento*`—, así que
+ * añadir una cuarta unidad es añadir un bloque aquí.
+ *
+ * Cada bloque se declara **una sola vez** para los tres sitios que lo
+ * necesitan, con un selector agrupado:
+ *   · `:root`                      valor por defecto (la instancia desplegada);
+ *   · `:root[data-marca="…"]`      el tema que adopta la aplicación;
+ *   · `[data-marca-tarjeta="…"]`   la tarjeta del selector, que tiene que
+ *                                  pintarse de su marca antes de que exista una
+ *                                  marca elegida.
+ *
+ * Los cuatro peldaños tienen cada uno un trabajo, y ese trabajo manda sobre el
+ * gusto:
+ *   · `--marca-700` tono profundo del logo; hover del botón principal en claro.
+ *   · `--marca-600` acento en modo claro. Es color de **texto** sobre blanco
+ *     (enlaces, cifras de enlace, iconos), así que va contra el umbral 4.5:1.
+ *   · `--marca-500` acento en modo oscuro. También es texto, contra superficies
+ *     de #0f172a a #1e293b: obliga a un tono claramente más claro que el 600.
+ *   · `--marca-400` el más claro; hover del botón principal en oscuro y
+ *     degradados.
+ * Y tres acompañantes: `--marca-realce` —el tercer color muestreado del logo,
+ * decorativo—, y las dos superficies suaves, que **no se eligen a mano**: son
+ * la misma mezcla en las tres marcas, 7 % del acento claro sobre blanco y 28 %
+ * del acento oscuro sobre negro. Sale igual en las tres porque los tres
+ * `--marca-500` se afinaron a la misma luminancia (Y ≈ 0.30), y eso convierte
+ * lo que iba a ser un ajuste por marca en una sola regla.
+ *
+ * `--marca-contraste-600/500` es el color del texto **encima** del acento.
+ * No es siempre blanco y por eso es un token: el verde y el rojo claro de modo
+ * oscuro no llegan a 4.5:1 contra blanco, y ahí el texto tiene que ser oscuro.
+ *
+ * Los contrastes anotados están medidos sobre las superficies reales de la
+ * hoja —#ffffff, #f8fafc y #f1f5f9 en claro; #0f172a, #131c30, #1e293b y
+ * #020617 en oscuro— y el peor par de cada marca es el que está anotado.
+ */
+
+/* Carnes Santacruz — el granate del escudo (#54000c), su borde profundo
+   (#3d0008) y el cobre del filete (#d8843c), muestreados del logo.
+   El granate es casi negro: sobre blanco rinde 15.2:1 como texto y aguanta
+   blanco encima con el mismo margen. En oscuro es ilegible —1.1:1 contra el
+   fondo—, así que el 500 es un rosado de la misma familia (H 355°) subido
+   hasta 4.9:1 sobre la superficie más clara del modo oscuro. */
+:root,
+:root[data-marca="carnes"],
+[data-marca-tarjeta="carnes"] {
+  --marca-400: #e4959c;
+  --marca-500: #d87981;
+  --marca-600: #54000c;
+  --marca-700: #3d0008;
+  --marca-realce: #d8843c;
+  --marca-contraste-600: #ffffff; /* 15.2:1 */
+  --marca-contraste-500: #1c0206; /* 6.6:1  */
+  --marca-suave-claro: color-mix(in srgb, var(--marca-600) 7%, #ffffff);
+  --marca-suave-oscuro: color-mix(in srgb, var(--marca-500) 28%, #000000);
+}
+
+/* Frigorífico Agropecuaria — el verde del logo (#54a830), su versión profunda
+   (#3f7f24) y el verde claro del trazo (#84c06c). Es la paleta que SIGREP tenía
+   hasta ahora, ahora sí muestreada del logo al que pertenece.
+   Es la marca que peor se porta con el contraste y la que fija los límites del
+   sistema. El verde principal solo da 3.0:1 sobre blanco, insuficiente para
+   texto, así que el acento del modo claro es el profundo y el principal se va
+   al modo oscuro, donde rinde 6.0:1. Y el profundo tal cual —#3f7f24— se queda
+   en 4.49:1 sobre `--fondo` (#f1f5f9), que es la superficie de las pantallas:
+   pasa sobre blanco y falla sobre la página. El 600 es ese profundo bajado un
+   6 % hasta despejar 4.5:1 en las tres superficies claras; el 700 sigue
+   bajando hasta que el hover se note. */
+:root[data-marca="agropecuaria"],
+[data-marca-tarjeta="agropecuaria"] {
+  --marca-400: #84c06c;
+  --marca-500: #54a830;
+  --marca-600: #3b7722; /* #3f7f24 −6 % de luminosidad */
+  --marca-700: #2f5f1b;
+  --marca-realce: #84c06c;
+  --marca-contraste-600: #ffffff; /* 5.5:1 — blanco sobre el verde profundo   */
+  --marca-contraste-500: #0b1a06; /* 6.0:1 — sobre el verde claro, texto oscuro */
+  --marca-suave-claro: color-mix(in srgb, var(--marca-600) 7%, #ffffff);
+  --marca-suave-oscuro: color-mix(in srgb, var(--marca-500) 28%, #000000);
+}
+
+/* Carnes Frías — el rojo del sello (#781818), su sombra (#5a1212) y el dorado
+   de la orla (#e4cc6c).
+   El dorado es el color con el que hay que tener cuidado: 1.6:1 sobre blanco y
+   10.7:1 sobre el fondo oscuro. No puede ser acento —sería texto ilegible en
+   modo claro— y queda como `--marca-realce`, decorativo, nunca portando
+   información. El acento oscuro es el rojo aclarado, 4.9:1. */
+:root[data-marca="carnes-frias"],
+[data-marca-tarjeta="carnes-frias"] {
+  --marca-400: #e79d9d;
+  --marca-500: #dd7878;
+  --marca-600: #781818;
+  --marca-700: #5a1212;
+  --marca-realce: #e4cc6c;
+  --marca-contraste-600: #ffffff; /* 10.8:1 */
+  --marca-contraste-500: #1c0505; /* 6.6:1  */
+  --marca-suave-claro: color-mix(in srgb, var(--marca-600) 7%, #ffffff);
+  --marca-suave-oscuro: color-mix(in srgb, var(--marca-500) 28%, #000000);
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema="claro"]) {
     --fondo: var(--gris-950);
@@ -93,8 +196,15 @@
     --texto: var(--gris-100);
     --texto-suave: var(--gris-400);
     --texto-tenue: var(--gris-500);
+    /* El acento sube un peldaño de la rampa: el tono del modo claro es
+       ilegible sobre estas superficies. `--acento-texto` deja de ser blanco por
+       decreto y lo decide la marca, porque encima de un verde o un rojo claro
+       el blanco no llega a 4.5:1. Y el hover del botón principal aclara en vez
+       de oscurecer: sobre fondo oscuro, oscurecer no se ve. */
     --acento: var(--marca-500);
-    --acento-suave: #052e21;
+    --acento-texto: var(--marca-contraste-500);
+    --acento-suave: var(--marca-suave-oscuro);
+    --acento-hover: var(--marca-400);
     --exito: #22c55e;
     --aviso: #f59e0b;
     --peligro: #f87171;
@@ -118,7 +228,9 @@
   --texto-suave: var(--gris-400);
   --texto-tenue: var(--gris-500);
   --acento: var(--marca-500);
-  --acento-suave: #052e21;
+  --acento-texto: var(--marca-contraste-500);
+  --acento-suave: var(--marca-suave-oscuro);
+  --acento-hover: var(--marca-400);
   --exito: #22c55e;
   --aviso: #f59e0b;
   --peligro: #f87171;
@@ -241,11 +353,13 @@ textarea {
   place-items: center;
   width: 34px;
   height: 34px;
-  color: var(--acento-texto);
+  color: #ffffff;
   font-weight: 700;
   font-size: 0.72rem;
   letter-spacing: 0.03em;
-  background: linear-gradient(135deg, var(--marca-500), var(--marca-700));
+  /* Del realce al profundo: los dos extremos muestreados del logo. Termina en
+     `--marca-700` en los dos modos, que es donde el blanco tiene margen. */
+  background: linear-gradient(135deg, var(--marca-realce), var(--marca-700));
   border-radius: var(--radio-sm);
 }
 
@@ -979,9 +1093,11 @@ textarea {
   border-color: var(--acento);
 }
 
+/* `--acento-hover` y no `--marca-700` directo: en modo oscuro el hover tiene
+   que aclarar, y el bloque de tema es quien sabe en qué modo estamos. */
 .boton--principal:hover:not(:disabled) {
-  background: var(--marca-700);
-  border-color: var(--marca-700);
+  background: var(--acento-hover);
+  border-color: var(--acento-hover);
 }
 
 
@@ -1538,6 +1654,195 @@ textarea.campo__control {
   text-align: center;
 }
 
+/* ── Selector de unidad de negocio ───────────────────────────────────────────
+ *
+ * Va antes del acceso, y es la única pantalla donde conviven las tres marcas.
+ * Cada tarjeta se pinta con la suya: `data-marca-tarjeta` monta la rampa
+ * completa dentro del botón, así que `--marca-600`, `--marca-realce` y las
+ * superficies suaves valen ahí lo que valdrían si esa marca estuviera elegida.
+ * Es la misma declaración —el bloque agrupado de arriba—, no una copia.
+ */
+
+.selector {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: var(--espacio-5) var(--espacio-4) var(--espacio-7);
+  background:
+    radial-gradient(
+      900px 460px at 50% -15%,
+      color-mix(in srgb, var(--marca-500) 10%, transparent),
+      transparent
+    ),
+    var(--fondo);
+}
+
+.selector__panel {
+  width: 100%;
+  max-width: 900px;
+}
+
+.selector__cabecera {
+  margin-bottom: var(--espacio-6);
+  text-align: center;
+}
+
+.selector__titulo {
+  font-size: 1.9rem;
+  letter-spacing: -0.035em;
+}
+
+.selector__instruccion {
+  max-width: 54ch;
+  margin: var(--espacio-4) auto 0;
+  color: var(--texto-suave);
+}
+
+.selector__lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--espacio-5);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.selector__opcion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+}
+
+.selector__detalle {
+  padding: 0 var(--espacio-2);
+  text-align: center;
+}
+
+.selector__aviso {
+  display: flex;
+  justify-content: center;
+  min-height: var(--espacio-6);
+  margin-top: var(--espacio-5);
+}
+
+.selector__aviso .aviso {
+  max-width: 60ch;
+  text-align: left;
+}
+
+/* La tarjeta es un `<button>` real: se alcanza con el tabulador, se activa con
+   Enter y con espacio, y la anuncia el lector como lo que es. */
+.tarjeta-marca {
+  /* Un peldaño u otro de la rampa de *esta* tarjeta según el modo; se resuelve
+     en el propio elemento, donde `data-marca-tarjeta` ya está en vigor. */
+  --tono: var(--marca-600);
+
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--espacio-4);
+  align-items: center;
+  justify-content: flex-start;
+  padding: var(--espacio-6) var(--espacio-4) var(--espacio-5);
+  overflow: hidden;
+  text-align: center;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-lg);
+  box-shadow: var(--sombra-1);
+  cursor: pointer;
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease,
+    transform 0.12s ease;
+}
+
+/* Franja de identidad: los tres tonos muestreados del logo, en orden. Es
+   decoración —el nombre y el distintivo ya dicen todo lo que hay que saber—,
+   así que no lleva texto ni comunica estado por sí sola. */
+.tarjeta-marca::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 6px;
+  background: linear-gradient(90deg, var(--marca-700), var(--tono) 55%, var(--marca-realce));
+  content: "";
+}
+
+.tarjeta-marca:hover {
+  border-color: var(--tono);
+  box-shadow: var(--sombra-2);
+  transform: translateY(-2px);
+}
+
+/* El foco se pinta del color de la tarjeta, no del acento de la aplicación:
+   sobre la tarjeta granate un anillo verde no se entendería. */
+.tarjeta-marca:focus-visible {
+  outline: 2px solid var(--tono);
+  outline-offset: 3px;
+}
+
+.tarjeta-marca__logo {
+  width: auto;
+  max-width: 100%;
+  height: 84px;
+  object-fit: contain;
+}
+
+.tarjeta-marca__nombre {
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.015em;
+}
+
+/* Las unidades sin desplegar se ven y se leen igual: lo que cambia es el borde
+   discontinuo —que no depende del color— y el distintivo que las nombra. El
+   logo conserva su color; atenuarlo diría «rota» en lugar de «todavía no». */
+.tarjeta-marca--pendiente {
+  border-style: dashed;
+  border-color: var(--borde-fuerte);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.tarjeta-marca--pendiente:hover {
+  border-color: var(--borde-fuerte);
+  box-shadow: none;
+  transform: none;
+}
+
+.tarjeta-marca--pendiente::before {
+  opacity: 0.55;
+}
+
+/* El tono de la tarjeta sube un peldaño en oscuro, por la misma razón que el
+   acento de la aplicación: el 600 de las tres marcas es demasiado oscuro para
+   dibujar un borde o un anillo de foco sobre #0f172a. Se repite en los dos
+   bloques —consulta del sistema y preferencia explícita— igual que el resto de
+   la hoja. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) .tarjeta-marca {
+    --tono: var(--marca-500);
+  }
+}
+
+:root[data-tema="oscuro"] .tarjeta-marca {
+  --tono: var(--marca-500);
+}
+
+@media (max-width: 600px) {
+  .tarjeta-marca {
+    gap: var(--espacio-3);
+    padding: var(--espacio-5) var(--espacio-4) var(--espacio-4);
+  }
+
+  .tarjeta-marca__logo {
+    height: 64px;
+  }
+}
+
 /* ── Diálogo ─────────────────────────────────────────────────────────────── */
 
 .dialogo {
@@ -1857,21 +2162,27 @@ textarea.campo__control {
   }
 }
 
-/* Logo de marca.
-   PROVISIONAL: recortado del tablero de marcas del grupo, 172x182 px. Sirve a
-   estos tamanos, pero se pixela por encima de ~120 px. Sustituir por el
-   original -SVG, o PNG transparente de 512 px- cuando este disponible: es
-   cambiar el archivo, no el codigo.
+/* Logo de la unidad de negocio elegida.
+   Se dimensiona por el ALTO y no por el ancho: los tres logos tienen
+   proporciones distintas —172x182 el de Carnes, 197x144 el de Agropecuaria y
+   160x116 el de Carnes Frias— y fijar el ancho los dejaria de tamanos visuales
+   muy distintos. El `<img>` lleva `width` y `height` calculados desde las
+   dimensiones naturales de su marca, asi que el hueco queda reservado antes de
+   la descarga y la tarjeta de acceso no salta.
+   PROVISIONAL: los tres son recortes del tablero de marcas del grupo. Sirven a
+   estos tamanos, pero se pixelan por encima de ~120 px de alto. Sustituir por
+   los originales -SVG, o PNG transparente de 512 px- cuando esten disponibles:
+   es cambiar el archivo en `src/recursos/`, no el codigo.
    `object-fit: contain` para que no se deforme si cambia la proporcion.      */
 .marca__logo {
   display: block;
-  width: 40px;
-  height: auto;
+  width: auto;
+  height: 40px;
   object-fit: contain;
   flex-shrink: 0;
 }
 
 .marca__logo--grande {
-  width: 96px;
+  height: 96px;
   margin: 0 auto 0.75rem;
 }

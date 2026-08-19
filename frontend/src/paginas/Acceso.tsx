@@ -6,10 +6,16 @@ import type { FormEvent } from "react";
 import { MODO_EJEMPLOS } from "@/api/cliente";
 import { AvisoError } from "@/componentes/comunes";
 import { useAuth } from "@/auth/ContextoAuth";
-import logo from "@/recursos/carnes-santacruz.png";
+import { useMarca, useMarcaElegida } from "@/marca/ContextoMarca";
+import { anchoLogo } from "@/marca/marcas";
+
+/** El mismo que fija `.marca__logo--grande` en la hoja. */
+const ALTO_LOGO = 96;
 
 export function Acceso() {
   const { entrar } = useAuth();
+  const { olvidar } = useMarca();
+  const marca = useMarcaElegida();
   const [usuario, setUsuario] = useState("");
   const [clave, setClave] = useState("");
   const [error, setError] = useState<unknown>(null);
@@ -34,13 +40,13 @@ export function Acceso() {
         <div className="acceso__marca">
           <img
             className="marca__logo marca__logo--grande"
-            src={logo}
-            alt="Carnes Santacruz"
-            width={96}
-            height={102}
+            src={marca.logo}
+            alt={marca.nombre}
+            width={anchoLogo(marca, ALTO_LOGO)}
+            height={ALTO_LOGO}
           />
           <h1>SIGREP</h1>
-          <p className="tenue">Sistema Gerencial de Reportes · Grupo Santa Cruz</p>
+          <p className="tenue">{marca.nombre} · Grupo Santa Cruz</p>
         </div>
 
         <form className="acceso__formulario" onSubmit={alEnviar}>
@@ -92,6 +98,15 @@ export function Acceso() {
             {enviando ? "Verificando…" : "Ingresar"}
           </button>
         </form>
+
+        {/* Discreto y fuera del formulario: quien llega aquí ya eligió, y solo
+            necesita esta salida si se equivocó de unidad. Devuelve al selector
+            sin tocar la sesión —no hay ninguna abierta todavía—. */}
+        <p className="acceso__salida tenue">
+          <button type="button" className="boton boton--sutil boton--pequeno" onClick={olvidar}>
+            Cambiar unidad de negocio
+          </button>
+        </p>
       </div>
     </div>
   );

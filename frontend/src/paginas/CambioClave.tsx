@@ -17,7 +17,11 @@ import { useCambiarClave } from "@/api/consultas";
 import { LARGO_MINIMO_CLAVE } from "@/api/tipos";
 import { useAuth } from "@/auth/ContextoAuth";
 import { AvisoError, Campo } from "@/componentes/comunes";
-import logo from "@/recursos/carnes-santacruz.png";
+import { useMarcaElegida } from "@/marca/ContextoMarca";
+import { anchoLogo } from "@/marca/marcas";
+
+/** El mismo que fija `.marca__logo--grande` en la hoja. */
+const ALTO_LOGO = 96;
 
 export function FormularioCambioClave({
   onListo,
@@ -128,6 +132,7 @@ export function FormularioCambioClave({
  */
 export function CambioClaveObligatorio() {
   const { usuario, salir } = useAuth();
+  const marca = useMarcaElegida();
 
   return (
     <div className="acceso">
@@ -135,10 +140,10 @@ export function CambioClaveObligatorio() {
         <div className="acceso__marca">
           <img
             className="marca__logo marca__logo--grande"
-            src={logo}
-            alt="Carnes Santacruz"
-            width={96}
-            height={102}
+            src={marca.logo}
+            alt={marca.nombre}
+            width={anchoLogo(marca, ALTO_LOGO)}
+            height={ALTO_LOGO}
           />
           <h1>Cambie su clave</h1>
           <p className="tenue">

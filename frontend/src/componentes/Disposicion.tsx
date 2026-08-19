@@ -10,9 +10,13 @@ import type { Rol } from "@/api/tipos";
 import { useAuth } from "@/auth/ContextoAuth";
 import { Dialogo } from "@/componentes/comunes";
 import { useFiltros } from "@/componentes/filtros";
+import { useMarcaElegida } from "@/marca/ContextoMarca";
+import { anchoLogo } from "@/marca/marcas";
 import { FormularioCambioClave } from "@/paginas/CambioClave";
 import { fechaLarga, periodoLargo } from "@/utilidades/formato";
-import logo from "@/recursos/carnes-santacruz.png";
+
+/** El mismo que fija `.marca__logo` en la hoja. */
+const ALTO_LOGO = 40;
 
 interface ItemNav {
   ruta: string;
@@ -198,15 +202,25 @@ function MenuUsuario() {
 
 function BarraLateral() {
   const { tieneRol } = useAuth();
+  const marca = useMarcaElegida();
 
   return (
     <aside className="barra-lateral">
       <div className="marca">
-        <img className="marca__logo" src={logo} alt="Carnes Santacruz" width={40} height={42} />
+        <img
+          className="marca__logo"
+          src={marca.logo}
+          alt=""
+          width={anchoLogo(marca, ALTO_LOGO)}
+          height={ALTO_LOGO}
+        />
         <span>
           <span className="marca__nombre">SIGREP</span>
           <br />
-          <span className="marca__lema">Grupo Santa Cruz</span>
+          {/* El nombre de la unidad, no el del grupo: es lo que distingue a
+              esta instancia de las otras dos, y el logo de al lado ya lo dice
+              en imagen —por eso su `alt` va vacío, para no repetirlo—. */}
+          <span className="marca__lema">{marca.nombre}</span>
         </span>
       </div>
 

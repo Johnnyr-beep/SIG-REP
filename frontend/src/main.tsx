@@ -8,6 +8,7 @@ import { BrowserRouter } from "react-router-dom";
 import { ErrorApi } from "@/api/cliente";
 import { App } from "@/App";
 import { ProveedorAuth } from "@/auth/ContextoAuth";
+import { ProveedorMarca } from "@/marca/ContextoMarca";
 
 import "./estilos.css";
 
@@ -36,9 +37,14 @@ createRoot(contenedor).render(
   <StrictMode>
     <QueryClientProvider client={clienteConsultas}>
       <BrowserRouter>
-        <ProveedorAuth>
-          <App />
-        </ProveedorAuth>
+        {/* La marca envuelve a la sesión, no al revés: la unidad de negocio se
+            elige antes de que haya nadie a quien identificar, y sobrevive al
+            cierre de sesión. */}
+        <ProveedorMarca>
+          <ProveedorAuth>
+            <App />
+          </ProveedorAuth>
+        </ProveedorMarca>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,
