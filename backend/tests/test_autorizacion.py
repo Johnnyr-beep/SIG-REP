@@ -10,8 +10,20 @@ a un JEFE_PDV— y cubre las tres preguntas que hay que hacerle a cada endpoint:
 2. ¿Recibe 403 quien no debe entrar?
 3. ¿Lo que devuelve está filtrado por el alcance de quien pregunta?
 
-Los roles son `GERENTE`, `ANALISTA`, `JEFE_PDV` y `CONSULTA` (§8.4). El jefe de
-las pruebas tiene alcance sobre MALAMBO (402) y ninguno sobre LA93 (413).
+Los roles son `ADMIN`, `GERENTE`, `ANALISTA`, `JEFE_PDV` y `CONSULTA` (§8.4).
+El jefe de las pruebas tiene alcance sobre MALAMBO (402) y ninguno sobre LA93
+(413).
+
+`ADMIN` entró con el módulo de administración de usuarios y es **superusuario**:
+puede todo lo que puede GERENTE. Por eso se suma a las tres listas de abajo allí
+donde ya estaba `gerente`, y no se le abre un carril propio. La única separación
+va en el otro sentido y vive en `tests/test_usuarios.py`: administrar cuentas es
+solo de ADMIN, y ni GERENTE entra ahí.
+
+La parte de esta suite que hay que leer con más cuidado tras añadir un rol no es
+la que comprueba los 403 nuevos: es la que comprueba que los cuatro roles de
+negocio **siguen entrando donde ya entraban**. Tocar `deps.py` para dejar pasar a
+uno más es exactamente cómo se cierra sin querer la puerta de otro.
 """
 
 from __future__ import annotations
@@ -36,10 +48,10 @@ from tests.conftest import (
 )
 
 #: Todo rol autenticado consulta; el alcance —no el rol— es lo que limita a un
-#: JEFE_PDV a sus puntos.
-ROLES_LECTURA = ("gerente", "analista", "consulta", "jefe_pdv")
+#: JEFE_PDV a sus puntos. `admin` incluido: es superusuario del negocio.
+ROLES_LECTURA = ("admin", "gerente", "analista", "consulta", "jefe_pdv")
 #: Parametrizan: presupuesto, calendario, mapeo de categorías, ingesta.
-ROLES_ESCRITURA = ("analista", "gerente")
+ROLES_ESCRITURA = ("admin", "analista", "gerente")
 #: Los que **no** parametrizan. Un rol de solo lectura no escribe.
 ROLES_SOLO_LECTURA = ("consulta", "jefe_pdv")
 
@@ -110,6 +122,14 @@ RUTAS_PROTEGIDAS: list[tuple[str, str]] = [
     ("GET", "/api/v1/ingesta/corridas"),
     ("GET", "/api/v1/ingesta/corridas/1/rechazos"),
     ("GET", f"/api/v1/reportes/tablero?periodo={PERIODO}"),
+    ("GET", "/api/v1/usuarios"),
+    ("POST", "/api/v1/usuarios"),
+    ("GET", "/api/v1/usuarios/auditoria"),
+    ("PATCH", "/api/v1/usuarios/1"),
+    ("PUT", "/api/v1/usuarios/1/puntos-venta"),
+    ("POST", "/api/v1/usuarios/1/activar"),
+    ("POST", "/api/v1/usuarios/1/desactivar"),
+    ("POST", "/api/v1/usuarios/1/restablecer-clave"),
 ]
 
 
@@ -544,6 +564,17 @@ def test_solo_gerencia_cierra_el_periodo(cliente_http: TestClient, gerente: dict
     assert (
         cliente_http.post(f"/api/v1/periodos/{PERIODO}/cerrar", headers=gerente).status_code == 200
     )
+
+
+def test_sistemas_tambien_cierra_el_periodo(
+    cliente_http: TestClient, admin: dict[str, str]
+) -> None:
+    """ADMIN puede lo mismo que GERENTE, cerrar el período incluido.
+
+    Va en su propia prueba y no parametrizada junto a `gerente` porque cerrar
+    dos veces el mismo período no es lo que se quiere probar aquí.
+    """
+    assert cliente_http.post(f"/api/v1/periodos/{PERIODO}/cerrar", headers=admin).status_code == 200
 
 
 @pytest.mark.parametrize("rol", ("analista", "consulta", "jefe_pdv"))

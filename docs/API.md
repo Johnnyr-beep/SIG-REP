@@ -25,7 +25,10 @@ POST   /auth/refrescar         {token_refresco} -> {token_acceso}
 GET    /auth/yo                -> {id, usuario, nombre, rol, puntos_venta[]}
 ```
 
-Roles: `GERENTE`, `ANALISTA`, `JEFE_PDV`, `CONSULTA`.
+Roles: `ADMIN`, `GERENTE`, `ANALISTA`, `JEFE_PDV`, `CONSULTA`.
+
+`ADMIN` es superusuario del negocio **y** el unico que administra cuentas; los
+otros cuatro no entran en `/usuarios`. Ver la seccion Usuarios.
 
 ## Catálogos
 
@@ -136,6 +139,58 @@ GET    /ingesta/corridas   -> [{id, cuando, quien, fuente, desde, hasta, estado,
                                 filas_leidas, aceptadas, rechazadas, duracion_ms}]
 GET    /ingesta/corridas/{id}/rechazos -> [{fila, campo, valor, motivo}]
 ```
+
+## Usuarios · administracion de cuentas
+
+Solo el rol `ADMIN`. Los otros cuatro reciben 403 en todo este bloque, `GERENTE`
+incluido: ve todas las cifras de la compania y no reparte accesos.
+
+`ADMIN` es ademas **superusuario del negocio** — entra en reportes, presupuesto,
+calendario e ingesta como `GERENTE`. Decision del 18-ago-2026: Sistemas necesita
+diagnosticar por si mismo si un reporte muestra bien los datos, sin pedir
+prestada una cuenta de gerencia.
+
+```
+GET    /usuarios[?rol=&activo=]
+       -> [{id, usuario, nombre, email, rol, activo, debe_cambiar_password,
+            bloqueado, ultimo_acceso, creado_en, puntos_venta[]}]
+
+POST   /usuarios                    {usuario, nombre, email?, rol, puntos_venta[]}
+       -> 201 {usuario: {...}, clave_provisional}
+
+PATCH  /usuarios/{id}               {nombre?, email?, rol?}
+PUT    /usuarios/{id}/puntos-venta  {puntos_venta: ["402", ...]}   REEMPLAZA la lista
+POST   /usuarios/{id}/activar
+POST   /usuarios/{id}/desactivar
+POST   /usuarios/{id}/restablecer-clave  -> {id, usuario, clave_provisional}
+
+GET    /usuarios/auditoria[?usuario_id=&limite=]
+       -> [{cuando, quien, sobre_quien, accion, detalle}]
+```
+
+### Las seis reglas, y por que existen
+
+1. **Nadie se administra a si mismo** — 403 `sin_autoadministracion`. Un `ADMIN`
+   no cambia su rol, no se desactiva y no se amplia el alcance. Sin esto el rol
+   es decorativo: cualquiera se otorga lo que quiera.
+2. **Siempre queda un `ADMIN` activo** — 409 `ultimo_admin_activo` al desactivar
+   o degradar al ultimo. Es la proteccion contra quedarse fuera del sistema sin
+   ninguna cuenta capaz de volver a crear administradores.
+3. **No hay borrado, hay baja.** Las acciones de un usuario estan referenciadas
+   en `presupuesto_historial` y en `corridas_ingesta`; borrarlo destruiria el
+   rastro que §3.3 existe para conservar.
+4. **Toda operacion queda registrada** con quien, sobre quien, que y cuando.
+   Un permiso concedido sin rastro no se puede auditar.
+5. **La clave provisional se muestra una sola vez.** La genera el servidor, se
+   guarda solo como hash Argon2id, no vuelve a aparecer en ninguna respuesta ni
+   en ningun log, y obliga a cambiarla en el siguiente acceso. Si se pierde
+   antes de entregarla, el remedio es `restablecer-clave`.
+6. **Ninguna respuesta devuelve el hash**, ni siquiera al `ADMIN`.
+
+`PUT /usuarios/{id}/puntos-venta` **reemplaza** el alcance completo: lo que se
+envia es lo que queda. Asignar es mandar la lista con el codigo de mas; quitar,
+con el codigo de menos; y `[]` deja al usuario sin ninguno. Sin reemplazo, quitar
+un punto seria imposible.
 
 ## Salud
 

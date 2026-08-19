@@ -15,9 +15,24 @@ corre una vez y deja rastro, no de un script que corre en cada despliegue.
 
 Uso:
 
-    python -m app.infrastructure.semilla                    # estructura
-    python -m app.infrastructure.semilla --admin            # + usuario gerente
-    python -m app.infrastructure.semilla --periodo 2026-08  # + calendario del mes
+    python -m app.infrastructure.semilla                     # estructura
+    python -m app.infrastructure.semilla --admin             # + usuario gerente
+    python -m app.infrastructure.semilla --administrador     # + usuario admin (rol ADMIN)
+    python -m app.infrastructure.semilla --periodo 2026-08   # + calendario del mes
+
+`--admin` y `--administrador` no son lo mismo y los nombres son desafortunados,
+pero `--admin` ya estaba documentado y renombrarlo rompería el arranque de quien
+lo tenga escrito en un script de despliegue:
+
+- `--admin` crea `gerente`, rol GERENTE. Es quien lee el negocio.
+- `--administrador` crea `admin`, rol ADMIN. Es Sistemas: el único que
+  administra cuentas desde la aplicación.
+
+`--administrador` hace falta en dos sitios: en una instalación nueva, para tener
+por dónde entrar a crear a los demás; y en la que ya está en producción, que
+tiene usuarios pero ningún ADMIN y por tanto nadie que pueda administrarlos.
+Las dos cuentas imprimen su clave provisional **una sola vez** y exigen
+cambiarla en el primer acceso.
 """
 
 from __future__ import annotations
@@ -332,10 +347,55 @@ def crear_gerente(sesion: Session, clave: str | None = None) -> tuple[Usuario, s
     return usuario, clave
 
 
+def crear_administrador(sesion: Session, clave: str | None = None) -> tuple[Usuario, str] | None:
+    """Crea la cuenta `admin` (rol ADMIN) con clave provisional obligatoria.
+
+    Devuelve `None` si ya existe, para que correrla dos veces no reviente ni
+    —peor— reescriba la clave de la cuenta con la que Sistemas está entrando.
+
+    Es idéntica en forma a `crear_gerente` a propósito: dos funciones parecidas
+    se leen mejor que una con un parámetro `rol` y tres `if` dentro, y estas dos
+    cuentas tienen motivos distintos para existir y van a divergir.
+    """
+    existente = sesion.execute(
+        select(Usuario).where(Usuario.usuario == "admin")
+    ).scalar_one_or_none()
+    if existente is not None:
+        logger.info("semilla_administrador_existente")
+        return None
+
+    if clave is None:
+        clave = generar_password_temporal(18)
+    else:
+        # Igual que en `crear_gerente`: una clave provista a mano se somete a la
+        # misma política que cualquier otra. La semilla no es una puerta trasera,
+        # y menos la de la cuenta que reparte los permisos.
+        AuthService.validar_fortaleza_clave(clave, usuario_nombre="admin")
+
+    usuario = Usuario(
+        usuario="admin",
+        nombre="Administrador de Sistemas",
+        email="sistemas@gruposantacruz.co",
+        rol=Rol.ADMIN.value,
+        password_hash=hashear_password(clave),
+        debe_cambiar_password=True,
+        activo=True,
+    )
+    sesion.add(usuario)
+    sesion.flush()
+    return usuario, clave
+
+
 def main() -> None:  # pragma: no cover - utilidad de línea de comandos
     parser = argparse.ArgumentParser(description="Siembra los datos base de SIGREP.")
     parser.add_argument("--admin", action="store_true", help="crea el usuario gerente")
     parser.add_argument("--clave", help="clave del usuario gerente (si no, se genera)")
+    parser.add_argument(
+        "--administrador",
+        action="store_true",
+        help="crea el usuario admin, rol ADMIN, que administra las cuentas",
+    )
+    parser.add_argument("--clave-admin", help="clave del usuario admin (si no, se genera)")
     parser.add_argument("--periodo", help="siembra el calendario de un período YYYY-MM")
     argumentos = parser.parse_args()
 
@@ -350,6 +410,17 @@ def main() -> None:  # pragma: no cover - utilidad de línea de comandos
             if creado is not None:
                 _, clave = creado
                 print(f"Usuario 'gerente' creado. Clave provisional: {clave}")
+        if argumentos.administrador:
+            creado = crear_administrador(sesion, argumentos.clave_admin)
+            if creado is not None:
+                _, clave = creado
+                # Se imprime **una sola vez** y no se guarda en ninguna parte.
+                # Ni al log —que se rota a disco y se copia a un agregador— ni a
+                # la base, donde solo queda el hash Argon2id.
+                print(f"Usuario 'admin' creado. Clave provisional: {clave}")
+                print("Anótela ahora: no vuelve a mostrarse. Se cambia en el primer acceso.")
+            else:
+                print("El usuario 'admin' ya existe; no se toca su clave.")
 
 
 if __name__ == "__main__":  # pragma: no cover

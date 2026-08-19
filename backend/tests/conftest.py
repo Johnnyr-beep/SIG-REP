@@ -95,6 +95,30 @@ def autenticar(cliente: TestClient, usuario: str) -> dict[str, str]:
 
 
 @pytest.fixture
+def admin(sesion: Session, cliente_http: TestClient) -> dict[str, str]:
+    """ADMIN: superusuario del negocio y **único** administrador de cuentas.
+
+    Puede todo lo que puede GERENTE —reportes, presupuesto, calendario,
+    ingesta, cierre de período— y además administra usuarios. Sistemas
+    necesita poder diagnosticar por sí mismo si un reporte muestra bien los
+    datos, sin pedir prestada una cuenta de gerencia.
+    """
+    _crear_usuario(sesion, "admin", Rol.ADMIN)
+    return autenticar(cliente_http, "admin")
+
+
+@pytest.fixture
+def otro_admin(sesion: Session, cliente_http: TestClient) -> dict[str, str]:
+    """Un segundo ADMIN. Hace falta porque nadie se administra a sí mismo.
+
+    Sin él, ninguna prueba puede comprobar el camino feliz de la
+    administración: el único ADMIN de la base no puede tocarse a sí mismo.
+    """
+    _crear_usuario(sesion, "admin_relevo", Rol.ADMIN)
+    return autenticar(cliente_http, "admin_relevo")
+
+
+@pytest.fixture
 def gerente(sesion: Session, cliente_http: TestClient) -> dict[str, str]:
     _crear_usuario(sesion, "gerente", Rol.GERENTE)
     return autenticar(cliente_http, "gerente")
@@ -146,6 +170,10 @@ def analista_con_alcance(sesion: Session, cliente_http: TestClient) -> dict[str,
 
 
 # ── Ayudas para montar un escenario de reporte ────────────────────────────────
+
+
+def id_usuario(sesion: Session, nombre: str) -> int:
+    return sesion.scalars(select(Usuario).where(Usuario.usuario == nombre)).one().id
 
 
 def id_punto_venta(sesion: Session, codigo_co: str) -> int:

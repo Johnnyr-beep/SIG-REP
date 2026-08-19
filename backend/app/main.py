@@ -20,6 +20,7 @@ from app.api.v1 import ingesta as ingesta_api
 from app.api.v1 import presupuesto as presupuesto_api
 from app.api.v1 import reportes as reportes_api
 from app.api.v1 import salud as salud_api
+from app.api.v1 import usuarios as usuarios_api
 from app.core.config import obtener_settings
 from app.core.errors import registrar_manejadores
 from app.core.logging import configurar_logging, obtener_logger
@@ -142,6 +143,7 @@ api.include_router(presupuesto_api.router)
 api.include_router(presupuesto_api.periodos_router)
 api.include_router(reportes_api.router)
 api.include_router(ingesta_api.router)
+api.include_router(usuarios_api.router)
 api.include_router(salud_api.router)
 
 app.include_router(api)

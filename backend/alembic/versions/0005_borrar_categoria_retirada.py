@@ -115,7 +115,9 @@ CAJON_RETIRADO = "OTROS (RETIRADA - REUBICAR)"
 #: El comando que hay que ejecutar antes que esta migracion si todavia queda
 #: presupuesto. Se escribe entero en el mensaje de error: un «reparta primero el
 #: presupuesto» sin el comando obliga a quien despliega a ir a buscarlo.
-COMANDO_REPARTO = "python -m app.infrastructure.reparto_presupuesto --periodo {periodo} --usuario <cuenta>"
+COMANDO_REPARTO = (
+    "python -m app.infrastructure.reparto_presupuesto --periodo {periodo} --usuario <cuenta>"
+)
 
 
 def _id_categoria(conexion: sa.Connection, nombre: str) -> int | None:
@@ -294,9 +296,7 @@ def _borrar_mapeo(conexion: sa.Connection, cajon_id: int) -> None:
 def _desligar_historial(conexion: sa.Connection, cajon_id: int, nombre: str) -> None:
     """Anula el vinculo del historial con la categoria, conservando todo lo demas."""
     resultado = conexion.execute(
-        sa.text(
-            "UPDATE presupuesto_historial SET categoria_id = NULL WHERE categoria_id = :cajon"
-        ),
+        sa.text("UPDATE presupuesto_historial SET categoria_id = NULL WHERE categoria_id = :cajon"),
         {"cajon": cajon_id},
     )
     if resultado.rowcount:
