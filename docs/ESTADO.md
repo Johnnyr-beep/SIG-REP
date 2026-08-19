@@ -1,8 +1,10 @@
-# Dónde vamos — 14 de agosto de 2026
+# Donde vamos — 19 de agosto de 2026
 
-Nota de continuidad. Lo que está hecho, lo que falta y qué depende de quién.
+Nota de continuidad. Lo que esta hecho, lo que falta y de quien depende.
 
----
+> **SIGREP esta EN PRODUCCION** en https://sigrep.grupo-santacruz.com
+> API operativa, base conectada, certificado valido. Cuentas `admin` y `gerente`
+> creadas. **La base no tiene datos todavia**: `ultima_ingesta: null`.
 
 ## Hecho
 
@@ -14,49 +16,37 @@ Nota de continuidad. Lo que está hecho, lo que falta y qué depende de quién.
 | Categorías | Las 11 reales de SIESA. `OTROS` retirada y su presupuesto repartido |
 | Repositorio | `github.com/Johnnyr-beep/SIG-REP` (privado), 10 commits |
 | Instancia local | `localhost:8080` con los datos reales cargados |
-| Servidor | Dokploy en `20.121.178.90`, proyecto y base creados |
+| **Produccion** | **Desplegada y respondiendo**, dominio con TLS de Let's Encrypt |
+| Usuarios | Modulo completo: rol ADMIN, alta, roles, alcances, auditoria y cambio de clave |
+| Marcas | Selector de unidad de negocio con las tres identidades, paleta muestreada de los logos |
 
 ---
 
-## Bloqueado — tres cosas, ninguna es de programación
+## Lo primero manana
 
-### 1. DNS · lo bloquea todo
+1. **Desplegar.** El selector de marcas y la paleta estan en GitHub, no en el
+   contenedor. Espere el CI y pulse **Deploy** en Dokploy. El paso «Desplegar en
+   Dokploy» del CI sale rojo siempre: falta el secreto `DOKPLOY_WEBHOOK_URL` y
+   el webhook rechaza con `Branch Not Match` porque tiene otra rama configurada.
+   Arreglarlo es lo que hara que dejen de hacer falta clics.
 
-`sigrep.grupo-santacruz.com` **no existe**. Sin él no hay certificado ni acceso.
+2. **Revisar el selector en produccion, en claro y en oscuro.** Los contrastes
+   se auditaron numericamente —17 pares por marca— pero nadie ha mirado las
+   tarjetas con los ojos.
 
-El dominio lo sirve **Cloudflare** (`connie`/`corey.ns.cloudflare.com`), no Azure:
-lo que se cree en Azure DNS no tiene efecto. Registro a crear:
+3. **Cargar el mes desde SIESA y cuadrar contra el Excel.** Es lo unico que
+   falta para que el sistema sirva. Hasta que los numeros cuadren, SIGREP esta
+   terminado pero no probado en lo que importa.
 
-```
-Type: A · Name: sigrep · IPv4: 20.121.178.90 · Proxy: DNS only (nube GRIS)
-```
+## Deuda conocida
 
-La nube gris es temporal: con la naranja, Let's Encrypt valida contra Cloudflare
-y el certificado no se emite, con un error que no menciona Cloudflare. Después
-de emitirlo se puede activar el proxy, pero con SSL en **Full (strict)**.
-
-### 2. Imágenes de GHCR en privado
-
-`docker stack deploy` no compila: descarga. GitHub las publica privadas y el
-servidor no puede bajarlas. Una vez: GitHub → **Packages** → `sigrep-api` y
-`sigrep-web` → *Package settings* → *Change visibility* → **Public**.
-
-### 3. El servicio de Dokploy debe ser tipo `Stack`
-
-Traefik corre en modo Swarm y **solo ve servicios de Swarm**. Si el servicio se
-creó como *Application*, le es invisible y el dominio responde `404 page not
-found` en texto plano con los contenedores sanos. Dokploy fija el tipo al crear:
-si no es `Stack`, hay que borrarlo y rehacerlo.
-
-### Variables de entorno — el bloque completo
-
-Ya validado; solo faltaba pegarlo bien (la primera vez fueron los marcadores sin
-reemplazar). Cuidado con tres detalles que no son cosméticos: el espacio de
-`DB SIG-REP` va **literal**, el token de SIESA **sin el prefijo `1-`**, y
-ninguna URL lleva **barra final** —una barra en `CORS_ORIGENES` bloquea todas
-las peticiones del navegador con un error que habla de CORS y no de la barra—.
-
----
+- **La semilla no tiene `--forzar-clave`.** Si alguien pierde la clave que
+  imprime, hoy la unica salida es un fragmento de Python contra la base de
+  produccion. Ya paso una vez.
+- **La instancia de agropecuaria** tiene su marca lista pero **no su modelo**:
+  sus reportes serian los de carnes. Falta que el negocio entregue la API de
+  agropecuaria y que defina que quiere medir —si es por vendedor, especie o
+  cliente en vez de por punto de venta, el modelo actual no sirve—.
 
 ## Pendiente del negocio
 
