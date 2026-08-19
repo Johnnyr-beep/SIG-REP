@@ -10,11 +10,11 @@ Nota de continuidad. Lo que esta hecho, lo que falta y de quien depende.
 
 | | |
 |---|---|
-| Backend | FastAPI · **378 pruebas en verde** · ruff y mypy limpios · migraciones hasta `0005` |
-| Frontend | React + TS · 8 pantallas · typecheck y build limpios |
+| Backend | FastAPI · **424 pruebas en verde** · ruff y mypy limpios · migraciones hasta `0006` |
+| Frontend | React + TS · 11 pantallas · typecheck y build limpios |
 | Integración SIESA | `FuenteVentaSiesa` sobre `costos-razon-social`, validada contra el Excel: **14 de 15 puntos al peso exacto** |
 | Categorías | Las 11 reales de SIESA. `OTROS` retirada y su presupuesto repartido |
-| Repositorio | `github.com/Johnnyr-beep/SIG-REP` (privado), 10 commits |
+| Repositorio | `github.com/Johnnyr-beep/SIG-REP` (privado), 19 commits |
 | Instancia local | `localhost:8080` con los datos reales cargados |
 | **Produccion** | **Desplegada y respondiendo**, dominio con TLS de Let's Encrypt |
 | Usuarios | Modulo completo: rol ADMIN, alta, roles, alcances, auditoria y cambio de clave |
@@ -92,16 +92,11 @@ nadie ha ganado.
 Dos defectos encontrados de rebote, **no corregidos** por estar fuera de alcance:
 
 1. **Está caído ahora mismo**: `gsc.grupo-santacruz.com` devuelve `404 page not
-   found`. Es el síntoma del modo Swarm descrito arriba, no un fallo de la
+   found`. Es el mismo 404 de Traefik que tuvimos en SIGREP —el
+   servicio no es de tipo Stack y el proxy no lo ve—, no un fallo de la
    aplicación.
 2. `frontend/docker/nginx.conf` **pierde las cabeceras de seguridad** —CSP
    incluida— en `/index.html` y `/assets/`, porque `add_header` no se hereda en
    un `location` que declare cabeceras propias. Activo en producción.
 3. `docker-compose.yml:25` monta el volumen de PostgreSQL en la ruta que la
    imagen 18 abandonó; con esa imagen el contenedor aborta.
-
----
-
-## Lo primero mañana
-
-El DNS. Bloquea todo lo demás y es un formulario de seis campos.
