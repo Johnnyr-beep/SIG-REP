@@ -11,14 +11,20 @@ import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
 
 import { descargar, enviarArchivo, peticion } from "./cliente";
 import type { ValorParametro } from "./cliente";
+
 import type {
+  CambioClave,
   CambioPresupuesto,
+  CambioUsuario,
   Categoria,
+  ClaveRestablecida,
   CorridaIngesta,
   CorteClientes,
   EntradaCalendario,
   EntradaIngesta,
   EntradaPresupuesto,
+  EntradaUsuario,
+  EventoAuditoria,
   FilaCalendario,
   FilaPresupuesto,
   Grupo,
@@ -32,10 +38,19 @@ import type {
   RespuestaTablero,
   RespuestaVentaDiaria,
   ResultadoCargaMasiva,
+  Rol,
   Salud,
   Usuario,
+  UsuarioAdministrado,
+  UsuarioCreado,
   Zona,
 } from "./tipos";
+
+/** Filtros de `GET /usuarios`. Ambos opcionales, como en el contrato. */
+export interface FiltrosUsuarios {
+  rol?: Rol | "";
+  activo?: "true" | "false" | "";
+}
 
 /** Filtros comunes a todos los reportes (§ «Reportes» del contrato). */
 export interface FiltrosReporte {
@@ -80,8 +95,12 @@ export const claves = {
   ventaDiaria: (filtros: FiltrosReporte) => ["reporte", "venta-diaria", filtros] as const,
   clientes: (filtros: FiltrosReporte, por: CorteClientes) =>
     ["reporte", "clientes", por, filtros] as const,
+
   corridas: ["ingesta", "corridas"] as const,
   rechazos: (id: number) => ["ingesta", "rechazos", id] as const,
+  usuarios: (filtros: FiltrosUsuarios) => ["usuarios", filtros] as const,
+  auditoriaUsuarios: (usuarioId: number | null, limite: number) =>
+    ["usuarios", "auditoria", usuarioId, limite] as const,
 };
 
 // ── Sesión y salud ───────────────────────────────────────────────────────────
@@ -93,6 +112,28 @@ export function usePerfil(habilitado: boolean): UseQueryResult<Usuario> {
     enabled: habilitado,
     staleTime: 5 * 60_000,
     retry: false,
+  });
+}
+
+
+/**
+ * Cambio de clave, obligatorio o voluntario.
+ *
+ * Al terminar solo se invalida el perfil: el token sigue sirviendo y el usuario
+ * continúa donde estaba, sin repetir el inicio de sesión. La respuesta trae el
+ * perfil ya sin la marca, así que además se refresca de inmediato la copia en
+ * caché para que el bloqueo desaparezca sin esperar al viaje de vuelta.
+ */
+export function useCambiarClave(): UseMutationResult<void, Error, CambioClave> {
+  const cliente = useQueryClient();
+  return useMutation({
+    mutationFn: (datos) => peticion<void>("/auth/cambiar-clave", { metodo: "POST", cuerpo: datos }),
+    onSuccess: () => {
+      cliente.setQueryData<Usuario>(claves.perfil, (anterior) =>
+        anterior ? { ...anterior, debe_cambiar_password: false } : anterior,
+      );
+      void cliente.invalidateQueries({ queryKey: claves.perfil });
+    },
   });
 }
 
@@ -369,6 +410,138 @@ export function useIngestaArchivo(): UseMutationResult<unknown, Error, File> {
   const invalidar = useInvalidarIngesta();
   return useMutation({
     mutationFn: (archivo) => enviarArchivo("/ingesta/archivo", archivo),
+    onSuccess: invalidar,
+  });
+}
+
+// ── Usuarios · administración de cuentas ─────────────────────────────────────
+
+/**
+ * Listado de cuentas. Solo el rol `ADMIN` recibe algo distinto de un 403.
+ *
+ * `habilitado` evita disparar la consulta —y con ella un 403 en la consola— en
+ * las sesiones de los otros cuatro roles, que ni siquiera ven la entrada.
+ */
+export function useUsuarios(
+  filtros: FiltrosUsuarios,
+  habilitado: boolean,
+): UseQueryResult<UsuarioAdministrado[]> {
+  return useQuery({
+    queryKey: claves.usuarios(filtros),
+    queryFn: () =>
+      peticion<UsuarioAdministrado[]>("/usuarios", {
+        parametros: { rol: filtros.rol, activo: filtros.activo },
+      }),
+    enabled: habilitado,
+    staleTime: 30_000,
+  });
+}
+
+export function useAuditoriaUsuarios(
+  usuarioId: number | null,
+  limite: number,
+  habilitado: boolean,
+): UseQueryResult<EventoAuditoria[]> {
+  return useQuery({
+    queryKey: claves.auditoriaUsuarios(usuarioId, limite),
+    queryFn: () =>
+      peticion<EventoAuditoria[]>("/usuarios/auditoria", {
+        parametros: { usuario_id: usuarioId, limite },
+      }),
+    enabled: habilitado,
+    staleTime: 30_000,
+  });
+}
+
+/** Invalida el listado y la auditoría: toda operación deja rastro en ambos. */
+function useInvalidarUsuarios() {
+  const cliente = useQueryClient();
+  return () => {
+    void cliente.invalidateQueries({ queryKey: ["usuarios"] });
+  };
+}
+
+/**
+ * Alta de cuenta.
+ *
+ * **La respuesta contiene la clave provisional en claro.** Quien llame a este
+ * hook debe copiarla al estado del componente que la muestra y llamar acto
+ * seguido a `reset()`; por eso la mutación se declara con `gcTime: 0`, para que
+ * el secreto no sobreviva en la caché de mutaciones ni un segundo de más.
+ */
+export function useCrearUsuario(): UseMutationResult<UsuarioCreado, Error, EntradaUsuario> {
+  const invalidar = useInvalidarUsuarios();
+  return useMutation({
+    mutationFn: (datos) => peticion<UsuarioCreado>("/usuarios", { metodo: "POST", cuerpo: datos }),
+    gcTime: 0,
+    onSuccess: invalidar,
+  });
+}
+
+export function useActualizarUsuario(): UseMutationResult<
+  UsuarioAdministrado,
+  Error,
+  { id: number; datos: CambioUsuario }
+> {
+  const invalidar = useInvalidarUsuarios();
+  return useMutation({
+    mutationFn: ({ id, datos }) =>
+      peticion<UsuarioAdministrado>(`/usuarios/${id}`, { metodo: "PATCH", cuerpo: datos }),
+    onSuccess: invalidar,
+  });
+}
+
+/**
+ * Fija el alcance por punto de venta.
+ *
+ * `PUT` **reemplaza** la lista completa: lo que se envía es lo que queda. La
+ * pantalla manda siempre el conjunto entero resultante, nunca un delta; enviar
+ * solo lo añadido borraría todo lo demás.
+ */
+export function useFijarPuntosVenta(): UseMutationResult<
+  UsuarioAdministrado,
+  Error,
+  { id: number; puntos_venta: string[] }
+> {
+  const invalidar = useInvalidarUsuarios();
+  return useMutation({
+    mutationFn: ({ id, puntos_venta }) =>
+      peticion<UsuarioAdministrado>(`/usuarios/${id}/puntos-venta`, {
+        metodo: "PUT",
+        cuerpo: { puntos_venta },
+      }),
+    onSuccess: invalidar,
+  });
+}
+
+/** Activar o desactivar. No hay borrado: la baja es la desactivación (regla 3). */
+export function useCambiarEstadoUsuario(): UseMutationResult<
+  UsuarioAdministrado,
+  Error,
+  { id: number; activar: boolean }
+> {
+  const invalidar = useInvalidarUsuarios();
+  return useMutation({
+    mutationFn: ({ id, activar }) =>
+      peticion<UsuarioAdministrado>(`/usuarios/${id}/${activar ? "activar" : "desactivar"}`, {
+        metodo: "POST",
+      }),
+    onSuccess: invalidar,
+  });
+}
+
+/**
+ * Restablece la clave y devuelve otra provisional.
+ *
+ * Mismas precauciones que el alta: `gcTime: 0` y `reset()` inmediato en cuanto
+ * el componente se queda con el valor.
+ */
+export function useRestablecerClave(): UseMutationResult<ClaveRestablecida, Error, number> {
+  const invalidar = useInvalidarUsuarios();
+  return useMutation({
+    mutationFn: (id) =>
+      peticion<ClaveRestablecida>(`/usuarios/${id}/restablecer-clave`, { metodo: "POST" }),
+    gcTime: 0,
     onSuccess: invalidar,
   });
 }

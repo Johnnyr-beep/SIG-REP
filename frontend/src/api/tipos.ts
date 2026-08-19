@@ -10,16 +10,35 @@
 
 // ── Sesión ───────────────────────────────────────────────────────────────────
 
-export type Rol = "GERENTE" | "ANALISTA" | "JEFE_PDV" | "CONSULTA";
+
+export type Rol = "ADMIN" | "GERENTE" | "ANALISTA" | "JEFE_PDV" | "CONSULTA";
 
 export interface Usuario {
   id: number;
   usuario: string;
   nombre: string;
   rol: Rol;
+  /**
+   * Clave provisional pendiente de cambiar.
+   *
+   * La activan el alta de una cuenta y todo restablecimiento hecho por un
+   * administrador. Mientras valga `true` la aplicación no deja abrir ninguna
+   * otra pantalla: sin ese bloqueo la marca no significaría nada y la clave que
+   * un tercero escribió en un papel seguiría sirviendo indefinidamente.
+   */
+  debe_cambiar_password: boolean;
   /** Puntos de venta visibles para el usuario; vacío en los roles globales. */
   puntos_venta: ReferenciaSimple[];
 }
+
+/** Cuerpo de `POST /auth/cambiar-clave`. */
+export interface CambioClave {
+  clave_actual: string;
+  clave_nueva: string;
+}
+
+/** Mínimo de caracteres de `clave_nueva`; se valida antes de enviar. */
+export const LARGO_MINIMO_CLAVE = 12;
 
 export interface TokensAcceso {
   token_acceso: string;
@@ -323,6 +342,100 @@ export interface EntradaIngesta {
   desde: string;
   hasta: string;
   fuente: FuenteIngesta;
+}
+
+
+// ── Usuarios · administración de cuentas ─────────────────────────────────────
+
+/**
+ * Ficha completa de una cuenta, tal como la devuelve `GET /usuarios`.
+ *
+ * Extiende la del perfil con lo que solo ve un `ADMIN`. El hash no aparece aquí
+ * porque no aparece en ninguna respuesta: es la regla 6 del contrato.
+ */
+export interface UsuarioAdministrado extends Usuario {
+  email: string | null;
+  activo: boolean;
+  /** Bloqueo por intentos fallidos; se levanta restableciendo la clave. */
+  bloqueado: boolean;
+  ultimo_acceso: string | null;
+  creado_en: string | null;
+}
+
+
+/**
+ * Formato del nombre de acceso que exige el backend.
+ *
+ * Minúsculas, dígitos, punto, guion y guion bajo; entre 3 y 50 caracteres y sin
+ * empezar por signo. Se replica aquí para avisar mientras se escribe en lugar de
+ * dejar que el alta termine en un 422 con el formulario ya lleno.
+ */
+export const PATRON_USUARIO = /^[a-z0-9][a-z0-9._-]{2,49}$/;
+
+/** Largo mínimo del nombre visible. Lo mismo: mejor avisar que recibir un 422. */
+export const LARGO_MINIMO_NOMBRE = 3;
+
+/** Cuerpo de `POST /usuarios`. Los puntos de venta viajan por código C.O. */
+export interface EntradaUsuario {
+  usuario: string;
+  nombre: string;
+  email: string | null;
+  rol: Rol;
+  puntos_venta: string[];
+}
+
+/** Cuerpo de `PATCH /usuarios/{id}`: solo los tres campos editables. */
+export interface CambioUsuario {
+  nombre: string;
+  email: string | null;
+  rol: Rol;
+}
+
+/**
+ * Respuesta del alta.
+ *
+ * `clave_provisional` es el único punto del sistema donde una clave en claro
+ * cruza la red, y ocurre **una sola vez**: no vuelve en ninguna consulta
+ * posterior. La interfaz que la recibe no la persiste en ningún sitio.
+ */
+export interface UsuarioCreado {
+  usuario: UsuarioAdministrado;
+  clave_provisional: string;
+}
+
+/** Respuesta de `POST /usuarios/{id}/restablecer-clave`. */
+export interface ClaveRestablecida {
+  id: number;
+  usuario: string;
+  clave_provisional: string;
+}
+
+
+/**
+ * Una línea de `GET /usuarios/auditoria`: quién, sobre quién, qué y cuándo.
+ *
+ * El contrato nombra los campos `quien`, `sobre_quien` y `detalle`; el
+ * serializador del backend los desglosa como `actor`, `usuario` y la terna
+ * `campo`/`valor_anterior`/`valor_nuevo`. Se aceptan las dos formas por la misma
+ * razón que en `ReferenciaSimple`: cuesta dos funciones de lectura y evita que
+ * la tabla se quede en blanco el día que uno de los dos lados se alinee con el
+ * otro.
+ */
+export interface EventoAuditoria {
+  cuando: string;
+  accion: string;
+  /** Quien ejecutó la operación. */
+  quien?: string | null;
+  actor?: string | null;
+  /** La cuenta administrada. */
+  sobre_quien?: string | null;
+  usuario?: string | null;
+  /** Qué cambió, en una forma u otra. */
+  detalle?: string | null;
+  campo?: string | null;
+  valor_anterior?: string | null;
+  valor_nuevo?: string | null;
+  ip_origen?: string | null;
 }
 
 // ── Salud ────────────────────────────────────────────────────────────────────

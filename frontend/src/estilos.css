@@ -306,6 +306,7 @@ textarea {
   text-align: center;
 }
 
+
 .barra-lateral__usuario {
   padding: var(--espacio-3);
   border-top: 1px solid var(--borde);
@@ -314,6 +315,62 @@ textarea {
 .barra-lateral__nombre {
   font-weight: 600;
   color: var(--texto-suave);
+}
+
+/* ── Menú de usuario ─────────────────────────────────────────────────────────
+ *
+ * Sobre `<details>`, como el resto de desplegables de la interfaz: se abre con
+ * Enter, se cierra con Escape y lo anuncian los lectores de pantalla sin una
+ * línea de JavaScript. Desde aquí sale el cambio de clave voluntario.
+ */
+
+.menu-usuario__disparador {
+  display: flex;
+  gap: var(--espacio-2);
+  align-items: center;
+  padding: var(--espacio-2);
+  border-radius: var(--radio-sm);
+  cursor: pointer;
+  list-style: none;
+}
+
+.menu-usuario__disparador::-webkit-details-marker {
+  display: none;
+}
+
+.menu-usuario__disparador:hover {
+  background: var(--superficie-hover);
+}
+
+.menu-usuario__identidad {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.menu-usuario__identidad > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-usuario__signo {
+  margin-left: auto;
+  color: var(--texto-tenue);
+  font-size: 0.7rem;
+  transition: transform 0.12s ease;
+}
+
+.menu-usuario[open] .menu-usuario__signo {
+  transform: rotate(180deg);
+}
+
+.menu-usuario__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+  padding: var(--espacio-3) var(--espacio-2) var(--espacio-2);
 }
 
 .principal {
@@ -927,6 +984,21 @@ textarea {
   border-color: var(--marca-700);
 }
 
+
+/* Acciones que dejan a alguien fuera —desactivar una cuenta, restablecer una
+   clave— y que solo aparecen tras una confirmación. El color es refuerzo: el
+   texto del botón ya nombra lo que va a pasar. */
+.boton--peligro {
+  color: #ffffff;
+  background: var(--peligro);
+  border-color: var(--peligro);
+}
+
+.boton--peligro:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--peligro) 85%, #000000);
+  border-color: color-mix(in srgb, var(--peligro) 85%, #000000);
+}
+
 .boton--sutil {
   background: transparent;
   border-color: transparent;
@@ -1096,10 +1168,17 @@ textarea.campo__control {
   border-color: color-mix(in srgb, var(--info) 26%, transparent);
 }
 
+
 .aviso--advertencia {
   color: var(--aviso);
   background: color-mix(in srgb, var(--aviso) 10%, transparent);
   border-color: color-mix(in srgb, var(--aviso) 30%, transparent);
+}
+
+.aviso--exito {
+  color: var(--exito);
+  background: color-mix(in srgb, var(--exito) 9%, transparent);
+  border-color: color-mix(in srgb, var(--exito) 28%, transparent);
 }
 
 /* ── Pista de cálculo ────────────────────────────────────────────────────── */
@@ -1441,10 +1520,22 @@ textarea.campo__control {
   text-align: center;
 }
 
+
+/* El cambio obligatorio de clave añade un aviso y tres campos al bloque de
+   acceso: con 400 px la tarjeta queda apretada en un portátil de 13". */
+.acceso__tarjeta--ancha {
+  max-width: 460px;
+}
+
 .acceso__formulario {
   display: flex;
   flex-direction: column;
   gap: var(--espacio-4);
+}
+
+.acceso__salida {
+  margin-top: var(--espacio-4);
+  text-align: center;
 }
 
 /* ── Diálogo ─────────────────────────────────────────────────────────────── */
@@ -1457,6 +1548,13 @@ textarea.campo__control {
   border: 1px solid var(--borde);
   border-radius: var(--radio-lg);
   box-shadow: var(--sombra-3);
+}
+
+
+/* Para el alcance por punto de venta y el alta: dieciséis casillas y cinco
+   campos no caben con holgura en 520 px. */
+.dialogo--ancho {
+  width: min(760px, 100%);
 }
 
 .dialogo::backdrop {
@@ -1562,6 +1660,100 @@ textarea.campo__control {
   clip-path: inset(50%);
 }
 
+
+/* ── Administración de usuarios ──────────────────────────────────────────────
+ *
+ * Dos piezas propias: la selección de puntos de venta —que puede ser larga— y
+ * el cuadro de la clave provisional, que es lo único de la aplicación que no se
+ * puede volver a consultar y por tanto lo único que se pinta para que sea
+ * imposible pasarlo por alto.
+ */
+
+.seleccion-pdv {
+  padding: var(--espacio-3);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-sm);
+}
+
+.seleccion-pdv__acciones {
+  display: flex;
+  gap: var(--espacio-2);
+  align-items: center;
+  padding-bottom: var(--espacio-2);
+  border-bottom: 1px solid var(--borde);
+}
+
+.seleccion-pdv__lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: var(--espacio-1) var(--espacio-3);
+  max-height: 260px;
+  padding-top: var(--espacio-2);
+  overflow-y: auto;
+}
+
+.casilla {
+  display: flex;
+  gap: var(--espacio-2);
+  align-items: flex-start;
+  padding: var(--espacio-1) 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.casilla input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
+/* La lista de puntos de venta de una cuenta puede ser larga; que envuelva en
+   lugar de estirar la tabla hasta el doble de ancho. */
+.columna-alcance {
+  min-width: 200px;
+  max-width: 320px;
+}
+
+.clave-provisional {
+  padding: var(--espacio-4);
+  text-align: center;
+  background: var(--acento-suave);
+  border: 2px solid var(--acento);
+  border-radius: var(--radio);
+}
+
+.clave-provisional__destinatario {
+  margin-bottom: var(--espacio-3);
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+}
+
+.clave-provisional__valor {
+  display: block;
+  padding: var(--espacio-3) var(--espacio-4);
+  color: var(--texto);
+  font-weight: 700;
+  font-size: 1.4rem;
+  font-family: var(--fuente-mono);
+  letter-spacing: 0.06em;
+  /* Una clave generada no tiene puntos naturales de corte: se parte donde haga
+     falta antes que desbordar el diálogo o quedar recortada a medias. */
+  overflow-wrap: anywhere;
+  user-select: all;
+  background: var(--superficie);
+  border: 1px solid var(--borde-fuerte);
+  border-radius: var(--radio-sm);
+}
+
+.clave-provisional__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-3);
+  align-items: center;
+  justify-content: center;
+  margin-top: var(--espacio-3);
+}
+
 /* ── Adaptación a pantallas pequeñas ─────────────────────────────────────────
  *
  * La gerencia abre esto en un portátil de 13 pulgadas y en el teléfono. Las
@@ -1595,8 +1787,21 @@ textarea.campo__control {
     display: none;
   }
 
+
+  /* El menú de usuario deja de ser decorativo en cuanto contiene el cambio de
+     clave: se compacta, pero no se esconde. */
   .barra-lateral__usuario {
-    display: none;
+    width: 100%;
+    padding: var(--espacio-2) 0 0;
+  }
+
+  .menu-usuario__panel {
+    flex-flow: row wrap;
+    align-items: center;
+  }
+
+  .menu-usuario__panel .boton--bloque {
+    width: auto;
   }
 
   .cabecera,

@@ -165,8 +165,17 @@ POST   /usuarios/{id}/desactivar
 POST   /usuarios/{id}/restablecer-clave  -> {id, usuario, clave_provisional}
 
 GET    /usuarios/auditoria[?usuario_id=&limite=]
-       -> [{cuando, quien, sobre_quien, accion, detalle}]
+       -> [{cuando, accion, usuario, actor,
+            campo, valor_anterior, valor_nuevo, ip_origen}]
 ```
+
+En la auditoria, `usuario` es **la cuenta administrada** y `actor` **quien
+ejecuto la operacion**. Se nombran asi y no `quien`/`sobre_quien` —como decia
+una version anterior de este archivo— porque es lo que devuelve el backend; la
+divergencia la detecto el frontend al tipar la tabla y dejarla en blanco.
+`campo`, `valor_anterior` y `valor_nuevo` recomponen el cambio concreto
+(«rol: GERENTE -> ANALISTA»); van vacios en las acciones que no modifican un
+campo, como activar o restablecer la clave.
 
 ### Las seis reglas, y por que existen
 

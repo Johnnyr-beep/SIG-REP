@@ -103,18 +103,31 @@ export function Distintivo({ tono = "neutro", children }: { tono?: Tono; childre
  * con Escape y el rol ARIA correcto. Reimplementarlo a mano es la vía habitual
  * para romper la accesibilidad sin darse cuenta.
  */
+
 export function Dialogo({
   abierto,
   titulo,
   onCerrar,
   children,
   pie,
+  ancho,
+  persistente,
 }: {
   abierto: boolean;
   titulo: string;
   onCerrar: () => void;
   children: ReactNode;
   pie?: ReactNode;
+  /** Para listas largas —el alcance por punto de venta— que ahogan 520 px. */
+  ancho?: boolean;
+  /**
+   * Quita la aspa y desactiva Escape.
+   *
+   * Reservado al cuadro de la clave provisional: ese contenido no se puede
+   * volver a pedir, así que el cierre tiene que ser una decisión deliberada y
+   * no el reflejo de teclear Escape sobre lo que parece un aviso más.
+   */
+  persistente?: boolean;
 }) {
   const referencia = useRef<HTMLDialogElement>(null);
 
@@ -127,21 +140,98 @@ export function Dialogo({
   }, [abierto]);
 
   return (
-    <dialog ref={referencia} className="dialogo" onCancel={onCerrar} onClose={onCerrar}>
+    <dialog
+      ref={referencia}
+      className={`dialogo${ancho ? " dialogo--ancho" : ""}`}
+      onCancel={(evento) => {
+        if (persistente) {
+          // `preventDefault` sobre `cancel` es lo que retiene el diálogo nativo
+          // cuando el usuario pulsa Escape.
+          evento.preventDefault();
+          return;
+        }
+        onCerrar();
+      }}
+      onClose={onCerrar}
+    >
       <header className="dialogo__cabecera">
         <h2>{titulo}</h2>
-        <button
-          type="button"
-          className="boton boton--sutil boton--pequeno empujar"
-          onClick={onCerrar}
-          aria-label="Cerrar"
-        >
-          ✕
-        </button>
+        {persistente ? null : (
+          <button
+            type="button"
+            className="boton boton--sutil boton--pequeno empujar"
+            onClick={onCerrar}
+            aria-label="Cerrar"
+          >
+            ✕
+          </button>
+        )}
       </header>
       <div className="dialogo__cuerpo">{children}</div>
       {pie ? <footer className="dialogo__pie">{pie}</footer> : null}
     </dialog>
+  );
+}
+
+// ── Confirmación ─────────────────────────────────────────────────────────────
+
+/**
+ * Confirmación de una acción que deja a alguien fuera.
+ *
+ * Desactivar una cuenta y restablecer una clave tienen el mismo efecto práctico
+ * —la persona no puede entrar hasta que alguien más actúe— y las dos se
+ * disparan desde un botón pequeño en una fila de tabla, que es exactamente
+ * donde se pulsa por error. El botón de confirmar nombra la acción; nunca dice
+ * «Aceptar», porque «Aceptar» no le recuerda a nadie lo que va a pasar.
+ */
+export function Confirmacion({
+  abierto,
+  titulo,
+  mensaje,
+  textoConfirmar,
+  peligrosa,
+  trabajando,
+  error,
+  onConfirmar,
+  onCancelar,
+}: {
+  abierto: boolean;
+  titulo: string;
+  mensaje: ReactNode;
+  textoConfirmar: string;
+  /** Tiñe el botón de confirmar: baja de cuenta, restablecimiento… */
+  peligrosa?: boolean;
+  trabajando?: boolean;
+  error?: unknown;
+  onConfirmar: () => void;
+  onCancelar: () => void;
+}) {
+  return (
+    <Dialogo
+      abierto={abierto}
+      titulo={titulo}
+      onCerrar={onCancelar}
+      pie={
+        <>
+          <button type="button" className="boton" onClick={onCancelar} disabled={trabajando}>
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className={`boton ${peligrosa ? "boton--peligro" : "boton--principal"}`}
+            onClick={onConfirmar}
+            disabled={trabajando}
+          >
+            {trabajando ? "Aplicando…" : textoConfirmar}
+          </button>
+        </>
+      }
+    >
+      <div className="pila">
+        <AvisoError error={error} />
+        <div>{mensaje}</div>
+      </div>
+    </Dialogo>
   );
 }
 

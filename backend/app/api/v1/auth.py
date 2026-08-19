@@ -68,6 +68,7 @@ def perfil(usuario: UsuarioDep, sesion: SesionDep) -> PerfilUsuario:
         nombre=usuario.nombre,
         rol=Rol(usuario.rol),
         puntos_venta=codigos,
+        debe_cambiar_password=usuario.debe_cambiar_password,
     )
 
 

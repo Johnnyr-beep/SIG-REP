@@ -644,11 +644,15 @@ const RECHAZOS: RechazoIngesta[] = [
   { fila: 77_650, campo: "Valor subtotal", valor: "", motivo: "Venta vacía: la línea no aporta valor y se descarta." },
 ];
 
+
 const USUARIO: Usuario = {
   id: 1,
   usuario: "gerencia",
   nombre: "Gerencia General (datos de ejemplo)",
   rol: "GERENTE",
+  // Sin marca de clave provisional: el juego de ejemplo existe para revisar los
+  // reportes, y arrancar siempre en la pantalla de cambio de clave lo impediría.
+  debe_cambiar_password: false,
   puntos_venta: [],
 };
 

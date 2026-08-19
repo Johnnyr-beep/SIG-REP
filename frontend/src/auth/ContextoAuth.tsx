@@ -14,10 +14,21 @@ interface ValorAuth {
   autenticado: boolean;
   entrar: (usuario: string, clave: string) => Promise<void>;
   salir: () => void;
+
   /** `true` si el rol del usuario es alguno de los indicados. */
   tieneRol: (...roles: Rol[]) => boolean;
   /** Atajo: quien puede parametrizar presupuesto y calendario (§8.4). */
   puedeParametrizar: boolean;
+  /**
+   * La cuenta arrastra una clave provisional y no puede hacer nada más.
+   *
+   * Lo consume `App` para plantar la pantalla de cambio de clave en lugar del
+   * enrutador entero: mientras valga `true` no hay ruta que renderizar, así que
+   * escribir la URL a mano tampoco lleva a ninguna parte.
+   */
+  debeCambiarClave: boolean;
+  /** Único rol que administra cuentas. Los otros cuatro reciben 403. */
+  esAdmin: boolean;
 }
 
 const ContextoAuth = createContext<ValorAuth | null>(null);
@@ -67,8 +78,16 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
       autenticado: hayToken && usuario !== undefined,
       entrar,
       salir,
+
       tieneRol,
-      puedeParametrizar: usuario ? usuario.rol === "GERENTE" || usuario.rol === "ANALISTA" : false,
+      // `ADMIN` es además superusuario del negocio: el contrato lo hace entrar
+      // en reportes, presupuesto, calendario e ingesta como `GERENTE`, para que
+      // Sistemas pueda diagnosticar sin pedir prestada una cuenta de gerencia.
+      puedeParametrizar: usuario
+        ? usuario.rol === "ADMIN" || usuario.rol === "GERENTE" || usuario.rol === "ANALISTA"
+        : false,
+      debeCambiarClave: usuario?.debe_cambiar_password === true,
+      esAdmin: usuario?.rol === "ADMIN",
     }),
     [usuario, hayToken, isLoading, entrar, salir, tieneRol],
   );

@@ -4,10 +4,13 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
+
 import { MODO_EJEMPLOS } from "@/api/cliente";
 import type { Rol } from "@/api/tipos";
 import { useAuth } from "@/auth/ContextoAuth";
+import { Dialogo } from "@/componentes/comunes";
 import { useFiltros } from "@/componentes/filtros";
+import { FormularioCambioClave } from "@/paginas/CambioClave";
 import { fechaLarga, periodoLargo } from "@/utilidades/formato";
 import logo from "@/recursos/carnes-santacruz.png";
 
@@ -41,9 +44,23 @@ const MENU: GrupoNav[] = [
       // Los mismos roles que exige el contrato en `PUT /presupuesto`: si la
       // entrada se viera con un rol que el servidor rechaza, el usuario llegaría
       // a un 403 sin entender por qué.
-      { ruta: "/presupuesto", etiqueta: "Presupuesto", icono: "≡", roles: ["GERENTE", "ANALISTA"] },
+
+      {
+        ruta: "/presupuesto",
+        etiqueta: "Presupuesto",
+        icono: "≡",
+        roles: ["ADMIN", "GERENTE", "ANALISTA"],
+      },
       { ruta: "/calendario", etiqueta: "Días hábiles", icono: "◷" },
       { ruta: "/ingesta", etiqueta: "Ingesta", icono: "⇄" },
+    ],
+  },
+  {
+    titulo: "Administración",
+    items: [
+      // El contrato es explícito: los otros cuatro roles reciben 403 en todo el
+      // bloque `/usuarios`, `GERENTE` incluido. La entrada no se les muestra.
+      { ruta: "/usuarios", etiqueta: "Usuarios", icono: "◉", roles: ["ADMIN"] },
     ],
   },
 ];
@@ -54,8 +71,10 @@ const TITULOS: Record<string, string> = {
   "/venta-diaria": "Venta diaria",
   "/clientes": "Clientes y vendedores",
   "/presupuesto": "Parametrización de presupuesto",
+
   "/calendario": "Calendario de días hábiles",
   "/ingesta": "Ingesta desde SIESA",
+  "/usuarios": "Administración de usuarios",
 };
 
 type Tema = "sistema" | "claro" | "oscuro";
@@ -93,8 +112,92 @@ function SelectorTema() {
   );
 }
 
+
+/**
+ * Menú de usuario del pie de la barra lateral.
+ *
+ * Desde aquí sale el cambio de clave voluntario: el mismo formulario que impone
+ * la pantalla obligatoria, disponible siempre para quien quiera cambiarla sin
+ * que se lo exijan. Se apoya en `<details>`, como el resto de desplegables de
+ * la interfaz, para no reimplementar el foco ni el cierre con Escape.
+ */
+
+function MenuUsuario() {
+  const { usuario } = useAuth();
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const [dialogoAbierto, setDialogoAbierto] = useState(false);
+  const [cambiada, setCambiada] = useState(false);
+
+  if (!usuario) return null;
+
+  function cerrarDialogo() {
+    setDialogoAbierto(false);
+    setCambiada(false);
+  }
+
+  return (
+    <div className="barra-lateral__usuario">
+      <details
+        className="menu-usuario"
+        open={menuAbierto}
+        onToggle={(evento) => setMenuAbierto(evento.currentTarget.open)}
+      >
+        <summary className="menu-usuario__disparador">
+          <span className="menu-usuario__identidad">
+            <span className="barra-lateral__nombre">{usuario.nombre}</span>
+            <span className="tenue">{usuario.rol.replaceAll("_", " ").toLowerCase()}</span>
+          </span>
+          <span className="menu-usuario__signo" aria-hidden="true">
+            ▾
+          </span>
+        </summary>
+
+        <div className="menu-usuario__panel">
+          <p className="tenue">Sesión de «{usuario.usuario}»</p>
+          <button
+            type="button"
+            className="boton boton--pequeno boton--bloque"
+            onClick={() => {
+              setMenuAbierto(false);
+              setCambiada(false);
+              setDialogoAbierto(true);
+            }}
+          >
+
+            Cambiar mi clave
+          </button>
+        </div>
+      </details>
+
+      <Dialogo
+        abierto={dialogoAbierto}
+        titulo="Cambiar mi clave"
+        onCerrar={cerrarDialogo}
+        pie={
+          cambiada ? (
+            <button type="button" className="boton boton--principal" onClick={cerrarDialogo}>
+              Listo
+            </button>
+          ) : undefined
+        }
+      >
+        {cambiada ? (
+          <div className="aviso aviso--exito" role="status">
+            <div>
+              <strong>Clave cambiada.</strong>
+              <p>La próxima vez que entre use la nueva. No hace falta volver a iniciar sesión.</p>
+            </div>
+          </div>
+        ) : (
+          <FormularioCambioClave onListo={() => setCambiada(true)} />
+        )}
+      </Dialogo>
+    </div>
+  );
+}
+
 function BarraLateral() {
-  const { tieneRol, usuario } = useAuth();
+  const { tieneRol } = useAuth();
 
   return (
     <aside className="barra-lateral">
@@ -133,12 +236,8 @@ function BarraLateral() {
         })}
       </nav>
 
-      {usuario ? (
-        <div className="barra-lateral__usuario">
-          <div className="barra-lateral__nombre">{usuario.nombre}</div>
-          <div className="tenue">{usuario.rol.replaceAll("_", " ").toLowerCase()}</div>
-        </div>
-      ) : null}
+
+      <MenuUsuario />
     </aside>
   );
 }

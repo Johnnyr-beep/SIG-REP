@@ -46,6 +46,14 @@ class PerfilUsuario(EsquemaBase):
     rol: Rol
     puntos_venta: list[str] = Field(default_factory=list)
 
+    #: La cuenta arrastra una clave provisional y debe cambiarla.
+    #:
+    #: Va en el perfil porque **es la pantalla la que hace cumplir la regla**:
+    #: sin este dato, el frontend no puede saber a quién obligar y la marca del
+    #: backend no significa nada de cara al usuario. Es el caso de toda cuenta
+    #: recién creada y de toda clave restablecida por un ADMIN.
+    debe_cambiar_password: bool = False
+
 
 class CambioClave(BaseModel):
     clave_actual: str = Field(min_length=1, max_length=200)
