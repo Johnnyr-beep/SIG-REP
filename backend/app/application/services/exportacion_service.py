@@ -86,14 +86,42 @@ def exportar_cumplimiento(datos: RespuestaCumplimiento) -> bytes:
     return _cerrar(libro, hoja, columnas=3 + len(_ENCABEZADOS_INDICADORES))
 
 
+def _periodos_de(datos: RespuestaVentaDiaria) -> list[str]:
+    """Los períodos que toca el rango, en orden. Uno solo en el modo de siempre."""
+    return list(datos.periodos) if datos.periodos else [datos.periodo]
+
+
+def _referencia(datos: RespuestaVentaDiaria, codigo: str, periodo: str) -> Decimal | None:
+    """Presupuesto diario de un punto en un período concreto."""
+    del_periodo = datos.presupuesto_diario_por_periodo.get(periodo)
+    if del_periodo is not None:
+        return del_periodo.get(codigo)
+    return datos.presupuesto_diario_por_pdv.get(codigo)
+
+
 def exportar_venta_diaria(datos: RespuestaVentaDiaria) -> bytes:
     libro, hoja = _libro("Venta diaria", datos.periodo, str(datos.fecha_corte), datos.medida.value)
+
+    # El presupuesto es mensual y el rango puede no serlo. Con un solo período va
+    # una columna de referencia, como siempre; cuando el rango cruza de mes van
+    # **todas**, una por período, porque un día de julio no se mide contra el
+    # presupuesto de agosto. Escribir una sola sería publicar la referencia
+    # equivocada para la mitad de las columnas, y promediarlas seria inventar un
+    # número que no existe en ningún sitio. Es el mismo criterio que aplica la
+    # pantalla; si el archivo exportado dijera otra cosa, quien lo abra tendria
+    # dos verdades y ninguna forma de saber cual vale.
+    periodos = _periodos_de(datos)
+    encabezado_ppto = (
+        ["Ppto. diario"]
+        if len(periodos) <= 1
+        else [f"Ppto. diario {periodo}" for periodo in periodos]
+    )
 
     hoja.append(
         [
             "Punto de venta",
             "Nombre",
-            "Ppto. diario",
+            *encabezado_ppto,
             *[str(f) for f in datos.fechas],
             "Total",
         ]
@@ -105,12 +133,33 @@ def exportar_venta_diaria(datos: RespuestaVentaDiaria) -> bytes:
             [
                 fila.punto_venta,
                 fila.nombre,
-                datos.presupuesto_diario_por_pdv.get(fila.punto_venta),
+                *[_referencia(datos, fila.punto_venta, periodo) for periodo in periodos],
                 *fila.valores,
                 fila.total,
             ]
         )
-    return _cerrar(libro, hoja, columnas=4 + len(datos.fechas))
+
+    # La fila de totales, la misma que publica la respuesta: se exporta en lugar
+    # de recalcularse aquí para que el archivo no pueda discrepar de la pantalla.
+    totales = datos.totales
+    ppto_totales = (
+        [totales.presupuesto_diario]
+        if len(periodos) <= 1
+        else [totales.presupuesto_diario_por_periodo.get(periodo) for periodo in periodos]
+    )
+    hoja.append(
+        [
+            "",
+            f"TOTAL · {len(datos.filas)} punto(s)",
+            *ppto_totales,
+            *totales.valores,
+            totales.total,
+        ]
+    )
+    for celda in hoja[hoja.max_row]:
+        celda.font = Font(bold=True)
+
+    return _cerrar(libro, hoja, columnas=3 + len(periodos) + len(datos.fechas))
 
 
 def exportar_clientes(datos: RespuestaClientes) -> bytes:
