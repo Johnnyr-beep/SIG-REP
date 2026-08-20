@@ -166,17 +166,81 @@ class FilaVentaDiaria(BaseModel):
     total: DecimalStr
 
 
+class TotalesVentaDiaria(BaseModel):
+    """La fila de totales del reporte de venta diaria.
+
+    Va en un **campo propio** y no como una fila más de `filas`, y es
+    deliberado: mezclada, la pantalla tendría que reconocerla por su nombre
+    —`punto_venta == "TOTAL"`— y esa clase de convención se rompe el día que
+    alguien bautice así un punto de venta. Aparte, la pantalla la fija al pie
+    de la tabla sin tener que preguntarle nada a nadie.
+
+    Respeta el filtro: si se piden tres puntos de venta, el total es el de esos
+    tres. Y cuadra con la suma de `filas` por construcción —se acumula sobre
+    los mismos valores que se publican—, no por coincidencia.
+    """
+
+    #: Suma por día de las filas incluidas, alineada con `fechas`. `null` en un
+    #: día sin venta registrada en **ningún** punto, que no es lo mismo que un
+    #: día que sumó cero.
+    valores: list[DecimalStr | None]
+    #: Suma de los totales de las filas: el total del período o del rango.
+    total: DecimalStr
+    #: Suma de las líneas de referencia de las filas, `Σ (P_i / H_i)`, en el
+    #: período de la petición. `null` si ningún punto tiene presupuesto
+    #: parametrizado, o si alguno lo tiene y su zona no tiene días hábiles: ahí
+    #: el término es incalculable y sumar solo el resto publicaría una
+    #: referencia más baja que la real con pinta de completa (§7).
+    presupuesto_diario: DecimalStr | None = None
+    #: El mismo total, uno por período. Las mismas claves que
+    #: `RespuestaVentaDiaria.presupuesto_diario_por_periodo`.
+    presupuesto_diario_por_periodo: dict[str, DecimalStr | None] = Field(default_factory=dict)
+
+
 class RespuestaVentaDiaria(BaseModel):
-    """`GET /reportes/venta-diaria` — el equivalente vivo de `Hoja1`."""
+    """`GET /reportes/venta-diaria` — el equivalente vivo de `Hoja1`.
+
+    Admite dos modos, y el primero es el de siempre:
+
+    - **Por período.** Sin `desde`, las columnas van del día 1 a la fecha de
+      corte del `periodo` pedido. `desde`, `hasta` y `periodos` describen ese
+      mismo rango, de modo que la respuesta es autodescriptiva en los dos
+      modos y la pantalla no necesita saber cuál se usó.
+    - **Por rango.** Con `desde`, las columnas van de `desde` a `hasta`, aunque
+      el rango cruce de mes.
+
+    `periodo` sigue siendo el **período de referencia** en los dos modos: de él
+    salen `parametros_calculo` y `presupuesto_diario_por_pdv`. Cuando el rango
+    cruza meses, la referencia de cada día sale de
+    `presupuesto_diario_por_periodo`, porque el presupuesto es mensual (§3.3) y
+    un día de julio no se mide contra el presupuesto de agosto.
+    """
 
     periodo: str
+    #: Último día publicado. Coincide siempre con `hasta`.
     fecha_corte: date
+    #: Primer día publicado. Sin rango, el día 1 del período.
+    desde: date
+    #: Último día publicado. Sin rango, la fecha de corte del período.
+    hasta: date
     medida: Medida
+    #: Períodos `YYYY-MM` que el rango toca, en orden, más el de la petición.
+    #: Son las claves de `presupuesto_diario_por_periodo`.
+    periodos: list[str] = Field(default_factory=list)
     fechas: list[date]
     #: Presupuesto diario derivado por punto de venta, la línea de referencia
-    #: del gráfico: `presupuesto_mensual / dias_habiles(zona)`.
+    #: del gráfico: `presupuesto_mensual / dias_habiles(zona)`. Es el del
+    #: **período de la petición**; equivale a
+    #: `presupuesto_diario_por_periodo[periodo]`.
     presupuesto_diario_por_pdv: dict[str, DecimalStr | None]
+    #: La misma referencia, un mapa por período:
+    #: `{"2026-07": {"402": "..."}, "2026-08": {"402": "..."}}`. Con el rango
+    #: dentro de un solo mes tiene una única entrada.
+    presupuesto_diario_por_periodo: dict[str, dict[str, DecimalStr | None]] = Field(
+        default_factory=dict
+    )
     filas: list[FilaVentaDiaria]
+    totales: TotalesVentaDiaria
     parametros_calculo: ParametrosCalculo
 
 

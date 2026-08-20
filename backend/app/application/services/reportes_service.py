@@ -39,6 +39,7 @@ from app.application.services.periodos import (
     periodo_anterior,
 )
 from app.core.config import obtener_settings
+from app.core.errors import ErrorValidacion
 from app.domain.calendario import presupuesto_diario
 from app.domain.enums import AgrupacionClientes, Medida
 from app.domain.indicadores import (
@@ -70,9 +71,50 @@ from app.schemas.reportes import (
     RespuestaCumplimiento,
     RespuestaTablero,
     RespuestaVentaDiaria,
+    TotalesVentaDiaria,
 )
 
 CERO = Decimal("0")
+
+#: Tope de días que admite `GET /reportes/venta-diaria` cuando se pide por
+#: rango (`desde`/`hasta`). **Un trimestre.**
+#:
+#: El reporte pinta un día por columna: 31 columnas ya llenan una pantalla y
+#: un año son 366. El tope se puso donde deja de tener sentido *dibujarlo*, no
+#: donde deja de poder calcularse: 92 días cubre el mes en curso más los dos
+#: anteriores —el corte que el negocio pide de verdad, del estilo «del 25 de
+#: julio al 5 de agosto»— y sigue siendo una tabla que alguien puede leer.
+#: Para horizontes mayores están el tablero y el cumplimiento, que agregan por
+#: período en lugar de por día.
+#:
+#: Es una constante y no un ajuste de entorno a propósito: subirla no es
+#: configurar el servidor, es cambiar lo que la pantalla es capaz de mostrar, y
+#: eso se decide con la pantalla delante.
+MAX_DIAS_RANGO = 92
+
+
+class ErrorRangoInvertido(ErrorValidacion):
+    """`desde` es posterior a `hasta`.
+
+    Tiene código propio —y no el genérico `validacion`— por la misma razón que
+    `ErrorClavePendiente` en `core/deps.py`: el frontend necesita distinguir
+    «se equivocó al escribir el rango» de «el período no existe». Devolver una
+    tabla vacía sería peor que cualquiera de los dos: parecería que no hubo
+    ventas.
+    """
+
+    codigo = "rango_invertido"
+
+
+class ErrorRangoExcesivo(ErrorValidacion):
+    """El rango pedido supera `MAX_DIAS_RANGO` días.
+
+    El mensaje dice **cuál es el tope y cuántos días se pidieron**: un error
+    que no dice el límite obliga a adivinarlo a base de reintentos.
+    """
+
+    codigo = "rango_excesivo"
+
 
 #: Clave de agregación del detalle de venta.
 ClaveCelda = tuple[int, int]
@@ -187,11 +229,51 @@ class FiltrosReporte:
     periodo: str
     hasta: date | None = None
     grupo: str | None = None
-    punto_venta: str | None = None
+    #: Códigos C.O. pedidos. `None` o vacío = todos los del alcance.
+    #:
+    #: Es una **lista** porque la barra de filtros permite marcar varios puntos
+    #: a la vez (`?punto_venta=402,405,603`) y el mismo control sirve a las
+    #: cuatro pantallas. Un solo código y la ausencia se comportan exactamente
+    #: como antes: la lista de uno produce el mismo `IN (...)` de un elemento.
+    #:
+    #: **Estrecha, nunca ensancha.** Se aplica en `_consulta_alcance` junto al
+    #: alcance del usuario, y las dos condiciones se cruzan con `AND`: pedir un
+    #: punto fuera del alcance no lo trae, lo deja fuera de los dos filtros.
+    puntos_venta: tuple[str, ...] | None = None
     categoria: str | None = None
     medida: Medida = Medida.VALOR
     #: Puntos de venta a los que el usuario tiene alcance. `None` = todos.
     alcance: list[int] | None = None
+    #: Primer día del rango de `GET /reportes/venta-diaria`. `None` mantiene el
+    #: comportamiento por período: del día 1 a la fecha de corte.
+    desde: date | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RangoDiario:
+    """El rango de días que publica el reporte de venta diaria, ya validado.
+
+    `periodos` lleva los códigos `YYYY-MM` que el rango toca, en orden. Es la
+    pieza que resuelve el presupuesto cuando el rango cruza de mes: el
+    presupuesto es **mensual** (§3.3) y el diario de cada día sale del período
+    al que ese día pertenece, no de uno solo.
+    """
+
+    desde: date
+    hasta: date
+    periodos: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class _ReferenciaDiaria:
+    """Presupuesto diario de un período: por punto de venta y su total.
+
+    Precisión completa; el redondeo es de publicación y se aplica al armar la
+    respuesta.
+    """
+
+    por_pdv: dict[str, Decimal | None]
+    total: Decimal | None
 
 
 @dataclass
@@ -291,32 +373,37 @@ class ReportesService:
     # ── Venta diaria ──────────────────────────────────────────────────────────
 
     def venta_diaria(self, filtros: FiltrosReporte) -> RespuestaVentaDiaria:
-        """Detalle día por día del mes, con el presupuesto diario derivado."""
+        """Detalle día por día, con el presupuesto diario derivado y su total.
+
+        Tres cosas que conviene tener claras al leerlo:
+
+        - **El rango se valida antes de tocar la base.** Un rango invertido o
+          desmedido se rechaza con su motivo; devolver una tabla vacía haría
+          pasar «se equivocó al escribir las fechas» por «no hubo ventas».
+        - **El presupuesto es mensual y el rango puede no serlo.** Por eso la
+          referencia diaria se calcula **por período** —`referencias`— y no una
+          sola vez: un rango del 25 de julio al 5 de agosto tiene dos líneas de
+          referencia distintas y las dos son correctas (§3.3).
+        - **La fila de totales viaja en un campo propio**, `totales`, y no
+          como una fila más de `filas`. Mezclada, la pantalla tendría que
+          distinguirla por su nombre, y el día que alguien llame «TOTAL» a un
+          punto de venta el reporte se rompería en silencio.
+        """
+        rango_pedido = _rango_pedido(filtros)
         ctx = self._construir_contexto(filtros, cargar_anio_anterior=False)
-
-        fechas = _rango_fechas(ctx.periodo.primer_dia, ctx.fecha_corte)
-        columna = (
-            VentaLinea.valor_subtotal if ctx.medida is Medida.VALOR else VentaLinea.cantidad_inv
+        rango = rango_pedido or RangoDiario(
+            desde=ctx.periodo.primer_dia,
+            hasta=ctx.fecha_corte,
+            periodos=(ctx.periodo.codigo,),
         )
-        consulta = (
-            select(VentaLinea.punto_venta_id, VentaLinea.fecha, func.sum(columna))
-            .where(
-                VentaLinea.periodo_id == ctx.periodo.id,
-                VentaLinea.fecha <= ctx.fecha_corte,
-            )
-            .group_by(VentaLinea.punto_venta_id, VentaLinea.fecha)
-        )
-        consulta = self._aplicar_filtro_puntos(consulta, ctx)
-        if ctx.categoria_id is not None:
-            consulta = consulta.where(VentaLinea.categoria_id == ctx.categoria_id)
 
-        por_dia: dict[int, dict[date, Decimal]] = defaultdict(dict)
-        for punto_id, dia, total in self._sesion.execute(consulta):
-            por_dia[punto_id][dia] = Decimal(total or 0)
+        fechas = _rango_fechas(rango.desde, rango.hasta)
+        por_dia = self._venta_por_dia(ctx, rango)
 
         decimales = ctx.medida.decimales
         filas: list[FilaVentaDiaria] = []
-        diario: dict[str, Decimal | None] = {}
+        suma_dia: list[Decimal | None] = [None] * len(fechas)
+        suma_total = CERO
         for punto in sorted(ctx.puntos.values(), key=lambda p: p.codigo_co):
             valores = [por_dia.get(punto.id, {}).get(dia) for dia in fechas]
             total = sum((v for v in valores if v is not None), start=CERO)
@@ -328,23 +415,141 @@ class ReportesService:
                     total=redondear_no_nulo(total, decimales),
                 )
             )
-            diario[punto.codigo_co] = redondear(
-                presupuesto_diario(
-                    self._presupuesto_punto(ctx, punto.id).medida(ctx.medida),
-                    self._dias_punto(ctx, punto.id)[0],
-                ),
-                decimales,
-            )
+            # La fila de totales se acumula aquí, sobre los mismos valores que
+            # se acaban de publicar: así cuadra con la suma de sus filas por
+            # construcción y no por coincidencia. Un día sin venta en **ningún**
+            # punto sigue siendo `None` —«no hay dato»— y no cero.
+            for indice, valor in enumerate(valores):
+                if valor is not None:
+                    suma_dia[indice] = (suma_dia[indice] or CERO) + valor
+            suma_total += total
+
+        referencias = self._referencias_diarias(ctx, rango)
+        del_periodo = referencias[ctx.periodo.codigo]
 
         return RespuestaVentaDiaria(
             periodo=ctx.periodo.codigo,
-            fecha_corte=ctx.fecha_corte,
+            fecha_corte=rango.hasta,
+            desde=rango.desde,
+            hasta=rango.hasta,
             medida=ctx.medida,
+            periodos=list(referencias),
             fechas=fechas,
-            presupuesto_diario_por_pdv=diario,
+            presupuesto_diario_por_pdv=_redondear_mapa(del_periodo.por_pdv, decimales),
+            presupuesto_diario_por_periodo={
+                codigo: _redondear_mapa(referencia.por_pdv, decimales)
+                for codigo, referencia in referencias.items()
+            },
             filas=filas,
+            totales=TotalesVentaDiaria(
+                valores=[redondear(v, decimales) for v in suma_dia],
+                total=redondear_no_nulo(suma_total, decimales),
+                presupuesto_diario=redondear(del_periodo.total, decimales),
+                presupuesto_diario_por_periodo={
+                    codigo: redondear(referencia.total, decimales)
+                    for codigo, referencia in referencias.items()
+                },
+            ),
             parametros_calculo=self._parametros(ctx, self._fila_agregada(ctx, list(ctx.puntos))),
         )
+
+    def _venta_por_dia(self, ctx: _Contexto, rango: RangoDiario) -> dict[int, dict[date, Decimal]]:
+        """`GROUP BY punto_venta, fecha` sobre el rango pedido.
+
+        La cubre `ix_venta_fecha_pdv`, que existe justamente para este reporte.
+        Se filtra además por `periodo_id` —que la ingesta deriva de la fecha—
+        para que el motor descarte de entrada los meses que el rango no toca.
+        Un período que no está abierto en el sistema no aporta ninguna línea,
+        que es lo correcto: sin período no puede haber venta ingerida.
+        """
+        columna = (
+            VentaLinea.valor_subtotal if ctx.medida is Medida.VALOR else VentaLinea.cantidad_inv
+        )
+        ids_periodo = [
+            periodo.id
+            for periodo in (buscar_periodo(self._sesion, codigo) for codigo in rango.periodos)
+            if periodo is not None
+        ]
+        consulta = (
+            select(VentaLinea.punto_venta_id, VentaLinea.fecha, func.sum(columna))
+            .where(
+                VentaLinea.periodo_id.in_(ids_periodo or [-1]),
+                VentaLinea.fecha >= rango.desde,
+                VentaLinea.fecha <= rango.hasta,
+            )
+            .group_by(VentaLinea.punto_venta_id, VentaLinea.fecha)
+        )
+        consulta = self._aplicar_filtro_puntos(consulta, ctx)
+        if ctx.categoria_id is not None:
+            consulta = consulta.where(VentaLinea.categoria_id == ctx.categoria_id)
+
+        por_dia: dict[int, dict[date, Decimal]] = defaultdict(dict)
+        for punto_id, dia, total in self._sesion.execute(consulta):
+            por_dia[punto_id][dia] = Decimal(total or 0)
+        return por_dia
+
+    def _referencias_diarias(
+        self, ctx: _Contexto, rango: RangoDiario
+    ) -> dict[str, _ReferenciaDiaria]:
+        """Presupuesto diario por período, en el orden en que el rango los toca.
+
+        Siempre incluye el período de la petición, toque el rango o no, porque
+        `presupuesto_diario_por_pdv` es exactamente su entrada y el contrato
+        promete esa equivalencia. Con el uso normal —el rango dentro del mes que
+        se consulta— el diccionario tiene una sola clave y el reporte se
+        comporta como el de siempre.
+        """
+        codigos = list(dict.fromkeys([*rango.periodos, ctx.periodo.codigo]))
+        return {codigo: self._referencia_diaria(ctx, rango, codigo) for codigo in codigos}
+
+    def _referencia_diaria(
+        self, ctx: _Contexto, rango: RangoDiario, codigo: str
+    ) -> _ReferenciaDiaria:
+        """`presupuesto_mensual / H` de cada punto, en el período indicado.
+
+        El total **no** es `Σ P_i / Σ H_i` ni el presupuesto agregado dividido
+        entre los días ponderados: es `Σ (P_i / H_i)`, la suma de las líneas de
+        referencia de las filas que se publican. Cada punto tiene el calendario
+        de su zona y la venta diaria esperada de la compañía es la suma de las
+        de sus puntos; cualquier otra fórmula deja una fila de totales que no
+        cuadra con las filas que tiene encima.
+
+        Reglas del total, y por qué:
+
+        - Un punto **sin presupuesto parametrizado** no suma ni estorba: no
+          tiene línea de referencia y no la necesita.
+        - Un punto **con presupuesto y sin días hábiles** deja el total en
+          `None`. Su término es incalculable y sumar solo el resto publicaría
+          una referencia más baja que la real con pinta de completa (§7).
+        """
+        if codigo == ctx.periodo.codigo:
+            presupuesto, dias = ctx.presupuesto, ctx.dias
+        else:
+            periodo = buscar_periodo(self._sesion, codigo)
+            if periodo is None:
+                return _ReferenciaDiaria({p.codigo_co: None for p in ctx.puntos.values()}, None)
+            presupuesto = self._agregar_presupuesto(periodo, ctx, ctx.categoria_id)
+            dias = CalendarioService(self._sesion).dias_por_zona(
+                periodo, _corte_dentro_del_periodo(periodo, rango.hasta)
+            )
+
+        por_pdv: dict[str, Decimal | None] = {}
+        total = CERO
+        alguno_presupuestado = False
+        completo = True
+        for punto in sorted(ctx.puntos.values(), key=lambda p: p.codigo_co):
+            presu = _presupuesto_de(presupuesto, punto.id)
+            valor = presupuesto_diario(presu.medida(ctx.medida), _habiles_de(punto, dias))
+            por_pdv[punto.codigo_co] = valor
+            if not presu.definido:
+                continue
+            alguno_presupuestado = True
+            if valor is None:
+                completo = False
+            else:
+                total += valor
+
+        return _ReferenciaDiaria(por_pdv, total if alguno_presupuestado and completo else None)
 
     # ── Clientes, vendedores y canales ────────────────────────────────────────
 
@@ -462,10 +667,18 @@ class ReportesService:
     def _consulta_alcance(self, filtros: FiltrosReporte) -> Select[tuple[PuntoVenta]]:
         """Los puntos de venta que esta petición puede mirar, presupuestados o no.
 
-        Es el perímetro del reporte: el filtro de grupo, el de punto de venta y
+        Es el perímetro del reporte: el filtro de grupo, el de puntos de venta y
         —sobre todo— el **alcance del usuario**, que es una regla de seguridad y
         no una preferencia de pantalla. Todo lo que consulte venta parte de
         aquí; ninguna consulta se salta este perímetro.
+
+        El filtro de puntos admite **varios códigos** y se resuelve con un `IN`.
+        Que sea uno o veinte da igual para lo que de verdad importa: se cruza
+        con `AND` contra el alcance, así que **estrecha y jamás ensancha**. Un
+        JEFE_PDV que pida los tres puntos de un compañero recibe la
+        intersección de las dos condiciones, que es vacía; y si pide dos suyos y
+        uno ajeno, recibe los dos suyos. La lista no es una forma de pedir
+        permiso: es una forma de pedir menos.
 
         No filtra por `activo`. Desactivar un punto de venta es una operación de
         catálogo —se cerró el local—, no una instrucción de borrar del histórico
@@ -478,8 +691,9 @@ class ReportesService:
             consulta = consulta.join(Grupo, PuntoVenta.grupo_id == Grupo.id).where(
                 Grupo.codigo == filtros.grupo
             )
-        if filtros.punto_venta:
-            consulta = consulta.where(PuntoVenta.codigo_co == filtros.punto_venta.strip())
+        codigos = [codigo.strip() for codigo in filtros.puntos_venta or () if codigo.strip()]
+        if codigos:
+            consulta = consulta.where(PuntoVenta.codigo_co.in_(codigos))
         if filtros.alcance is not None:
             consulta = consulta.where(PuntoVenta.id.in_(filtros.alcance or [-1]))
         return consulta
@@ -811,11 +1025,7 @@ class ReportesService:
         return sum(por_zona.values(), start=CERO) / Decimal(len(por_zona))
 
     def _presupuesto_punto(self, ctx: _Contexto, punto_id: int) -> Presupuestado:
-        total = Presupuestado()
-        for (pid, _cat), valores in ctx.presupuesto.items():
-            if pid == punto_id:
-                total.sumar(valores)
-        return total
+        return _presupuesto_de(ctx.presupuesto, punto_id)
 
     # ── Auxiliares ────────────────────────────────────────────────────────────
 
@@ -872,6 +1082,95 @@ def _rango_fechas(desde: date, hasta: date) -> list[date]:
     if hasta < desde:
         return []
     return [desde + timedelta(days=n) for n in range((hasta - desde).days + 1)]
+
+
+def _rango_pedido(filtros: FiltrosReporte) -> RangoDiario | None:
+    """Valida `desde`/`hasta` y los convierte en un rango, o `None`.
+
+    `None` significa «no se pidió rango»: manda `periodo` y el reporte se
+    comporta exactamente como siempre, del día 1 a la fecha de corte. Es la
+    compatibilidad hacia atrás, y es la rama que no toca nada.
+
+    Con `desde`, `hasta` deja de ser la fecha de corte del mes y pasa a ser el
+    último día del rango: se toma tal cual, sin saturarlo contra el período,
+    porque saturarlo cortaría en seco el rango que cruza de mes —justo el caso
+    que esto viene a resolver—. Sin `hasta`, se cierra en hoy.
+
+    Las dos guardas se hacen **antes** de consultar nada:
+
+    - **Rango invertido**: se rechaza con su motivo. Devolver la tabla vacía
+      que sale de forma natural sería publicar «no hubo ventas» donde lo que
+      hubo fue un error de captura.
+    - **Rango excesivo**: por encima de `MAX_DIAS_RANGO` días. El mensaje
+      nombra el tope y los días pedidos.
+    """
+    if filtros.desde is None:
+        return None
+
+    desde = filtros.desde
+    hasta = filtros.hasta or date.today()
+    if hasta < desde:
+        raise ErrorRangoInvertido(
+            f"El rango está invertido: «desde» ({desde}) es posterior a «hasta» ({hasta}).",
+            detalles={"desde": str(desde), "hasta": str(hasta)},
+        )
+
+    dias = (hasta - desde).days + 1
+    if dias > MAX_DIAS_RANGO:
+        raise ErrorRangoExcesivo(
+            f"El rango pedido son {dias} días y el máximo del reporte de venta diaria "
+            f"es {MAX_DIAS_RANGO}. Para horizontes mayores use el tablero o el "
+            f"cumplimiento, que agregan por período.",
+            detalles={"dias_solicitados": dias, "maximo_dias": MAX_DIAS_RANGO},
+        )
+
+    return RangoDiario(desde=desde, hasta=hasta, periodos=_periodos_del_rango(desde, hasta))
+
+
+def _periodos_del_rango(desde: date, hasta: date) -> tuple[str, ...]:
+    """Códigos `YYYY-MM` que el rango toca, del primero al último.
+
+    Del 25 de julio al 5 de agosto salen `("2026-07", "2026-08")`. De ahí
+    cuelga la resolución del presupuesto: es mensual, y cada día se mide contra
+    el de su propio mes (§3.3).
+    """
+    codigos: list[str] = []
+    anio, mes = desde.year, desde.month
+    while (anio, mes) <= (hasta.year, hasta.month):
+        codigos.append(f"{anio:04d}-{mes:02d}")
+        anio, mes = (anio + 1, 1) if mes == 12 else (anio, mes + 1)
+    return tuple(codigos)
+
+
+def _corte_dentro_del_periodo(periodo: Periodo, hasta: date) -> date:
+    """`hasta` recortado al mes del período, para leer su calendario."""
+    from app.domain.calendario import dias_del_mes
+
+    ultimo = date(periodo.anio, periodo.mes, dias_del_mes(periodo.anio, periodo.mes))
+    return min(max(hasta, periodo.primer_dia), ultimo)
+
+
+def _presupuesto_de(presupuesto: dict[ClaveCelda, Presupuestado], punto_id: int) -> Presupuestado:
+    """Presupuesto de un punto de venta: la suma de sus categorías (§3.3)."""
+    total = Presupuestado()
+    for (pid, _cat), valores in presupuesto.items():
+        if pid == punto_id:
+            total.sumar(valores)
+    return total
+
+
+def _habiles_de(punto: PuntoVenta, dias: dict[int, DiasZona]) -> Decimal | None:
+    """`H` de la zona del punto, o `None` si esa zona no tiene calendario."""
+    if punto.zona_id is None:
+        return None
+    datos = dias.get(punto.zona_id)
+    return datos.dias_habiles if datos is not None else None
+
+
+def _redondear_mapa(
+    valores: dict[str, Decimal | None], decimales: int
+) -> dict[str, Decimal | None]:
+    return {clave: redondear(valor, decimales) for clave, valor in valores.items()}
 
 
 def _corte_equivalente(periodo: Periodo, corte: date) -> date:

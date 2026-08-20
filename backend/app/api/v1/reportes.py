@@ -33,6 +33,50 @@ TIPO_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 PeriodoQuery = Query(pattern=r"^\d{4}-(0[1-9]|1[0-2])$", examples=["2026-08"])
 
+#: `punto_venta` admite **varios códigos separados por coma**. Es el mismo
+#: control de la misma barra de filtros en las cuatro pantallas, así que se
+#: declara una vez y se reutiliza: que un reporte lo entendiera distinto que
+#: otro sería exactamente la incoherencia que este parámetro viene a evitar.
+PuntoVentaQuery = Query(
+    default=None,
+    description=(
+        "Código C.O., o **varios separados por coma** (`402,405,603`). "
+        "Estrecha el reporte; nunca amplía el alcance de quien consulta."
+    ),
+    examples=["405", "402,405,603"],
+)
+
+DesdeQuery = Query(
+    default=None,
+    description=(
+        "Solo en venta diaria: primer día del rango. Sin él manda `periodo` y "
+        "el reporte va del día 1 a la fecha de corte, como siempre."
+    ),
+    examples=["2026-07-25"],
+)
+
+
+def _puntos_venta(valor: str | None) -> tuple[str, ...] | None:
+    """`"402, 405,,603"` → `("402", "405", "603")`.
+
+    Tres decisiones pequeñas y deliberadas:
+
+    - **Los vacíos se descartan.** `?punto_venta=` y `?punto_venta=,,` se
+      comportan como no enviar el filtro, que es lo que hacían antes de admitir
+      la lista: una barra de filtros que se vacía no puede acabar pidiendo el
+      punto de venta de código «».
+    - **Se quitan los repetidos** conservando el orden. Pedir `402,402` no es
+      pedir MALAMBO dos veces.
+    - **No se valida que los códigos existan.** Un código inventado
+      sencillamente no casa con ninguna fila, igual que hoy. Fallar aquí
+      convertiría el filtro en un validador de catálogo y le diría, a quien no
+      tiene alcance sobre un punto, si ese punto existe o no.
+    """
+    if not valor:
+        return None
+    codigos = list(dict.fromkeys(parte.strip() for parte in valor.split(",") if parte.strip()))
+    return tuple(codigos) or None
+
 
 def _filtros(
     usuario: LecturaDep,
@@ -42,15 +86,17 @@ def _filtros(
     punto_venta: str | None,
     categoria: str | None,
     medida: Medida,
+    desde: date | None = None,
 ) -> FiltrosReporte:
     return FiltrosReporte(
         periodo=periodo,
         hasta=hasta,
         grupo=grupo,
-        punto_venta=punto_venta,
+        puntos_venta=_puntos_venta(punto_venta),
         categoria=categoria,
         medida=medida,
         alcance=alcance_puntos_venta(usuario),
+        desde=desde,
     )
 
 
@@ -61,7 +107,7 @@ def tablero(
     periodo: str = PeriodoQuery,
     hasta: date | None = None,
     grupo: str | None = None,
-    punto_venta: str | None = None,
+    punto_venta: str | None = PuntoVentaQuery,
     categoria: str | None = None,
     medida: Medida = Medida.VALOR,
 ) -> RespuestaTablero:
@@ -80,7 +126,7 @@ def cumplimiento(
     periodo: str = PeriodoQuery,
     hasta: date | None = None,
     grupo: str | None = None,
-    punto_venta: str | None = None,
+    punto_venta: str | None = PuntoVentaQuery,
     categoria: str | None = None,
     medida: Medida = Medida.VALOR,
 ) -> RespuestaCumplimiento:
@@ -96,14 +142,22 @@ def venta_diaria(
     sesion: SesionDep,
     periodo: str = PeriodoQuery,
     hasta: date | None = None,
+    desde: date | None = DesdeQuery,
     grupo: str | None = None,
-    punto_venta: str | None = None,
+    punto_venta: str | None = PuntoVentaQuery,
     categoria: str | None = None,
     medida: Medida = Medida.VALOR,
 ) -> RespuestaVentaDiaria:
-    """RBAC: cualquier rol autenticado; JEFE_PDV solo ve sus puntos."""
+    """RBAC: cualquier rol autenticado; JEFE_PDV solo ve sus puntos.
+
+    Con `desde`, `hasta` deja de ser la fecha de corte del mes y pasa a ser el
+    último día del rango; sin él, todo se comporta como siempre. El rango se
+    valida en el servicio —invertido o desmedido se rechazan con su motivo—
+    porque es una regla del reporte y no de la frontera HTTP: la misma regla
+    tiene que valer cuando el rango llega por la exportación.
+    """
     return ReportesService(sesion).venta_diaria(
-        _filtros(usuario, periodo, hasta, grupo, punto_venta, categoria, medida)
+        _filtros(usuario, periodo, hasta, grupo, punto_venta, categoria, medida, desde)
     )
 
 
@@ -114,7 +168,7 @@ def clientes(
     periodo: str = PeriodoQuery,
     hasta: date | None = None,
     grupo: str | None = None,
-    punto_venta: str | None = None,
+    punto_venta: str | None = PuntoVentaQuery,
     categoria: str | None = None,
     por: AgrupacionClientes = AgrupacionClientes.CLIENTE,
 ) -> RespuestaClientes:
@@ -136,8 +190,9 @@ def exportar(
     sesion: SesionDep,
     periodo: str = PeriodoQuery,
     hasta: date | None = None,
+    desde: date | None = DesdeQuery,
     grupo: str | None = None,
-    punto_venta: str | None = None,
+    punto_venta: str | None = PuntoVentaQuery,
     categoria: str | None = None,
     medida: Medida = Medida.VALOR,
     por: AgrupacionClientes = AgrupacionClientes.CLIENTE,
@@ -145,11 +200,13 @@ def exportar(
     """RBAC: cualquier rol autenticado; JEFE_PDV solo ve sus puntos.
 
     Exporta **lo mismo que muestra la pantalla**, con los mismos filtros y a
-    partir de la misma respuesta ya calculada.
+    partir de la misma respuesta ya calculada. `desde` incluido: exportar un
+    rango que la pantalla no puede exportar sería otra manera de tener dos
+    verdades.
     """
     from app.core.errors import ErrorNoEncontrado
 
-    filtros = _filtros(usuario, periodo, hasta, grupo, punto_venta, categoria, medida)
+    filtros = _filtros(usuario, periodo, hasta, grupo, punto_venta, categoria, medida, desde)
     servicio = ReportesService(sesion)
 
     if reporte == "tablero":

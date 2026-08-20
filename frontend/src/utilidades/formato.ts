@@ -331,6 +331,94 @@ export function periodoLargo(periodo: string | null | undefined): string {
   return MES_LARGO.format(fechaMes);
 }
 
+const MES_CORTO = new Intl.DateTimeFormat("es-CO", { month: "short" });
+
+/** `2026-08` → `ago`. Para notas donde el año se sobreentiende por el contexto. */
+export function mesCorto(periodo: string | null | undefined): string {
+  if (!periodo) return SIN_DATO;
+  const partes = /^(\d{4})-(\d{2})/.exec(periodo);
+  if (!partes) return periodo;
+  const fechaMes = new Date(Number(partes[1]), Number(partes[2]) - 1, 1);
+  return MES_CORTO.format(fechaMes).replace(".", "");
+}
+
+// ── Aritmética de fechas ─────────────────────────────────────────────────────
+//
+// El rango `desde`/`hasta` del reporte diario obliga a contar días y a desplazar
+// fechas en el propio selector, para que un rango inválido no llegue siquiera a
+// enviarse. Es aritmética de calendario, no de importes: aquí `number` es la
+// herramienta correcta y la regla de «nunca un float» de este módulo no aplica.
+
+/** El día de hoy en `YYYY-MM-DD`, en hora local (no UTC: eso corre la fecha). */
+export function fechaHoy(): string {
+  const hoy = new Date();
+  return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(
+    hoy.getDate(),
+  ).padStart(2, "0")}`;
+}
+
+/**
+ * El período al que pertenece una fecha: su prefijo `YYYY-MM`.
+ *
+ * Es la regla que el contrato fija para cruzar cada día con la línea de
+ * referencia de **su** mes cuando el rango cruza de mes. Deliberadamente no
+ * construye un `Date`: el prefijo de la cadena ya es la respuesta y así no hay
+ * huso horario que la corra un día.
+ */
+export function periodoDeFecha(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  return /^\d{4}-\d{2}/.test(iso) ? iso.slice(0, 7) : null;
+}
+
+/** Descompone `YYYY-MM-DD` en sus tres números, o `null` si no lo es. */
+function partesDeFecha(iso: string | null | undefined): [number, number, number] | null {
+  if (!iso) return null;
+  const partes = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!partes) return null;
+  return [Number(partes[1]), Number(partes[2]), Number(partes[3])];
+}
+
+/**
+ * Desplaza una fecha un número de días, hacia adelante o hacia atrás.
+ *
+ * Se apoya en `Date.UTC` y no en el constructor local: mediodía UTC en un huso
+ * fijo como el colombiano da siempre el mismo día, y el desbordamiento de mes y
+ * de año lo resuelve el propio calendario.
+ */
+export function sumarDias(iso: string, dias: number): string {
+  const partes = partesDeFecha(iso);
+  if (!partes) return iso;
+  const [anio, mes, dia] = partes;
+  const desplazada = new Date(Date.UTC(anio, mes - 1, dia + dias));
+  return desplazada.toISOString().slice(0, 10);
+}
+
+/** El último día de un período `YYYY-MM`. `2026-02` → `2026-02-28`. */
+export function finDeMes(periodo: string | null | undefined): string | null {
+  if (!periodo) return null;
+  const partes = /^(\d{4})-(\d{2})$/.exec(periodo);
+  if (!partes) return null;
+  // El día 0 del mes siguiente es el último del pedido, y el calendario resuelve
+  // solo los febreros bisiestos.
+  return new Date(Date.UTC(Number(partes[1]), Number(partes[2]), 0)).toISOString().slice(0, 10);
+}
+
+/**
+ * Días que abarca un rango, **contando los dos extremos**.
+ *
+ * `2026-08-01` a `2026-08-01` es un día, no cero: es la cuenta que usa el tope
+ * de 92 del contrato («92 entran, 93 no»). Devuelve un número negativo si el
+ * rango está invertido, que es justo lo que el selector necesita detectar.
+ */
+export function diasDelRango(desde: string, hasta: string): number | null {
+  const inicio = partesDeFecha(desde);
+  const fin = partesDeFecha(hasta);
+  if (!inicio || !fin) return null;
+  const a = Date.UTC(inicio[0], inicio[1] - 1, inicio[2]);
+  const b = Date.UTC(fin[0], fin[1] - 1, fin[2]);
+  return Math.round((b - a) / 86_400_000) + 1;
+}
+
 /** El período del mes en curso, en formato `YYYY-MM`. */
 export function periodoActual(): string {
   const hoy = new Date();

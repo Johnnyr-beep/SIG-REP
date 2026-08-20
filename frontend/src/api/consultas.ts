@@ -56,9 +56,26 @@ export interface FiltrosUsuarios {
 export interface FiltrosReporte {
   /** Obligatorio. `YYYY-MM`. */
   periodo: string;
+  /**
+   * Primer día del rango. **Solo lo entiende `venta-diaria`.**
+   *
+   * No entra en `comoParametros` a propósito: el contrato lo declara únicamente
+   * en ese reporte, así que mandarlo a los otros tres sería enviar un parámetro
+   * que no está en su firma.
+   */
+  desde?: string;
   /** Fecha de corte. Ausente = hoy, según el contrato. */
   hasta?: string;
   grupo?: string;
+  /**
+   * Uno o varios códigos C.O. separados por coma: `"402,405,603"`.
+   *
+   * **Ausente significa «todos»**, y no es lo mismo que enumerar los dieciséis
+   * a mano —aunque el resultado coincida—. Por eso una selección vacía borra el
+   * parámetro en lugar de enviarlo en blanco: el contrato dice que
+   * `?punto_venta=` equivale a no filtrar, y una barra que se vacía no pide el
+   * punto de código «».
+   */
   punto_venta?: string;
   categoria?: string;
   medida: Medida;
@@ -73,6 +90,11 @@ function comoParametros(filtros: FiltrosReporte): Record<string, ValorParametro>
     categoria: filtros.categoria,
     medida: filtros.medida,
   };
+}
+
+/** Los mismos filtros más `desde`, que es exclusivo del reporte diario. */
+function comoParametrosDiarios(filtros: FiltrosReporte): Record<string, ValorParametro> {
+  return { ...comoParametros(filtros), desde: filtros.desde };
 }
 
 /** Claves de caché centralizadas para poder invalidar con precisión. */
@@ -211,11 +233,25 @@ export function useCumplimiento(filtros: FiltrosReporte): UseQueryResult<Respues
   });
 }
 
-export function useVentaDiaria(filtros: FiltrosReporte): UseQueryResult<RespuestaVentaDiaria> {
+/**
+ * Matriz diaria, con el rango `desde`/`hasta` del contrato.
+ *
+ * `habilitado` existe para que la pantalla pueda **no lanzar** la consulta
+ * cuando ya sabe que el rango es inválido —invertido o por encima del tope de
+ * 92 días—. Un 422 que el usuario no puede provocar es mejor que uno bien
+ * explicado; y hasta que corrija el rango, la petición no sale.
+ */
+export function useVentaDiaria(
+  filtros: FiltrosReporte,
+  habilitado = true,
+): UseQueryResult<RespuestaVentaDiaria> {
   return useQuery({
     queryKey: claves.ventaDiaria(filtros),
     queryFn: () =>
-      peticion<RespuestaVentaDiaria>("/reportes/venta-diaria", { parametros: comoParametros(filtros) }),
+      peticion<RespuestaVentaDiaria>("/reportes/venta-diaria", {
+        parametros: comoParametrosDiarios(filtros),
+      }),
+    enabled: habilitado,
     staleTime: 60_000,
   });
 }
@@ -249,7 +285,12 @@ export function useExportar(): UseMutationResult<
     mutationFn: ({ reporte, filtros, extra }) =>
       descargar(
         `/reportes/${reporte}/exportar`,
-        { ...comoParametros(filtros), ...extra },
+        // `desde` solo viaja en el reporte que lo declara; en los demás, `filtros.desde`
+        // ni siquiera se puede fijar desde la barra.
+        {
+          ...(reporte === "venta-diaria" ? comoParametrosDiarios(filtros) : comoParametros(filtros)),
+          ...extra,
+        },
         `sigrep-${reporte}-${filtros.periodo}.xlsx`,
       ),
   });

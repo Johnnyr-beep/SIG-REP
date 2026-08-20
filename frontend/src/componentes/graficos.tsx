@@ -124,6 +124,15 @@ export interface ColumnaDiaria {
   /** Venta del día, como cadena decimal de la API. */
   valor: string | null;
   esDomingo: boolean;
+  /**
+   * Presupuesto diario de **este** día.
+   *
+   * Existe porque el rango puede cruzar de mes y el presupuesto es mensual: un
+   * día de julio no se mide contra el presupuesto de agosto. Cuando se omite se
+   * usa la referencia general, que es el caso normal de un rango dentro de un
+   * solo mes.
+   */
+  referencia?: string | null;
 }
 
 /**
@@ -140,7 +149,7 @@ export function ColumnasDiarias({
   formatear,
 }: {
   columnas: ColumnaDiaria[];
-  /** Presupuesto diario; `null` si el PDV no tiene presupuesto. */
+  /** Presupuesto diario general; `null` si el PDV no tiene presupuesto. */
   referencia: string | null;
   titulo: string;
   formatear: (valor: string | null) => string;
@@ -149,8 +158,20 @@ export function ColumnasDiarias({
     return <p className="tenue">Sin días en el período seleccionado.</p>;
   }
 
+  // La referencia se resuelve columna a columna: en un rango que cruza de mes la
+  // línea no es una recta, sino un escalón en el cambio de período. Dibujarla
+  // recta sería pintar la referencia equivocada sobre los días del otro mes.
+  const referencias = columnas.map((columna) =>
+    columna.referencia === undefined ? referencia : columna.referencia,
+  );
+  const distintas = new Set(referencias.map((valor) => valor ?? ""));
+  const uniforme = distintas.size <= 1;
+
   const valores = columnas.map((columna) => Number(columna.valor ?? 0));
-  const maximoDatos = Math.max(...valores, Number(referencia ?? 0));
+  const maximoDatos = Math.max(
+    ...valores,
+    ...referencias.map((valor) => Number(valor ?? 0)),
+  );
   // Un 12 % de aire arriba evita que la columna más alta toque el borde y que
   // la línea de referencia se confunda con el marco.
   const escala = maximoDatos > 0 ? maximoDatos * 1.12 : 1;
@@ -159,14 +180,18 @@ export function ColumnasDiarias({
   const paso = (ANCHO - MARGEN_X * 2) / columnas.length;
   const anchoColumna = Math.max(4, paso * 0.62);
 
-  const yReferencia =
-    referencia === null
-      ? null
-      : MARGEN_ARRIBA + utilAlto - proporcionParaGrafico(referencia, escala) * utilAlto;
+  function alturaDe(valor: string | null): number | null {
+    if (valor === null) return null;
+    return MARGEN_ARRIBA + utilAlto - proporcionParaGrafico(valor, escala) * utilAlto;
+  }
 
   const resumen = columnas
     .map((columna) => `${columna.etiqueta}: ${formatear(columna.valor)}`)
     .join("; ");
+
+  const lecturaReferencia = uniforme
+    ? `Referencia diaria ${formatear(referencias[0] ?? null)}.`
+    : "La referencia diaria cambia con el mes de cada día.";
 
   return (
     <div className="columnas">
@@ -174,19 +199,21 @@ export function ColumnasDiarias({
         className="columnas__lienzo"
         viewBox={`0 0 ${ANCHO} ${ALTO}`}
         role="img"
-        aria-label={`${titulo}. Referencia diaria ${formatear(referencia)}. ${resumen}.`}
+        aria-label={`${titulo}. ${lecturaReferencia} ${resumen}.`}
       >
         {columnas.map((columna, indice) => {
+          const suReferencia = referencias[indice] ?? null;
           const alturaColumna =
             columna.valor === null
               ? 0
               : proporcionParaGrafico(columna.valor, escala) * utilAlto;
           const x = MARGEN_X + paso * indice + (paso - anchoColumna) / 2;
           const y = MARGEN_ARRIBA + utilAlto - alturaColumna;
+          const yReferencia = alturaDe(suReferencia);
           const bajoReferencia =
-            referencia !== null &&
+            suReferencia !== null &&
             columna.valor !== null &&
-            Number(columna.valor) < Number(referencia);
+            Number(columna.valor) < Number(suReferencia);
 
           return (
             <g key={columna.fecha}>
@@ -215,26 +242,29 @@ export function ColumnasDiarias({
               >
                 {columna.etiqueta}
               </text>
+              {yReferencia === null ? null : (
+                <line
+                  className="columnas__referencia"
+                  x1={MARGEN_X + paso * indice}
+                  x2={MARGEN_X + paso * (indice + 1)}
+                  y1={yReferencia}
+                  y2={yReferencia}
+                />
+              )}
             </g>
           );
         })}
-
-        {yReferencia === null ? null : (
-          <line
-            className="columnas__referencia"
-            x1={MARGEN_X}
-            x2={ANCHO - MARGEN_X}
-            y1={yReferencia}
-            y2={yReferencia}
-          />
-        )}
       </svg>
 
       <p className="columnas__leyenda">
         <span className="columnas__muestra" aria-hidden="true" />
         Venta del día
         <span className="columnas__muestra columnas__muestra--referencia" aria-hidden="true" />
-        Presupuesto diario: {referencia === null ? SIN_DATO : formatear(referencia)}
+        {uniforme
+          ? `Presupuesto diario: ${
+              referencias[0] == null ? SIN_DATO : formatear(referencias[0])
+            }`
+          : "Presupuesto diario: cambia con el mes de cada día"}
       </p>
     </div>
   );

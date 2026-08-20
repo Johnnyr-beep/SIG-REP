@@ -285,15 +285,71 @@ export interface FilaVentaDiaria {
   total: string | null;
 }
 
+/** Presupuesto diario derivado de un período, indexado por código de C.O. */
+export type PresupuestoDiarioPorPdv = Record<string, string | null>;
+
+/**
+ * La fila de totales del reporte diario.
+ *
+ * Viaja en un **campo propio** y no como una fila más de `filas`, a propósito:
+ * mezclada habría que reconocerla por su nombre (`punto_venta === "TOTAL"`) y
+ * esa convención se rompe el día que alguien bautice así un punto de venta.
+ *
+ * `presupuesto_diario` es `Σ (presupuesto_i ÷ días hábiles_i)` —la suma de las
+ * líneas de referencia de las filas que están encima—, no el presupuesto
+ * agregado partido por unos días ponderados. Es `null` cuando el término de
+ * algún punto es incalculable: publicar la suma del resto daría una referencia
+ * más baja que la real con pinta de completa.
+ */
+export interface TotalesVentaDiaria {
+  /** Un valor por cada fecha de `fechas`. `null` = ningún punto registró venta. */
+  valores: (string | null)[];
+  total: string | null;
+  /** Referencia diaria del período de la petición. */
+  presupuesto_diario: string | null;
+  /** Referencia diaria de cada período que el rango toca. */
+  presupuesto_diario_por_periodo: Record<string, string | null>;
+}
+
 export interface RespuestaVentaDiaria {
+  /** Período de referencia de la petición: de él salen `parametros_calculo`. */
+  periodo: string;
+  /** Primer día del rango. Viaja en los dos modos: la respuesta es autodescriptiva. */
+  desde: string;
+  /** Último día del rango. Coincide siempre con `fecha_corte`. */
+  hasta: string;
+  /** Períodos que el rango toca, en orden. Uno solo en el modo de siempre. */
+  periodos: string[];
   fechas: string[];
-  /** Presupuesto diario derivado, indexado por código de C.O. */
-  presupuesto_diario_por_pdv: Record<string, string | null>;
+  /**
+   * Referencia del **período de la petición**, indexada por código de C.O.
+   *
+   * Equivale a `presupuesto_diario_por_periodo[periodo]`. No sirve para pintar
+   * las celdas de un rango que cruza meses: daría la referencia de agosto a los
+   * días de julio. Para eso está el campo de abajo.
+   */
+  presupuesto_diario_por_pdv: PresupuestoDiarioPorPdv;
+  /**
+   * Referencia de cada período tocado, indexada por período y por código de C.O.
+   *
+   * El período de una fecha es su prefijo `YYYY-MM`, así que cruzar un día con
+   * su referencia no necesita nada más. Un período que el rango toca y que no
+   * está abierto en el sistema publica sus referencias en `null`.
+   */
+  presupuesto_diario_por_periodo: Record<string, PresupuestoDiarioPorPdv>;
   filas: FilaVentaDiaria[];
+  totales: TotalesVentaDiaria;
   fecha_corte?: string;
   medida?: Medida;
   parametros_calculo?: ParametrosCalculo | null;
 }
+
+/** Tope de días del reporte diario. Inclusivo: 92 entran, 93 no. */
+export const MAXIMO_DIAS_VENTA_DIARIA = 92;
+
+/** Los dos rechazos propios del rango, con el código que los distingue. */
+export const CODIGO_RANGO_INVERTIDO = "rango_invertido";
+export const CODIGO_RANGO_EXCESIVO = "rango_excesivo";
 
 export type CorteClientes = "cliente" | "vendedor" | "canal" | "condicion_pago";
 

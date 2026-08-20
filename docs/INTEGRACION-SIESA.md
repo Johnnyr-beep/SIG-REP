@@ -7,8 +7,9 @@ de 2026. Documento para llevar a quien administra la API.
 > consume **un solo endpoint**, `GET /ventas/costos-razon-social`. Se activa con
 > `SIGREP_FUENTE_VENTA=siesa`.
 >
-> **Queda un solo asunto que solo se resuelve del lado de la API** —el costo de
-> PEREIRA— más una consulta menor: ver §4.
+> **Quedan dos asuntos que solo se resuelven del lado de la API** —el costo de
+> PEREIRA y el número de documentos, que el negocio pidió y la fuente no
+> entrega— más una consulta menor: ver §4.
 
 ## Resumen para quien tenga prisa
 
@@ -19,6 +20,7 @@ de 2026. Documento para llevar a quien administra la API.
 | **Autenticación** | Cabecera `Authorization`, token pelado, **sin el prefijo `1-`** |
 | **Fechas** | `fecha_fin` **INCLUSIVA**, declarada así en su contrato. Es lo contrario de `poscarnes` |
 | **Pendiente** | El módulo `SIN ACUMULAR` —PEREIRA— no entrega costo, así que su margen es «—» |
+| **Pendiente** | Ningún endpoint entrega el **número de documentos**; el indicador no se publica (§4.4) |
 
 ---
 
@@ -198,8 +200,8 @@ SIGREP hará.
 
 De los tres asuntos que abrió la primera validación **no queda ninguno**: la
 categoría, el descuadre de LA 43 y la ausencia de CARTAGENA y PEREIRA se
-resolvieron al encontrar el endpoint correcto. Queda **un asunto** y una
-consulta.
+resolvieron al encontrar el endpoint correcto. Quedan **dos asuntos** —el costo
+de PEREIRA (§4.1) y el número de documentos (§4.4)— y una consulta.
 
 ### 4.1 El módulo `SIN ACUMULAR` no entrega el costo · **único bloqueante**
 
@@ -232,6 +234,49 @@ consuma varios endpoints cargará un día de más o de menos sin enterarse.
 NIT de cliente, condición de pago, domicilio y clase de cliente. Afectan solo a
 la pantalla de clientes, no al reporte de cumplimiento. Existen
 `/clientes-por-cia` y `/ventas/canales-vendedor` si hicieran falta.
+
+### 4.4 Petición nueva: el **número de documentos** por centro y fecha
+
+**Qué pide el negocio.** En el reporte de venta diaria, junto a la venta de cada
+día, cuántos documentos se hicieron: facturas o tiquetes. Es la medida del
+tráfico del punto de venta y, dividiendo, la del tiquete promedio. Hoy no sale
+de ninguna parte.
+
+**Por qué no se puede hoy.** Se verificaron los dos endpoints candidatos y
+**ninguno de los dos entrega el dato**:
+
+| Endpoint | ¿Número de documento? | ¿Conteo de documentos? |
+|---|---|---|
+| `GET /ventas/costos-razon-social` — la fuente de SIGREP | no | no |
+| `GET /ventas/ventas-razon-social` | no | no |
+
+Los dos llegan **ya agregados por centro de operación, categoría, ítem y
+fecha**. La agregación ocurre del lado de la API, así que la identidad del
+documento se pierde antes de que SIGREP vea la primera fila: no es que SIGREP la
+descarte, es que no llega. `venta_lineas`, en consecuencia, tampoco tiene esa
+columna.
+
+**Y no se aproxima contando líneas.** Conviene dejarlo escrito porque es la
+tentación evidente y el error sería grave: contar líneas **no** es contar
+documentos. Una venta de ocho productos son ocho líneas y **un solo documento**.
+Publicar ese conteo como «documentos» pondría en la pantalla de la gerencia una
+cifra ocho veces mayor que la real, y con pinta de exacta. Es el mismo criterio
+que en §4.1 con el costo de PEREIRA: **un número creíble y falso es peor que un
+hueco visible**. Mientras la fuente no lo entregue, SIGREP no publica el
+indicador —ni siquiera vacío— y la pantalla no reserva la columna.
+
+**La pregunta:** ¿puede alguno de los dos endpoints devolver, dentro de la misma
+agregación que ya hace, una columna de **conteo distinto de documentos** por
+centro y fecha? Bastaría algo del estilo `NumDocumentos`, un
+`COUNT(DISTINCT documento)` del lado de Siesa, donde la identidad del documento
+todavía existe. **No hace falta el número de documento en sí**, y de hecho es
+preferible que no venga: el detalle documento a documento multiplicaría el
+volumen de la extracción sin que SIGREP lo necesite para nada.
+
+Si el conteo no fuera posible en esos dos, la alternativa sería indicar cuál de
+los demás endpoints lo publica y con qué grano; SIGREP lo uniría por
+(centro, fecha) con una segunda consulta, como ya se planteó en su día con
+`vendedor-acumulada`.
 
 ---
 

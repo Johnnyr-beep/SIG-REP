@@ -52,9 +52,11 @@ import type {
   Salud,
   Semaforo,
   TokensAcceso,
+  TotalesVentaDiaria,
   Usuario,
   Zona,
 } from "./tipos";
+import { MAXIMO_DIAS_VENTA_DIARIA } from "./tipos";
 
 const PERIODO = "2026-08";
 const FECHA_CORTE = "2026-08-09";
@@ -293,10 +295,37 @@ function medidaDe(opciones: Opciones): Medida {
   return opciones.parametros?.medida === "kilos" ? "kilos" : "valor";
 }
 
-function pdvsPresupuestados(grupo?: string): DefinicionPdv[] {
+function pdvsPresupuestados(grupo?: string, codigos?: Set<string>): DefinicionPdv[] {
   return PDVS.filter(
-    (pdv) => pdv.presupuesto > 0 && (grupo === undefined || pdv.grupo === grupo),
+    (pdv) =>
+      pdv.presupuesto > 0 &&
+      (grupo === undefined || pdv.grupo === grupo) &&
+      (codigos === undefined || codigos.has(pdv.codigo_co)),
   );
+}
+
+/**
+ * Los códigos C.O. que pide `?punto_venta=402,405,603`.
+ *
+ * Devuelve `undefined` —«todos»— cuando el parámetro falta o queda vacío tras
+ * recortar, porque el contrato dice que `?punto_venta=` y `?punto_venta=,,`
+ * equivalen a no filtrar: una barra que se vacía no pide el punto de código «».
+ * Los espacios se recortan y los repetidos se descartan, como en el backend.
+ */
+function codigosPedidos(opciones: Opciones): Set<string> | undefined {
+  const valor = opciones.parametros?.punto_venta;
+  if (typeof valor !== "string") return undefined;
+  const codigos = valor
+    .split(",")
+    .map((codigo) => codigo.trim())
+    .filter((codigo) => codigo !== "");
+  return codigos.length === 0 ? undefined : new Set(codigos);
+}
+
+/** El filtro de grupo, ya normalizado. */
+function grupoPedido(opciones: Opciones): string | undefined {
+  const grupo = opciones.parametros?.grupo;
+  return typeof grupo === "string" && grupo !== "" ? grupo : undefined;
 }
 
 function agregar(pdvs: DefinicionPdv[], medida: Medida, semilla: number): FilaIndicadores {
@@ -324,22 +353,26 @@ function agregar(pdvs: DefinicionPdv[], medida: Medida, semilla: number): FilaIn
 
 function tablero(opciones: Opciones): RespuestaTablero {
   const medida = medidaDe(opciones);
-  const grupoFiltrado = opciones.parametros?.grupo;
+  // La selección múltiple estrecha también aquí: es la misma barra de filtros y
+  // sería raro que el tablero ignorase lo que la matriz diaria respeta.
+  const codigos = codigosPedidos(opciones);
 
   const grupos: FilaGrupo[] = GRUPOS.map((grupo, indice) => ({
     codigo: grupo.codigo,
     nombre: grupo.nombre,
-    ...agregar(pdvsPresupuestados(grupo.codigo), medida, indice * 5 + 2),
+    ...agregar(pdvsPresupuestados(grupo.codigo, codigos), medida, indice * 5 + 2),
   }));
 
-  const eventos = PDVS.find((pdv) => pdv.codigo_co === "432");
+  const eventos = PDVS.find(
+    (pdv) => pdv.codigo_co === "432" && (codigos === undefined || codigos.has("432")),
+  );
   const ventaEventos = medida === "kilos" ? 3_180_000 / PRECIO_KILO : 68_400_000;
 
   return {
-    periodo: typeof grupoFiltrado === "string" ? PERIODO : PERIODO,
+    periodo: PERIODO,
     fecha_corte: FECHA_CORTE,
     medida,
-    consolidado: agregar(pdvsPresupuestados(), medida, 1),
+    consolidado: agregar(pdvsPresupuestados(undefined, codigos), medida, 1),
     grupos,
     sin_presupuesto: eventos
       ? [
@@ -356,15 +389,12 @@ function tablero(opciones: Opciones): RespuestaTablero {
 
 function cumplimiento(opciones: Opciones): RespuestaCumplimiento {
   const medida = medidaDe(opciones);
-  const grupo = opciones.parametros?.grupo;
-  const filtroGrupo = typeof grupo === "string" && grupo !== "" ? grupo : undefined;
-  const pdvFiltro = opciones.parametros?.punto_venta;
+  const filtroGrupo = grupoPedido(opciones);
+  const codigos = codigosPedidos(opciones);
 
   const seleccion = PDVS.filter((pdv) => {
     if (filtroGrupo !== undefined && pdv.grupo !== filtroGrupo) return false;
-    if (typeof pdvFiltro === "string" && pdvFiltro !== "" && pdv.codigo_co !== pdvFiltro) {
-      return false;
-    }
+    if (codigos !== undefined && !codigos.has(pdv.codigo_co)) return false;
     return true;
   });
 
@@ -416,50 +446,243 @@ function cumplimiento(opciones: Opciones): RespuestaCumplimiento {
  */
 const PESO_DIA_SEMANA = [0.9, 0.75, 0.85, 0.95, 1.05, 1.6, 1.3];
 
+/**
+ * Cuánto se movía el presupuesto mensual en cada período.
+ *
+ * Existe para que el ensayo del rango que cruza de mes sirva de algo: si julio y
+ * agosto tuvieran el mismo presupuesto, una pantalla que cruzase mal los días
+ * con su referencia se vería idéntica a una que los cruzase bien. Con estos
+ * factores, medir julio contra la referencia de agosto se nota a simple vista.
+ */
+const FACTOR_PERIODO: Record<string, number> = {
+  "2026-06": 0.84,
+  "2026-07": 0.92,
+  "2026-08": 1,
+  "2026-09": 1.06,
+};
+
+function factorPeriodo(periodo: string): number {
+  return FACTOR_PERIODO[periodo] ?? 1;
+}
+
+/**
+ * Un día que la ingesta todavía no cubrió.
+ *
+ * Sale `null` en todas las filas y, por tanto, también en la de totales: es el
+ * caso que el contrato distingue de un día que sumó cero, y sin él la pantalla
+ * no tendría cómo ensayar que pinta «—» y ninguna marca ▲▼ en esa columna.
+ */
+const DIA_SIN_INGESTA = "2026-08-07";
+
+/** El período de una fecha es su prefijo `YYYY-MM`, igual que en el contrato. */
+function periodoDe(iso: string): string {
+  return iso.slice(0, 7);
+}
+
+function sumarDiasIso(iso: string, dias: number): string {
+  const [anio, mes, dia] = iso.split("-").map(Number) as [number, number, number];
+  return new Date(Date.UTC(anio, mes - 1, dia + dias)).toISOString().slice(0, 10);
+}
+
+function diasEntreIso(desde: string, hasta: string): number {
+  const [a1, m1, d1] = desde.split("-").map(Number) as [number, number, number];
+  const [a2, m2, d2] = hasta.split("-").map(Number) as [number, number, number];
+  return Math.round((Date.UTC(a2, m2 - 1, d2) - Date.UTC(a1, m1 - 1, d1)) / 86_400_000) + 1;
+}
+
+function textoParametro(opciones: Opciones, clave: string): string | undefined {
+  const valor = opciones.parametros?.[clave];
+  return typeof valor === "string" && valor !== "" ? valor : undefined;
+}
+
+/**
+ * Matriz diaria, con el rango `desde`/`hasta` del contrato.
+ *
+ * Reproduce las tres reglas que la pantalla necesita ensayar:
+ *
+ *  1. **Sin `desde` no cambia nada**: el mes completo del período hasta el corte.
+ *     Con `desde`, `hasta` es el último día del rango y se toma tal cual, sin
+ *     recortarlo contra el mes de `periodo` —recortarlo cortaría en seco el rango
+ *     que cruza de mes, que es justo lo que esto viene a resolver—.
+ *  2. **`presupuesto_diario_por_periodo` trae una referencia por período tocado**
+ *     y `presupuesto_diario_por_pdv` es la del período de la petición, que es
+ *     siempre `presupuesto_diario_por_periodo[periodo]`.
+ *  3. **Los dos rechazos**, con su código propio, para que la pantalla pueda
+ *     distinguirlos aunque nunca deba llegar a provocarlos.
+ */
 function ventaDiaria(opciones: Opciones): RespuestaVentaDiaria {
   const medida = medidaDe(opciones);
-  const fechas: string[] = [];
-  for (let dia = 1; dia <= 9; dia += 1) {
-    fechas.push(`2026-08-${String(dia).padStart(2, "0")}`);
+  const periodo = textoParametro(opciones, "periodo") ?? PERIODO;
+  const desdePedido = textoParametro(opciones, "desde");
+  const hastaPedido = textoParametro(opciones, "hasta");
+
+  // Sin `desde`: del día 1 del período a la fecha de corte. Con `desde`: el
+  // rango tal cual, cruce o no de mes.
+  const desde = desdePedido ?? `${periodo}-01`;
+  const hasta = hastaPedido ?? FECHA_CORTE;
+
+  if (hasta < desde) {
+    throw new ErrorApi(
+      422,
+      "rango_invertido",
+      `El rango pedido empieza el ${desde} y termina el ${hasta}, que es anterior. ` +
+        "Invierta las dos fechas.",
+    );
   }
 
-  const presupuestoDiario: Record<string, string | null> = {};
-  const filas: FilaVentaDiaria[] = PDVS.map((pdv) => {
+  const dias = diasEntreIso(desde, hasta);
+  if (dias > MAXIMO_DIAS_VENTA_DIARIA) {
+    throw new ErrorApi(
+      422,
+      "rango_excesivo",
+      `El rango pedido son ${dias} días y el máximo del reporte de venta diaria es ` +
+        `${MAXIMO_DIAS_VENTA_DIARIA}. Acorte el rango o use el tablero, que agrega por período.`,
+    );
+  }
+
+  const fechas: string[] = [];
+  for (let indice = 0; indice < dias; indice += 1) fechas.push(sumarDiasIso(desde, indice));
+
+  const periodos = [...new Set(fechas.map(periodoDe))];
+
+  const filtroGrupo = grupoPedido(opciones);
+  const codigos = codigosPedidos(opciones);
+  const seleccion = PDVS.filter((pdv) => {
+    if (filtroGrupo !== undefined && pdv.grupo !== filtroGrupo) return false;
+    if (codigos !== undefined && !codigos.has(pdv.codigo_co)) return false;
+    return true;
+  });
+
+  /** Referencia diaria de un punto en un período: presupuesto del mes ÷ días hábiles. */
+  function referenciaDiaria(pdv: DefinicionPdv, delPeriodo: string): number | null {
+    if (pdv.presupuesto <= 0) return null;
     const zona = zonaDe(pdv);
-    const presupuesto = presupuestoDe(pdv, medida);
-    const ventaMes =
-      pdv.presupuesto > 0
-        ? presupuesto * factorDe(pdv, medida)
-        : medida === "kilos"
-          ? 3_180_000 / PRECIO_KILO
-          : 68_400_000;
+    if (zona.dias_habiles <= 0) return null;
+    return (presupuestoDe(pdv, medida) * factorPeriodo(delPeriodo)) / zona.dias_habiles;
+  }
 
-    presupuestoDiario[pdv.codigo_co] =
-      presupuesto > 0 ? cadena(presupuesto / zona.dias_habiles, 2) : null;
+  function comoCadena(valor: number | null): string | null {
+    return valor === null ? null : cadena(valor, 2);
+  }
 
-    const pesos = fechas.map((iso, indice) => {
-      const partes = iso.split("-");
-      const fecha = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+  const presupuestoPorPeriodo: Record<string, Record<string, string | null>> = {};
+  for (const delPeriodo of periodos) {
+    const tabla: Record<string, string | null> = {};
+    for (const pdv of seleccion) tabla[pdv.codigo_co] = comoCadena(referenciaDiaria(pdv, delPeriodo));
+    presupuestoPorPeriodo[delPeriodo] = tabla;
+  }
+
+  // La referencia del período de la petición. Si el rango no lo toca —un rango
+  // enteramente del mes anterior— se calcula igual: el contrato la define como la
+  // del período de referencia, no como la de un día cualquiera del rango.
+  const presupuestoDiario: Record<string, string | null> =
+    presupuestoPorPeriodo[periodo] ??
+    Object.fromEntries(
+      seleccion.map((pdv) => [pdv.codigo_co, comoCadena(referenciaDiaria(pdv, periodo))]),
+    );
+
+  const filas: FilaVentaDiaria[] = seleccion.map((pdv) => {
+    const valores = fechas.map((iso, indice) => {
+      const [anio, mes, dia] = iso.split("-").map(Number) as [number, number, number];
+      const fecha = new Date(anio, mes - 1, dia);
       const base = PESO_DIA_SEMANA[fecha.getDay()] ?? 1;
-      return base * (1 + ((((pdv.id * 3 + indice * 5) % 9) - 4) / 100));
+      const ruido = 1 + ((((pdv.id * 3 + indice * 5) % 9) - 4) / 100);
+
+      // Un día sin venta registrada viaja como `null`, que no es lo mismo que un
+      // día que sumó cero: la pantalla lo pinta «—» y sin marca ▲▼.
+      if (iso === DIA_SIN_INGESTA) return null;
+      if ((pdv.id * 4 + indice * 7) % 19 === 0) return null;
+
+      // Un punto sin presupuesto vende igual; se le da una base fija para que su
+      // fila tenga cifras y la referencia salga «—», que es el caso que la
+      // pantalla tiene que saber pintar.
+      const referencia = referenciaDiaria(pdv, periodoDe(iso));
+      const diaria =
+        referencia ?? (medida === "kilos" ? 3_180_000 / PRECIO_KILO / 28 : 68_400_000 / 28);
+
+      return cadena(diaria * base * ruido * (0.86 + (pdv.id % 7) / 20), 2);
     });
-    const sumaPesos = pesos.reduce((suma, peso) => suma + peso, 0);
 
     return {
       punto_venta: pdv.codigo_co,
       nombre: pdv.nombre,
-      valores: pesos.map((peso) => cadena((ventaMes * peso) / sumaPesos, 2)),
-      total: cadena(ventaMes, 2),
+      valores,
+      total: sumaOpcional(valores),
     };
   });
 
   return {
+    periodo,
+    desde,
+    hasta,
+    periodos,
     fechas,
     presupuesto_diario_por_pdv: presupuestoDiario,
+    presupuesto_diario_por_periodo: presupuestoPorPeriodo,
     filas,
-    fecha_corte: FECHA_CORTE,
+    totales: totalesDe(filas, fechas, seleccion, periodo, periodos, medida),
+    fecha_corte: hasta,
     medida,
     parametros_calculo: parametrosDe(medida),
+  };
+}
+
+/** Suma una columna de cadenas decimales; `null` si ninguna trae dato. */
+function sumaOpcional(valores: (string | null)[]): string | null {
+  const presentes = valores.filter((valor): valor is string => valor !== null);
+  if (presentes.length === 0) return null;
+  return cadena(
+    presentes.reduce((suma, valor) => suma + Number(valor), 0),
+    2,
+  );
+}
+
+/**
+ * La fila de totales: suma día a día de **las filas que la respuesta publica**.
+ *
+ * `presupuesto_diario` es `Σ (P_i ÷ H_i)` —la suma de las líneas de referencia de
+ * esas filas—, no el presupuesto agregado partido por unos días ponderados: cada
+ * punto tiene el calendario de su zona y la venta diaria esperada de la compañía
+ * es la suma de las de sus puntos. Con cualquier otra fórmula la fila de totales
+ * no cuadraría con las que tiene encima. Va en `null` si algún punto con
+ * presupuesto tiene su zona sin días hábiles: sumar solo el resto publicaría una
+ * referencia más baja que la real con pinta de completa.
+ */
+function totalesDe(
+  filas: FilaVentaDiaria[],
+  fechas: string[],
+  seleccion: DefinicionPdv[],
+  periodo: string,
+  periodos: string[],
+  medida: Medida,
+): TotalesVentaDiaria {
+  // `valores[i]` es `null` en un día sin venta en NINGÚN punto, lo mismo que en
+  // las filas: es distinto de un día que sumó cero.
+  const valores = fechas.map((_, columna) =>
+    sumaOpcional(filas.map((fila) => fila.valores[columna] ?? null)),
+  );
+
+  function referenciaAgregada(delPeriodo: string): string | null {
+    let suma = 0;
+    let alguno = false;
+    for (const pdv of seleccion) {
+      if (pdv.presupuesto <= 0) continue;
+      const zona = zonaDe(pdv);
+      if (zona.dias_habiles <= 0) return null;
+      suma += (presupuestoDe(pdv, medida) * factorPeriodo(delPeriodo)) / zona.dias_habiles;
+      alguno = true;
+    }
+    return alguno ? cadena(suma, 2) : null;
+  }
+
+  const porPeriodo: Record<string, string | null> = {};
+  for (const delPeriodo of periodos) porPeriodo[delPeriodo] = referenciaAgregada(delPeriodo);
+
+  return {
+    valores,
+    total: sumaOpcional(valores),
+    presupuesto_diario: porPeriodo[periodo] ?? referenciaAgregada(periodo),
+    presupuesto_diario_por_periodo: porPeriodo,
   };
 }
 

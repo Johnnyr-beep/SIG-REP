@@ -75,7 +75,7 @@ def _fijar_dias(sesion: Session, nombre_zona: str, habiles: str, trabajados: str
 def _fila(sesion: Session, codigo_co: str) -> FilaPuntoVenta:
     """La fila del reporte de cumplimiento de un punto de venta."""
     respuesta = ReportesService(sesion).cumplimiento(
-        FiltrosReporte(periodo=PERIODO, hasta=CORTE, punto_venta=codigo_co)
+        FiltrosReporte(periodo=PERIODO, hasta=CORTE, puntos_venta=(codigo_co,))
     )
     assert len(respuesta.filas) == 1
     return respuesta.filas[0]

@@ -932,6 +932,54 @@ textarea {
   cursor: default;
 }
 
+/* ── Fila de totales de la matriz diaria ─────────────────────────────────────
+ *
+ * Va en un `<tfoot>` del MISMO `<table>` —y no en una tabla aparte pegada
+ * debajo— porque así el navegador reparte los anchos entre las dos filas: al
+ * desplazar en horizontal sobre treinta y una columnas, el total de cada día
+ * sigue exactamente bajo su día. Dos tablas superpuestas se desalinean al primer
+ * nombre de punto de venta más largo de lo previsto.
+ *
+ * `bottom: 0` la mantiene a la vista mientras se recorren los dieciséis puntos:
+ * es la cifra que la gerencia busca primero y estaba justo debajo del borde
+ * inferior del contenedor. El fondo es opaco a propósito, que es lo que hace
+ * legible una fila fija con contenido pasando por debajo.                    */
+.tabla tfoot th,
+.tabla tfoot td {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  font-weight: 700;
+  background: var(--superficie-2);
+  border-top: 2px solid var(--borde-fuerte);
+  border-bottom: none;
+}
+
+/* El cruce de la columna anclada con la fila fijada: tiene que quedar por
+   encima de las dos, o el nombre desaparece bajo la primera celda de cifras. */
+.tabla--anclada tfoot .columna-ancla {
+  bottom: 0;
+  z-index: 5;
+}
+
+.fila-totales__nombre {
+  display: block;
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* El domingo se sigue distinguiendo en el pie, pero mezclado sobre un fondo
+   opaco: la versión translúcida de `.columna-domingo` dejaría ver las filas
+   pasando por debajo de la fila fijada. */
+.tabla tfoot .columna-domingo {
+  background: color-mix(in srgb, var(--info) 9%, var(--superficie-2));
+}
+
+.tabla tfoot .columna-total {
+  background: color-mix(in srgb, var(--acento) 10%, var(--superficie-2));
+}
+
 /* Celda de la matriz diaria: el símbolo acompaña siempre al color. */
 .celda--sobre {
   color: var(--exito);
@@ -1221,6 +1269,136 @@ textarea.campo__control {
   flex-wrap: wrap;
   gap: var(--espacio-2);
   margin-left: auto;
+}
+
+/* Texto de un filtro que la pantalla deriva y el usuario no edita: el período
+   de referencia cuando manda el rango. Conserva la caja del control para que la
+   barra no salte, pero sin borde de campo editable. */
+.filtros__derivado {
+  color: var(--texto-suave);
+  font-weight: 600;
+  background: var(--superficie-2);
+  border-style: dashed;
+}
+
+/* Nota a pie de la barra: ocupa toda la fila para no partir la retícula de
+   campos, y explica el rango pedido antes de que llegue ningún error. */
+.filtros__nota {
+  /* Al final de la barra pase lo que pase: en el orden del documento va junto a
+     los campos de fecha que explica, pero ahí partiría la fila en dos. */
+  order: 1;
+  flex-basis: 100%;
+  max-width: 76ch;
+  margin: 0;
+  color: var(--texto-tenue);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+/* ── Selección múltiple de puntos de venta ───────────────────────────────────
+ *
+ * Un disparador que resume la selección y un panel de casillas que se despliega
+ * sobre el contenido. No es un `<select multiple>`: con dieciséis opciones ese
+ * control exige Ctrl+clic para no perder lo ya elegido y borra la selección
+ * entera con un clic despistado.                                             */
+.selector-pdv {
+  position: relative;
+  min-width: 210px;
+}
+
+.selector-pdv__disparador {
+  display: flex;
+  gap: var(--espacio-2);
+  align-items: center;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Cuántos hay elegidos, legible antes que la lista de nombres. */
+.selector-pdv__conteo {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.3rem;
+  color: var(--acento-texto);
+  font-weight: 700;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  background: var(--acento);
+  border-radius: 999px;
+}
+
+/* Y cuáles. Se recorta con puntos suspensivos en lugar de ensanchar la barra;
+   el nombre accesible y el `title` llevan siempre la lista completa. */
+.selector-pdv__resumen {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.selector-pdv__flecha {
+  flex-shrink: 0;
+  color: var(--texto-tenue);
+  font-size: 0.7rem;
+}
+
+.selector-pdv__panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+  width: max(100%, 300px);
+  max-width: min(92vw, 420px);
+  padding: var(--espacio-3);
+  background: var(--superficie);
+  border: 1px solid var(--borde-fuerte);
+  border-radius: var(--radio-sm);
+  box-shadow: var(--sombra-3);
+}
+
+.selector-pdv__acciones {
+  display: flex;
+  gap: var(--espacio-2);
+  align-items: center;
+  padding-bottom: var(--espacio-2);
+  border-bottom: 1px solid var(--borde);
+}
+
+.selector-pdv__lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0 var(--espacio-3);
+  /* Alto pensado para un portátil de trece pulgadas: se ven ocho o diez puntos
+     y el resto entra con un desplazamiento corto, sin tapar la tabla. */
+  max-height: min(46vh, 300px);
+  /* Un `<fieldset>` trae `min-width: min-content`, que en una retícula impide
+     que las columnas se encojan y desborda el panel. */
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+  border: none;
+}
+
+/* El foco tiene que verse: la casilla es pequeña y el panel, denso. */
+.selector-pdv__lista .casilla:focus-within {
+  outline: 2px solid var(--acento);
+  outline-offset: -2px;
+  border-radius: var(--radio-sm);
+}
+
+.selector-pdv__nota {
+  margin: 0;
+  color: var(--texto-tenue);
+  font-size: 0.74rem;
+  line-height: 1.4;
 }
 
 /* Conmutador de medida y de corte: radios de verdad, con aspecto de segmentos. */
@@ -2150,11 +2328,32 @@ textarea.campo__control {
   .tabla--anclada .columna-ancla {
     position: static;
   }
+
+  /* La fila de totales, en cambio, sigue fijada al pie: si su primera celda
+     dejara de ser `sticky` se quedaría atrás mientras el resto de la fila se
+     mantiene abajo, y la fila aparecería partida en dos. Solo se libera el
+     anclaje horizontal. */
+  .tabla--anclada tfoot .columna-ancla {
+    position: sticky;
+    left: auto;
+    bottom: 0;
+  }
 }
 
 @media (max-width: 600px) {
   .filtros__campo {
     min-width: 100%;
+  }
+
+  /* A todo el ancho de la barra: en un teléfono el panel colgando de un campo
+     estrecho se salía por la derecha. */
+  .selector-pdv__panel {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .selector-pdv__lista {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .grupo__detalle {

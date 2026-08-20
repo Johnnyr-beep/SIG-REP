@@ -73,6 +73,26 @@ Todos aceptan los mismos filtros:
 `periodo` (obligatorio), `hasta` (fecha de corte, por defecto hoy),
 `grupo`, `punto_venta`, `categoria`, `medida` = `valor` | `kilos`.
 
+### `punto_venta` admite varios códigos
+
+`?punto_venta=402,405,603` — códigos C.O. separados por coma. Vale en los
+**cuatro** reportes (tablero, cumplimiento, venta diaria y clientes) y en
+`/exportar`: es el mismo control de la misma barra de filtros, y sería raro que
+se comportara distinto según la pantalla.
+
+- **Un solo código y la ausencia se comportan exactamente como antes.**
+  `?punto_venta=405` es la lista de uno. `?punto_venta=` y `?punto_venta=,,`
+  equivalen a no enviar el filtro: una barra que se vacía no pide el punto de
+  código «».
+- Los espacios se recortan y los repetidos se descartan: `402,402` es `402`.
+- Un código que no existe sencillamente no casa con ninguna fila. No es un
+  validador de catálogo y no devuelve 404 por eso.
+- **Estrecha, jamás ensancha.** El filtro se cruza con el alcance del usuario
+  con `AND`. Un `JEFE_PDV` con alcance sobre 402 que pida `402,405,413` recibe
+  **solo 402**; si pide `405,413`, recibe la respuesta vacía —consolidado en
+  cero, sin filas—, nunca la compañía entera. Pedir puntos ajenos no es una
+  forma de pedir permiso.
+
 ```
 GET /reportes/tablero?periodo=2026-08
 ```
@@ -113,10 +133,8 @@ GET /reportes/cumplimiento?periodo=2026-08[&grupo=001]
     -> { fecha_corte, medida, filas: [ {punto_venta, ...FilaIndicadores,
                                         categorias: [ {categoria, ...FilaIndicadores} ]} ] }
 
-GET /reportes/venta-diaria?periodo=2026-08
-    -> { fechas: ["2026-08-01", ...],
-         presupuesto_diario_por_pdv: {"405": "..."},
-         filas: [ {punto_venta, valores: ["50200928.00", ...], total: "..."} ] }
+GET /reportes/venta-diaria?periodo=2026-08[&desde=2026-07-25&hasta=2026-08-05]
+    -> ver el bloque «Venta diaria» más abajo
 
 GET /reportes/clientes?periodo=2026-08&por=cliente|vendedor|canal|condicion_pago
     -> { filas: [ {clave, nombre, venta, kilos, margen_porcentaje, participacion} ] }
@@ -129,6 +147,127 @@ GET /reportes/{cualquiera}/exportar?...   -> .xlsx (mismos filtros)
 Toda respuesta de reporte incluye `parametros_calculo` con `dias_habiles`,
 `dias_trabajados`, `fecha_corte` y `umbrales` — para que la pantalla pueda
 mostrar de dónde sale cada número (§4.2 de la especificación).
+
+### Venta diaria
+
+```
+GET /reportes/venta-diaria?periodo=2026-08
+GET /reportes/venta-diaria?periodo=2026-08&desde=2026-07-25&hasta=2026-08-05
+```
+
+```json
+{
+  "periodo": "2026-08",
+  "fecha_corte": "2026-08-05",
+  "desde": "2026-07-25",
+  "hasta": "2026-08-05",
+  "medida": "valor",
+  "periodos": ["2026-07", "2026-08"],
+  "fechas": ["2026-07-25", "...", "2026-08-05"],
+  "presupuesto_diario_por_pdv": { "405": "60000.00" },
+  "presupuesto_diario_por_periodo": {
+    "2026-07": { "405": "40000.00" },
+    "2026-08": { "405": "60000.00" }
+  },
+  "filas": [
+    { "punto_venta": "405", "nombre": "LA43",
+      "valores": ["50200928.00", null, "..."], "total": "..." }
+  ],
+  "totales": {
+    "valores": ["50200928.00", null, "..."],
+    "total": "...",
+    "presupuesto_diario": "60000.00",
+    "presupuesto_diario_por_periodo": { "2026-07": "40000.00", "2026-08": "60000.00" }
+  },
+  "parametros_calculo": { "...": "..." }
+}
+```
+
+#### La fila de totales
+
+`totales` es la suma, día a día, de **las filas que la respuesta publica**, más
+su total del período o del rango. Va en un **campo propio** y no como una fila
+más de `filas`, a propósito: mezclada, la pantalla tendría que reconocerla por
+su nombre (`punto_venta == "TOTAL"`) y esa convención se rompe el día que
+alguien bautice así un punto de venta.
+
+- Respeta el filtro: si se piden tres puntos, el total es el de esos tres.
+- Respeta el alcance: un `JEFE_PDV` recibe el total de sus puntos.
+- `valores[i]` es `null` en un día sin venta registrada en **ningún** punto —lo
+  mismo que en las filas—, que no es lo mismo que un día que sumó cero.
+- `presupuesto_diario` es `Σ (P_i / H_i)`: la suma de las líneas de referencia
+  de las filas, **no** el presupuesto agregado partido por unos días
+  ponderados. Cada punto tiene el calendario de su zona y la venta diaria
+  esperada de la compañía es la suma de las de sus puntos; con cualquier otra
+  fórmula la fila de totales no cuadraría con las que tiene encima.
+  Es `null` si ningún punto tiene presupuesto parametrizado, y también si
+  alguno lo tiene y su zona no tiene días hábiles: ahí el término es
+  incalculable y sumar solo el resto publicaría una referencia más baja que la
+  real con pinta de completa (§7).
+
+#### El rango `desde` / `hasta`
+
+Sin `desde` no cambia nada: manda `periodo`, las columnas van del día 1 a la
+fecha de corte y `hasta` sigue siendo esa fecha de corte. Es el modo de
+siempre.
+
+Con `desde`, `hasta` pasa a ser el **último día del rango** y se toma tal cual,
+sin recortarlo contra el mes de `periodo` —recortarlo cortaría en seco el rango
+que cruza de mes, que es justo lo que esto viene a resolver—. Sin `hasta`, el
+rango se cierra en hoy.
+
+`desde`, `hasta`, `fechas` y `periodos` viajan **en los dos modos**, de manera
+que la respuesta es autodescriptiva y la pantalla no necesita saber cuál se
+usó. `fecha_corte` coincide siempre con `hasta`.
+
+**El presupuesto es mensual (§3.3), y el rango puede no serlo.** Un rango del
+25 de julio al 5 de agosto tiene **dos** líneas de referencia distintas y las
+dos son correctas:
+
+- `presupuesto_diario_por_periodo` trae una por período tocado. La referencia
+  de un día sale de la entrada de **su propio mes**: un día de julio no se mide
+  contra el presupuesto de agosto. El código de período de una fecha es su
+  prefijo `YYYY-MM`, así que la pantalla no necesita nada más para cruzarlos.
+- `presupuesto_diario_por_pdv` es la referencia del **período de la petición**
+  y equivale siempre a `presupuesto_diario_por_periodo[periodo]`. Con el rango
+  dentro de un solo mes —el caso normal— hay una única entrada y los dos
+  campos dicen lo mismo.
+- Un período que el rango toca y que **no está abierto** en el sistema publica
+  sus referencias en `null`: sin período no hay presupuesto ni calendario, y un
+  cero cómodo sería inventarlos. Sus columnas salen vacías, que es lo correcto:
+  tampoco puede haber venta ingerida.
+
+`periodo` sigue siendo obligatorio y es el **período de referencia**: de él
+salen `parametros_calculo` y `presupuesto_diario_por_pdv`. Envíe como `periodo`
+el mes al que pertenece `hasta`.
+
+#### Los dos rechazos del rango
+
+| Situación | HTTP | `codigo` |
+|---|---|---|
+| `desde` posterior a `hasta` | 422 | `rango_invertido` |
+| más de **92 días** entre `desde` y `hasta` | 422 | `rango_excesivo` |
+
+El rango invertido **se rechaza**; no devuelve la tabla vacía que saldría de
+forma natural, porque eso haría pasar un error de captura por «no hubo ventas».
+
+El tope son **92 días, un trimestre**, y el límite es inclusivo: 92 entran, 93
+no. El reporte pinta un día por columna —31 ya llenan una pantalla y un año son
+366—, así que el tope está donde deja de tener sentido dibujarlo, no donde deja
+de poder calcularse. Un trimestre cubre el mes en curso más los dos anteriores,
+que es el corte que el negocio pide de verdad. Para horizontes mayores están el
+tablero y el cumplimiento, que agregan por período en lugar de por día.
+
+El error dice el tope y los días pedidos, para no tener que adivinarlo a base
+de reintentos:
+
+```json
+{
+  "detalle": "El rango pedido son 365 días y el máximo del reporte de venta diaria es 92. ...",
+  "codigo": "rango_excesivo",
+  "detalles": { "dias_solicitados": 365, "maximo_dias": 92 }
+}
+```
 
 ## Ingesta
 
@@ -239,3 +378,17 @@ hecho divergir al backend y al frontend.
 4. El historial de presupuesto devuelve `valor_anterior` y `valor_nuevo` con la
    escala de los kilos (3 decimales) para ambos campos, porque una sola columna
    sirve a `monto` y a `kilos` y así ningún valor pierde precisión al historiar.
+
+5. **No hay número de documentos, y no lo va a haber mientras la fuente no lo
+   entregue.** El negocio lo pidió para el reporte de venta diaria y la API de
+   consulta no lo publica: ni `costos-razon-social` ni `ventas-razon-social`
+   traen número ni conteo de documentos —los dos vienen ya agregados por
+   centro, categoría, ítem y fecha, así que la identidad del documento se
+   pierde antes de llegar—, y `venta_lineas` tampoco tiene esa columna.
+
+   **No se aproxima contando líneas.** Una venta de ocho productos son ocho
+   líneas y **un** documento; publicar ese conteo como «documentos» daría una
+   cifra ocho veces mayor que la real en la pantalla de la gerencia. Está
+   pedido al administrador de la API en `docs/INTEGRACION-SIESA.md` §4.4. Hasta
+   entonces, la pantalla no debe reservar la columna ni pintarla vacía: no es
+   un dato que falte cargar, es un dato que la fuente no da.
