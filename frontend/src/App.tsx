@@ -77,48 +77,67 @@ export function App() {
   // de envolverla.
   if (debeCambiarClave) return <CambioClaveObligatorio />;
 
+  // Cada unidad monta **solo sus rutas**. No es cosmetica: agropecuaria es otra
+  // compania, con su propia API de origen (`id_cia=3`) y sus propias cifras, y
+  // las dos no se mezclan.
+  //
+  // Antes las rutas de carnes estaban montadas siempre y solo cambiaba el menu,
+  // con tres consecuencias que nadie veia hasta teclear una direccion: `/` era
+  // el tablero de carnes —justo donde aterriza quien acaba de entrar—, el
+  // comodin mandaba alli, y escribir `/cumplimiento` desde agropecuaria abria
+  // las cifras de la otra compania. Un menu que no enlaza no es una puerta
+  // cerrada.
+  const esAgro = marca.clave === "agropecuaria";
+
   return (
     <Routes>
       <Route element={<Disposicion />}>
-        <Route index element={<Tablero />} />
-        <Route path="cumplimiento" element={<Cumplimiento />} />
-        <Route path="venta-diaria" element={<VentaDiaria />} />
-        <Route path="clientes" element={<Clientes />} />
+        {esAgro ? (
+          <>
+            {/* Las pantallas conservan el prefijo `/agro` en vez de subir a la
+                raiz: un enlace pegado en un correo dice a que unidad pertenece,
+                y sigue abriendo lo mismo manana. */}
+            <Route index element={<Navigate to="/agro" replace />} />
+            <Route path="agro">
+              <Route index element={<ResumenAgro />} />
+              <Route path="cruce" element={<CruceAgro />} />
+              <Route path="venta-diaria" element={<VentaDiariaAgro />} />
+              <Route
+                path="presupuesto"
+                element={
+                  <Restringido roles={["ADMIN", "GERENTE", "ANALISTA"]}>
+                    <PresupuestoAgro />
+                  </Restringido>
+                }
+              />
+              <Route path="calendario" element={<CalendarioAgro />} />
+              <Route path="ingesta" element={<IngestaAgro />} />
+            </Route>
+          </>
+        ) : (
+          <>
+            <Route index element={<Tablero />} />
+            <Route path="cumplimiento" element={<Cumplimiento />} />
+            <Route path="venta-diaria" element={<VentaDiaria />} />
+            <Route path="clientes" element={<Clientes />} />
+            <Route
+              path="presupuesto"
+              element={
+                <Restringido roles={["ADMIN", "GERENTE", "ANALISTA"]}>
+                  <Presupuesto />
+                </Restringido>
+              }
+            />
+            <Route path="calendario" element={<Calendario />} />
+            <Route path="ingesta" element={<Ingesta />} />
+          </>
+        )}
 
-        <Route
-          path="presupuesto"
-          element={
-            <Restringido roles={["ADMIN", "GERENTE", "ANALISTA"]}>
-              <Presupuesto />
-            </Restringido>
-          }
-        />
-        <Route path="calendario" element={<Calendario />} />
-        <Route path="ingesta" element={<Ingesta />} />
-
-        {/* Agropecuaria. Las rutas se montan siempre, no solo con esa marca
-            elegida: el menú es el que cambia, pero un enlace pegado en un correo
-            tiene que abrir la pantalla que dice. Lo que decide si hay datos
-            detrás es la instancia —`unidades` de `/salud`—, no el enrutador. */}
-        <Route path="agro">
-          <Route index element={<ResumenAgro />} />
-          <Route path="cruce" element={<CruceAgro />} />
-          <Route path="venta-diaria" element={<VentaDiariaAgro />} />
-          <Route
-            path="presupuesto"
-            element={
-              <Restringido roles={["ADMIN", "GERENTE", "ANALISTA"]}>
-                <PresupuestoAgro />
-              </Restringido>
-            }
-          />
-          <Route path="calendario" element={<CalendarioAgro />} />
-          <Route path="ingesta" element={<IngestaAgro />} />
-        </Route>
-        {/* Administración de cuentas: `ADMIN` y nadie más. El guardia no
-            sustituye al 403 del backend —esa es la autorización que cuenta—,
-            pero evita que un `JEFE_PDV` que teclea la URL vea una pantalla rota
-            en lugar de una explicación. */}
+        {/* Administración de cuentas: `ADMIN` y nadie más, y la única pantalla
+            común a las dos unidades porque las cuentas son del sistema, no de
+            una compañía. El guardia no sustituye al 403 del backend —esa es la
+            autorización que cuenta—, pero evita que un `JEFE_PDV` que teclea la
+            URL vea una pantalla rota en lugar de una explicación. */}
         <Route
           path="usuarios"
           element={
@@ -127,7 +146,14 @@ export function App() {
             </Restringido>
           }
         />
-        <Route path="*" element={<Navigate to="/" replace />} />
+
+        {/* El comodín devuelve a la portada **de la unidad**. Mandarlo siempre a
+            «/» era como se llegaba al tablero de carnes desde agropecuaria sin
+            haberlo pedido. */}
+        <Route
+          path="*"
+          element={<Navigate to={esAgro ? "/agro" : "/"} replace />}
+        />
       </Route>
     </Routes>
   );
