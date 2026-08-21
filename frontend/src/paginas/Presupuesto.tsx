@@ -25,10 +25,23 @@ import {
 } from "@/api/consultas";
 import type { Categoria, FilaPresupuesto } from "@/api/tipos";
 import { useAuth } from "@/auth/ContextoAuth";
-import { AvisoError, Campo, Dialogo, Distintivo, Tarjeta, Vacio } from "@/componentes/comunes";
+import {
+  AvisoError,
+  Campo,
+  Dialogo,
+  Distintivo,
+  Tarjeta,
+  Vacio,
+} from "@/componentes/comunes";
 import { useFiltros } from "@/componentes/filtros";
 import { etiquetaDe } from "@/utilidades/dominio";
-import { dinero, fechaHora, kilos, numero, periodoLargo } from "@/utilidades/formato";
+import {
+  dinero,
+  fechaHora,
+  kilos,
+  numero,
+  periodoLargo,
+} from "@/utilidades/formato";
 
 /**
  * Normaliza lo que el usuario escribe al decimal que espera la API.
@@ -68,8 +81,15 @@ export function Presupuesto() {
   const { data: puntos } = usePuntosVenta();
   const { data: categorias } = useCategorias();
   const { data: periodos } = usePeriodos();
-  const { data: filas, isLoading, error } = usePresupuesto(filtros.periodo, puntoVenta);
-  const { data: historial } = useHistorialPresupuesto(filtros.periodo, puntoVenta);
+  const {
+    data: filas,
+    isLoading,
+    error,
+  } = usePresupuesto(filtros.periodo, puntoVenta);
+  const { data: historial } = useHistorialPresupuesto(
+    filtros.periodo,
+    puntoVenta,
+  );
 
   const guardar = useGuardarPresupuesto(filtros.periodo, puntoVenta);
   const cargaMasiva = useCargaMasivaPresupuesto(filtros.periodo, puntoVenta);
@@ -79,9 +99,13 @@ export function Presupuesto() {
   const [errorFormulario, setErrorFormulario] = useState<string | null>(null);
   const [archivo, setArchivo] = useState<File | null>(null);
 
-  const periodoActualInfo = periodos?.find((item) => item.periodo === filtros.periodo);
+  const periodoActualInfo = periodos?.find(
+    (item) => item.periodo === filtros.periodo,
+  );
   const cerrado = periodoActualInfo?.cerrado ?? false;
-  const puntoSeleccionado = puntos?.find((punto) => punto.codigo_co === puntoVenta);
+  const puntoSeleccionado = puntos?.find(
+    (punto) => punto.codigo_co === puntoVenta,
+  );
 
   /**
    * Se listan todas las categorías del catálogo, no solo las que ya tienen
@@ -96,7 +120,10 @@ export function Presupuesto() {
     }
     return (categorias ?? []).map((categoria) => ({
       categoria,
-      fila: porCodigo.get(categoria.nombre.toUpperCase()) ?? porCodigo.get(categoria.codigo.toUpperCase()) ?? null,
+      fila:
+        porCodigo.get(categoria.nombre.toUpperCase()) ??
+        porCodigo.get(categoria.codigo.toUpperCase()) ??
+        null,
     }));
   }, [filas, categorias]);
 
@@ -146,7 +173,10 @@ export function Presupuesto() {
 
   return (
     <div className="pila">
-      <section className="filtros" aria-label="Selección de período y punto de venta">
+      <section
+        className="filtros"
+        aria-label="Selección de período y punto de venta"
+      >
         <label className="filtros__campo">
           <span>Período</span>
           <input
@@ -214,11 +244,13 @@ export function Presupuesto() {
       {cerrado ? (
         <div className="aviso aviso--advertencia" role="status">
           <div>
-            <strong>El período {periodoLargo(filtros.periodo)} está cerrado.</strong>
+            <strong>
+              El período {periodoLargo(filtros.periodo)} está cerrado.
+            </strong>
             <p>
               Cerrado por {periodoActualInfo?.cerrado_por ?? "—"} el{" "}
-              {fechaHora(periodoActualInfo?.cerrado_en)}. La captura está bloqueada; el histórico se
-              puede seguir consultando.
+              {fechaHora(periodoActualInfo?.cerrado_en)}. La captura está
+              bloqueada; el histórico se puede seguir consultando.
             </p>
           </div>
         </div>
@@ -238,9 +270,10 @@ export function Presupuesto() {
           sinRelleno
           pie={
             <p className="tenue">
-              Aquí no se muestra el total del punto de venta a propósito: el presupuesto del punto es
-              la suma de sus categorías y el del grupo la suma de sus puntos, y esa suma la calcula
-              el backend con aritmética decimal exacta. Sumar importes en el navegador es
+              Aquí no se muestra el total del punto de venta a propósito: el
+              presupuesto del punto es la suma de sus categorías y el del grupo
+              la suma de sus puntos, y esa suma la calcula el backend con
+              aritmética decimal exacta. Sumar importes en el navegador es
               precisamente lo que corrompe cifras de miles de millones.
             </p>
           }
@@ -334,8 +367,9 @@ export function Presupuesto() {
         {cargaMasiva.data ? (
           <div className="pila pila--compacta" style={{ marginTop: "1rem" }}>
             <p>
-              <strong>{numero(cargaMasiva.data.aceptadas)}</strong> filas aceptadas ·{" "}
-              <strong>{numero(cargaMasiva.data.rechazadas)}</strong> rechazadas.
+              <strong>{numero(cargaMasiva.data.aceptadas)}</strong> filas
+              aceptadas · <strong>{numero(cargaMasiva.data.rechazadas)}</strong>{" "}
+              rechazadas.
             </p>
             {cargaMasiva.data.errores.length > 0 ? (
               <div className="tabla-envoltorio">
@@ -371,7 +405,10 @@ export function Presupuesto() {
         {puntoVenta === "" ? (
           <Vacio titulo="Seleccione un punto de venta" />
         ) : (historial ?? []).length === 0 ? (
-          <Vacio titulo="Sin cambios registrados" detalle="Este período no tiene modificaciones." />
+          <Vacio
+            titulo="Sin cambios registrados"
+            detalle="Este período no tiene modificaciones."
+          />
         ) : (
           <div className="tabla-envoltorio">
             <table className="tabla">
@@ -395,7 +432,9 @@ export function Presupuesto() {
                     <td>{fechaHora(cambio.cuando)}</td>
                     <td>{cambio.quien}</td>
                     <td>{cambio.campo}</td>
-                    <td className="numero suave">{numero(cambio.valor_anterior)}</td>
+                    <td className="numero suave">
+                      {numero(cambio.valor_anterior)}
+                    </td>
                     <td className="numero">{numero(cambio.valor_nuevo)}</td>
                     <td>{cambio.motivo ?? "—"}</td>
                   </tr>
@@ -412,7 +451,11 @@ export function Presupuesto() {
         onCerrar={() => setEdicion(null)}
       >
         {edicion ? (
-          <form className="pila" onSubmit={alGuardar} id="formulario-presupuesto">
+          <form
+            className="pila"
+            onSubmit={alGuardar}
+            id="formulario-presupuesto"
+          >
             {errorFormulario ? (
               <div className="aviso aviso--error" role="alert">
                 {errorFormulario}
@@ -420,22 +463,32 @@ export function Presupuesto() {
             ) : null}
             <AvisoError error={guardar.error} />
 
-            <Campo etiqueta="Presupuesto en pesos" ayuda="Por ejemplo 512.000.000 o 512000000">
+            <Campo
+              etiqueta="Presupuesto en pesos"
+              ayuda="Por ejemplo 512.000.000 o 512000000"
+            >
               <input
                 className="campo__control"
                 inputMode="decimal"
                 value={edicion.monto}
-                onChange={(evento) => setEdicion({ ...edicion, monto: evento.target.value })}
+                onChange={(evento) =>
+                  setEdicion({ ...edicion, monto: evento.target.value })
+                }
                 required
               />
             </Campo>
 
-            <Campo etiqueta="Presupuesto en kilos" ayuda="Admite decimales: 23.272,73">
+            <Campo
+              etiqueta="Presupuesto en kilos"
+              ayuda="Admite decimales: 23.272,73"
+            >
               <input
                 className="campo__control"
                 inputMode="decimal"
                 value={edicion.kilos}
-                onChange={(evento) => setEdicion({ ...edicion, kilos: evento.target.value })}
+                onChange={(evento) =>
+                  setEdicion({ ...edicion, kilos: evento.target.value })
+                }
                 required
               />
             </Campo>
@@ -447,7 +500,9 @@ export function Presupuesto() {
               <textarea
                 className="campo__control"
                 value={edicion.motivo}
-                onChange={(evento) => setEdicion({ ...edicion, motivo: evento.target.value })}
+                onChange={(evento) =>
+                  setEdicion({ ...edicion, motivo: evento.target.value })
+                }
                 required
                 minLength={5}
                 maxLength={500}
@@ -462,7 +517,11 @@ export function Presupuesto() {
               >
                 {guardar.isPending ? "Guardando…" : "Guardar"}
               </button>
-              <button type="button" className="boton" onClick={() => setEdicion(null)}>
+              <button
+                type="button"
+                className="boton"
+                onClick={() => setEdicion(null)}
+              >
                 Cancelar
               </button>
             </div>

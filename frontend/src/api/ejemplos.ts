@@ -105,23 +105,153 @@ const ZONA_L70 = "LA 70 / LA 43 / SIMON / LA GRANJA";
 const ZONA_RESTO = "RESTO (POR CONFIRMAR)";
 
 const PDVS: DefinicionPdv[] = [
-  { id: 1, codigo_co: "402", nombre: "MALAMBO", grupo: "001", zona: ZONA_RESTO, presupuesto: 1_600_000_000, factor: 0.291 },
-  { id: 2, codigo_co: "603", nombre: "CONCORDE", grupo: "001", zona: ZONA_RESTO, presupuesto: 1_100_000_000, factor: 0.244 },
-  { id: 3, codigo_co: "403", nombre: "LAGRANJA", grupo: "001", zona: ZONA_L70, presupuesto: 1_350_000_000, factor: 0.302 },
-  { id: 4, codigo_co: "406", nombre: "SIMON", grupo: "001", zona: ZONA_L70, presupuesto: 1_250_000_000, factor: 0.268 },
-  { id: 5, codigo_co: "412", nombre: "BUCARAMANGA", grupo: "002", zona: ZONA_BGA, presupuesto: 1_500_000_000, factor: 0.281 },
-  { id: 6, codigo_co: "409", nombre: "PEREIRA", grupo: "002", zona: ZONA_PEI, presupuesto: 1_200_000_000, factor: 0.252 },
-  { id: 7, codigo_co: "415", nombre: "CARTAGENA", grupo: "002", zona: ZONA_CTG, presupuesto: 900_000_000, factor: 0.238 },
-  { id: 8, codigo_co: "414", nombre: "CENTRO", grupo: "003", zona: ZONA_BGA, presupuesto: 1_450_000_000, factor: 0.297 },
-  { id: 9, codigo_co: "701", nombre: "SANFELIPE", grupo: "003", zona: ZONA_RESTO, presupuesto: 1_300_000_000, factor: 0.259 },
-  { id: 10, codigo_co: "702", nombre: "OLAYA", grupo: "003", zona: ZONA_RESTO, presupuesto: 1_150_000_000, factor: 0.226 },
-  { id: 11, codigo_co: "405", nombre: "LA43", grupo: "003", zona: ZONA_L70, presupuesto: 1_400_000_000, factor: 0.288, sinCategorias: ["ASADERO"] },
-  { id: 12, codigo_co: "407", nombre: "LA70", grupo: "004", zona: ZONA_L70, presupuesto: 1_750_000_000, factor: 0.31 },
-  { id: 13, codigo_co: "413", nombre: "LA93", grupo: "004", zona: ZONA_RESTO, presupuesto: 1_600_000_000, factor: 0.264 },
-  { id: 14, codigo_co: "605", nombre: "ALAMEDA", grupo: "004", zona: ZONA_RESTO, presupuesto: 1_250_000_000, factor: 0.271, sinCategorias: ["ASADERO"] },
-  { id: 15, codigo_co: "606", nombre: "ALAMEDA2", grupo: "004", zona: ZONA_RESTO, presupuesto: 1_200_000_000, factor: 0.243 },
+  {
+    id: 1,
+    codigo_co: "402",
+    nombre: "MALAMBO",
+    grupo: "001",
+    zona: ZONA_RESTO,
+    presupuesto: 1_600_000_000,
+    factor: 0.291,
+  },
+  {
+    id: 2,
+    codigo_co: "603",
+    nombre: "CONCORDE",
+    grupo: "001",
+    zona: ZONA_RESTO,
+    presupuesto: 1_100_000_000,
+    factor: 0.244,
+  },
+  {
+    id: 3,
+    codigo_co: "403",
+    nombre: "LAGRANJA",
+    grupo: "001",
+    zona: ZONA_L70,
+    presupuesto: 1_350_000_000,
+    factor: 0.302,
+  },
+  {
+    id: 4,
+    codigo_co: "406",
+    nombre: "SIMON",
+    grupo: "001",
+    zona: ZONA_L70,
+    presupuesto: 1_250_000_000,
+    factor: 0.268,
+  },
+  {
+    id: 5,
+    codigo_co: "412",
+    nombre: "BUCARAMANGA",
+    grupo: "002",
+    zona: ZONA_BGA,
+    presupuesto: 1_500_000_000,
+    factor: 0.281,
+  },
+  {
+    id: 6,
+    codigo_co: "409",
+    nombre: "PEREIRA",
+    grupo: "002",
+    zona: ZONA_PEI,
+    presupuesto: 1_200_000_000,
+    factor: 0.252,
+  },
+  {
+    id: 7,
+    codigo_co: "415",
+    nombre: "CARTAGENA",
+    grupo: "002",
+    zona: ZONA_CTG,
+    presupuesto: 900_000_000,
+    factor: 0.238,
+  },
+  {
+    id: 8,
+    codigo_co: "414",
+    nombre: "CENTRO",
+    grupo: "003",
+    zona: ZONA_BGA,
+    presupuesto: 1_450_000_000,
+    factor: 0.297,
+  },
+  {
+    id: 9,
+    codigo_co: "701",
+    nombre: "SANFELIPE",
+    grupo: "003",
+    zona: ZONA_RESTO,
+    presupuesto: 1_300_000_000,
+    factor: 0.259,
+  },
+  {
+    id: 10,
+    codigo_co: "702",
+    nombre: "OLAYA",
+    grupo: "003",
+    zona: ZONA_RESTO,
+    presupuesto: 1_150_000_000,
+    factor: 0.226,
+  },
+  {
+    id: 11,
+    codigo_co: "405",
+    nombre: "LA43",
+    grupo: "003",
+    zona: ZONA_L70,
+    presupuesto: 1_400_000_000,
+    factor: 0.288,
+    sinCategorias: ["ASADERO"],
+  },
+  {
+    id: 12,
+    codigo_co: "407",
+    nombre: "LA70",
+    grupo: "004",
+    zona: ZONA_L70,
+    presupuesto: 1_750_000_000,
+    factor: 0.31,
+  },
+  {
+    id: 13,
+    codigo_co: "413",
+    nombre: "LA93",
+    grupo: "004",
+    zona: ZONA_RESTO,
+    presupuesto: 1_600_000_000,
+    factor: 0.264,
+  },
+  {
+    id: 14,
+    codigo_co: "605",
+    nombre: "ALAMEDA",
+    grupo: "004",
+    zona: ZONA_RESTO,
+    presupuesto: 1_250_000_000,
+    factor: 0.271,
+    sinCategorias: ["ASADERO"],
+  },
+  {
+    id: 15,
+    codigo_co: "606",
+    nombre: "ALAMEDA2",
+    grupo: "004",
+    zona: ZONA_RESTO,
+    presupuesto: 1_200_000_000,
+    factor: 0.243,
+  },
   // Vende y no está presupuestado. El sistema lo muestra aparte y no descuadra.
-  { id: 16, codigo_co: "432", nombre: "EVENTOS BUCARAMANGA", grupo: "002", zona: ZONA_BGA, presupuesto: 0, factor: 0 },
+  {
+    id: 16,
+    codigo_co: "432",
+    nombre: "EVENTOS BUCARAMANGA",
+    grupo: "002",
+    zona: ZONA_BGA,
+    presupuesto: 0,
+    factor: 0,
+  },
 ];
 
 interface DefinicionZona {
@@ -154,7 +284,11 @@ function cadena(valor: number, decimales = 2): string {
   return valor.toFixed(decimales);
 }
 
-function semaforoDe(cumplimiento: number | null, ideal: number | null, presupuesto: number): Semaforo {
+function semaforoDe(
+  cumplimiento: number | null,
+  ideal: number | null,
+  presupuesto: number,
+): Semaforo {
   if (presupuesto <= 0) return "SIN_PRESUPUESTO";
   if (cumplimiento === null || ideal === null) return "SIN_PRESUPUESTO";
   if (cumplimiento >= ideal) return "VERDE";
@@ -176,16 +310,19 @@ function armarIndicadores(entrada: EntradaIndicadores): FilaIndicadores {
 
   const cumplimiento = presupuesto > 0 ? venta / presupuesto : null;
   const ideal = habiles > 0 ? trabajados / habiles : null;
-  const brecha = cumplimiento !== null && ideal !== null ? cumplimiento - ideal : null;
+  const brecha =
+    cumplimiento !== null && ideal !== null ? cumplimiento - ideal : null;
   const proyeccion = trabajados > 0 ? (venta / trabajados) * habiles : null;
-  const proyectado = proyeccion !== null && presupuesto > 0 ? proyeccion / presupuesto : null;
+  const proyectado =
+    proyeccion !== null && presupuesto > 0 ? proyeccion / presupuesto : null;
   const diariaPromedio = trabajados > 0 ? venta / trabajados : null;
 
   // §4.2: sin días restantes el requerido es indefinido y se pinta «—».
   let diariaRequerida: number | null = null;
   if (presupuesto > 0) {
     if (venta >= presupuesto) diariaRequerida = 0;
-    else if (habiles > trabajados) diariaRequerida = (presupuesto - venta) / (habiles - trabajados);
+    else if (habiles > trabajados)
+      diariaRequerida = (presupuesto - venta) / (habiles - trabajados);
   }
 
   const crecimiento = 0.14 + (semilla % 23) / 100;
@@ -193,8 +330,10 @@ function armarIndicadores(entrada: EntradaIndicadores): FilaIndicadores {
 
   // El margen es un concepto monetario: en la vista de kilos no aplica y viaja
   // como `null`, que la pantalla pinta «—» en lugar de un cero engañoso.
-  const margenPorcentaje = medida === "kilos" ? null : 0.3 + (semilla % 11) / 100;
-  const margenValor = margenPorcentaje === null ? null : venta * margenPorcentaje;
+  const margenPorcentaje =
+    medida === "kilos" ? null : 0.3 + (semilla % 11) / 100;
+  const margenValor =
+    margenPorcentaje === null ? null : venta * margenPorcentaje;
 
   const decimales = medida === "kilos" ? 2 : 2;
 
@@ -207,14 +346,21 @@ function armarIndicadores(entrada: EntradaIndicadores): FilaIndicadores {
     semaforo: semaforoDe(cumplimiento, ideal, presupuesto),
     proyeccion: proyeccion === null ? null : cadena(proyeccion, decimales),
     cumplimiento_proyectado: proyectado === null ? null : cadena(proyectado, 4),
-    venta_diaria_promedio: diariaPromedio === null ? null : cadena(diariaPromedio, decimales),
-    venta_diaria_requerida: diariaRequerida === null ? null : cadena(diariaRequerida, decimales),
+    venta_diaria_promedio:
+      diariaPromedio === null ? null : cadena(diariaPromedio, decimales),
+    venta_diaria_requerida:
+      diariaRequerida === null ? null : cadena(diariaRequerida, decimales),
     // Sin 2025 cargado el crecimiento estaría vacío; aquí se simula con historia
     // salvo para dos puntos, para poder ver el «—» en pantalla.
-    venta_anio_anterior: anterior === null || semilla % 7 === 3 ? null : cadena(anterior, decimales),
-    crecimiento: anterior === null || semilla % 7 === 3 ? null : cadena(crecimiento, 4),
+    venta_anio_anterior:
+      anterior === null || semilla % 7 === 3
+        ? null
+        : cadena(anterior, decimales),
+    crecimiento:
+      anterior === null || semilla % 7 === 3 ? null : cadena(crecimiento, 4),
     margen_valor: margenValor === null ? null : cadena(margenValor, decimales),
-    margen_porcentaje: margenPorcentaje === null ? null : cadena(margenPorcentaje, 4),
+    margen_porcentaje:
+      margenPorcentaje === null ? null : cadena(margenPorcentaje, 4),
     dias_habiles: cadena(habiles, 1),
     dias_trabajados: cadena(trabajados, 1),
   };
@@ -243,7 +389,9 @@ const PESOS_CATEGORIA: Record<string, number> = {
 
 function categoriasDe(pdv: DefinicionPdv, medida: Medida) {
   const excluidas = pdv.sinCategorias ?? [];
-  const activas = CATEGORIAS.filter((categoria) => !excluidas.includes(categoria.codigo));
+  const activas = CATEGORIAS.filter(
+    (categoria) => !excluidas.includes(categoria.codigo),
+  );
   const totalPeso = activas.reduce(
     (suma, categoria) => suma + (PESOS_CATEGORIA[categoria.codigo] ?? 0),
     0,
@@ -295,7 +443,10 @@ function medidaDe(opciones: Opciones): Medida {
   return opciones.parametros?.medida === "kilos" ? "kilos" : "valor";
 }
 
-function pdvsPresupuestados(grupo?: string, codigos?: Set<string>): DefinicionPdv[] {
+function pdvsPresupuestados(
+  grupo?: string,
+  codigos?: Set<string>,
+): DefinicionPdv[] {
   return PDVS.filter(
     (pdv) =>
       pdv.presupuesto > 0 &&
@@ -328,7 +479,11 @@ function grupoPedido(opciones: Opciones): string | undefined {
   return typeof grupo === "string" && grupo !== "" ? grupo : undefined;
 }
 
-function agregar(pdvs: DefinicionPdv[], medida: Medida, semilla: number): FilaIndicadores {
+function agregar(
+  pdvs: DefinicionPdv[],
+  medida: Medida,
+  semilla: number,
+): FilaIndicadores {
   let presupuesto = 0;
   let venta = 0;
   let habilesPonderados = 0;
@@ -348,7 +503,14 @@ function agregar(pdvs: DefinicionPdv[], medida: Medida, semilla: number): FilaIn
   const habiles = presupuesto > 0 ? habilesPonderados / presupuesto : 0;
   const trabajados = presupuesto > 0 ? trabajadosPonderados / presupuesto : 0;
 
-  return armarIndicadores({ presupuesto, venta, habiles, trabajados, medida, semilla });
+  return armarIndicadores({
+    presupuesto,
+    venta,
+    habiles,
+    trabajados,
+    medida,
+    semilla,
+  });
 }
 
 function tablero(opciones: Opciones): RespuestaTablero {
@@ -360,13 +522,19 @@ function tablero(opciones: Opciones): RespuestaTablero {
   const grupos: FilaGrupo[] = GRUPOS.map((grupo, indice) => ({
     codigo: grupo.codigo,
     nombre: grupo.nombre,
-    ...agregar(pdvsPresupuestados(grupo.codigo, codigos), medida, indice * 5 + 2),
+    ...agregar(
+      pdvsPresupuestados(grupo.codigo, codigos),
+      medida,
+      indice * 5 + 2,
+    ),
   }));
 
   const eventos = PDVS.find(
-    (pdv) => pdv.codigo_co === "432" && (codigos === undefined || codigos.has("432")),
+    (pdv) =>
+      pdv.codigo_co === "432" && (codigos === undefined || codigos.has("432")),
   );
-  const ventaEventos = medida === "kilos" ? 3_180_000 / PRECIO_KILO : 68_400_000;
+  const ventaEventos =
+    medida === "kilos" ? 3_180_000 / PRECIO_KILO : 68_400_000;
 
   return {
     periodo: PERIODO,
@@ -480,14 +648,24 @@ function periodoDe(iso: string): string {
 }
 
 function sumarDiasIso(iso: string, dias: number): string {
-  const [anio, mes, dia] = iso.split("-").map(Number) as [number, number, number];
-  return new Date(Date.UTC(anio, mes - 1, dia + dias)).toISOString().slice(0, 10);
+  const [anio, mes, dia] = iso.split("-").map(Number) as [
+    number,
+    number,
+    number,
+  ];
+  return new Date(Date.UTC(anio, mes - 1, dia + dias))
+    .toISOString()
+    .slice(0, 10);
 }
 
 function diasEntreIso(desde: string, hasta: string): number {
   const [a1, m1, d1] = desde.split("-").map(Number) as [number, number, number];
   const [a2, m2, d2] = hasta.split("-").map(Number) as [number, number, number];
-  return Math.round((Date.UTC(a2, m2 - 1, d2) - Date.UTC(a1, m1 - 1, d1)) / 86_400_000) + 1;
+  return (
+    Math.round(
+      (Date.UTC(a2, m2 - 1, d2) - Date.UTC(a1, m1 - 1, d1)) / 86_400_000,
+    ) + 1
+  );
 }
 
 function textoParametro(opciones: Opciones, clave: string): string | undefined {
@@ -541,7 +719,8 @@ function ventaDiaria(opciones: Opciones): RespuestaVentaDiaria {
   }
 
   const fechas: string[] = [];
-  for (let indice = 0; indice < dias; indice += 1) fechas.push(sumarDiasIso(desde, indice));
+  for (let indice = 0; indice < dias; indice += 1)
+    fechas.push(sumarDiasIso(desde, indice));
 
   const periodos = [...new Set(fechas.map(periodoDe))];
 
@@ -554,21 +733,31 @@ function ventaDiaria(opciones: Opciones): RespuestaVentaDiaria {
   });
 
   /** Referencia diaria de un punto en un período: presupuesto del mes ÷ días hábiles. */
-  function referenciaDiaria(pdv: DefinicionPdv, delPeriodo: string): number | null {
+  function referenciaDiaria(
+    pdv: DefinicionPdv,
+    delPeriodo: string,
+  ): number | null {
     if (pdv.presupuesto <= 0) return null;
     const zona = zonaDe(pdv);
     if (zona.dias_habiles <= 0) return null;
-    return (presupuestoDe(pdv, medida) * factorPeriodo(delPeriodo)) / zona.dias_habiles;
+    return (
+      (presupuestoDe(pdv, medida) * factorPeriodo(delPeriodo)) /
+      zona.dias_habiles
+    );
   }
 
   function comoCadena(valor: number | null): string | null {
     return valor === null ? null : cadena(valor, 2);
   }
 
-  const presupuestoPorPeriodo: Record<string, Record<string, string | null>> = {};
+  const presupuestoPorPeriodo: Record<
+    string,
+    Record<string, string | null>
+  > = {};
   for (const delPeriodo of periodos) {
     const tabla: Record<string, string | null> = {};
-    for (const pdv of seleccion) tabla[pdv.codigo_co] = comoCadena(referenciaDiaria(pdv, delPeriodo));
+    for (const pdv of seleccion)
+      tabla[pdv.codigo_co] = comoCadena(referenciaDiaria(pdv, delPeriodo));
     presupuestoPorPeriodo[delPeriodo] = tabla;
   }
 
@@ -578,15 +767,22 @@ function ventaDiaria(opciones: Opciones): RespuestaVentaDiaria {
   const presupuestoDiario: Record<string, string | null> =
     presupuestoPorPeriodo[periodo] ??
     Object.fromEntries(
-      seleccion.map((pdv) => [pdv.codigo_co, comoCadena(referenciaDiaria(pdv, periodo))]),
+      seleccion.map((pdv) => [
+        pdv.codigo_co,
+        comoCadena(referenciaDiaria(pdv, periodo)),
+      ]),
     );
 
   const filas: FilaVentaDiaria[] = seleccion.map((pdv) => {
     const valores = fechas.map((iso, indice) => {
-      const [anio, mes, dia] = iso.split("-").map(Number) as [number, number, number];
+      const [anio, mes, dia] = iso.split("-").map(Number) as [
+        number,
+        number,
+        number,
+      ];
       const fecha = new Date(anio, mes - 1, dia);
       const base = PESO_DIA_SEMANA[fecha.getDay()] ?? 1;
-      const ruido = 1 + ((((pdv.id * 3 + indice * 5) % 9) - 4) / 100);
+      const ruido = 1 + (((pdv.id * 3 + indice * 5) % 9) - 4) / 100;
 
       // Un día sin venta registrada viaja como `null`, que no es lo mismo que un
       // día que sumó cero: la pantalla lo pinta «—» y sin marca ▲▼.
@@ -598,7 +794,8 @@ function ventaDiaria(opciones: Opciones): RespuestaVentaDiaria {
       // pantalla tiene que saber pintar.
       const referencia = referenciaDiaria(pdv, periodoDe(iso));
       const diaria =
-        referencia ?? (medida === "kilos" ? 3_180_000 / PRECIO_KILO / 28 : 68_400_000 / 28);
+        referencia ??
+        (medida === "kilos" ? 3_180_000 / PRECIO_KILO / 28 : 68_400_000 / 28);
 
       return cadena(diaria * base * ruido * (0.86 + (pdv.id % 7) / 20), 2);
     });
@@ -669,14 +866,17 @@ function totalesDe(
       if (pdv.presupuesto <= 0) continue;
       const zona = zonaDe(pdv);
       if (zona.dias_habiles <= 0) return null;
-      suma += (presupuestoDe(pdv, medida) * factorPeriodo(delPeriodo)) / zona.dias_habiles;
+      suma +=
+        (presupuestoDe(pdv, medida) * factorPeriodo(delPeriodo)) /
+        zona.dias_habiles;
       alguno = true;
     }
     return alguno ? cadena(suma, 2) : null;
   }
 
   const porPeriodo: Record<string, string | null> = {};
-  for (const delPeriodo of periodos) porPeriodo[delPeriodo] = referenciaAgregada(delPeriodo);
+  for (const delPeriodo of periodos)
+    porPeriodo[delPeriodo] = referenciaAgregada(delPeriodo);
 
   return {
     valores,
@@ -723,27 +923,38 @@ const CLIENTES_EJEMPLO: Record<string, [string, string, number][]> = {
 
 function clientes(opciones: Opciones): RespuestaClientes {
   const medida = medidaDe(opciones);
-  const por = typeof opciones.parametros?.por === "string" ? opciones.parametros.por : "cliente";
+  const por =
+    typeof opciones.parametros?.por === "string"
+      ? opciones.parametros.por
+      : "cliente";
   const definicion = CLIENTES_EJEMPLO[por] ?? CLIENTES_EJEMPLO.cliente ?? [];
   const ventaTotal = PDVS.reduce(
     (suma, pdv) => suma + presupuestoDe(pdv, medida) * factorDe(pdv, medida),
     0,
   );
 
-  const filas: FilaClientes[] = definicion.map(([clave, nombre, participacion], indice) => {
-    const venta = ventaTotal * participacion;
-    return {
-      clave,
-      nombre,
-      venta: cadena(venta, 2),
-      kilos: cadena(venta / PRECIO_KILO, 2),
-      // Una fila sin margen calculable: la pantalla debe pintar «—».
-      margen_porcentaje: indice === 4 ? null : cadena(0.28 + (indice % 8) / 100, 4),
-      participacion: cadena(participacion, 4),
-    };
-  });
+  const filas: FilaClientes[] = definicion.map(
+    ([clave, nombre, participacion], indice) => {
+      const venta = ventaTotal * participacion;
+      return {
+        clave,
+        nombre,
+        venta: cadena(venta, 2),
+        kilos: cadena(venta / PRECIO_KILO, 2),
+        // Una fila sin margen calculable: la pantalla debe pintar «—».
+        margen_porcentaje:
+          indice === 4 ? null : cadena(0.28 + (indice % 8) / 100, 4),
+        participacion: cadena(participacion, 4),
+      };
+    },
+  );
 
-  return { filas, fecha_corte: FECHA_CORTE, medida, parametros_calculo: parametrosDe(medida) };
+  return {
+    filas,
+    fecha_corte: FECHA_CORTE,
+    medida,
+    parametros_calculo: parametrosDe(medida),
+  };
 }
 
 function calendario(): FilaCalendario[] {
@@ -759,25 +970,33 @@ function calendario(): FilaCalendario[] {
 function presupuesto(opciones: Opciones): FilaPresupuesto[] {
   const codigo = opciones.parametros?.punto_venta;
   const pdv =
-    (typeof codigo === "string" ? PDVS.find((item) => item.codigo_co === codigo) : undefined) ??
-    PDVS[0]!;
+    (typeof codigo === "string"
+      ? PDVS.find((item) => item.codigo_co === codigo)
+      : undefined) ?? PDVS[0]!;
 
   const excluidas = pdv.sinCategorias ?? [];
-  return CATEGORIAS.filter((categoria) => !excluidas.includes(categoria.codigo)).map(
-    (categoria, indice) => {
-      const peso = PESOS_CATEGORIA[categoria.codigo] ?? 0;
-      const monto = pdv.presupuesto * peso;
-      return {
-        punto_venta: pdv.codigo_co,
+  return CATEGORIAS.filter(
+    (categoria) => !excluidas.includes(categoria.codigo),
+  ).map((categoria, indice) => {
+    const peso = PESOS_CATEGORIA[categoria.codigo] ?? 0;
+    const monto = pdv.presupuesto * peso;
+    return {
+      punto_venta: pdv.codigo_co,
       nombre: pdv.nombre,
-        categoria: { id: categoria.id, codigo: categoria.codigo, nombre: categoria.nombre },
-        monto: cadena(monto, 2),
-        kilos: cadena(monto / PRECIO_KILO, 2),
-        actualizado_en: indice % 3 === 0 ? "2026-07-28T14:32:00-05:00" : "2026-07-25T09:11:00-05:00",
-        actualizado_por: indice % 3 === 0 ? "jmunoz" : "cgomez",
-      };
-    },
-  );
+      categoria: {
+        id: categoria.id,
+        codigo: categoria.codigo,
+        nombre: categoria.nombre,
+      },
+      monto: cadena(monto, 2),
+      kilos: cadena(monto / PRECIO_KILO, 2),
+      actualizado_en:
+        indice % 3 === 0
+          ? "2026-07-28T14:32:00-05:00"
+          : "2026-07-25T09:11:00-05:00",
+      actualizado_por: indice % 3 === 0 ? "jmunoz" : "cgomez",
+    };
+  });
 }
 
 const HISTORIAL: CambioPresupuesto[] = [
@@ -809,8 +1028,18 @@ const HISTORIAL: CambioPresupuesto[] = [
 
 const PERIODOS: Periodo[] = [
   { periodo: "2026-08", cerrado: false, cerrado_por: null, cerrado_en: null },
-  { periodo: "2026-07", cerrado: true, cerrado_por: "arestrepo", cerrado_en: "2026-08-03T17:40:00-05:00" },
-  { periodo: "2026-06", cerrado: true, cerrado_por: "arestrepo", cerrado_en: "2026-07-04T11:20:00-05:00" },
+  {
+    periodo: "2026-07",
+    cerrado: true,
+    cerrado_por: "arestrepo",
+    cerrado_en: "2026-08-03T17:40:00-05:00",
+  },
+  {
+    periodo: "2026-06",
+    cerrado: true,
+    cerrado_por: "arestrepo",
+    cerrado_en: "2026-07-04T11:20:00-05:00",
+  },
 ];
 
 const CORRIDAS: CorridaIngesta[] = [
@@ -857,16 +1086,56 @@ const CORRIDAS: CorridaIngesta[] = [
 
 /** Rechazos con los motivos reales del aviso de calidad de dato de §3.4. */
 const RECHAZOS: RechazoIngesta[] = [
-  { fila: 1_042, campo: "Domicilio", valor: "", motivo: "Campo obligatorio vacío; se esperaba «Si» o «No»." },
-  { fila: 1_043, campo: "Domicilio", valor: "", motivo: "Campo obligatorio vacío; se esperaba «Si» o «No»." },
-  { fila: 8_871, campo: "CLASES DE CLIENTES", valor: "johana.muñoz", motivo: "El valor no pertenece al catálogo de clases de cliente." },
-  { fila: 12_004, campo: "CLASES DE CLIENTES", valor: "2026-08-03 16:29:02", motivo: "El valor no pertenece al catálogo de clases de cliente." },
-  { fila: 30_115, campo: "CATEGORIA", valor: "0021 - MARISCOS", motivo: "Categoría de SIESA sin mapeo registrado; se clasificó como OTROS." },
-  { fila: 44_902, campo: "C.O.", valor: "0", motivo: "Centro de operación desconocido; la fila no se pudo asignar a un punto de venta." },
-  { fila: 51_330, campo: "Cantidad inv.", valor: "-12.5", motivo: "Cantidad negativa sin nota crédito asociada." },
-  { fila: 77_650, campo: "Valor subtotal", valor: "", motivo: "Venta vacía: la línea no aporta valor y se descarta." },
+  {
+    fila: 1_042,
+    campo: "Domicilio",
+    valor: "",
+    motivo: "Campo obligatorio vacío; se esperaba «Si» o «No».",
+  },
+  {
+    fila: 1_043,
+    campo: "Domicilio",
+    valor: "",
+    motivo: "Campo obligatorio vacío; se esperaba «Si» o «No».",
+  },
+  {
+    fila: 8_871,
+    campo: "CLASES DE CLIENTES",
+    valor: "johana.muñoz",
+    motivo: "El valor no pertenece al catálogo de clases de cliente.",
+  },
+  {
+    fila: 12_004,
+    campo: "CLASES DE CLIENTES",
+    valor: "2026-08-03 16:29:02",
+    motivo: "El valor no pertenece al catálogo de clases de cliente.",
+  },
+  {
+    fila: 30_115,
+    campo: "CATEGORIA",
+    valor: "0021 - MARISCOS",
+    motivo: "Categoría de SIESA sin mapeo registrado; se clasificó como OTROS.",
+  },
+  {
+    fila: 44_902,
+    campo: "C.O.",
+    valor: "0",
+    motivo:
+      "Centro de operación desconocido; la fila no se pudo asignar a un punto de venta.",
+  },
+  {
+    fila: 51_330,
+    campo: "Cantidad inv.",
+    valor: "-12.5",
+    motivo: "Cantidad negativa sin nota crédito asociada.",
+  },
+  {
+    fila: 77_650,
+    campo: "Valor subtotal",
+    valor: "",
+    motivo: "Venta vacía: la línea no aporta valor y se descarta.",
+  },
 ];
-
 
 const USUARIO: Usuario = {
   id: 1,
@@ -895,9 +1164,16 @@ function esperar<T>(valor: T): Promise<T> {
   });
 }
 
-export async function acceder(usuario: string, clave: string): Promise<TokensAcceso> {
+export async function acceder(
+  usuario: string,
+  clave: string,
+): Promise<TokensAcceso> {
   if (!usuario || !clave) {
-    throw new ErrorApi(401, "credenciales_invalidas", "Indique usuario y contraseña.");
+    throw new ErrorApi(
+      401,
+      "credenciales_invalidas",
+      "Indique usuario y contraseña.",
+    );
   }
   return esperar({
     token_acceso: "ejemplo.token.acceso",
@@ -906,24 +1182,43 @@ export async function acceder(usuario: string, clave: string): Promise<TokensAcc
   });
 }
 
-export async function responderArchivo<T>(ruta: string, archivo: File): Promise<T> {
+export async function responderArchivo<T>(
+  ruta: string,
+  archivo: File,
+): Promise<T> {
   if (ruta.startsWith("/presupuesto/carga-masiva")) {
     return esperar({
       aceptadas: 118,
       rechazadas: 3,
       errores: [
-        { fila: 14, motivo: `Punto de venta «PDV LA 44» no existe en el catálogo (${archivo.name}).` },
+        {
+          fila: 14,
+          motivo: `Punto de venta «PDV LA 44» no existe en el catálogo (${archivo.name}).`,
+        },
         { fila: 51, motivo: "El monto «1.250.000,oo» no es un número válido." },
-        { fila: 92, motivo: "El período 2026-07 está cerrado y no admite cambios de presupuesto." },
+        {
+          fila: 92,
+          motivo:
+            "El período 2026-07 está cerrado y no admite cambios de presupuesto.",
+        },
       ],
     } as T);
   }
 
   if (ruta.startsWith("/ingesta/archivo")) {
-    return esperar({ ...CORRIDAS[0]!, id: 315, quien: "gerencia", cuando: new Date().toISOString() } as T);
+    return esperar({
+      ...CORRIDAS[0]!,
+      id: 315,
+      quien: "gerencia",
+      cuando: new Date().toISOString(),
+    } as T);
   }
 
-  throw new ErrorApi(404, "ruta_desconocida", `Sin datos de ejemplo para «${ruta}».`);
+  throw new ErrorApi(
+    404,
+    "ruta_desconocida",
+    `Sin datos de ejemplo para «${ruta}».`,
+  );
 }
 
 /**
@@ -933,12 +1228,20 @@ export async function responderArchivo<T>(ruta: string, archivo: File): Promise<
  * el ciclo de la interfaz (enviar, invalidar, recargar) se pueda revisar de
  * extremo a extremo.
  */
-export async function responder<T>(ruta: string, opciones: Opciones): Promise<T> {
+export async function responder<T>(
+  ruta: string,
+  opciones: Opciones,
+): Promise<T> {
   const metodo = opciones.metodo ?? "GET";
 
   if (metodo !== "GET") {
     if (ruta.startsWith("/periodos/") && ruta.endsWith("/cerrar")) {
-      return esperar({ periodo: PERIODO, cerrado: true, cerrado_por: "gerencia", cerrado_en: new Date().toISOString() } as T);
+      return esperar({
+        periodo: PERIODO,
+        cerrado: true,
+        cerrado_por: "gerencia",
+        cerrado_en: new Date().toISOString(),
+      } as T);
     }
     // PUT de presupuesto, PUT de calendario, POST de ingesta y de mapeo.
     return esperar(undefined as T);
@@ -950,25 +1253,25 @@ export async function responder<T>(ruta: string, opciones: Opciones): Promise<T>
     "/catalogos/grupos": () => GRUPOS,
     "/catalogos/categorias": () => CATEGORIAS,
     "/catalogos/puntos-venta": () =>
-      PDVS.map(
-        (pdv): PuntoVenta => ({
-          id: pdv.id,
-          codigo_co: pdv.codigo_co,
-          nombre: pdv.nombre,
-          grupo: GRUPOS.find((grupo) => grupo.codigo === pdv.grupo)?.nombre ?? pdv.grupo,
-          zona: pdv.zona,
-          activo: true,
-          presupuestado: pdv.presupuesto > 0,
-        }),
-      ),
+      PDVS.map((pdv): PuntoVenta => ({
+        id: pdv.id,
+        codigo_co: pdv.codigo_co,
+        nombre: pdv.nombre,
+        grupo:
+          GRUPOS.find((grupo) => grupo.codigo === pdv.grupo)?.nombre ??
+          pdv.grupo,
+        zona: pdv.zona,
+        activo: true,
+        presupuestado: pdv.presupuesto > 0,
+      })),
     "/catalogos/zonas": () =>
-      ZONAS.map(
-        (zona): Zona => ({
-          id: zona.id,
-          nombre: zona.nombre,
-          puntos_venta: PDVS.filter((pdv) => pdv.zona === zona.nombre).map((pdv) => pdv.nombre),
-        }),
-      ),
+      ZONAS.map((zona): Zona => ({
+        id: zona.id,
+        nombre: zona.nombre,
+        puntos_venta: PDVS.filter((pdv) => pdv.zona === zona.nombre).map(
+          (pdv) => pdv.nombre,
+        ),
+      })),
     "/catalogos/mapeo-categorias": () =>
       [
         ["0001 - RES", "RES"],
@@ -983,7 +1286,10 @@ export async function responder<T>(ruta: string, opciones: Opciones): Promise<T>
         ["0007 - HUEVOS", "OTROS"],
         ["0008 - VIVERES", "OTROS"],
         ["0014 - DOMICILIOS", "OTROS"],
-      ].map(([texto, categoria]): MapeoCategoria => ({ texto_siesa: texto ?? "", categoria: categoria ?? "" })),
+      ].map(([texto, categoria]): MapeoCategoria => ({
+        texto_siesa: texto ?? "",
+        categoria: categoria ?? "",
+      })),
     "/calendario": calendario,
     "/presupuesto": () => presupuesto(opciones),
     "/presupuesto/historial": () => HISTORIAL,

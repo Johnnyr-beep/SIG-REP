@@ -14,7 +14,13 @@ import type { FormEvent } from "react";
 import { useCalendario, useGuardarCalendario, useZonas } from "@/api/consultas";
 import type { FilaCalendario, ReferenciaSimple } from "@/api/tipos";
 import { useAuth } from "@/auth/ContextoAuth";
-import { AvisoError, Campo, Dialogo, Tarjeta, Vacio } from "@/componentes/comunes";
+import {
+  AvisoError,
+  Campo,
+  Dialogo,
+  Tarjeta,
+  Vacio,
+} from "@/componentes/comunes";
 import { useFiltros } from "@/componentes/filtros";
 import { FORMULAS, etiquetaDe } from "@/utilidades/dominio";
 import { dias, fecha, periodoLargo, porcentaje } from "@/utilidades/formato";
@@ -53,12 +59,17 @@ export function Calendario() {
    */
   const idPorNombre = useMemo(() => {
     const mapa = new Map<string, number>();
-    for (const zona of zonas ?? []) mapa.set(zona.nombre.toUpperCase(), zona.id);
+    for (const zona of zonas ?? [])
+      mapa.set(zona.nombre.toUpperCase(), zona.id);
     return mapa;
   }, [zonas]);
 
   function resolverId(fila: FilaCalendario): number | null {
-    return idDe(fila.zona) ?? idPorNombre.get(etiquetaDe(fila.zona).toUpperCase()) ?? null;
+    return (
+      idDe(fila.zona) ??
+      idPorNombre.get(etiquetaDe(fila.zona).toUpperCase()) ??
+      null
+    );
   }
 
   function abrir(fila: FilaCalendario) {
@@ -80,7 +91,9 @@ export function Calendario() {
 
     const habiles = normalizarDecimal(edicion.dias_habiles);
     if (habiles === null) {
-      setErrorFormulario("Los días hábiles deben ser un número; admiten media jornada (27,5).");
+      setErrorFormulario(
+        "Los días hábiles deben ser un número; admiten media jornada (27,5).",
+      );
       return;
     }
 
@@ -97,7 +110,10 @@ export function Calendario() {
 
     setErrorFormulario(null);
     guardar.mutate(
-      { zonaId: edicion.zonaId, datos: { dias_habiles: habiles, dias_trabajados: trabajados } },
+      {
+        zonaId: edicion.zonaId,
+        datos: { dias_habiles: habiles, dias_trabajados: trabajados },
+      },
       { onSuccess: () => setEdicion(null) },
     );
   }
@@ -122,9 +138,10 @@ export function Calendario() {
         <div>
           <strong>Pendiente de confirmar con el usuario.</strong>
           <p>
-            Los días hábiles de las zonas de MALAMBO, CONCORDE, SANFELIPE, OLAYA, LA93, ALAMEDA y
-            ALAMEDA2 aún no están definidos (§8.1 de la especificación). Se parametrizan en esta
-            pantalla; hasta entonces el valor sembrado es un supuesto, no un dato del negocio.
+            Los días hábiles de las zonas de MALAMBO, CONCORDE, SANFELIPE,
+            OLAYA, LA93, ALAMEDA y ALAMEDA2 aún no están definidos (§8.1 de la
+            especificación). Se parametrizan en esta pantalla; hasta entonces el
+            valor sembrado es un supuesto, no un dato del negocio.
           </p>
         </div>
       </div>
@@ -175,7 +192,9 @@ export function Calendario() {
                     <th scope="row">{etiquetaDe(fila.zona)}</th>
                     <td className="numero">{dias(fila.dias_habiles)}</td>
                     <td className="numero">{dias(fila.dias_trabajados)}</td>
-                    <td className="numero numero--destacado">{porcentaje(fila.ideal)}</td>
+                    <td className="numero numero--destacado">
+                      {porcentaje(fila.ideal)}
+                    </td>
                     <td>{fecha(fila.fecha_corte)}</td>
                     {puedeParametrizar ? (
                       <td>
@@ -235,9 +254,13 @@ export function Calendario() {
               <input
                 type="checkbox"
                 checked={edicion.derivar}
-                onChange={(evento) => setEdicion({ ...edicion, derivar: evento.target.checked })}
+                onChange={(evento) =>
+                  setEdicion({ ...edicion, derivar: evento.target.checked })
+                }
               />
-              <span>Derivar los días trabajados del calendario y la fecha de corte</span>
+              <span>
+                Derivar los días trabajados del calendario y la fecha de corte
+              </span>
             </label>
 
             <Campo
@@ -253,22 +276,33 @@ export function Calendario() {
                 inputMode="decimal"
                 value={edicion.derivar ? "" : edicion.dias_trabajados}
                 onChange={(evento) =>
-                  setEdicion({ ...edicion, dias_trabajados: evento.target.value })
+                  setEdicion({
+                    ...edicion,
+                    dias_trabajados: evento.target.value,
+                  })
                 }
                 disabled={edicion.derivar}
               />
             </Campo>
 
             <p className="tenue">
-              Cambiar estos valores mueve el ideal, el semáforo y la proyección de todos los puntos
-              de venta de la zona.
+              Cambiar estos valores mueve el ideal, el semáforo y la proyección
+              de todos los puntos de venta de la zona.
             </p>
 
             <div className="grupo-botones">
-              <button type="submit" className="boton boton--principal" disabled={guardar.isPending}>
+              <button
+                type="submit"
+                className="boton boton--principal"
+                disabled={guardar.isPending}
+              >
                 {guardar.isPending ? "Guardando…" : "Guardar"}
               </button>
-              <button type="button" className="boton" onClick={() => setEdicion(null)}>
+              <button
+                type="button"
+                className="boton"
+                onClick={() => setEdicion(null)}
+              >
                 Cancelar
               </button>
             </div>

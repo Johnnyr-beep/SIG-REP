@@ -42,7 +42,9 @@ interface Decimal {
  * —incluidos `null`, `undefined`, `""` y basura— para que el llamador pinte
  * «—» en lugar de arriesgar un «NaN» en pantalla.
  */
-function descomponer(valor: string | number | null | undefined): Decimal | null {
+function descomponer(
+  valor: string | number | null | undefined,
+): Decimal | null {
   if (valor === null || valor === undefined) return null;
 
   const texto = String(valor).trim();
@@ -97,7 +99,11 @@ function redondear(valor: Decimal, decimales: number): Decimal {
   if (siguiente !== "" && siguiente >= "5") digitos = incrementar(digitos);
 
   if (decimales === 0) {
-    return { negativo: valor.negativo, entero: digitos === "" ? "0" : digitos, fraccion: "" };
+    return {
+      negativo: valor.negativo,
+      entero: digitos === "" ? "0" : digitos,
+      fraccion: "",
+    };
   }
 
   const corte = digitos.length - decimales;
@@ -143,14 +149,20 @@ function formatear(
 ): string | null {
   const partes = descomponer(valor);
   if (!partes) return null;
-  const desplazado = posicionesDesplazadas === 0 ? partes : desplazar(partes, posicionesDesplazadas);
+  const desplazado =
+    posicionesDesplazadas === 0
+      ? partes
+      : desplazar(partes, posicionesDesplazadas);
   return componer(redondear(desplazado, decimales));
 }
 
 // ── Importes y cantidades ────────────────────────────────────────────────────
 
 /** Pesos colombianos. Sin decimales por defecto: en tablas solo estorban. */
-export function dinero(valor: string | null | undefined, decimales = 0): string {
+export function dinero(
+  valor: string | null | undefined,
+  decimales = 0,
+): string {
   const texto = formatear(valor, decimales);
   return texto === null ? SIN_DATO : `$${ESPACIO_FIJO}${texto}`;
 }
@@ -162,7 +174,10 @@ export function kilos(valor: string | null | undefined, decimales = 0): string {
 }
 
 /** Número simple, sin unidad. */
-export function numero(valor: string | number | null | undefined, decimales = 0): string {
+export function numero(
+  valor: string | number | null | undefined,
+  decimales = 0,
+): string {
   return formatear(valor, decimales) ?? SIN_DATO;
 }
 
@@ -177,7 +192,9 @@ export function porMedida(
   medida: "valor" | "kilos",
   decimales = 0,
 ): string {
-  return medida === "kilos" ? kilos(valor, decimales) : dinero(valor, decimales);
+  return medida === "kilos"
+    ? kilos(valor, decimales)
+    : dinero(valor, decimales);
 }
 
 /** Importe abreviado para tarjetas: `$ 5.396 M`. Conserva el orden de magnitud. */
@@ -198,7 +215,10 @@ export function dineroCorto(valor: string | null | undefined): string {
       const posiciones = sufijo === "MM" ? 12 : sufijo === "M" ? 6 : 3;
       const recorte = digitos.length - posiciones;
       const entero = recorte > 0 ? digitos.slice(0, recorte) : "0";
-      const resto = recorte > 0 ? digitos.slice(recorte) : digitos.padStart(posiciones, "0");
+      const resto =
+        recorte > 0
+          ? digitos.slice(recorte)
+          : digitos.padStart(posiciones, "0");
       const reducido = redondear(
         { negativo: partes.negativo, entero, fraccion: resto },
         digitos.length - posiciones >= 4 ? 0 : 1,
@@ -216,7 +236,10 @@ export function dineroCorto(valor: string | null | undefined): string {
  * La API envía fracciones (`"0.2885"`); la gerencia lee porcentajes (`28,9 %`).
  * La conversión es un desplazamiento de la coma, no una multiplicación.
  */
-export function porcentaje(valor: string | null | undefined, decimales = 1): string {
+export function porcentaje(
+  valor: string | null | undefined,
+  decimales = 1,
+): string {
   const texto = formatear(valor, decimales, 2);
   return texto === null ? SIN_DATO : `${texto}${ESPACIO_FIJO}%`;
 }
@@ -228,7 +251,10 @@ export function porcentaje(valor: string | null | undefined, decimales = 1): str
  * una variación relativa, que es otra cosa. Lleva signo explícito porque su
  * lectura entera es «cuánto voy por encima o por debajo de lo que tocaba».
  */
-export function puntos(valor: string | null | undefined, decimales = 1): string {
+export function puntos(
+  valor: string | null | undefined,
+  decimales = 1,
+): string {
   const partes = descomponer(valor);
   if (!partes) return SIN_DATO;
 
@@ -287,7 +313,10 @@ const FECHA_HORA = new Intl.DateTimeFormat("es-CO", {
 });
 
 const DIA_SEMANA = new Intl.DateTimeFormat("es-CO", { weekday: "short" });
-const MES_LARGO = new Intl.DateTimeFormat("es-CO", { month: "long", year: "numeric" });
+const MES_LARGO = new Intl.DateTimeFormat("es-CO", {
+  month: "long",
+  year: "numeric",
+});
 
 export function fecha(iso: string | null | undefined): string {
   if (!iso) return SIN_DATO;
@@ -371,7 +400,9 @@ export function periodoDeFecha(iso: string | null | undefined): string | null {
 }
 
 /** Descompone `YYYY-MM-DD` en sus tres números, o `null` si no lo es. */
-function partesDeFecha(iso: string | null | undefined): [number, number, number] | null {
+function partesDeFecha(
+  iso: string | null | undefined,
+): [number, number, number] | null {
   if (!iso) return null;
   const partes = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   if (!partes) return null;
@@ -400,7 +431,9 @@ export function finDeMes(periodo: string | null | undefined): string | null {
   if (!partes) return null;
   // El día 0 del mes siguiente es el último del pedido, y el calendario resuelve
   // solo los febreros bisiestos.
-  return new Date(Date.UTC(Number(partes[1]), Number(partes[2]), 0)).toISOString().slice(0, 10);
+  return new Date(Date.UTC(Number(partes[1]), Number(partes[2]), 0))
+    .toISOString()
+    .slice(0, 10);
 }
 
 /**
@@ -451,7 +484,8 @@ export function comparaParaGrafico(
   referencia: string | null | undefined,
 ): -1 | 0 | 1 | null {
   if (valor === null || valor === undefined || valor === "") return null;
-  if (referencia === null || referencia === undefined || referencia === "") return null;
+  if (referencia === null || referencia === undefined || referencia === "")
+    return null;
   const a = Number(valor);
   const b = Number(referencia);
   if (!Number.isFinite(a) || !Number.isFinite(b)) return null;

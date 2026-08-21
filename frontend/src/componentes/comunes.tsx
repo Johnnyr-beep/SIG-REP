@@ -15,7 +15,13 @@ export function Cargando({ texto = "Cargando…" }: { texto?: string }) {
   );
 }
 
-export function Vacio({ titulo, detalle }: { titulo: string; detalle?: string }) {
+export function Vacio({
+  titulo,
+  detalle,
+}: {
+  titulo: string;
+  detalle?: string;
+}) {
   return (
     <div className="vacio">
       <p style={{ fontWeight: 600 }}>{titulo}</p>
@@ -47,7 +53,11 @@ export function AvisoError({ error }: { error: unknown }) {
     <div className="aviso aviso--error" role="alert">
       <div>
         <strong>{mensaje}</strong>
-        {codigo ? <p className="tenue" style={{ marginTop: 4 }}>Código: {codigo}</p> : null}
+        {codigo ? (
+          <p className="tenue" style={{ marginTop: 4 }}>
+            Código: {codigo}
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -92,7 +102,13 @@ export function Tarjeta({
 
 export type Tono = "neutro" | "info" | "exito" | "aviso" | "peligro";
 
-export function Distintivo({ tono = "neutro", children }: { tono?: Tono; children: ReactNode }) {
+export function Distintivo({
+  tono = "neutro",
+  children,
+}: {
+  tono?: Tono;
+  children: ReactNode;
+}) {
   return <span className={`distintivo distintivo--${tono}`}>{children}</span>;
 }
 
@@ -213,7 +229,12 @@ export function Confirmacion({
       onCerrar={onCancelar}
       pie={
         <>
-          <button type="button" className="boton" onClick={onCancelar} disabled={trabajando}>
+          <button
+            type="button"
+            className="boton"
+            onClick={onCancelar}
+            disabled={trabajando}
+          >
             Cancelar
           </button>
           <button

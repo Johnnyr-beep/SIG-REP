@@ -47,7 +47,9 @@ export function Clientes() {
           <button
             type="button"
             className="boton boton--pequeno"
-            onClick={() => exportar.mutate({ reporte: "clientes", filtros, extra: { por } })}
+            onClick={() =>
+              exportar.mutate({ reporte: "clientes", filtros, extra: { por } })
+            }
             disabled={exportar.isPending}
           >
             {exportar.isPending ? "Generando…" : "Exportar a Excel"}
@@ -95,8 +97,9 @@ export function Clientes() {
               medida={data.medida ?? filtros.medida}
               extra={
                 <p className="tenue">
-                  Las filas cuya clase de cliente no pertenece al catálogo se agrupan como «SIN
-                  CLASIFICAR»; el detalle de por qué está en la pantalla de ingesta.
+                  Las filas cuya clase de cliente no pertenece al catálogo se
+                  agrupan como «SIN CLASIFICAR»; el detalle de por qué está en
+                  la pantalla de ingesta.
                 </p>
               }
             />
@@ -135,7 +138,9 @@ export function Clientes() {
                       <td className="mono tenue">{fila.clave}</td>
                       <td className="numero">{dinero(fila.venta)}</td>
                       <td className="numero">{kilos(fila.kilos)}</td>
-                      <td className="numero">{porcentaje(fila.margen_porcentaje)}</td>
+                      <td className="numero">
+                        {porcentaje(fila.margen_porcentaje)}
+                      </td>
                       <td className="columna-participacion">
                         <div className="participacion">
                           <span className="participacion__cifra">

@@ -77,11 +77,22 @@ export interface FiltrosReporte {
    * punto de código «».
    */
   punto_venta?: string;
+  /**
+   * Centros de operación de agropecuaria, separados por coma: `"301,302"`.
+   *
+   * **Ningún reporte de carnes lo entiende**, y por eso no entra en
+   * `comoParametros`: vive aquí porque el estado de los filtros es uno solo —la
+   * barra de direcciones— y las dos unidades comparten esa barra. Lo consume
+   * `filtrosAgroDe`, que arma los parámetros de `/agro`.
+   */
+  centro?: string;
   categoria?: string;
   medida: Medida;
 }
 
-function comoParametros(filtros: FiltrosReporte): Record<string, ValorParametro> {
+function comoParametros(
+  filtros: FiltrosReporte,
+): Record<string, ValorParametro> {
   return {
     periodo: filtros.periodo,
     hasta: filtros.hasta,
@@ -93,7 +104,9 @@ function comoParametros(filtros: FiltrosReporte): Record<string, ValorParametro>
 }
 
 /** Los mismos filtros más `desde`, que es exclusivo del reporte diario. */
-function comoParametrosDiarios(filtros: FiltrosReporte): Record<string, ValorParametro> {
+function comoParametrosDiarios(
+  filtros: FiltrosReporte,
+): Record<string, ValorParametro> {
   return { ...comoParametros(filtros), desde: filtros.desde };
 }
 
@@ -112,9 +125,12 @@ export const claves = {
   historialPresupuesto: (periodo: string, puntoVenta: string) =>
     ["presupuesto-historial", periodo, puntoVenta] as const,
   periodos: ["periodos"] as const,
-  tablero: (filtros: FiltrosReporte) => ["reporte", "tablero", filtros] as const,
-  cumplimiento: (filtros: FiltrosReporte) => ["reporte", "cumplimiento", filtros] as const,
-  ventaDiaria: (filtros: FiltrosReporte) => ["reporte", "venta-diaria", filtros] as const,
+  tablero: (filtros: FiltrosReporte) =>
+    ["reporte", "tablero", filtros] as const,
+  cumplimiento: (filtros: FiltrosReporte) =>
+    ["reporte", "cumplimiento", filtros] as const,
+  ventaDiaria: (filtros: FiltrosReporte) =>
+    ["reporte", "venta-diaria", filtros] as const,
   clientes: (filtros: FiltrosReporte, por: CorteClientes) =>
     ["reporte", "clientes", por, filtros] as const,
 
@@ -137,7 +153,6 @@ export function usePerfil(habilitado: boolean): UseQueryResult<Usuario> {
   });
 }
 
-
 /**
  * Cambio de clave, obligatorio o voluntario.
  *
@@ -149,7 +164,8 @@ export function usePerfil(habilitado: boolean): UseQueryResult<Usuario> {
 export function useCambiarClave(): UseMutationResult<void, Error, CambioClave> {
   const cliente = useQueryClient();
   return useMutation({
-    mutationFn: (datos) => peticion<void>("/auth/cambiar-clave", { metodo: "POST", cuerpo: datos }),
+    mutationFn: (datos) =>
+      peticion<void>("/auth/cambiar-clave", { metodo: "POST", cuerpo: datos }),
     onSuccess: () => {
       cliente.setQueryData<Usuario>(claves.perfil, (anterior) =>
         anterior ? { ...anterior, debe_cambiar_password: false } : anterior,
@@ -205,7 +221,9 @@ export function useZonas(): UseQueryResult<Zona[]> {
   });
 }
 
-export function useMapeoCategorias(habilitado = true): UseQueryResult<MapeoCategoria[]> {
+export function useMapeoCategorias(
+  habilitado = true,
+): UseQueryResult<MapeoCategoria[]> {
   return useQuery({
     queryKey: claves.mapeoCategorias,
     queryFn: () => peticion<MapeoCategoria[]>("/catalogos/mapeo-categorias"),
@@ -216,19 +234,28 @@ export function useMapeoCategorias(habilitado = true): UseQueryResult<MapeoCateg
 
 // ── Reportes ─────────────────────────────────────────────────────────────────
 
-export function useTablero(filtros: FiltrosReporte): UseQueryResult<RespuestaTablero> {
+export function useTablero(
+  filtros: FiltrosReporte,
+): UseQueryResult<RespuestaTablero> {
   return useQuery({
     queryKey: claves.tablero(filtros),
-    queryFn: () => peticion<RespuestaTablero>("/reportes/tablero", { parametros: comoParametros(filtros) }),
+    queryFn: () =>
+      peticion<RespuestaTablero>("/reportes/tablero", {
+        parametros: comoParametros(filtros),
+      }),
     staleTime: 60_000,
   });
 }
 
-export function useCumplimiento(filtros: FiltrosReporte): UseQueryResult<RespuestaCumplimiento> {
+export function useCumplimiento(
+  filtros: FiltrosReporte,
+): UseQueryResult<RespuestaCumplimiento> {
   return useQuery({
     queryKey: claves.cumplimiento(filtros),
     queryFn: () =>
-      peticion<RespuestaCumplimiento>("/reportes/cumplimiento", { parametros: comoParametros(filtros) }),
+      peticion<RespuestaCumplimiento>("/reportes/cumplimiento", {
+        parametros: comoParametros(filtros),
+      }),
     staleTime: 60_000,
   });
 }
@@ -279,7 +306,11 @@ export function useClientes(
 export function useExportar(): UseMutationResult<
   void,
   Error,
-  { reporte: string; filtros: FiltrosReporte; extra?: Record<string, ValorParametro> }
+  {
+    reporte: string;
+    filtros: FiltrosReporte;
+    extra?: Record<string, ValorParametro>;
+  }
 > {
   return useMutation({
     mutationFn: ({ reporte, filtros, extra }) =>
@@ -288,7 +319,9 @@ export function useExportar(): UseMutationResult<
         // `desde` solo viaja en el reporte que lo declara; en los demás, `filtros.desde`
         // ni siquiera se puede fijar desde la barra.
         {
-          ...(reporte === "venta-diaria" ? comoParametrosDiarios(filtros) : comoParametros(filtros)),
+          ...(reporte === "venta-diaria"
+            ? comoParametrosDiarios(filtros)
+            : comoParametros(filtros)),
           ...extra,
         },
         `sigrep-${reporte}-${filtros.periodo}.xlsx`,
@@ -298,17 +331,24 @@ export function useExportar(): UseMutationResult<
 
 // ── Calendario ───────────────────────────────────────────────────────────────
 
-export function useCalendario(periodo: string): UseQueryResult<FilaCalendario[]> {
+export function useCalendario(
+  periodo: string,
+): UseQueryResult<FilaCalendario[]> {
   return useQuery({
     queryKey: claves.calendario(periodo),
-    queryFn: () => peticion<FilaCalendario[]>("/calendario", { parametros: { periodo } }),
+    queryFn: () =>
+      peticion<FilaCalendario[]>("/calendario", { parametros: { periodo } }),
     staleTime: 5 * 60_000,
   });
 }
 
 export function useGuardarCalendario(
   periodo: string,
-): UseMutationResult<void, Error, { zonaId: number; datos: EntradaCalendario }> {
+): UseMutationResult<
+  void,
+  Error,
+  { zonaId: number; datos: EntradaCalendario }
+> {
   const cliente = useQueryClient();
   return useMutation({
     mutationFn: ({ zonaId, datos }) =>
@@ -362,8 +402,12 @@ export function useHistorialPresupuesto(
 function useInvalidarPresupuesto(periodo: string, puntoVenta: string) {
   const cliente = useQueryClient();
   return () => {
-    void cliente.invalidateQueries({ queryKey: claves.presupuesto(periodo, puntoVenta) });
-    void cliente.invalidateQueries({ queryKey: claves.historialPresupuesto(periodo, puntoVenta) });
+    void cliente.invalidateQueries({
+      queryKey: claves.presupuesto(periodo, puntoVenta),
+    });
+    void cliente.invalidateQueries({
+      queryKey: claves.historialPresupuesto(periodo, puntoVenta),
+    });
     void cliente.invalidateQueries({ queryKey: ["presupuesto"] });
     void cliente.invalidateQueries({ queryKey: ["reporte"] });
   };
@@ -375,7 +419,8 @@ export function useGuardarPresupuesto(
 ): UseMutationResult<void, Error, EntradaPresupuesto> {
   const invalidar = useInvalidarPresupuesto(periodo, puntoVenta);
   return useMutation({
-    mutationFn: (datos) => peticion<void>("/presupuesto", { metodo: "PUT", cuerpo: datos }),
+    mutationFn: (datos) =>
+      peticion<void>("/presupuesto", { metodo: "PUT", cuerpo: datos }),
     onSuccess: invalidar,
   });
 }
@@ -387,7 +432,11 @@ export function useCargaMasivaPresupuesto(
   const invalidar = useInvalidarPresupuesto(periodo, puntoVenta);
   return useMutation({
     mutationFn: (archivo) =>
-      enviarArchivo<ResultadoCargaMasiva>("/presupuesto/carga-masiva", archivo, { periodo }),
+      enviarArchivo<ResultadoCargaMasiva>(
+        "/presupuesto/carga-masiva",
+        archivo,
+        { periodo },
+      ),
     onSuccess: invalidar,
   });
 }
@@ -403,7 +452,8 @@ export function usePeriodos(): UseQueryResult<Periodo[]> {
 export function useCerrarPeriodo(): UseMutationResult<Periodo, Error, string> {
   const cliente = useQueryClient();
   return useMutation({
-    mutationFn: (periodo) => peticion<Periodo>(`/periodos/${periodo}/cerrar`, { metodo: "POST" }),
+    mutationFn: (periodo) =>
+      peticion<Periodo>(`/periodos/${periodo}/cerrar`, { metodo: "POST" }),
     onSuccess: () => {
       void cliente.invalidateQueries({ queryKey: claves.periodos });
       void cliente.invalidateQueries({ queryKey: ["presupuesto"] });
@@ -421,10 +471,13 @@ export function useCorridasIngesta(): UseQueryResult<CorridaIngesta[]> {
   });
 }
 
-export function useRechazosIngesta(id: number | null): UseQueryResult<RechazoIngesta[]> {
+export function useRechazosIngesta(
+  id: number | null,
+): UseQueryResult<RechazoIngesta[]> {
   return useQuery({
     queryKey: claves.rechazos(id ?? 0),
-    queryFn: () => peticion<RechazoIngesta[]>(`/ingesta/corridas/${id}/rechazos`),
+    queryFn: () =>
+      peticion<RechazoIngesta[]>(`/ingesta/corridas/${id}/rechazos`),
     enabled: id !== null,
   });
 }
@@ -439,10 +492,15 @@ function useInvalidarIngesta() {
   };
 }
 
-export function useEjecutarIngesta(): UseMutationResult<unknown, Error, EntradaIngesta> {
+export function useEjecutarIngesta(): UseMutationResult<
+  unknown,
+  Error,
+  EntradaIngesta
+> {
   const invalidar = useInvalidarIngesta();
   return useMutation({
-    mutationFn: (datos) => peticion("/ingesta/ejecutar", { metodo: "POST", cuerpo: datos }),
+    mutationFn: (datos) =>
+      peticion("/ingesta/ejecutar", { metodo: "POST", cuerpo: datos }),
     onSuccess: invalidar,
   });
 }
@@ -510,10 +568,15 @@ function useInvalidarUsuarios() {
  * seguido a `reset()`; por eso la mutación se declara con `gcTime: 0`, para que
  * el secreto no sobreviva en la caché de mutaciones ni un segundo de más.
  */
-export function useCrearUsuario(): UseMutationResult<UsuarioCreado, Error, EntradaUsuario> {
+export function useCrearUsuario(): UseMutationResult<
+  UsuarioCreado,
+  Error,
+  EntradaUsuario
+> {
   const invalidar = useInvalidarUsuarios();
   return useMutation({
-    mutationFn: (datos) => peticion<UsuarioCreado>("/usuarios", { metodo: "POST", cuerpo: datos }),
+    mutationFn: (datos) =>
+      peticion<UsuarioCreado>("/usuarios", { metodo: "POST", cuerpo: datos }),
     gcTime: 0,
     onSuccess: invalidar,
   });
@@ -527,7 +590,10 @@ export function useActualizarUsuario(): UseMutationResult<
   const invalidar = useInvalidarUsuarios();
   return useMutation({
     mutationFn: ({ id, datos }) =>
-      peticion<UsuarioAdministrado>(`/usuarios/${id}`, { metodo: "PATCH", cuerpo: datos }),
+      peticion<UsuarioAdministrado>(`/usuarios/${id}`, {
+        metodo: "PATCH",
+        cuerpo: datos,
+      }),
     onSuccess: invalidar,
   });
 }
@@ -564,9 +630,12 @@ export function useCambiarEstadoUsuario(): UseMutationResult<
   const invalidar = useInvalidarUsuarios();
   return useMutation({
     mutationFn: ({ id, activar }) =>
-      peticion<UsuarioAdministrado>(`/usuarios/${id}/${activar ? "activar" : "desactivar"}`, {
-        metodo: "POST",
-      }),
+      peticion<UsuarioAdministrado>(
+        `/usuarios/${id}/${activar ? "activar" : "desactivar"}`,
+        {
+          metodo: "POST",
+        },
+      ),
     onSuccess: invalidar,
   });
 }
@@ -577,11 +646,17 @@ export function useCambiarEstadoUsuario(): UseMutationResult<
  * Mismas precauciones que el alta: `gcTime: 0` y `reset()` inmediato en cuanto
  * el componente se queda con el valor.
  */
-export function useRestablecerClave(): UseMutationResult<ClaveRestablecida, Error, number> {
+export function useRestablecerClave(): UseMutationResult<
+  ClaveRestablecida,
+  Error,
+  number
+> {
   const invalidar = useInvalidarUsuarios();
   return useMutation({
     mutationFn: (id) =>
-      peticion<ClaveRestablecida>(`/usuarios/${id}/restablecer-clave`, { metodo: "POST" }),
+      peticion<ClaveRestablecida>(`/usuarios/${id}/restablecer-clave`, {
+        metodo: "POST",
+      }),
     gcTime: 0,
     onSuccess: invalidar,
   });

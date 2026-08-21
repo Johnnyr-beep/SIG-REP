@@ -18,7 +18,12 @@ const clienteConsultas = new QueryClient({
       // Reintentar un 403 o un 404 no cambia el resultado y retrasa el mensaje
       // que el usuario necesita ver.
       retry: (intentos, error) => {
-        if (error instanceof ErrorApi && error.estado >= 400 && error.estado < 500) return false;
+        if (
+          error instanceof ErrorApi &&
+          error.estado >= 400 &&
+          error.estado < 500
+        )
+          return false;
         return intentos < 2;
       },
       staleTime: 30_000,
@@ -31,7 +36,8 @@ const clienteConsultas = new QueryClient({
 });
 
 const contenedor = document.getElementById("raiz");
-if (!contenedor) throw new Error("No se encontró el nodo raíz de la aplicación.");
+if (!contenedor)
+  throw new Error("No se encontró el nodo raíz de la aplicación.");
 
 createRoot(contenedor).render(
   <StrictMode>

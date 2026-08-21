@@ -7,13 +7,23 @@
  * pierde la selección.
  */
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useSearchParams } from "react-router-dom";
 
 import type { FiltrosReporte } from "@/api/consultas";
 import { useCategorias, useGrupos, usePuntosVenta } from "@/api/consultas";
+import type { FiltrosAgro } from "@/api/consultasAgro";
+import { useCalendarioAgro } from "@/api/consultasAgro";
 import type { Medida, PuntoVenta } from "@/api/tipos";
 import { MAXIMO_DIAS_VENTA_DIARIA } from "@/api/tipos";
+import type { CalendarioAgro } from "@/api/tiposAgro";
 import { MEDIDAS, esMedida } from "@/utilidades/dominio";
 import {
   diasDelRango,
@@ -42,19 +52,28 @@ export interface ControlFiltros {
   fijarVarios: (cambios: CambioFiltros) => void;
   /** La selección de puntos de venta ya desgranada. Vacía = todos. */
   puntosSeleccionados: string[];
+  /**
+   * La selección de centros de operación de agropecuaria. Vacía = todos.
+   *
+   * Convive con la anterior en vez de sustituirla: las dos unidades filtran por
+   * cosas distintas —dieciséis puntos de venta frente a dos centros— y el enlace
+   * que alguien pegue en un correo tiene que decir cuál de las dos pidió.
+   */
+  centrosSeleccionados: string[];
 }
 
-// ── Selección múltiple de puntos de venta ────────────────────────────────────
+// ── Selección múltiple de códigos ────────────────────────────────────────────
 
 /**
  * Desgrana `"402, 405,,402"` en `["402", "405"]`.
  *
  * Recorta espacios, descarta vacíos y repetidos y ordena, exactamente como hace
- * el backend. Ordenar no es cosmético: la selección es parte de la clave de
- * caché de TanStack Query, y sin un orden canónico `405,402` y `402,405` serían
- * dos consultas distintas al mismo dato.
+ * el backend —el de carnes con `punto_venta` y el de agropecuaria con `centro`,
+ * que aplican la misma regla—. Ordenar no es cosmético: la selección es parte de
+ * la clave de caché de TanStack Query, y sin un orden canónico `405,402` y
+ * `402,405` serían dos consultas distintas al mismo dato.
  */
-export function listaPuntosVenta(valor: string | undefined | null): string[] {
+export function listaCodigos(valor: string | undefined | null): string[] {
   if (!valor) return [];
   const codigos = valor
     .split(",")
@@ -64,8 +83,8 @@ export function listaPuntosVenta(valor: string | undefined | null): string[] {
 }
 
 /** Junta la selección en el formato del contrato. Vacía = cadena vacía = sin filtro. */
-export function textoPuntosVenta(codigos: string[]): string {
-  return listaPuntosVenta(codigos.join(",")).join(",");
+export function textoCodigos(codigos: string[]): string {
+  return listaCodigos(codigos.join(",")).join(",");
 }
 
 // ── Estado en la barra de direcciones ────────────────────────────────────────
@@ -80,7 +99,9 @@ export function useFiltros(): ControlFiltros {
       desde: parametros.get("desde") ?? undefined,
       hasta: parametros.get("hasta") ?? undefined,
       grupo: parametros.get("grupo") ?? undefined,
-      punto_venta: textoPuntosVenta(listaPuntosVenta(parametros.get("punto_venta"))) || undefined,
+      punto_venta:
+        textoCodigos(listaCodigos(parametros.get("punto_venta"))) || undefined,
+      centro: textoCodigos(listaCodigos(parametros.get("centro"))) || undefined,
       categoria: parametros.get("categoria") ?? undefined,
       medida: esMedida(medida) ? medida : "valor",
     };
@@ -111,16 +132,46 @@ export function useFiltros(): ControlFiltros {
   );
 
   const fijar = useCallback(
-    (clave: keyof FiltrosReporte, valor: string) => fijarVarios({ [clave]: valor }),
+    (clave: keyof FiltrosReporte, valor: string) =>
+      fijarVarios({ [clave]: valor }),
     [fijarVarios],
   );
 
   const puntosSeleccionados = useMemo(
-    () => listaPuntosVenta(filtros.punto_venta),
+    () => listaCodigos(filtros.punto_venta),
     [filtros.punto_venta],
   );
 
-  return { filtros, fijar, fijarVarios, puntosSeleccionados };
+  const centrosSeleccionados = useMemo(
+    () => listaCodigos(filtros.centro),
+    [filtros.centro],
+  );
+
+  return {
+    filtros,
+    fijar,
+    fijarVarios,
+    puntosSeleccionados,
+    centrosSeleccionados,
+  };
+}
+
+/**
+ * Los filtros que entiende `/agro`, sacados de los de la barra.
+ *
+ * Es una traducción y no una copia del estado: la barra de direcciones es una
+ * sola y `useFiltros` la gobierna entera, pero el router de agropecuaria no
+ * conoce `grupo`, `punto_venta` ni `categoria`, y mandárselos sería enviar
+ * parámetros que no están en su firma.
+ */
+export function filtrosAgroDe(filtros: FiltrosReporte): FiltrosAgro {
+  return {
+    periodo: filtros.periodo,
+    desde: filtros.desde,
+    hasta: filtros.hasta,
+    centro: filtros.centro,
+    medida: filtros.medida,
+  };
 }
 
 // ── Conmutador de medida ─────────────────────────────────────────────────────
@@ -190,12 +241,40 @@ export function ConmutadorMedida({
  * panel lo dice con todas las letras, en lugar de dejar al usuario ante una tabla
  * en blanco preguntándose qué rompió.
  */
-function FiltroPuntosVenta({
-  puntos,
+/** Un miembro elegible del selector, ya despojado de su catálogo de origen. */
+export interface OpcionSeleccion {
+  /** Lo que viaja al backend: código C.O. en carnes, código de centro en agro. */
+  clave: string;
+  nombre: string;
+  /** Apostilla tras el nombre. En carnes marca los puntos sin presupuesto. */
+  nota?: string;
+}
+
+/**
+ * El selector, escrito una vez para las dos unidades.
+ *
+ * Carnes filtra por dieciséis puntos de venta y agropecuaria por dos centros de
+ * operación, pero es **el mismo control con la misma regla**: la selección vacía
+ * significa «todos», marcar todos da el mismo resultado que no filtrar, y un
+ * código heredado de un enlace viejo sigue contando aunque ya no esté en el
+ * catálogo. Copiar el componente para la segunda unidad habría sido copiar
+ * también esas tres reglas, que es exactamente por donde empiezan a divergir.
+ */
+function SelectorMultiple({
+  etiqueta,
+  plural,
+  singular,
+  opciones,
   seleccion,
   onCambiar,
 }: {
-  puntos: PuntoVenta[];
+  /** Nombre del campo, en la barra: «Punto de venta», «Centro». */
+  etiqueta: string;
+  /** «puntos de venta», «centros de operación»: para los textos de resumen. */
+  plural: string;
+  /** «un punto», «un centro»: para la nota cuando hay uno solo elegido. */
+  singular: string;
+  opciones: OpcionSeleccion[];
   seleccion: string[];
   onCambiar: (codigos: string[]) => void;
 }) {
@@ -209,21 +288,21 @@ function FiltroPuntosVenta({
   const idPanel = `${base}-panel`;
 
   const marcados = useMemo(() => new Set(seleccion), [seleccion]);
-  const total = puntos.length;
-  const elegidos = puntos.filter((punto) => marcados.has(punto.codigo_co));
+  const total = opciones.length;
+  const elegidos = opciones.filter((opcion) => marcados.has(opcion.clave));
   // Un código que quedó en el enlace y ya no está en el catálogo sigue contando:
   // el reporte lo recibe igual, así que el resumen no puede dar a entender lo
   // contrario. Simplemente no casará con ninguna fila, como dice el contrato.
   const huerfanos = seleccion.filter(
-    (codigo) => !puntos.some((punto) => punto.codigo_co === codigo),
+    (codigo) => !opciones.some((opcion) => opcion.clave === codigo),
   );
 
-  const nombres = [...elegidos.map((punto) => punto.nombre), ...huerfanos];
+  const nombres = [...elegidos.map((opcion) => opcion.nombre), ...huerfanos];
   const resumen = seleccion.length === 0 ? "Todos" : nombres.join(", ");
   const lectura =
     seleccion.length === 0
-      ? "Todos los puntos de venta"
-      : `${seleccion.length} de ${total} puntos de venta: ${nombres.join(", ")}`;
+      ? `Todos los ${plural}`
+      : `${seleccion.length} de ${total} ${plural}: ${nombres.join(", ")}`;
 
   function alternar(codigo: string) {
     const siguiente = new Set(marcados);
@@ -244,7 +323,8 @@ function FiltroPuntosVenta({
 
     function alPulsarFuera(evento: PointerEvent) {
       const nodo = evento.target;
-      if (nodo instanceof Node && !contenedor.current?.contains(nodo)) setAbierto(false);
+      if (nodo instanceof Node && !contenedor.current?.contains(nodo))
+        setAbierto(false);
     }
 
     function alTeclear(evento: KeyboardEvent) {
@@ -270,11 +350,15 @@ function FiltroPuntosVenta({
       // él y dejarlo abierto tapa los filtros de al lado.
       onBlur={(evento) => {
         const siguiente = evento.relatedTarget;
-        if (siguiente instanceof Node && evento.currentTarget.contains(siguiente)) return;
+        if (
+          siguiente instanceof Node &&
+          evento.currentTarget.contains(siguiente)
+        )
+          return;
         setAbierto(false);
       }}
     >
-      <span id={idEtiqueta}>Punto de venta</span>
+      <span id={idEtiqueta}>{etiqueta}</span>
 
       <button
         type="button"
@@ -291,7 +375,11 @@ function FiltroPuntosVenta({
             {seleccion.length}
           </span>
         ) : null}
-        <span className="selector-pdv__resumen" aria-hidden="true" title={resumen}>
+        <span
+          className="selector-pdv__resumen"
+          aria-hidden="true"
+          title={resumen}
+        >
           {resumen}
         </span>
         <span className="solo-lectores">{lectura}</span>
@@ -307,7 +395,7 @@ function FiltroPuntosVenta({
               type="button"
               className="boton boton--sutil boton--pequeno"
               onClick={() => {
-                onCambiar(puntos.map((punto) => punto.codigo_co));
+                onCambiar(opciones.map((opcion) => opcion.clave));
                 // El botón queda deshabilitado tras el clic y el navegador
                 // retiraría el foco al documento, lo que cerraría el panel:
                 // se devuelve al disparador antes de que eso ocurra.
@@ -325,7 +413,7 @@ function FiltroPuntosVenta({
                 disparador.current?.focus();
               }}
               disabled={seleccion.length === 0}
-              title="Vuelve al estado «Todos»: sin filtro, el reporte incluye todos los puntos."
+              title={`Vuelve al estado «Todos»: sin filtro, el reporte incluye todos los ${plural}.`}
             >
               Quitar filtro
             </button>
@@ -335,18 +423,22 @@ function FiltroPuntosVenta({
           </div>
 
           <fieldset className="selector-pdv__lista">
-            <legend className="solo-lectores">Puntos de venta incluidos en el reporte</legend>
-            {puntos.map((punto) => (
-              <label key={punto.codigo_co} className="casilla">
+            <legend className="solo-lectores">
+              {etiqueta}: qué se incluye en el reporte
+            </legend>
+            {opciones.map((opcion) => (
+              <label key={opcion.clave} className="casilla">
                 <input
                   type="checkbox"
-                  checked={marcados.has(punto.codigo_co)}
-                  onChange={() => alternar(punto.codigo_co)}
+                  checked={marcados.has(opcion.clave)}
+                  onChange={() => alternar(opcion.clave)}
                 />
                 <span>
-                  {punto.nombre}
-                  <span className="tenue"> · {punto.codigo_co}</span>
-                  {punto.presupuestado ? null : <span className="tenue"> · sin presupuesto</span>}
+                  {opcion.nombre}
+                  <span className="tenue"> · {opcion.clave}</span>
+                  {opcion.nota ? (
+                    <span className="tenue"> · {opcion.nota}</span>
+                  ) : null}
                 </span>
               </label>
             ))}
@@ -354,16 +446,91 @@ function FiltroPuntosVenta({
 
           <p className="selector-pdv__nota" role="status">
             {seleccion.length === 0
-              ? "Sin ninguno marcado, el reporte incluye todos los puntos de venta."
+              ? `Sin ninguno marcado, el reporte incluye todos los ${plural}.`
               : elegidos.length === total && huerfanos.length === 0
                 ? `Están marcados los ${total}: el resultado es el mismo que sin filtro.`
                 : `El reporte se limita a ${
-                    seleccion.length === 1 ? "un punto" : `${seleccion.length} puntos`
-                  } de venta.`}
+                    seleccion.length === 1
+                      ? singular
+                      : `${seleccion.length} ${plural}`
+                  }.`}
           </p>
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** El selector de carnes: dieciséis puntos de venta del catálogo de §3. */
+function FiltroPuntosVenta({
+  puntos,
+  seleccion,
+  onCambiar,
+}: {
+  puntos: PuntoVenta[];
+  seleccion: string[];
+  onCambiar: (codigos: string[]) => void;
+}) {
+  const opciones = useMemo<OpcionSeleccion[]>(
+    () =>
+      puntos.map((punto) => ({
+        clave: punto.codigo_co,
+        nombre: punto.nombre,
+        // 432 EVENTOS vende sin estar presupuestado; conviene verlo al elegir.
+        nota: punto.presupuestado ? undefined : "sin presupuesto",
+      })),
+    [puntos],
+  );
+
+  return (
+    <SelectorMultiple
+      etiqueta="Punto de venta"
+      plural="puntos de venta"
+      singular="un punto de venta"
+      opciones={opciones}
+      seleccion={seleccion}
+      onCambiar={onCambiar}
+    />
+  );
+}
+
+/**
+ * El selector de agropecuaria: los dos centros de operación.
+ *
+ * Las opciones salen del **calendario** del período y no de un catálogo de
+ * dimensiones, porque ese catálogo no está expuesto: `MiembroDimensionSalida`
+ * existe en el esquema del backend pero ningún endpoint lo devuelve. El
+ * calendario es la única respuesta que publica código y nombre de los dos
+ * centros juntos, y además es exactamente la lista que tiene sentido ofrecer:
+ * un centro sin calendario no puede medirse contra nada.
+ */
+function FiltroCentros({
+  centros,
+  seleccion,
+  onCambiar,
+}: {
+  centros: CalendarioAgro[];
+  seleccion: string[];
+  onCambiar: (codigos: string[]) => void;
+}) {
+  const opciones = useMemo<OpcionSeleccion[]>(
+    () =>
+      centros.map((centro) => ({
+        clave: centro.centro,
+        nombre: centro.nombre,
+      })),
+    [centros],
+  );
+
+  return (
+    <SelectorMultiple
+      etiqueta="Centro de operación"
+      plural="centros de operación"
+      singular="un centro de operación"
+      opciones={opciones}
+      seleccion={seleccion}
+      onCambiar={onCambiar}
+    />
   );
 }
 
@@ -375,7 +542,10 @@ function FiltroPuntosVenta({
  * Sin `hasta` el rango se cierra hoy, tal como hace el backend; así el aviso del
  * tope aparece antes de enviar y no después de un 422.
  */
-export function diasDelRangoPedido(desde?: string, hasta?: string): number | null {
+export function diasDelRangoPedido(
+  desde?: string,
+  hasta?: string,
+): number | null {
   if (!desde) return null;
   return diasDelRango(desde, hasta && hasta !== "" ? hasta : fechaHoy());
 }
@@ -425,8 +595,14 @@ function FiltroRango({
   const hastaEfectivo = hasta && hasta !== "" ? hasta : cierrePredeterminado;
 
   /** El período de referencia siempre lo fija el mes de `hasta`. */
-  function conPeriodo(cambios: CambioFiltros, hastaNuevo: string): CambioFiltros {
-    return { ...cambios, periodo: periodoDeFecha(hastaNuevo) ?? periodoDeFecha(hoy) ?? "" };
+  function conPeriodo(
+    cambios: CambioFiltros,
+    hastaNuevo: string,
+  ): CambioFiltros {
+    return {
+      ...cambios,
+      periodo: periodoDeFecha(hastaNuevo) ?? periodoDeFecha(hoy) ?? "",
+    };
   }
 
   function alCambiarDesde(valor: string) {
@@ -507,16 +683,19 @@ function FiltroRango({
       <p className="filtros__nota" role="status">
         {desde ? (
           <>
-            <strong>{dias === null ? "—" : dias === 1 ? "1 día" : `${dias} días`}</strong> ·{" "}
-            {formatearFecha(desde)} a {formatearFecha(hastaEfectivo)}
-            {hasta ? "" : " (hoy)"} · el máximo del reporte son {MAXIMO_DIAS_VENTA_DIARIA} días.
-            Un rango que cruza de mes compara cada día contra el presupuesto diario de su
-            propio mes.
+            <strong>
+              {dias === null ? "—" : dias === 1 ? "1 día" : `${dias} días`}
+            </strong>{" "}
+            · {formatearFecha(desde)} a {formatearFecha(hastaEfectivo)}
+            {hasta ? "" : " (hoy)"} · el máximo del reporte son{" "}
+            {MAXIMO_DIAS_VENTA_DIARIA} días. Un rango que cruza de mes compara
+            cada día contra el presupuesto diario de su propio mes.
           </>
         ) : (
           <>
-            Sin fecha «desde» el reporte muestra el mes completo del período hasta el corte,
-            como siempre. Indique un «desde» para pedir un rango, que puede cruzar de mes.
+            Sin fecha «desde» el reporte muestra el mes completo del período
+            hasta el corte, como siempre. Indique un «desde» para pedir un
+            rango, que puede cruzar de mes.
           </>
         )}
       </p>
@@ -630,7 +809,7 @@ export function BarraFiltros({
         <FiltroPuntosVenta
           puntos={puntos ?? []}
           seleccion={puntosSeleccionados}
-          onCambiar={(codigos) => fijar("punto_venta", textoPuntosVenta(codigos))}
+          onCambiar={(codigos) => fijar("punto_venta", textoCodigos(codigos))}
         />
       ) : null}
 
@@ -650,6 +829,116 @@ export function BarraFiltros({
             ))}
           </select>
         </label>
+      ) : null}
+
+      {visible.medida ? (
+        <div className="filtros__campo">
+          <span>Medida</span>
+          <ConmutadorMedida
+            medida={filtros.medida}
+            onCambiar={(medida) => fijar("medida", medida)}
+          />
+        </div>
+      ) : null}
+
+      {acciones ? <div className="filtros__acciones">{acciones}</div> : null}
+    </section>
+  );
+}
+
+// ── Barra de filtros de agropecuaria ─────────────────────────────────────────
+
+/**
+ * La barra de la unidad Agropecuaria.
+ *
+ * Es una barra distinta y no un `mostrar` más de `BarraFiltros` por una razón
+ * concreta: aquella pide los tres catálogos de carnes —grupos, puntos de venta y
+ * categorías— nada más montarse, y en una pantalla de agropecuaria esas tres
+ * consultas no solo sobran, es que traerían el catálogo de otro negocio. Lo que
+ * sí comparten es todo lo que importa: el estado en la barra de direcciones, el
+ * selector de rango con sus dos guardas y el conmutador de medida.
+ */
+export function BarraFiltrosAgro({
+  control,
+  mostrar,
+  acciones,
+}: {
+  control: ControlFiltros;
+  mostrar?: {
+    corte?: boolean;
+    /** Sustituye el corte de una sola fecha por el rango `desde`/`hasta`. */
+    rango?: boolean;
+    centro?: boolean;
+    medida?: boolean;
+  };
+  acciones?: React.ReactNode;
+}) {
+  const { filtros, fijar, fijarVarios, centrosSeleccionados } = control;
+  const visible = {
+    corte: true,
+    rango: false,
+    centro: true,
+    medida: true,
+    ...mostrar,
+  };
+
+  // El calendario del período es de donde salen los centros: ver `FiltroCentros`.
+  const { data: centros } = useCalendarioAgro(filtros.periodo);
+
+  /** Con rango activo el período es una consecuencia de `hasta`, no una elección. */
+  const periodoDerivado = visible.rango && Boolean(filtros.desde);
+
+  return (
+    <section className="filtros" aria-label="Filtros del reporte">
+      {periodoDerivado ? (
+        <div className="filtros__campo">
+          <span>Período de referencia</span>
+          <p
+            className="campo__control filtros__derivado"
+            title="El período que se envía es el mes al que pertenece «hasta»; de él salen los días hábiles del pie de cálculo."
+          >
+            {periodoLargo(filtros.periodo)}
+          </p>
+        </div>
+      ) : (
+        <label className="filtros__campo">
+          <span>Período</span>
+          <input
+            className="campo__control"
+            type="month"
+            value={filtros.periodo}
+            onChange={(evento) => fijar("periodo", evento.target.value)}
+            required
+          />
+        </label>
+      )}
+
+      {visible.rango ? (
+        <FiltroRango
+          periodo={filtros.periodo}
+          desde={filtros.desde}
+          hasta={filtros.hasta}
+          onCambiar={fijarVarios}
+        />
+      ) : visible.corte ? (
+        <label className="filtros__campo">
+          <span>Corte</span>
+          <input
+            className="campo__control"
+            type="date"
+            value={filtros.hasta ?? ""}
+            onChange={(evento) => fijar("hasta", evento.target.value)}
+            title="Fecha hasta la que se acumula la venta. Vacío = hoy."
+          />
+        </label>
+      ) : null}
+
+      {visible.centro ? (
+        <FiltroCentros
+          centros={centros ?? []}
+          seleccion={centrosSeleccionados}
+          onCambiar={(codigos) => fijar("centro", textoCodigos(codigos))}
+        />
       ) : null}
 
       {visible.medida ? (

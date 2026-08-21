@@ -278,6 +278,37 @@ los demás endpoints lo publica y con qué grano; SIGREP lo uniría por
 (centro, fecha) con una segunda consulta, como ya se planteó en su día con
 `vendedor-acumulada`.
 
+### 4.5 Petición nueva: el **identificador del cliente** en `/ventas/agropecuaria`
+
+**Qué falta.** `GET /ventas/agropecuaria` entrega el cliente **solo por nombre**.
+Es la única dimensión del endpoint sin identificador: todas las demás traen el
+suyo —`tipoitem_id`, `especie_id`, `tipocomercial_id`, `grupo_id`, `item_ref`,
+`codigovendedor`— y el cliente no.
+
+**Qué consecuencias tiene**, comprobadas sobre una carga real de siete días
+(compañía 3, 2.706 líneas, 686 clientes):
+
+1. **Dos clientes distintos con el mismo nombre registrado se funden en uno.**
+   Sin clave, SIGREP agrupa por la única cosa que recibe, que es el texto. No
+   hay forma de detectarlo desde este lado: la venta de los dos aparece sumada
+   en una fila y con pinta de correcta.
+2. **No se puede cruzar con nada.** Ni con el ERP, ni con la cartera, ni con la
+   instancia de carnes —que sí recibe NIT en `costos-razon-social`—. Un cliente
+   que le compra a las dos unidades no se puede ver junto.
+3. **El nombre no es estable.** El día que alguien corrija una razón social en
+   SIESA, el histórico de SIGREP se parte en dos clientes: el de antes de la
+   corrección y el de después, sin aviso.
+
+**La pregunta:** ¿puede `/ventas/agropecuaria` añadir el NIT o el código
+interno del tercero, junto al nombre que ya envía, como hace
+`costos-razon-social`? Es un campo por fila y no cambia el grano de la
+agregación.
+
+**Mientras tanto**, SIGREP usa el nombre como clave y lo dice: es la lectura
+correcta de lo que llega, no una aproximación disfrazada. Pero el reporte por
+cliente y el cruce vendedor × cliente valen lo que valga la unicidad de los
+nombres en el maestro de terceros, y eso no se puede verificar desde aquí.
+
 ---
 
 ## 5. Cómo está implementado en SIGREP

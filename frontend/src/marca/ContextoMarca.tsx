@@ -12,7 +12,14 @@
  * la razón contraria: caducan al cerrar el navegador a propósito—.
  */
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { ReactNode } from "react";
 
 import type { ClaveMarca, Marca } from "@/marca/marcas";
@@ -75,9 +82,14 @@ export function ProveedorMarca({ children }: { children: ReactNode }) {
     setMarca(null);
   }, []);
 
-  const valor = useMemo<ValorMarca>(() => ({ marca, elegir, olvidar }), [marca, elegir, olvidar]);
+  const valor = useMemo<ValorMarca>(
+    () => ({ marca, elegir, olvidar }),
+    [marca, elegir, olvidar],
+  );
 
-  return <ContextoMarca.Provider value={valor}>{children}</ContextoMarca.Provider>;
+  return (
+    <ContextoMarca.Provider value={valor}>{children}</ContextoMarca.Provider>
+  );
 }
 
 export function useMarca(): ValorMarca {
@@ -96,7 +108,9 @@ export function useMarca(): ValorMarca {
 export function useMarcaElegida(): Marca {
   const { marca } = useMarca();
   if (!marca) {
-    throw new Error("No hay unidad de negocio elegida: esta pantalla va después del selector.");
+    throw new Error(
+      "No hay unidad de negocio elegida: esta pantalla va después del selector.",
+    );
   }
   return marca;
 }

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
-
 import { MODO_EJEMPLOS } from "@/api/cliente";
 import type { Rol } from "@/api/tipos";
 import { useAuth } from "@/auth/ContextoAuth";
@@ -12,6 +11,7 @@ import { Dialogo } from "@/componentes/comunes";
 import { useFiltros } from "@/componentes/filtros";
 import { useMarcaElegida } from "@/marca/ContextoMarca";
 import { anchoLogo } from "@/marca/marcas";
+import type { ClaveMarca } from "@/marca/marcas";
 import { FormularioCambioClave } from "@/paginas/CambioClave";
 import { fechaLarga, periodoLargo } from "@/utilidades/formato";
 
@@ -31,8 +31,17 @@ interface GrupoNav {
   items: ItemNav[];
 }
 
-/** Las pantallas de §6 de la especificación. */
-const MENU: GrupoNav[] = [
+/**
+ * Las pantallas de carnes: §6 de la especificación.
+ *
+ * Hay un menú por unidad y no uno solo con todo dentro, porque las dos unidades
+ * no miden lo mismo. Carnes agrupa por punto de venta y categoría; agropecuaria
+ * por centro de operación, especie, tipo comercial y vendedor. Un menú mezclado
+ * ofrecería a un gerente de carnes una pantalla de especies que su base no tiene
+ * y al revés, y la primera vez que alguien la abriera vería una tabla vacía sin
+ * saber si es que no hay venta o es que esa pantalla no era la suya.
+ */
+const MENU_CARNES: GrupoNav[] = [
   {
     titulo: "Gerencia",
     items: [
@@ -69,7 +78,56 @@ const MENU: GrupoNav[] = [
   },
 ];
 
+/** Las de agropecuaria, sobre `/agro`. Mismos roles que exige `api/v1/agro.py`. */
+const MENU_AGRO: GrupoNav[] = [
+  {
+    titulo: "Gerencia",
+    items: [
+      { ruta: "/agro", etiqueta: "Venta por eje", icono: "◱" },
+      { ruta: "/agro/cruce", etiqueta: "Vendedor y cliente", icono: "◇" },
+      { ruta: "/agro/venta-diaria", etiqueta: "Venta diaria", icono: "▦" },
+    ],
+  },
+  {
+    titulo: "Parametrización",
+    items: [
+      {
+        ruta: "/agro/presupuesto",
+        etiqueta: "Presupuesto",
+        icono: "≡",
+        roles: ["ADMIN", "GERENTE", "ANALISTA"],
+      },
+      { ruta: "/agro/calendario", etiqueta: "Días hábiles", icono: "◷" },
+      { ruta: "/agro/ingesta", etiqueta: "Ingesta", icono: "⇄" },
+    ],
+  },
+  {
+    titulo: "Administración",
+    items: [
+      { ruta: "/usuarios", etiqueta: "Usuarios", icono: "◉", roles: ["ADMIN"] },
+    ],
+  },
+];
+
+/**
+ * El menú que corresponde a la marca elegida.
+ *
+ * `carnes-frias` todavía no tiene módulo; si alguien llegara con esa marca
+ * guardada en `localStorage`, ve el de carnes en vez de una barra vacía. El
+ * selector ya no deja elegirla —se lo impide `unidades` de la sonda—, así que
+ * esto es el cinturón, no la vía normal.
+ */
+function menuDe(marca: ClaveMarca): GrupoNav[] {
+  return marca === "agropecuaria" ? MENU_AGRO : MENU_CARNES;
+}
+
 const TITULOS: Record<string, string> = {
+  "/agro": "Venta de agropecuaria por eje",
+  "/agro/cruce": "Vendedor, cliente y producto",
+  "/agro/venta-diaria": "Venta diaria por centro de operación",
+  "/agro/presupuesto": "Presupuesto de agropecuaria",
+  "/agro/calendario": "Días hábiles por centro de operación",
+  "/agro/ingesta": "Ingesta de agropecuaria",
   "/": "Tablero gerencial",
   "/cumplimiento": "Cumplimiento por punto de venta",
   "/venta-diaria": "Venta diaria",
@@ -100,8 +158,16 @@ function useTema(): [Tema, (tema: Tema) => void] {
 
 function SelectorTema() {
   const [tema, setTema] = useTema();
-  const siguiente: Record<Tema, Tema> = { sistema: "claro", claro: "oscuro", oscuro: "sistema" };
-  const iconos: Record<Tema, string> = { sistema: "◐", claro: "☀", oscuro: "☾" };
+  const siguiente: Record<Tema, Tema> = {
+    sistema: "claro",
+    claro: "oscuro",
+    oscuro: "sistema",
+  };
+  const iconos: Record<Tema, string> = {
+    sistema: "◐",
+    claro: "☀",
+    oscuro: "☾",
+  };
 
   return (
     <button
@@ -115,7 +181,6 @@ function SelectorTema() {
     </button>
   );
 }
-
 
 /**
  * Menú de usuario del pie de la barra lateral.
@@ -149,7 +214,9 @@ function MenuUsuario() {
         <summary className="menu-usuario__disparador">
           <span className="menu-usuario__identidad">
             <span className="barra-lateral__nombre">{usuario.nombre}</span>
-            <span className="tenue">{usuario.rol.replaceAll("_", " ").toLowerCase()}</span>
+            <span className="tenue">
+              {usuario.rol.replaceAll("_", " ").toLowerCase()}
+            </span>
           </span>
           <span className="menu-usuario__signo" aria-hidden="true">
             ▾
@@ -167,7 +234,6 @@ function MenuUsuario() {
               setDialogoAbierto(true);
             }}
           >
-
             Cambiar mi clave
           </button>
         </div>
@@ -179,7 +245,11 @@ function MenuUsuario() {
         onCerrar={cerrarDialogo}
         pie={
           cambiada ? (
-            <button type="button" className="boton boton--principal" onClick={cerrarDialogo}>
+            <button
+              type="button"
+              className="boton boton--principal"
+              onClick={cerrarDialogo}
+            >
               Listo
             </button>
           ) : undefined
@@ -189,7 +259,10 @@ function MenuUsuario() {
           <div className="aviso aviso--exito" role="status">
             <div>
               <strong>Clave cambiada.</strong>
-              <p>La próxima vez que entre use la nueva. No hace falta volver a iniciar sesión.</p>
+              <p>
+                La próxima vez que entre use la nueva. No hace falta volver a
+                iniciar sesión.
+              </p>
             </div>
           </div>
         ) : (
@@ -225,8 +298,10 @@ function BarraLateral() {
       </div>
 
       <nav className="navegacion" aria-label="Navegación principal">
-        {MENU.map((grupo) => {
-          const visibles = grupo.items.filter((item) => !item.roles || tieneRol(...item.roles));
+        {menuDe(marca.clave).map((grupo) => {
+          const visibles = grupo.items.filter(
+            (item) => !item.roles || tieneRol(...item.roles),
+          );
           if (visibles.length === 0) return null;
 
           return (
@@ -249,7 +324,6 @@ function BarraLateral() {
           );
         })}
       </nav>
-
 
       <MenuUsuario />
     </aside>
@@ -304,7 +378,11 @@ export function Disposicion({ children }: { children?: ReactNode }) {
               </span>
             ) : null}
             <SelectorTema />
-            <button type="button" className="boton boton--pequeno" onClick={salir}>
+            <button
+              type="button"
+              className="boton boton--pequeno"
+              onClick={salir}
+            >
               Cerrar sesión
             </button>
           </div>

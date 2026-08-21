@@ -10,7 +10,6 @@
 
 // ── Sesión ───────────────────────────────────────────────────────────────────
 
-
 export type Rol = "ADMIN" | "GERENTE" | "ANALISTA" | "JEFE_PDV" | "CONSULTA";
 
 export interface Usuario {
@@ -400,7 +399,6 @@ export interface EntradaIngesta {
   fuente: FuenteIngesta;
 }
 
-
 // ── Usuarios · administración de cuentas ─────────────────────────────────────
 
 /**
@@ -417,7 +415,6 @@ export interface UsuarioAdministrado extends Usuario {
   ultimo_acceso: string | null;
   creado_en: string | null;
 }
-
 
 /**
  * Formato del nombre de acceso que exige el backend.
@@ -466,7 +463,6 @@ export interface ClaveRestablecida {
   clave_provisional: string;
 }
 
-
 /**
  * Una línea de `GET /usuarios/auditoria`: quién, sobre quién, qué y cuándo.
  *
@@ -496,8 +492,36 @@ export interface EventoAuditoria {
 
 // ── Salud ────────────────────────────────────────────────────────────────────
 
+/** Unidad de negocio que sirve una instancia. `todas` es el caso de hoy. */
+export type UnidadNegocio =
+  "todas" | "carnes" | "agropecuaria" | "carnes-frias";
+
 export interface Salud {
   estado: string;
+  /**
+   * La unidad que sirve **esta** instancia.
+   *
+   * `todas` mientras carnes y agropecuaria compartan base y despliegue, que es
+   * el caso de hoy; fijada a una sola el día que alguna se lleve a su propio
+   * servidor. No es una preferencia visual: decide qué pantallas tienen sentido.
+   *
+   * Opcional por la misma razón que `unidades`: un backend anterior a este
+   * contrato responde sin los dos campos y la interfaz no debe romperse por eso.
+   */
+  unidad?: UnidadNegocio;
+  /**
+   * Las unidades que de verdad se pueden mirar.
+   *
+   * El selector desactiva las que no están aquí en lugar de dejar entrar a una
+   * pantalla sin datos detrás: elegir una marca no puede hacer aparecer una
+   * unidad que la instancia no sirve. Viaja en un endpoint **público** a
+   * propósito, porque el selector va antes del acceso.
+   *
+   * Opcional en el tipo y no en el contrato: un backend anterior a este campo
+   * responde sin él, y en ese caso la interfaz se queda con el censo local de
+   * `marca/marcas.ts` en vez de dejar las tres marcas apagadas.
+   */
+  unidades?: string[];
   version: string;
   base_datos: string;
   ultima_ingesta: string | null;

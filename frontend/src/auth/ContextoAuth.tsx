@@ -1,10 +1,21 @@
 /** Sesión del usuario: estado, rol y ciclo de vida del token. */
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { almacenTokens, iniciarSesion, registrarExpiracionSesion } from "@/api/cliente";
+import {
+  almacenTokens,
+  iniciarSesion,
+  registrarExpiracionSesion,
+} from "@/api/cliente";
 import { usePerfil } from "@/api/consultas";
 import type { Rol, Usuario } from "@/api/tipos";
 
@@ -34,7 +45,9 @@ interface ValorAuth {
 const ContextoAuth = createContext<ValorAuth | null>(null);
 
 export function ProveedorAuth({ children }: { children: ReactNode }) {
-  const [hayToken, setHayToken] = useState(() => almacenTokens.acceso() !== null);
+  const [hayToken, setHayToken] = useState(
+    () => almacenTokens.acceso() !== null,
+  );
   const clienteConsultas = useQueryClient();
 
   const { data: usuario, isLoading, isError } = usePerfil(hayToken);
@@ -84,7 +97,9 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
       // en reportes, presupuesto, calendario e ingesta como `GERENTE`, para que
       // Sistemas pueda diagnosticar sin pedir prestada una cuenta de gerencia.
       puedeParametrizar: usuario
-        ? usuario.rol === "ADMIN" || usuario.rol === "GERENTE" || usuario.rol === "ANALISTA"
+        ? usuario.rol === "ADMIN" ||
+          usuario.rol === "GERENTE" ||
+          usuario.rol === "ANALISTA"
         : false,
       debeCambiarClave: usuario?.debe_cambiar_password === true,
       esAdmin: usuario?.rol === "ADMIN",
@@ -92,7 +107,9 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
     [usuario, hayToken, isLoading, entrar, salir, tieneRol],
   );
 
-  return <ContextoAuth.Provider value={valor}>{children}</ContextoAuth.Provider>;
+  return (
+    <ContextoAuth.Provider value={valor}>{children}</ContextoAuth.Provider>
+  );
 }
 
 export function useAuth(): ValorAuth {

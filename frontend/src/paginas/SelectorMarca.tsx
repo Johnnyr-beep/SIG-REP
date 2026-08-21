@@ -5,7 +5,13 @@
  * logo —el atributo `data-marca-tarjeta` monta la rampa de esa marca dentro de
  * la tarjeta—, para que la elección se vea antes de hacerla.
  *
- * Las dos unidades sin desplegar **no se ocultan**: existen en el grupo y quien
+ * Quién está disponible lo dice **el servidor**, en el campo `unidades` de
+ * `GET /salud`, que es público justamente para que esta pantalla —anterior al
+ * acceso— pueda consultarlo. El censo de `marcas.ts` solo se usa mientras la
+ * sonda no responde: se compila una vez y se despliega en todas las instancias,
+ * así que no puede saber qué sirve cada una.
+ *
+ * Las unidades sin desplegar **no se ocultan**: existen en el grupo y quien
  * las busque tiene que encontrarlas y entender por qué no puede entrar. Son
  * botones de verdad, alcanzables con el tabulador y anunciados como
  * `aria-disabled` —no `disabled`, que las sacaría del recorrido de foco y
@@ -15,8 +21,10 @@
 
 import { useState } from "react";
 
+import { useSalud } from "@/api/consultas";
 import { useMarca } from "@/marca/ContextoMarca";
 import { MARCAS, anchoLogo } from "@/marca/marcas";
+import type { Marca } from "@/marca/marcas";
 
 /** El mismo que fija `.tarjeta-marca__logo` en la hoja. */
 const ALTO_LOGO = 84;
@@ -25,9 +33,24 @@ export function SelectorMarca() {
   const { elegir } = useMarca();
   const [aviso, setAviso] = useState("");
 
-  // Sale del censo, no de una cadena escrita a mano: el día que se despliegue
-  // la segunda unidad, el mensaje se corrige solo al cambiarle el estado.
-  const desplegadas = MARCAS.filter((marca) => marca.estado === "activa")
+  // La sonda es pública a propósito: esta pantalla va antes del acceso.
+  const { data: salud } = useSalud();
+
+  /**
+   * ¿Se puede entrar a esta unidad?
+   *
+   * Manda la sonda; el censo local es el respaldo para el instante anterior a
+   * la respuesta y para un backend anterior a este contrato. Sin ese respaldo,
+   * la pantalla arrancaría con las tres marcas apagadas y parpadearía.
+   */
+  function disponible(marca: Marca): boolean {
+    if (salud?.unidades) return salud.unidades.includes(marca.clave);
+    return marca.estado === "activa";
+  }
+
+  // Sale de la misma fuente que la decisión, no de una cadena escrita a mano:
+  // así el mensaje nunca contradice a las tarjetas que tiene encima.
+  const desplegadas = MARCAS.filter(disponible)
     .map((marca) => marca.nombre)
     .join(", ");
 
@@ -36,16 +59,18 @@ export function SelectorMarca() {
       <main className="selector__panel">
         <header className="selector__cabecera">
           <h1 className="selector__titulo">SIGREP</h1>
-          <p className="tenue">Sistema Gerencial de Reportes · Grupo Santa Cruz</p>
+          <p className="tenue">
+            Sistema Gerencial de Reportes · Grupo Santa Cruz
+          </p>
           <p className="selector__instruccion">
-            Elija la unidad de negocio. La aplicación adopta su logo, su nombre y sus colores, y
-            recuerda la elección para las próximas veces.
+            Elija la unidad de negocio. La aplicación adopta su logo, su nombre
+            y sus colores, y recuerda la elección para las próximas veces.
           </p>
         </header>
 
         <ul className="selector__lista">
           {MARCAS.map((marca) => {
-            const activa = marca.estado === "activa";
+            const activa = disponible(marca);
             const idDetalle = `marca-detalle-${marca.clave}`;
 
             return (
@@ -59,8 +84,8 @@ export function SelectorMarca() {
                   onClick={() => {
                     if (!activa) {
                       setAviso(
-                        `${marca.nombre} todavía no está desplegada: no hay datos ni servidor ` +
-                          `detrás. Por ahora solo se puede entrar a ${desplegadas}.`,
+                        `Esta instancia no sirve ${marca.nombre}: no hay datos suyos detrás. ` +
+                          `Por ahora solo se puede entrar a ${desplegadas}.`,
                       );
                       return;
                     }

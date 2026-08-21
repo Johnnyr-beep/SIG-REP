@@ -9,10 +9,23 @@
 
 import type { ReactNode } from "react";
 
-import type { FilaIndicadores, Medida, ParametrosCalculo, Semaforo } from "@/api/tipos";
+import type {
+  FilaIndicadores,
+  Medida,
+  ParametrosCalculo,
+  Semaforo,
+} from "@/api/tipos";
 import { Pista } from "@/componentes/comunes";
 import { FORMULAS, aspectoSemaforo, unidadDe } from "@/utilidades/dominio";
-import { SIN_DATO, dias, fecha, porMedida, porcentaje, puntos } from "@/utilidades/formato";
+import {
+  SIN_DATO,
+  dias,
+  fecha,
+  humanizar,
+  porMedida,
+  porcentaje,
+  puntos,
+} from "@/utilidades/formato";
 
 // ── Semáforo ─────────────────────────────────────────────────────────────────
 
@@ -24,8 +37,24 @@ import { SIN_DATO, dias, fecha, porMedida, porcentaje, puntos } from "@/utilidad
  * la celda solo muestre el símbolo, porque una tabla de dieciséis filas con la
  * palabra repetida se vuelve ilegible.
  */
-export function Semaforo({ estado, compacto }: { estado: Semaforo; compacto?: boolean }) {
-  const aspecto = aspectoSemaforo(estado);
+export function Semaforo({
+  estado,
+  compacto,
+  sujeto,
+}: {
+  estado: Semaforo;
+  compacto?: boolean;
+  /**
+   * Qué entidad describe la fila, para el texto de «sin presupuesto».
+   *
+   * En carnes siempre es un punto de venta y se omite. En agropecuaria la fila
+   * puede ser un vendedor o una especie, y hay ejes que ni siquiera se
+   * presupuestan; el sujeto correcto es lo que distingue «todavía no le han
+   * puesto meta» de «aquí no hay meta que poner».
+   */
+  sujeto?: string;
+}) {
+  const aspecto = aspectoSemaforo(estado, sujeto);
 
   return (
     <span
@@ -63,16 +92,33 @@ const COLUMNAS: DefinicionColumna[] = [
   { clave: "brecha", titulo: "Brecha", formula: FORMULAS.brecha },
   { clave: "semaforo", titulo: "Estado" },
   { clave: "proyeccion", titulo: "Proyección", formula: FORMULAS.proyeccion },
-  { clave: "cumplimiento_proyectado", titulo: "% Proy.", formula: FORMULAS.cumplimiento_proyectado },
-  { clave: "venta_diaria_promedio", titulo: "Venta diaria", formula: FORMULAS.venta_diaria_promedio },
+  {
+    clave: "cumplimiento_proyectado",
+    titulo: "% Proy.",
+    formula: FORMULAS.cumplimiento_proyectado,
+  },
+  {
+    clave: "venta_diaria_promedio",
+    titulo: "Venta diaria",
+    formula: FORMULAS.venta_diaria_promedio,
+  },
   {
     clave: "venta_diaria_requerida",
     titulo: "V. diaria requerida",
     formula: FORMULAS.venta_diaria_requerida,
   },
   { clave: "venta_anio_anterior", titulo: "Año anterior" },
-  { clave: "crecimiento", titulo: "Crecimiento", formula: FORMULAS.crecimiento },
-  { clave: "margen_valor", titulo: "Margen", formula: FORMULAS.margen_valor, soloValor: true },
+  {
+    clave: "crecimiento",
+    titulo: "Crecimiento",
+    formula: FORMULAS.crecimiento,
+  },
+  {
+    clave: "margen_valor",
+    titulo: "Margen",
+    formula: FORMULAS.margen_valor,
+    soloValor: true,
+  },
   {
     clave: "margen_porcentaje",
     titulo: "Margen %",
@@ -91,7 +137,10 @@ export function EncabezadosIndicadores({ medida }: { medida: Medida }) {
             <span>
               {columna.titulo}
               {columna.clave === "presupuesto" || columna.clave === "venta" ? (
-                <span className="encabezado__unidad"> ({unidadDe(medida)})</span>
+                <span className="encabezado__unidad">
+                  {" "}
+                  ({unidadDe(medida)})
+                </span>
               ) : null}
             </span>
             {columna.formula ? (
@@ -99,7 +148,8 @@ export function EncabezadosIndicadores({ medida }: { medida: Medida }) {
                 <p className="formula">{columna.formula}</p>
                 {columna.soloValor && medida === "kilos" ? (
                   <p className="tenue">
-                    El margen es un concepto monetario: midiendo en kilos no aplica y se muestra «—».
+                    El margen es un concepto monetario: midiendo en kilos no
+                    aplica y se muestra «—».
                   </p>
                 ) : null}
               </Pista>
@@ -121,22 +171,38 @@ export const COLUMNAS_INDICADORES = COLUMNAS.length;
  * cero, que en un reporte de cumplimiento significa «vendió cero», ni un vacío,
  * que parece un fallo de la pantalla.
  */
-export function CeldasIndicadores({ fila, medida }: { fila: FilaIndicadores; medida: Medida }) {
+export function CeldasIndicadores({
+  fila,
+  medida,
+}: {
+  fila: FilaIndicadores;
+  medida: Medida;
+}) {
   return (
     <>
       <td className="numero">{porMedida(fila.presupuesto, medida)}</td>
       <td className="numero">{porMedida(fila.venta, medida)}</td>
-      <td className="numero numero--destacado">{porcentaje(fila.cumplimiento)}</td>
+      <td className="numero numero--destacado">
+        {porcentaje(fila.cumplimiento)}
+      </td>
       <td className="numero suave">{porcentaje(fila.ideal)}</td>
-      <td className={`numero ${claseBrecha(fila.brecha)}`}>{puntos(fila.brecha)}</td>
+      <td className={`numero ${claseBrecha(fila.brecha)}`}>
+        {puntos(fila.brecha)}
+      </td>
       <td>
         <Semaforo estado={fila.semaforo} compacto />
       </td>
       <td className="numero">{porMedida(fila.proyeccion, medida)}</td>
       <td className="numero">{porcentaje(fila.cumplimiento_proyectado)}</td>
-      <td className="numero">{porMedida(fila.venta_diaria_promedio, medida)}</td>
-      <td className="numero numero--destacado">{porMedida(fila.venta_diaria_requerida, medida)}</td>
-      <td className="numero suave">{porMedida(fila.venta_anio_anterior, medida)}</td>
+      <td className="numero">
+        {porMedida(fila.venta_diaria_promedio, medida)}
+      </td>
+      <td className="numero numero--destacado">
+        {porMedida(fila.venta_diaria_requerida, medida)}
+      </td>
+      <td className="numero suave">
+        {porMedida(fila.venta_anio_anterior, medida)}
+      </td>
       <td className="numero">{porcentaje(fila.crecimiento)}</td>
       <td className="numero suave">{porMedida(fila.margen_valor, "valor")}</td>
       <td className="numero">{porcentaje(fila.margen_porcentaje)}</td>
@@ -164,16 +230,29 @@ export function PieCalculo({
   parametros,
   medida,
   extra,
+  formulas,
 }: {
   parametros: ParametrosCalculo | null | undefined;
   medida: Medida;
   extra?: ReactNode;
+  /**
+   * Las fórmulas que **envió el backend**, si la respuesta las trae.
+   *
+   * Agropecuaria las publica en `parametros_calculo.formulas`, escritas por
+   * quien las implementó. Cuando llegan, mandan sobre las cuatro que este
+   * componente lleva escritas para carnes: una fórmula copiada en el frontend
+   * es una fórmula que puede quedarse atrás de la que de verdad se está
+   * aplicando, y entonces el pie diría cómo se calculó algo que ya no se calcula
+   * así.
+   */
+  formulas?: Record<string, string> | null;
 }) {
   if (!parametros) {
     return (
       <p className="tenue">
-        El backend no envió <code>parametros_calculo</code> en esta respuesta, así que no se puede
-        mostrar de dónde salen los números. Los indicadores siguen siendo los que devolvió la API.
+        El backend no envió <code>parametros_calculo</code> en esta respuesta,
+        así que no se puede mostrar de dónde salen los números. Los indicadores
+        siguen siendo los que devolvió la API.
       </p>
     );
   }
@@ -210,10 +289,21 @@ export function PieCalculo({
         </p>
       ) : null}
 
-      <p className="pie-calculo__formulas">
-        {FORMULAS.cumplimiento} · {FORMULAS.ideal} · {FORMULAS.proyeccion} ·{" "}
-        {FORMULAS.venta_diaria_requerida}
-      </p>
+      {formulas && Object.keys(formulas).length > 0 ? (
+        <dl className="pie-calculo__formulario">
+          {Object.entries(formulas).map(([nombre, expresion]) => (
+            <div key={nombre}>
+              <dt>{humanizar(nombre)}</dt>
+              <dd className="formula">{expresion}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <p className="pie-calculo__formulas">
+          {FORMULAS.cumplimiento} · {FORMULAS.ideal} · {FORMULAS.proyeccion} ·{" "}
+          {FORMULAS.venta_diaria_requerida}
+        </p>
+      )}
 
       {extra}
     </div>
@@ -248,7 +338,10 @@ export function Indicador({
 }
 
 /** Texto auxiliar para las notas: «— » cuando no hay dato que comparar. */
-export function notaComparativa(cumplimiento: string | null, ideal: string | null): string {
+export function notaComparativa(
+  cumplimiento: string | null,
+  ideal: string | null,
+): string {
   if (cumplimiento === null || ideal === null) return `Ideal ${SIN_DATO}`;
   return `Ideal del período: ${porcentaje(ideal)}`;
 }

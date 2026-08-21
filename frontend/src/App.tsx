@@ -11,6 +11,12 @@ import { useMarca } from "@/marca/ContextoMarca";
 
 import { Acceso } from "@/paginas/Acceso";
 import { Calendario } from "@/paginas/Calendario";
+import { CalendarioAgro } from "@/paginas/CalendarioAgro";
+import { CruceAgro } from "@/paginas/CruceAgro";
+import { IngestaAgro } from "@/paginas/IngestaAgro";
+import { PresupuestoAgro } from "@/paginas/PresupuestoAgro";
+import { ResumenAgro } from "@/paginas/ResumenAgro";
+import { VentaDiariaAgro } from "@/paginas/VentaDiariaAgro";
 import { CambioClaveObligatorio } from "@/paginas/CambioClave";
 import { Clientes } from "@/paginas/Clientes";
 import { Cumplimiento } from "@/paginas/Cumplimiento";
@@ -28,7 +34,13 @@ import { VentaDiaria } from "@/paginas/VentaDiaria";
  * que un usuario llegue por enlace directo a una pantalla que solo le va a
  * devolver 403 sin explicación.
  */
-function Restringido({ roles, children }: { roles: Rol[]; children: ReactNode }) {
+function Restringido({
+  roles,
+  children,
+}: {
+  roles: Rol[];
+  children: ReactNode;
+}) {
   const { tieneRol } = useAuth();
 
   if (!tieneRol(...roles)) {
@@ -42,7 +54,6 @@ function Restringido({ roles, children }: { roles: Rol[]; children: ReactNode })
 
   return <>{children}</>;
 }
-
 
 export function App() {
   const { marca } = useMarca();
@@ -84,6 +95,26 @@ export function App() {
         />
         <Route path="calendario" element={<Calendario />} />
         <Route path="ingesta" element={<Ingesta />} />
+
+        {/* Agropecuaria. Las rutas se montan siempre, no solo con esa marca
+            elegida: el menú es el que cambia, pero un enlace pegado en un correo
+            tiene que abrir la pantalla que dice. Lo que decide si hay datos
+            detrás es la instancia —`unidades` de `/salud`—, no el enrutador. */}
+        <Route path="agro">
+          <Route index element={<ResumenAgro />} />
+          <Route path="cruce" element={<CruceAgro />} />
+          <Route path="venta-diaria" element={<VentaDiariaAgro />} />
+          <Route
+            path="presupuesto"
+            element={
+              <Restringido roles={["ADMIN", "GERENTE", "ANALISTA"]}>
+                <PresupuestoAgro />
+              </Restringido>
+            }
+          />
+          <Route path="calendario" element={<CalendarioAgro />} />
+          <Route path="ingesta" element={<IngestaAgro />} />
+        </Route>
         {/* Administración de cuentas: `ADMIN` y nadie más. El guardia no
             sustituye al 403 del backend —esa es la autorización que cuenta—,
             pero evita que un `JEFE_PDV` que teclea la URL vea una pantalla rota

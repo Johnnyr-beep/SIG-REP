@@ -19,11 +19,13 @@ error de captura y se hace visible en lugar de repararlo por cuenta propia.
 from __future__ import annotations
 
 from datetime import date
+from enum import StrEnum
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, Query, UploadFile
+from fastapi import APIRouter, File, Form, Query, Response, UploadFile
 
 from app.api.v1 import AnalistaDep, GerenteDep, LecturaDep
+from app.application.services import agro_exportacion_service
 from app.application.services.agro_calendario_service import AgroCalendarioService
 from app.application.services.agro_ingesta_service import AgroIngestaService
 from app.application.services.agro_presupuesto_service import AgroPresupuestoService
@@ -51,6 +53,8 @@ from app.schemas.agro import (
     ResultadoCargaAgro,
 )
 
+TIPO_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
 router = APIRouter(prefix="/agro", tags=["Agropecuaria"])
 
 PeriodoQuery = Query(pattern=r"^\d{4}-(0[1-9]|1[0-2])$", examples=["2026-08"])
@@ -72,6 +76,24 @@ def _centros(valor: str | None) -> tuple[str, ...] | None:
         return None
     codigos = tuple(dict.fromkeys(p.strip() for p in valor.split(",") if p.strip()))
     return codigos or None
+
+
+def _eje[E: StrEnum](enumerado: type[E], valor: str | None, por_defecto: E) -> E:
+    """Valida el eje contra **su** enumerado y da un 404 con su motivo si no es.
+
+    Sin esto, pedir el cruce vendedor-cliente al resumen levantaria un
+    `ValueError` dentro del servicio y saldria como 500: un error del
+    servidor para lo que es un parametro mal escrito.
+    """
+    if valor is None:
+        return por_defecto
+    try:
+        return enumerado(valor)
+    except ValueError:
+        from app.core.errors import ErrorNoEncontrado
+
+        opciones = ", ".join(miembro.value for miembro in enumerado)
+        raise ErrorNoEncontrado(f"Eje {valor!r} no valido. Opciones: {opciones}.") from None
 
 
 def _filtros(
@@ -137,6 +159,63 @@ def venta_diaria(
     medida: Medida = Medida.VALOR,
 ) -> RespuestaVentaDiariaAgro:
     return AgroReportesService(sesion).venta_diaria(_filtros(periodo, hasta, desde, centro, medida))
+
+
+@router.get(
+    "/exportar/{reporte}",
+    summary="Exportar un reporte de agropecuaria a Excel",
+    response_class=Response,
+    responses={200: {"content": {TIPO_XLSX: {}}, "description": "Libro .xlsx"}},
+)
+def exportar(
+    reporte: Annotated[str, "resumen | cruce | venta-diaria"],
+    _: LecturaDep,
+    sesion: SesionDep,
+    periodo: str = PeriodoQuery,
+    hasta: date | None = None,
+    desde: date | None = None,
+    centro: str | None = None,
+    medida: Medida = Medida.VALOR,
+    por: str | None = None,
+) -> Response:
+    """Exporta **lo mismo que muestra la pantalla**, con los mismos filtros.
+
+    La ruta lleva el reporte al final —`/agro/exportar/resumen`— y no al
+    principio como en carnes: un `/agro/{reporte}/exportar` capturaria tambien
+    `/agro/presupuesto/cuadre` y `/agro/ingesta/corridas`, que ya existen y que
+    FastAPI resolveria contra el comodin segun el orden de registro. Aqui el
+    prefijo fijo no se puede confundir con nada.
+
+    `por` es el eje —los valores de `EjeResumen` o de `EjeCruce` segun el
+    reporte—. Se recibe como texto y se valida contra el enumerado que
+    corresponde, para que un eje de cruce pedido al resumen sea un 404 con su
+    motivo y no un 500.
+    """
+    from app.core.errors import ErrorNoEncontrado
+
+    filtros = _filtros(periodo, hasta, desde, centro, medida)
+    servicio = AgroReportesService(sesion)
+
+    if reporte == "resumen":
+        contenido = agro_exportacion_service.exportar_resumen(
+            servicio.resumen(filtros, _eje(EjeResumen, por, EjeResumen.CENTRO_OPERACION))
+        )
+    elif reporte == "cruce":
+        contenido = agro_exportacion_service.exportar_cruce(
+            servicio.cruce(filtros, _eje(EjeCruce, por, EjeCruce.VENDEDOR_CLIENTE))
+        )
+    elif reporte == "venta-diaria":
+        contenido = agro_exportacion_service.exportar_venta_diaria(servicio.venta_diaria(filtros))
+    else:
+        raise ErrorNoEncontrado(f"No existe el reporte {reporte!r} en agropecuaria.")
+
+    sufijo = f"-{por}" if por else ""
+    nombre = f"sigrep-agro-{reporte}{sufijo}-{periodo}.xlsx"
+    return Response(
+        content=contenido,
+        media_type=TIPO_XLSX,
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+    )
 
 
 # ── Presupuesto ───────────────────────────────────────────────────────────────

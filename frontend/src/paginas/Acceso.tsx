@@ -57,8 +57,9 @@ export function Acceso() {
               <div>
                 <strong>Modo de datos de ejemplo.</strong>
                 <p>
-                  La aplicación no consulta el backend. Entre con cualquier usuario y contraseña
-                  para revisar las pantallas; las cifras que verá son ficticias.
+                  La aplicación no consulta el backend. Entre con cualquier
+                  usuario y contraseña para revisar las pantallas; las cifras
+                  que verá son ficticias.
                 </p>
               </div>
             </div>
@@ -103,7 +104,11 @@ export function Acceso() {
             necesita esta salida si se equivocó de unidad. Devuelve al selector
             sin tocar la sesión —no hay ninguna abierta todavía—. */}
         <p className="acceso__salida tenue">
-          <button type="button" className="boton boton--sutil boton--pequeno" onClick={olvidar}>
+          <button
+            type="button"
+            className="boton boton--sutil boton--pequeno"
+            onClick={olvidar}
+          >
             Cambiar unidad de negocio
           </button>
         </p>

@@ -48,7 +48,8 @@ export function BarraContraIdeal({
 }) {
   const aspecto = aspectoSemaforo(semaforo);
   const anchoRelleno = proporcionParaGrafico(cumplimiento) * 100;
-  const posicionIdeal = ideal === null ? null : proporcionParaGrafico(ideal) * 100;
+  const posicionIdeal =
+    ideal === null ? null : proporcionParaGrafico(ideal) * 100;
 
   const descripcion =
     cumplimiento === null
@@ -71,7 +72,10 @@ export function BarraContraIdeal({
           />
         )}
         {posicionIdeal === null ? null : (
-          <div className="barra-ideal__marca" style={{ left: `${posicionIdeal}%` }}>
+          <div
+            className="barra-ideal__marca"
+            style={{ left: `${posicionIdeal}%` }}
+          >
             <span className="barra-ideal__marca-linea" />
           </div>
         )}
@@ -79,9 +83,7 @@ export function BarraContraIdeal({
       {compacta ? null : (
         <div className="barra-ideal__pie">
           <span>0 %</span>
-          <span className="barra-ideal__nota">
-            ▏ ideal {porcentaje(ideal)}
-          </span>
+          <span className="barra-ideal__nota">▏ ideal {porcentaje(ideal)}</span>
           <span>100 %</span>
         </div>
       )}
@@ -98,7 +100,8 @@ export function BarraContraIdeal({
  * `progressbar` solo añade ruido cuando la cifra está en la celda contigua.
  */
 export function BarraParticipacion({ valor }: { valor: string | null }) {
-  if (valor === null) return <div className="barra barra--vacia" aria-hidden="true" />;
+  if (valor === null)
+    return <div className="barra barra--vacia" aria-hidden="true" />;
 
   return (
     <div className="barra" aria-hidden="true">
@@ -182,7 +185,9 @@ export function ColumnasDiarias({
 
   function alturaDe(valor: string | null): number | null {
     if (valor === null) return null;
-    return MARGEN_ARRIBA + utilAlto - proporcionParaGrafico(valor, escala) * utilAlto;
+    return (
+      MARGEN_ARRIBA + utilAlto - proporcionParaGrafico(valor, escala) * utilAlto
+    );
   }
 
   const resumen = columnas
@@ -259,7 +264,10 @@ export function ColumnasDiarias({
       <p className="columnas__leyenda">
         <span className="columnas__muestra" aria-hidden="true" />
         Venta del día
-        <span className="columnas__muestra columnas__muestra--referencia" aria-hidden="true" />
+        <span
+          className="columnas__muestra columnas__muestra--referencia"
+          aria-hidden="true"
+        />
         {uniforme
           ? `Presupuesto diario: ${
               referencias[0] == null ? SIN_DATO : formatear(referencias[0])

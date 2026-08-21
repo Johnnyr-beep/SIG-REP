@@ -22,6 +22,11 @@ export type ClaveMarca = "carnes" | "agropecuaria" | "carnes-frias";
  * `activa` es la instancia desplegada; `proximamente` es una unidad que existe
  * en el grupo pero todavía no tiene datos ni backend detrás. Se muestra —no se
  * esconde—, pero no deja continuar al acceso.
+ *
+ * Es el **censo local**, y lo usa el selector solo mientras no haya respuesta de
+ * `GET /salud`. Cuando la hay, manda el campo `unidades` de la sonda: es el
+ * servidor quien sabe qué unidades sirve de verdad esta instancia, y este
+ * archivo se compila una vez y se despliega en todas.
  */
 export type EstadoMarca = "activa" | "proximamente";
 
@@ -59,8 +64,9 @@ export const MARCAS: readonly Marca[] = [
     logo: logoAgropecuaria,
     logoAncho: 197,
     logoAlto: 144,
-    estado: "proximamente",
-    descripcion: "Planta de beneficio y canales. Pendiente de despliegue.",
+    estado: "activa",
+    descripcion:
+      "Planta y Montería. Venta por especie, tipo comercial, vendedor y cliente.",
   },
   {
     clave: "carnes-frias",

@@ -268,6 +268,12 @@ class ConciliacionAgro(EsquemaBase):
 
     impuesto_valor: DecimalStr
     impuesto_kilos: DecimalStr
+    #: Suma de `LineasFacturadas` de las filas de impuesto: **líneas, no filas**.
+    #: No tiene por qué coincidir con el campo `impuesto` de la corrida, que
+    #: cuenta filas del origen —una fila puede traer varias líneas facturadas—.
+    #: En una carga real de siete días fueron 170 filas y 180 líneas. Se dice
+    #: aquí porque quien concilie contra el ERP va a ver los dos números juntos
+    #: y, sin esta nota, va a leer la diferencia como diez filas perdidas.
     impuesto_lineas: int
     nota: str = Field(
         default=(

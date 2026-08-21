@@ -36,7 +36,11 @@ import { useExportar, useVentaDiaria } from "@/api/consultas";
 import type { FilaVentaDiaria, RespuestaVentaDiaria } from "@/api/tipos";
 import { MAXIMO_DIAS_VENTA_DIARIA } from "@/api/tipos";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
-import { BarraFiltros, diasDelRangoPedido, useFiltros } from "@/componentes/filtros";
+import {
+  BarraFiltros,
+  diasDelRangoPedido,
+  useFiltros,
+} from "@/componentes/filtros";
 import { ColumnasDiarias } from "@/componentes/graficos";
 import { PieCalculo } from "@/componentes/indicadores";
 import { FORMULAS } from "@/utilidades/dominio";
@@ -110,7 +114,12 @@ function CeldaDia({
   formatear: (valor: string | null) => string;
 }) {
   const comparacion = comparaParaGrafico(valor, referencia);
-  const tono = comparacion === null ? "" : comparacion >= 0 ? " celda--sobre" : " celda--bajo";
+  const tono =
+    comparacion === null
+      ? ""
+      : comparacion >= 0
+        ? " celda--sobre"
+        : " celda--bajo";
 
   return (
     <td
@@ -191,7 +200,11 @@ export function VentaDiaria() {
    * no necesita nada más: es toda la mecánica que hace correcta la comparación
    * en un rango que cruza de mes.
    */
-  function referenciaDeCelda(respuesta: RespuestaVentaDiaria, codigo: string, fecha: string) {
+  function referenciaDeCelda(
+    respuesta: RespuestaVentaDiaria,
+    codigo: string,
+    fecha: string,
+  ) {
     return referenciaDePeriodo(respuesta, codigo, periodoDeFecha(fecha) ?? "");
   }
 
@@ -201,7 +214,8 @@ export function VentaDiaria() {
     if (!totales) return null;
     const periodo = periodoDeFecha(fecha);
     const porPeriodo = totales.presupuesto_diario_por_periodo;
-    if (periodo !== null && porPeriodo && periodo in porPeriodo) return porPeriodo[periodo] ?? null;
+    if (periodo !== null && porPeriodo && periodo in porPeriodo)
+      return porPeriodo[periodo] ?? null;
     return totales.presupuesto_diario ?? null;
   }
 
@@ -215,12 +229,16 @@ export function VentaDiaria() {
     ]);
   }
 
-  function referenciasDeTotales(respuesta: RespuestaVentaDiaria): ReferenciasPorPeriodo {
+  function referenciasDeTotales(
+    respuesta: RespuestaVentaDiaria,
+  ): ReferenciasPorPeriodo {
     const totales = respuesta.totales;
     if (!totales) return [];
     return periodosDe(respuesta).map((periodo) => [
       periodo,
-      totales.presupuesto_diario_por_periodo?.[periodo] ?? totales.presupuesto_diario ?? null,
+      totales.presupuesto_diario_por_periodo?.[periodo] ??
+        totales.presupuesto_diario ??
+        null,
     ]);
   }
 
@@ -236,7 +254,9 @@ export function VentaDiaria() {
           <button
             type="button"
             className="boton boton--pequeno"
-            onClick={() => exportar.mutate({ reporte: "venta-diaria", filtros })}
+            onClick={() =>
+              exportar.mutate({ reporte: "venta-diaria", filtros })
+            }
             disabled={exportar.isPending || !rangoValido}
           >
             {exportar.isPending ? "Generando…" : "Exportar a Excel"}
@@ -249,9 +269,9 @@ export function VentaDiaria() {
           <div>
             <strong>La fecha «desde» es posterior a «hasta».</strong>
             <p className="tenue" style={{ marginTop: 4 }}>
-              Un rango invertido se rechaza en lugar de devolver la tabla vacía que saldría
-              de forma natural: eso haría pasar un error de captura por «no hubo ventas».
-              Corrija cualquiera de las dos fechas.
+              Un rango invertido se rechaza en lugar de devolver la tabla vacía
+              que saldría de forma natural: eso haría pasar un error de captura
+              por «no hubo ventas». Corrija cualquiera de las dos fechas.
             </p>
           </div>
         </div>
@@ -261,14 +281,15 @@ export function VentaDiaria() {
         <div className="aviso aviso--advertencia" role="alert">
           <div>
             <strong>
-              El rango pedido son {dias} días y el máximo del reporte de venta diaria es{" "}
-              {MAXIMO_DIAS_VENTA_DIARIA}.
+              El rango pedido son {dias} días y el máximo del reporte de venta
+              diaria es {MAXIMO_DIAS_VENTA_DIARIA}.
             </strong>
             <p className="tenue" style={{ marginTop: 4 }}>
-              El reporte pinta un día por columna, así que el tope está donde deja de tener
-              sentido dibujarlo. Acorte el rango —un trimestre cubre el mes en curso más los
-              dos anteriores— o consulte el tablero y el cumplimiento, que agregan por
-              período en lugar de por día.
+              El reporte pinta un día por columna, así que el tope está donde
+              deja de tener sentido dibujarlo. Acorte el rango —un trimestre
+              cubre el mes en curso más los dos anteriores— o consulte el
+              tablero y el cumplimiento, que agregan por período en lugar de por
+              día.
             </p>
           </div>
         </div>
@@ -277,7 +298,9 @@ export function VentaDiaria() {
       <AvisoError error={error} />
       <AvisoError error={exportar.error} />
 
-      {isLoading && rangoValido ? <Cargando texto="Armando la matriz de venta diaria…" /> : null}
+      {isLoading && rangoValido ? (
+        <Cargando texto="Armando la matriz de venta diaria…" />
+      ) : null}
 
       {data ? (
         <>
@@ -308,7 +331,11 @@ export function VentaDiaria() {
                   etiqueta: String(Number(fecha.slice(8, 10))),
                   valor: filaSeleccionada.valores[indice] ?? null,
                   esDomingo: esDomingo(fecha),
-                  referencia: referenciaDeCelda(data, filaSeleccionada.punto_venta, fecha),
+                  referencia: referenciaDeCelda(
+                    data,
+                    filaSeleccionada.punto_venta,
+                    fecha,
+                  ),
                 }))}
               />
             </Tarjeta>
@@ -322,7 +349,11 @@ export function VentaDiaria() {
               <PieCalculo
                 parametros={data.parametros_calculo}
                 medida={medida}
-                extra={<p className="pie-calculo__formulas">{FORMULAS.presupuesto_diario}</p>}
+                extra={
+                  <p className="pie-calculo__formulas">
+                    {FORMULAS.presupuesto_diario}
+                  </p>
+                }
               />
             }
           >
@@ -335,9 +366,11 @@ export function VentaDiaria() {
               <div className="tabla-envoltorio tabla-envoltorio--alta">
                 <table className="tabla tabla--anclada tabla--matriz">
                   <caption className="solo-lectores">
-                    Venta por punto de venta y día, del {formatearFecha(data.desde)} al{" "}
-                    {formatearFecha(data.hasta ?? data.fecha_corte)}. La última fila es el total
-                    de los puntos de venta que publica la respuesta.
+                    Venta por punto de venta y día, del{" "}
+                    {formatearFecha(data.desde)} al{" "}
+                    {formatearFecha(data.hasta ?? data.fecha_corte)}. La última
+                    fila es el total de los puntos de venta que publica la
+                    respuesta.
                   </caption>
                   <thead>
                     <tr>
@@ -365,12 +398,17 @@ export function VentaDiaria() {
                       const activa = codigo !== null && codigo === seleccionado;
 
                       return (
-                        <tr key={codigo ?? String(indice)} className={activa ? "fila-activa" : ""}>
+                        <tr
+                          key={codigo ?? String(indice)}
+                          className={activa ? "fila-activa" : ""}
+                        >
                           <th scope="row" className="columna-ancla">
                             <button
                               type="button"
                               className="enlace-fila"
-                              onClick={() => setSeleccionado(activa ? null : codigo)}
+                              onClick={() =>
+                                setSeleccionado(activa ? null : codigo)
+                              }
                               disabled={codigo === null}
                             >
                               {fila.nombre}
@@ -386,12 +424,18 @@ export function VentaDiaria() {
                               key={fecha}
                               fecha={fecha}
                               valor={fila.valores[columna] ?? null}
-                              referencia={referenciaDeCelda(data, codigo, fecha)}
+                              referencia={referenciaDeCelda(
+                                data,
+                                codigo,
+                                fecha,
+                              )}
                               formatear={formatear}
                             />
                           ))}
 
-                          <td className="numero columna-total">{formatear(fila.total)}</td>
+                          <td className="numero columna-total">
+                            {formatear(fila.total)}
+                          </td>
                         </tr>
                       );
                     })}
@@ -437,7 +481,9 @@ export function VentaDiaria() {
                           />
                         ))}
 
-                        <td className="numero columna-total">{formatear(data.totales.total)}</td>
+                        <td className="numero columna-total">
+                          {formatear(data.totales.total)}
+                        </td>
                       </tr>
                     </tfoot>
                   ) : null}

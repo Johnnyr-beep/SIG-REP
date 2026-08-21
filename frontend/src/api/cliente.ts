@@ -133,7 +133,8 @@ async function renovarSesion(): Promise<boolean> {
 
 // ── Petición ─────────────────────────────────────────────────────────────────
 
-export type ValorParametro = string | number | boolean | string[] | undefined | null;
+export type ValorParametro =
+  string | number | boolean | string[] | undefined | null;
 
 export interface Opciones {
   metodo?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -143,7 +144,10 @@ export interface Opciones {
   esReintento?: boolean;
 }
 
-function construirUrl(ruta: string, parametros?: Opciones["parametros"]): string {
+function construirUrl(
+  ruta: string,
+  parametros?: Opciones["parametros"],
+): string {
   const url = new URL(`${BASE}${ruta}`, window.location.origin);
   if (parametros) {
     for (const [clave, valor] of Object.entries(parametros)) {
@@ -180,7 +184,10 @@ function cabecerasBase(): Record<string, string> {
   return cabeceras;
 }
 
-export async function peticion<T>(ruta: string, opciones: Opciones = {}): Promise<T> {
+export async function peticion<T>(
+  ruta: string,
+  opciones: Opciones = {},
+): Promise<T> {
   if (MODO_EJEMPLOS) {
     const { responder } = await import("./ejemplos");
     return responder<T>(ruta, opciones);
@@ -231,7 +238,8 @@ export async function enviarArchivo<T>(
 
   const formulario = new FormData();
   formulario.append("archivo", archivo);
-  for (const [clave, valor] of Object.entries(campos)) formulario.append(clave, valor);
+  for (const [clave, valor] of Object.entries(campos))
+    formulario.append(clave, valor);
 
   // Sin `Content-Type`: el navegador debe fijarlo con la frontera del multipart.
   const respuesta = await fetch(construirUrl(ruta), {
@@ -274,12 +282,16 @@ export async function descargar(
 
   const blob = await respuesta.blob();
   const cabecera = respuesta.headers.get("Content-Disposition") ?? "";
-  const nombreEnCabecera = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(cabecera)?.[1];
+  const nombreEnCabecera = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(
+    cabecera,
+  )?.[1];
 
   const url = URL.createObjectURL(blob);
   const enlace = document.createElement("a");
   enlace.href = url;
-  enlace.download = nombreEnCabecera ? decodeURIComponent(nombreEnCabecera) : nombreSugerido;
+  enlace.download = nombreEnCabecera
+    ? decodeURIComponent(nombreEnCabecera)
+    : nombreSugerido;
   document.body.appendChild(enlace);
   enlace.click();
   enlace.remove();
@@ -289,7 +301,10 @@ export async function descargar(
 // ── Acceso ───────────────────────────────────────────────────────────────────
 
 /** Login: no lleva token y guarda el par emitido. */
-export async function iniciarSesion(usuario: string, clave: string): Promise<void> {
+export async function iniciarSesion(
+  usuario: string,
+  clave: string,
+): Promise<void> {
   if (MODO_EJEMPLOS) {
     const { acceder } = await import("./ejemplos");
     const datos = await acceder(usuario, clave);

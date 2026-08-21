@@ -19,7 +19,13 @@ import {
 } from "@/api/consultas";
 import type { FuenteIngesta } from "@/api/tipos";
 import { useAuth } from "@/auth/ContextoAuth";
-import { AvisoError, Campo, Distintivo, Tarjeta, Vacio } from "@/componentes/comunes";
+import {
+  AvisoError,
+  Campo,
+  Distintivo,
+  Tarjeta,
+  Vacio,
+} from "@/componentes/comunes";
 import { tonoEstadoIngesta } from "@/utilidades/dominio";
 import { fechaHora, humanizar, numero } from "@/utilidades/formato";
 
@@ -29,7 +35,8 @@ export function Ingesta() {
   const { data: corridas, isLoading, error } = useCorridasIngesta();
 
   const [corridaAbierta, setCorridaAbierta] = useState<number | null>(null);
-  const { data: rechazos, isLoading: cargandoRechazos } = useRechazosIngesta(corridaAbierta);
+  const { data: rechazos, isLoading: cargandoRechazos } =
+    useRechazosIngesta(corridaAbierta);
 
   const ejecutar = useEjecutarIngesta();
   const subir = useIngestaArchivo();
@@ -57,7 +64,9 @@ export function Ingesta() {
               {fechaHora(salud?.ultima_ingesta ?? ultima?.cuando ?? null)}
             </span>
             <span className="indicador__nota">
-              {ultima ? `Corrida #${ultima.id} · ${ultima.fuente}` : "Sin corridas registradas"}
+              {ultima
+                ? `Corrida #${ultima.id} · ${ultima.fuente}`
+                : "Sin corridas registradas"}
             </span>
           </div>
 
@@ -71,7 +80,9 @@ export function Ingesta() {
             </span>
           </div>
 
-          <div className={`indicador${(ultima?.rechazadas ?? 0) > 0 ? " indicador--aviso" : ""}`}>
+          <div
+            className={`indicador${(ultima?.rechazadas ?? 0) > 0 ? " indicador--aviso" : ""}`}
+          >
             <span className="indicador__etiqueta">Filas rechazadas</span>
             <span className="indicador__valor indicador__valor--mediano">
               {numero(ultima?.rechazadas ?? null)}
@@ -89,7 +100,9 @@ export function Ingesta() {
               {salud ? humanizar(salud.estado) : "—"}
             </span>
             <span className="indicador__nota">
-              {salud ? `${salud.base_datos} · versión ${salud.version}` : "Sin respuesta de /salud"}
+              {salud
+                ? `${salud.base_datos} · versión ${salud.version}`
+                : "Sin respuesta de /salud"}
             </span>
           </div>
         </div>
@@ -151,12 +164,17 @@ export function Ingesta() {
               if (archivo) subir.mutate(archivo);
             }}
           >
-            <Campo etiqueta="O cargue el archivo de SIESA" ayuda="Formato .xlsx">
+            <Campo
+              etiqueta="O cargue el archivo de SIESA"
+              ayuda="Formato .xlsx"
+            >
               <input
                 className="campo__control"
                 type="file"
                 accept=".xlsx"
-                onChange={(evento) => setArchivo(evento.target.files?.[0] ?? null)}
+                onChange={(evento) =>
+                  setArchivo(evento.target.files?.[0] ?? null)
+                }
               />
             </Campo>
             <button
@@ -174,11 +192,18 @@ export function Ingesta() {
 
       <AvisoError error={error} />
 
-      <Tarjeta titulo="Corridas" descripcion="Historial de cargas y su resultado." sinRelleno>
+      <Tarjeta
+        titulo="Corridas"
+        descripcion="Historial de cargas y su resultado."
+        sinRelleno
+      >
         {isLoading ? (
           <p className="cargando">Cargando el historial…</p>
         ) : (corridas ?? []).length === 0 ? (
-          <Vacio titulo="Sin corridas" detalle="Todavía no se ha ejecutado ninguna ingesta." />
+          <Vacio
+            titulo="Sin corridas"
+            detalle="Todavía no se ha ejecutado ninguna ingesta."
+          />
         ) : (
           <div className="tabla-envoltorio">
             <table className="tabla">
@@ -226,21 +251,29 @@ export function Ingesta() {
                     </td>
                     <td className="numero">{numero(corrida.filas_leidas)}</td>
                     <td className="numero">{numero(corrida.aceptadas)}</td>
-                    <td className={`numero${corrida.rechazadas > 0 ? " texto-peligro" : ""}`}>
+                    <td
+                      className={`numero${corrida.rechazadas > 0 ? " texto-peligro" : ""}`}
+                    >
                       {numero(corrida.rechazadas)}
                     </td>
-                    <td className="numero tenue">{numero(corrida.duracion_ms)} ms</td>
+                    <td className="numero tenue">
+                      {numero(corrida.duracion_ms)} ms
+                    </td>
                     <td>
                       <button
                         type="button"
                         className="boton boton--pequeno"
                         onClick={() =>
-                          setCorridaAbierta(corridaAbierta === corrida.id ? null : corrida.id)
+                          setCorridaAbierta(
+                            corridaAbierta === corrida.id ? null : corrida.id,
+                          )
                         }
                         aria-expanded={corridaAbierta === corrida.id}
                         disabled={corrida.rechazadas === 0}
                       >
-                        {corridaAbierta === corrida.id ? "Ocultar" : "Ver rechazos"}
+                        {corridaAbierta === corrida.id
+                          ? "Ocultar"
+                          : "Ver rechazos"}
                       </button>
                     </td>
                   </tr>
@@ -260,7 +293,10 @@ export function Ingesta() {
           {cargandoRechazos ? (
             <p className="cargando">Cargando los rechazos…</p>
           ) : (rechazos ?? []).length === 0 ? (
-            <Vacio titulo="Sin rechazos" detalle="Esta corrida aceptó todas las filas." />
+            <Vacio
+              titulo="Sin rechazos"
+              detalle="Esta corrida aceptó todas las filas."
+            />
           ) : (
             <div className="tabla-envoltorio">
               <table className="tabla">
@@ -279,7 +315,9 @@ export function Ingesta() {
                     <tr key={`${rechazo.fila}-${rechazo.campo}-${indice}`}>
                       <td className="numero mono">{numero(rechazo.fila)}</td>
                       <td>{rechazo.campo}</td>
-                      <td className="mono">{rechazo.valor === "" ? "(vacío)" : rechazo.valor}</td>
+                      <td className="mono">
+                        {rechazo.valor === "" ? "(vacío)" : rechazo.valor}
+                      </td>
                       <td>{rechazo.motivo}</td>
                     </tr>
                   ))}

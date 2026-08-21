@@ -1,0 +1,400 @@
+/**
+ * Hooks de datos de la unidad Agropecuaria (`/api/v1/agro`).
+ *
+ * Mismo trato que `consultas.ts`: los componentes no conocen rutas ni verbos,
+ * solo hooks con nombre de negocio. Van en un archivo aparte porque el contrato
+ * también lo está —`api/v1/agro.py`— y porque las claves de caché de las dos
+ * unidades no deben cruzarse: invalidar un reporte de carnes no puede tirar la
+ * caché de agropecuaria ni al revés.
+ */
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
+
+import { descargar, enviarArchivo, peticion } from "./cliente";
+import type { ValorParametro } from "./cliente";
+import type { Medida } from "./tipos";
+import type {
+  CalendarioAgro,
+  CorridaAgro,
+  CuadrePresupuestoAgro,
+  DimensionPresupuestoAgro,
+  EjeCruceAgro,
+  EjeResumenAgro,
+  EntradaCalendarioAgro,
+  EntradaPresupuestoAgro,
+  HistorialAgro,
+  PresupuestoDimensionAgro,
+  RechazoAgro,
+  RespuestaCruceAgro,
+  RespuestaResumenAgro,
+  RespuestaVentaDiariaAgro,
+  ResultadoCargaAgro,
+} from "./tiposAgro";
+
+/**
+ * Filtros comunes a los tres reportes de agropecuaria.
+ *
+ * Son los del router: `periodo` obligatorio, `hasta` como fecha de corte,
+ * `desde` solo para el rango de la venta diaria, `centro` como lista separada
+ * por comas y `medida`.
+ *
+ * **No hay `limite`.** El tope de filas del cruce es una opción del servidor
+ * (`max_filas_reporte_agro`) y no un parámetro de la petición: la pantalla lo
+ * lee de la respuesta para poder explicarlo, pero no lo puede subir.
+ */
+export interface FiltrosAgro {
+  periodo: string;
+  /** Primer día del rango. **Solo lo entiende `venta-diaria`.** */
+  desde?: string;
+  /** Fecha de corte. Ausente = hoy. */
+  hasta?: string;
+  /**
+   * Códigos de centro separados por coma: `"301,302"`.
+   *
+   * **Ausente significa «todos»**, igual que `punto_venta` en carnes: el
+   * backend trata `?centro=` como no filtrar, así que una selección vacía borra
+   * el parámetro en lugar de enviarlo en blanco. Estrecha, jamás ensancha.
+   */
+  centro?: string;
+  medida: Medida;
+}
+
+function comoParametros(filtros: FiltrosAgro): Record<string, ValorParametro> {
+  return {
+    periodo: filtros.periodo,
+    hasta: filtros.hasta,
+    centro: filtros.centro,
+    medida: filtros.medida,
+  };
+}
+
+/** Los mismos más `desde`, que solo declara el reporte diario. */
+function comoParametrosDiarios(
+  filtros: FiltrosAgro,
+): Record<string, ValorParametro> {
+  return { ...comoParametros(filtros), desde: filtros.desde };
+}
+
+/**
+ * Claves de caché, todas bajo el prefijo `agro`.
+ *
+ * El prefijo es lo que permite invalidar «todos los reportes de agropecuaria»
+ * sin tocar los de carnes: las dos unidades comparten instancia de TanStack
+ * Query y un `["reporte"]` común las mezclaría.
+ */
+export const clavesAgro = {
+  resumen: (filtros: FiltrosAgro, por: EjeResumenAgro) =>
+    ["agro", "reporte", "resumen", por, filtros] as const,
+  cruce: (filtros: FiltrosAgro, por: EjeCruceAgro) =>
+    ["agro", "reporte", "cruce", por, filtros] as const,
+  ventaDiaria: (filtros: FiltrosAgro) =>
+    ["agro", "reporte", "venta-diaria", filtros] as const,
+  presupuesto: (periodo: string, dimension: string) =>
+    ["agro", "presupuesto", periodo, dimension] as const,
+  cuadre: (periodo: string) =>
+    ["agro", "presupuesto", "cuadre", periodo] as const,
+  historial: (periodo: string, dimension: string) =>
+    ["agro", "presupuesto", "historial", periodo, dimension] as const,
+  calendario: (periodo: string) => ["agro", "calendario", periodo] as const,
+  corridas: ["agro", "ingesta", "corridas"] as const,
+  rechazos: (id: number) => ["agro", "ingesta", "rechazos", id] as const,
+};
+
+// ── Reportes ─────────────────────────────────────────────────────────────────
+
+export function useResumenAgro(
+  filtros: FiltrosAgro,
+  por: EjeResumenAgro,
+): UseQueryResult<RespuestaResumenAgro> {
+  return useQuery({
+    queryKey: clavesAgro.resumen(filtros, por),
+    queryFn: () =>
+      peticion<RespuestaResumenAgro>("/agro/resumen", {
+        parametros: { ...comoParametros(filtros), por },
+      }),
+    staleTime: 60_000,
+  });
+}
+
+export function useCruceAgro(
+  filtros: FiltrosAgro,
+  por: EjeCruceAgro,
+): UseQueryResult<RespuestaCruceAgro> {
+  return useQuery({
+    queryKey: clavesAgro.cruce(filtros, por),
+    queryFn: () =>
+      peticion<RespuestaCruceAgro>("/agro/cruce", {
+        parametros: { ...comoParametros(filtros), por },
+      }),
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * Matriz diaria por centro.
+ *
+ * `habilitado` existe para que la pantalla pueda **no lanzar** la consulta
+ * cuando ya sabe que el rango es inválido —invertido o por encima del tope de
+ * 92 días—: un 422 que el usuario no puede provocar es mejor que uno bien
+ * explicado. El backend usa los mismos dos códigos de error que carnes,
+ * `rango_invertido` y `rango_excesivo`, a propósito.
+ */
+export function useVentaDiariaAgro(
+  filtros: FiltrosAgro,
+  habilitado = true,
+): UseQueryResult<RespuestaVentaDiariaAgro> {
+  return useQuery({
+    queryKey: clavesAgro.ventaDiaria(filtros),
+    queryFn: () =>
+      peticion<RespuestaVentaDiariaAgro>("/agro/venta-diaria", {
+        parametros: comoParametrosDiarios(filtros),
+      }),
+    enabled: habilitado,
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * Exporta a `.xlsx` lo mismo que muestra la pantalla, con sus filtros.
+ *
+ * La ruta lleva el reporte al final (`/agro/exportar/resumen`) y no en medio
+ * como en carnes: un `/agro/{reporte}/exportar` chocaría con
+ * `/agro/presupuesto/cuadre`, que ya existe.
+ */
+export function useExportarAgro(): UseMutationResult<
+  void,
+  Error,
+  {
+    reporte: "resumen" | "cruce" | "venta-diaria";
+    filtros: FiltrosAgro;
+    por?: string;
+  }
+> {
+  return useMutation({
+    mutationFn: ({ reporte, filtros, por }) =>
+      descargar(
+        `/agro/exportar/${reporte}`,
+        {
+          ...(reporte === "venta-diaria"
+            ? comoParametrosDiarios(filtros)
+            : comoParametros(filtros)),
+          por,
+        },
+        `sigrep-agro-${reporte}-${filtros.periodo}.xlsx`,
+      ),
+  });
+}
+
+// ── Presupuesto ──────────────────────────────────────────────────────────────
+
+/**
+ * El presupuesto del período, **de una dimensión a la vez**.
+ *
+ * El endpoint devuelve una lista de dimensiones, cada una con su total, y no
+ * existe ningún total global: las cuatro son repartos del mismo dinero y
+ * sumarlas daría cuatro veces la meta. Pedir siempre una dimensión concreta es
+ * lo que hace que la pantalla no tenga dónde cometer ese error.
+ */
+export function usePresupuestoAgro(
+  periodo: string,
+  dimension: DimensionPresupuestoAgro,
+): UseQueryResult<PresupuestoDimensionAgro[]> {
+  return useQuery({
+    queryKey: clavesAgro.presupuesto(periodo, dimension),
+    queryFn: () =>
+      peticion<PresupuestoDimensionAgro[]>("/agro/presupuesto", {
+        parametros: { periodo, dimension },
+      }),
+    staleTime: 60_000,
+  });
+}
+
+/** ¿Cuadran las cuatro descomposiciones entre sí? */
+export function useCuadreAgro(
+  periodo: string,
+): UseQueryResult<CuadrePresupuestoAgro> {
+  return useQuery({
+    queryKey: clavesAgro.cuadre(periodo),
+    queryFn: () =>
+      peticion<CuadrePresupuestoAgro>("/agro/presupuesto/cuadre", {
+        parametros: { periodo },
+      }),
+    staleTime: 60_000,
+  });
+}
+
+export function useHistorialAgro(
+  periodo: string,
+  dimension: DimensionPresupuestoAgro,
+): UseQueryResult<HistorialAgro[]> {
+  return useQuery({
+    queryKey: clavesAgro.historial(periodo, dimension),
+    queryFn: () =>
+      peticion<HistorialAgro[]>("/agro/presupuesto/historial", {
+        parametros: { periodo, dimension },
+      }),
+    staleTime: 30_000,
+  });
+}
+
+/**
+ * Invalida todo lo que un cambio de presupuesto puede haber movido.
+ *
+ * El cuadre entra en la lista sin excepción: cambiar una meta de una sola
+ * dimensión es exactamente la operación que puede descuadrar las cuatro, y ese
+ * aviso no puede quedarse mostrando el estado anterior.
+ */
+function useInvalidarPresupuestoAgro() {
+  const cliente = useQueryClient();
+  return () => {
+    void cliente.invalidateQueries({ queryKey: ["agro", "presupuesto"] });
+    // El presupuesto es el denominador del cumplimiento: los reportes que estén
+    // en pantalla ya no valen.
+    void cliente.invalidateQueries({ queryKey: ["agro", "reporte"] });
+  };
+}
+
+export function useGuardarPresupuestoAgro(): UseMutationResult<
+  unknown,
+  Error,
+  EntradaPresupuestoAgro
+> {
+  const invalidar = useInvalidarPresupuestoAgro();
+  return useMutation({
+    mutationFn: (datos) =>
+      peticion("/agro/presupuesto", { metodo: "PUT", cuerpo: datos }),
+    onSuccess: invalidar,
+  });
+}
+
+/**
+ * Carga masiva: el archivo trae una columna `dimension` por fila.
+ *
+ * La respuesta incluye el cuadre recién calculado, y la pantalla lo enseña ahí
+ * mismo: el momento de ver que las cuatro descomposiciones no dan lo mismo es
+ * justo después de subirlas, con el archivo todavía abierto.
+ */
+export function useCargaMasivaAgro(
+  periodo: string,
+): UseMutationResult<
+  ResultadoCargaAgro,
+  Error,
+  { archivo: File; motivo: string }
+> {
+  const invalidar = useInvalidarPresupuestoAgro();
+  return useMutation({
+    mutationFn: ({ archivo, motivo }) =>
+      enviarArchivo<ResultadoCargaAgro>(
+        "/agro/presupuesto/carga-masiva",
+        archivo,
+        {
+          periodo,
+          motivo,
+        },
+      ),
+    onSuccess: invalidar,
+  });
+}
+
+// ── Calendario ───────────────────────────────────────────────────────────────
+
+/**
+ * Días hábiles por centro de operación.
+ *
+ * Se consulta también desde la barra de filtros, y no solo desde su pantalla:
+ * es la **única** respuesta de la API que publica el código y el nombre de los
+ * dos centros juntos, así que es de donde sale el selector de centro. No hay
+ * catálogo de dimensiones expuesto (`MiembroDimensionSalida` existe en el
+ * esquema pero ningún endpoint lo devuelve), y el resumen solo trae los centros
+ * que **vendieron** en el corte, que no es lo mismo que los que existen.
+ */
+export function useCalendarioAgro(
+  periodo: string,
+): UseQueryResult<CalendarioAgro[]> {
+  return useQuery({
+    queryKey: clavesAgro.calendario(periodo),
+    queryFn: () =>
+      peticion<CalendarioAgro[]>("/agro/calendario", {
+        parametros: { periodo },
+      }),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useGuardarCalendarioAgro(
+  periodo: string,
+): UseMutationResult<
+  unknown,
+  Error,
+  { centro: string; datos: EntradaCalendarioAgro }
+> {
+  const cliente = useQueryClient();
+  return useMutation({
+    mutationFn: ({ centro, datos }) =>
+      peticion(`/agro/calendario/${encodeURIComponent(centro)}`, {
+        metodo: "PUT",
+        parametros: { periodo },
+        cuerpo: datos,
+      }),
+    onSuccess: () => {
+      void cliente.invalidateQueries({
+        queryKey: clavesAgro.calendario(periodo),
+      });
+      // Los días hábiles son el denominador del ideal: cambiarlos mueve el
+      // semáforo y la proyección de todas las pantallas de la unidad.
+      void cliente.invalidateQueries({ queryKey: ["agro", "reporte"] });
+    },
+  });
+}
+
+// ── Ingesta ──────────────────────────────────────────────────────────────────
+
+export function useCorridasAgro(): UseQueryResult<CorridaAgro[]> {
+  return useQuery({
+    queryKey: clavesAgro.corridas,
+    queryFn: () => peticion<CorridaAgro[]>("/agro/ingesta/corridas"),
+    staleTime: 30_000,
+  });
+}
+
+/**
+ * Los rechazos de una corrida. **Rol restringido a gerencia.**
+ *
+ * `habilitado` evita disparar la consulta —y con ella un 403 en la consola— en
+ * las sesiones que no lo tienen: los rechazos llevan valores crudos de filas
+ * reales, y por eso el backend los cierra con `GerenteDep` y no con `LecturaDep`.
+ */
+export function useRechazosAgro(
+  id: number | null,
+  habilitado = true,
+): UseQueryResult<RechazoAgro[]> {
+  return useQuery({
+    queryKey: clavesAgro.rechazos(id ?? 0),
+    queryFn: () =>
+      peticion<RechazoAgro[]>(`/agro/ingesta/corridas/${id}/rechazos`),
+    enabled: id !== null && habilitado,
+  });
+}
+
+/** Reprocesar un rango lo reemplaza; no duplica. Los dos extremos se incluyen. */
+export function useEjecutarIngestaAgro(): UseMutationResult<
+  CorridaAgro,
+  Error,
+  { desde: string; hasta: string }
+> {
+  const cliente = useQueryClient();
+  return useMutation({
+    mutationFn: ({ desde, hasta }) =>
+      peticion<CorridaAgro>("/agro/ingesta/ejecutar", {
+        metodo: "POST",
+        parametros: { desde, hasta },
+      }),
+    onSuccess: () => {
+      void cliente.invalidateQueries({ queryKey: clavesAgro.corridas });
+      void cliente.invalidateQueries({ queryKey: ["salud"] });
+      // Una ingesta cambia la venta: los reportes en pantalla ya no valen.
+      void cliente.invalidateQueries({ queryKey: ["agro", "reporte"] });
+    },
+  });
+}

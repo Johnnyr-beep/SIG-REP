@@ -44,7 +44,9 @@ export function FormularioCambioClave({
         ? "La clave nueva tiene que ser distinta de la actual."
         : undefined;
   const errorConfirmacion =
-    confirmacion !== "" && confirmacion !== nueva ? "Las dos claves no coinciden." : undefined;
+    confirmacion !== "" && confirmacion !== nueva
+      ? "Las dos claves no coinciden."
+      : undefined;
 
   const puedeEnviar =
     actual !== "" &&
@@ -116,7 +118,11 @@ export function FormularioCambioClave({
         />
       </Campo>
 
-      <button type="submit" className="boton boton--principal boton--bloque" disabled={!puedeEnviar}>
+      <button
+        type="submit"
+        className="boton boton--principal boton--bloque"
+        disabled={!puedeEnviar}
+      >
         {cambiar.isPending ? "Guardando…" : textoEnvio}
       </button>
     </form>
@@ -147,7 +153,9 @@ export function CambioClaveObligatorio() {
           />
           <h1>Cambie su clave</h1>
           <p className="tenue">
-            {usuario ? `${usuario.nombre} · ${usuario.usuario}` : "Sesión iniciada"}
+            {usuario
+              ? `${usuario.nombre} · ${usuario.usuario}`
+              : "Sesión iniciada"}
           </p>
         </div>
 
@@ -155,8 +163,9 @@ export function CambioClaveObligatorio() {
           <div>
             <strong>Su clave es provisional.</strong>
             <p>
-              La generó el sistema al crear la cuenta o al restablecerla, y alguien más la vio para
-              poder entregársela. Hasta que la cambie no se puede abrir ninguna otra pantalla.
+              La generó el sistema al crear la cuenta o al restablecerla, y
+              alguien más la vio para poder entregársela. Hasta que la cambie no
+              se puede abrir ninguna otra pantalla.
             </p>
           </div>
         </div>
@@ -165,7 +174,11 @@ export function CambioClaveObligatorio() {
 
         <p className="acceso__salida tenue">
           ¿No es su cuenta?{" "}
-          <button type="button" className="boton boton--sutil boton--pequeno" onClick={salir}>
+          <button
+            type="button"
+            className="boton boton--sutil boton--pequeno"
+            onClick={salir}
+          >
             Cerrar sesión
           </button>
         </p>

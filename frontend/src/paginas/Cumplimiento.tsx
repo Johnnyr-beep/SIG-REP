@@ -28,11 +28,14 @@ export function Cumplimiento() {
   const { data, isLoading, error } = useCumplimiento(filtros);
   const exportar = useExportar();
 
-  const [desplegadas, setDesplegadas] = useState<ReadonlySet<string>>(new Set());
+  const [desplegadas, setDesplegadas] = useState<ReadonlySet<string>>(
+    new Set(),
+  );
 
   const medida = data?.medida ?? filtros.medida;
   const filas = useMemo(() => data?.filas ?? [], [data]);
-  const todasDesplegadas = filas.length > 0 && desplegadas.size === filas.length;
+  const todasDesplegadas =
+    filas.length > 0 && desplegadas.size === filas.length;
 
   function alternar(clave: string) {
     setDesplegadas((anteriores) => {
@@ -47,7 +50,11 @@ export function Cumplimiento() {
     setDesplegadas(
       todasDesplegadas
         ? new Set()
-        : new Set(filas.map((fila, indice) => claveDe(fila.punto_venta, String(indice)))),
+        : new Set(
+            filas.map((fila, indice) =>
+              claveDe(fila.punto_venta, String(indice)),
+            ),
+          ),
     );
   }
 
@@ -69,7 +76,9 @@ export function Cumplimiento() {
             <button
               type="button"
               className="boton boton--pequeno"
-              onClick={() => exportar.mutate({ reporte: "cumplimiento", filtros })}
+              onClick={() =>
+                exportar.mutate({ reporte: "cumplimiento", filtros })
+              }
               disabled={exportar.isPending}
             >
               {exportar.isPending ? "Generando…" : "Exportar a Excel"}
@@ -88,7 +97,9 @@ export function Cumplimiento() {
           titulo="Cumplimiento por punto de venta"
           descripcion="Pulse el nombre de un punto para ver el detalle por categoría."
           sinRelleno
-          pie={<PieCalculo parametros={data.parametros_calculo} medida={medida} />}
+          pie={
+            <PieCalculo parametros={data.parametros_calculo} medida={medida} />
+          }
         >
           {filas.length === 0 ? (
             <Vacio
@@ -99,8 +110,8 @@ export function Cumplimiento() {
             <div className="tabla-envoltorio tabla-envoltorio--alta">
               <table className="tabla tabla--anclada">
                 <caption className="solo-lectores">
-                  Cumplimiento contra presupuesto por punto de venta y categoría, al{" "}
-                  {data.fecha_corte}.
+                  Cumplimiento contra presupuesto por punto de venta y
+                  categoría, al {data.fecha_corte}.
                 </caption>
                 <thead>
                   <tr>
@@ -116,8 +127,12 @@ export function Cumplimiento() {
                       key={claveDe(fila.punto_venta, String(indice))}
                       fila={fila}
                       medida={medida}
-                      desplegada={desplegadas.has(claveDe(fila.punto_venta, String(indice)))}
-                      onAlternar={() => alternar(claveDe(fila.punto_venta, String(indice)))}
+                      desplegada={desplegadas.has(
+                        claveDe(fila.punto_venta, String(indice)),
+                      )}
+                      onAlternar={() =>
+                        alternar(claveDe(fila.punto_venta, String(indice)))
+                      }
                     />
                   ))}
                 </tbody>
@@ -164,7 +179,9 @@ function FilaPdv({
               </span>
               <span>
                 {nombre}
-                {codigo ? <span className="tenue mono"> · {codigo}</span> : null}
+                {codigo ? (
+                  <span className="tenue mono"> · {codigo}</span>
+                ) : null}
               </span>
             </button>
           ) : (
@@ -174,7 +191,9 @@ function FilaPdv({
               </span>
               <span>
                 {nombre}
-                {codigo ? <span className="tenue mono"> · {codigo}</span> : null}
+                {codigo ? (
+                  <span className="tenue mono"> · {codigo}</span>
+                ) : null}
               </span>
             </span>
           )}
@@ -184,9 +203,14 @@ function FilaPdv({
 
       {desplegada
         ? categorias.map((categoria, indice) => (
-            <tr key={claveDe(categoria.categoria, String(indice))} className="fila-hija">
+            <tr
+              key={claveDe(categoria.categoria, String(indice))}
+              className="fila-hija"
+            >
               <th scope="row" className="columna-ancla columna-ancla--hija">
-                <span className="fila-hija__nombre">{etiquetaDe(categoria.categoria)}</span>
+                <span className="fila-hija__nombre">
+                  {etiquetaDe(categoria.categoria)}
+                </span>
               </th>
               <CeldasIndicadores fila={categoria} medida={medida} />
             </tr>
@@ -195,8 +219,13 @@ function FilaPdv({
 
       {desplegada && categorias.length === 0 ? (
         <tr className="fila-hija">
-          <td className="columna-ancla columna-ancla--hija" colSpan={COLUMNAS_INDICADORES + 1}>
-            <span className="tenue">Este punto de venta no tiene desglose por categoría.</span>
+          <td
+            className="columna-ancla columna-ancla--hija"
+            colSpan={COLUMNAS_INDICADORES + 1}
+          >
+            <span className="tenue">
+              Este punto de venta no tiene desglose por categoría.
+            </span>
           </td>
         </tr>
       ) : null}

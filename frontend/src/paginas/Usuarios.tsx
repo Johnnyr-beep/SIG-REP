@@ -69,7 +69,8 @@ const ROLES: DescripcionRol[] = [
   {
     valor: "ADMIN",
     etiqueta: "Administrador",
-    alcance: "Administra cuentas y entra en todos los reportes. Ve toda la compañía.",
+    alcance:
+      "Administra cuentas y entra en todos los reportes. Ve toda la compañía.",
   },
   {
     valor: "GERENTE",
@@ -86,7 +87,11 @@ const ROLES: DescripcionRol[] = [
     etiqueta: "Jefe de punto de venta",
     alcance: "Ve únicamente los puntos de venta que se le asignen.",
   },
-  { valor: "CONSULTA", etiqueta: "Consulta", alcance: "Solo lectura sobre toda la compañía." },
+  {
+    valor: "CONSULTA",
+    etiqueta: "Consulta",
+    alcance: "Solo lectura sobre toda la compañía.",
+  },
 ];
 
 function etiquetaRol(rol: Rol): string {
@@ -163,7 +168,9 @@ function codigosDeAlcance(
   puntosVenta: PuntoVenta[],
 ): string[] {
   const codigosConocidos = new Set(puntosVenta.map((pdv) => pdv.codigo_co));
-  const porNombre = new Map(puntosVenta.map((pdv) => [pdv.nombre.toUpperCase(), pdv.codigo_co]));
+  const porNombre = new Map(
+    puntosVenta.map((pdv) => [pdv.nombre.toUpperCase(), pdv.codigo_co]),
+  );
 
   const salida: string[] = [];
   for (const referencia of referencias ?? []) {
@@ -188,7 +195,9 @@ function nombresDeAlcance(
   referencias: ReferenciaSimple[] | null | undefined,
   puntosVenta: PuntoVenta[],
 ): string[] {
-  const porCodigo = new Map(puntosVenta.map((pdv) => [pdv.codigo_co, pdv.nombre]));
+  const porCodigo = new Map(
+    puntosVenta.map((pdv) => [pdv.codigo_co, pdv.nombre]),
+  );
   return (referencias ?? []).map((referencia) => {
     const codigo = codigoDe(referencia);
     const etiqueta = etiquetaDe(referencia);
@@ -290,7 +299,13 @@ interface Secreto {
  *  · el propio cuadro dice cuál es el remedio si se pierde, que es restablecer
  *    la clave y volver a empezar.
  */
-function PanelClaveProvisional({ secreto, onCerrar }: { secreto: Secreto; onCerrar: () => void }) {
+function PanelClaveProvisional({
+  secreto,
+  onCerrar,
+}: {
+  secreto: Secreto;
+  onCerrar: () => void;
+}) {
   const [copiado, setCopiado] = useState<"no" | "si" | "manual">("no");
   const [entregada, setEntregada] = useState(false);
   const referencia = useRef<HTMLElement>(null);
@@ -319,7 +334,11 @@ function PanelClaveProvisional({ secreto, onCerrar }: { secreto: Secreto; onCerr
       abierto
       persistente
       ancho
-      titulo={secreto.origen === "alta" ? "Cuenta creada · clave provisional" : "Clave restablecida"}
+      titulo={
+        secreto.origen === "alta"
+          ? "Cuenta creada · clave provisional"
+          : "Clave restablecida"
+      }
       onCerrar={onCerrar}
       pie={
         <button
@@ -337,9 +356,10 @@ function PanelClaveProvisional({ secreto, onCerrar }: { secreto: Secreto; onCerr
           <div>
             <strong>Esta clave se muestra una sola vez.</strong>
             <p>
-              El servidor guarda únicamente su hash: no vuelve a aparecer en ninguna pantalla, en
-              ninguna respuesta ni en ningún registro. Si la pierde antes de entregarla, el remedio
-              es «Restablecer clave», que genera otra distinta.
+              El servidor guarda únicamente su hash: no vuelve a aparecer en
+              ninguna pantalla, en ninguna respuesta ni en ningún registro. Si
+              la pierde antes de entregarla, el remedio es «Restablecer clave»,
+              que genera otra distinta.
             </p>
           </div>
         </div>
@@ -353,7 +373,11 @@ function PanelClaveProvisional({ secreto, onCerrar }: { secreto: Secreto; onCerr
             {secreto.clave}
           </code>
           <div className="clave-provisional__acciones">
-            <button type="button" className="boton boton--principal" onClick={() => void copiar()}>
+            <button
+              type="button"
+              className="boton boton--principal"
+              onClick={() => void copiar()}
+            >
               Copiar la clave
             </button>
             <span className="tenue" role="status" aria-live="polite">
@@ -367,8 +391,8 @@ function PanelClaveProvisional({ secreto, onCerrar }: { secreto: Secreto; onCerr
         </div>
 
         <p className="tenue">
-          Al entrar con ella, esta cuenta no podrá abrir ninguna pantalla hasta cambiarla por una
-          propia de al menos 12 caracteres.
+          Al entrar con ella, esta cuenta no podrá abrir ninguna pantalla hasta
+          cambiarla por una propia de al menos 12 caracteres.
         </p>
 
         <label className="casilla">
@@ -377,7 +401,10 @@ function PanelClaveProvisional({ secreto, onCerrar }: { secreto: Secreto; onCerr
             checked={entregada}
             onChange={(evento) => setEntregada(evento.target.checked)}
           />
-          <span>Ya copié la clave y la voy a entregar. Entiendo que no podré volver a verla.</span>
+          <span>
+            Ya copié la clave y la voy a entregar. Entiendo que no podré volver
+            a verla.
+          </span>
         </label>
       </div>
     </Dialogo>
@@ -416,7 +443,10 @@ function DialogoAlta({
       ? `El nombre necesita al menos ${LARGO_MINIMO_NOMBRE} caracteres.`
       : undefined;
   const completo =
-    usuario !== "" && nombre.trim() !== "" && errorUsuario === undefined && errorNombre === undefined;
+    usuario !== "" &&
+    nombre.trim() !== "" &&
+    errorUsuario === undefined &&
+    errorNombre === undefined;
 
   function alEnviar(evento: FormEvent) {
     evento.preventDefault();
@@ -457,7 +487,12 @@ function DialogoAlta({
       onCerrar={onCerrar}
       pie={
         <>
-          <button type="button" className="boton" onClick={onCerrar} disabled={crear.isPending}>
+          <button
+            type="button"
+            className="boton"
+            onClick={onCerrar}
+            disabled={crear.isPending}
+          >
             Cancelar
           </button>
           <button
@@ -485,7 +520,9 @@ function DialogoAlta({
             value={usuario}
             // Se normaliza a minúsculas mientras se escribe: el backend no las
             // admite en mayúscula y corregirlo después es una fricción gratuita.
-            onChange={(evento) => setUsuario(evento.target.value.toLowerCase().trim())}
+            onChange={(evento) =>
+              setUsuario(evento.target.value.toLowerCase().trim())
+            }
             autoComplete="off"
             required
             maxLength={50}
@@ -536,8 +573,9 @@ function DialogoAlta({
         ) : (
           <div className="aviso aviso--info">
             <div>
-              El alcance por punto de venta no aplica a {etiquetaRol(rol)}: ve toda la compañía.
-              Asignarlo no restringiría nada, así que la cuenta se crea sin puntos asociados.
+              El alcance por punto de venta no aplica a {etiquetaRol(rol)}: ve
+              toda la compañía. Asignarlo no restringiría nada, así que la
+              cuenta se crea sin puntos asociados.
             </div>
           </div>
         )}
@@ -562,14 +600,20 @@ function DialogoEdicion({
 
   const descripcion = ROLES.find((entrada) => entrada.valor === rol);
   const pierdeAlcance =
-    alcanceAplica(usuario.rol) && !alcanceAplica(rol) && usuario.puntos_venta.length > 0;
+    alcanceAplica(usuario.rol) &&
+    !alcanceAplica(rol) &&
+    usuario.puntos_venta.length > 0;
 
   function alEnviar(evento: FormEvent) {
     evento.preventDefault();
     actualizar.mutate(
       {
         id: usuario.id,
-        datos: { nombre: nombre.trim(), email: email.trim() === "" ? null : email.trim(), rol },
+        datos: {
+          nombre: nombre.trim(),
+          email: email.trim() === "" ? null : email.trim(),
+          rol,
+        },
       },
       { onSuccess: onCerrar },
     );
@@ -595,18 +639,32 @@ function DialogoEdicion({
             form="formulario-edicion-usuario"
 
             className="boton boton--principal"
-            disabled={actualizar.isPending || nombre.trim().length < LARGO_MINIMO_NOMBRE}
+            disabled={
+              actualizar.isPending || nombre.trim().length < LARGO_MINIMO_NOMBRE
+            }
           >
             {actualizar.isPending ? "Guardando…" : "Guardar"}
           </button>
         </>
       }
     >
-      <form id="formulario-edicion-usuario" className="pila" onSubmit={alEnviar}>
+      <form
+        id="formulario-edicion-usuario"
+        className="pila"
+        onSubmit={alEnviar}
+      >
         <AvisoError error={actualizar.error} />
 
-        <Campo etiqueta="Usuario" ayuda="El identificador de acceso no se modifica.">
-          <input className="campo__control mono" value={usuario.usuario} disabled readOnly />
+        <Campo
+          etiqueta="Usuario"
+          ayuda="El identificador de acceso no se modifica."
+        >
+          <input
+            className="campo__control mono"
+            value={usuario.usuario}
+            disabled
+            readOnly
+          />
         </Campo>
 
         <Campo
@@ -654,9 +712,10 @@ function DialogoEdicion({
         {pierdeAlcance ? (
           <div className="aviso aviso--advertencia">
             <div>
-              Con el rol {etiquetaRol(rol)}, los {usuario.puntos_venta.length} puntos de venta
-              asignados dejan de restringir: la cuenta pasará a ver toda la compañía. La asignación
-              no se borra sola; para limpiarla, abra «Alcance» y deje la lista vacía.
+              Con el rol {etiquetaRol(rol)}, los {usuario.puntos_venta.length}{" "}
+              puntos de venta asignados dejan de restringir: la cuenta pasará a
+              ver toda la compañía. La asignación no se borra sola; para
+              limpiarla, abra «Alcance» y deje la lista vacía.
             </div>
           </div>
         ) : null}
@@ -691,14 +750,22 @@ function DialogoAlcance({
       onCerrar={onCerrar}
       pie={
         <>
-          <button type="button" className="boton" onClick={onCerrar} disabled={fijar.isPending}>
+          <button
+            type="button"
+            className="boton"
+            onClick={onCerrar}
+            disabled={fijar.isPending}
+          >
             Cancelar
           </button>
           <button
             type="button"
             className="boton boton--principal"
             onClick={() =>
-              fijar.mutate({ id: usuario.id, puntos_venta: seleccion }, { onSuccess: onCerrar })
+              fijar.mutate(
+                { id: usuario.id, puntos_venta: seleccion },
+                { onSuccess: onCerrar },
+              )
             }
             disabled={fijar.isPending}
           >
@@ -715,17 +782,19 @@ function DialogoAlcance({
             <div>
               <strong>Este rol no se restringe por punto de venta.</strong>
               <p>
-                {etiquetaRol(usuario.rol)} ve toda la compañía, así que lo que marque aquí no cambia
-                lo que puede consultar. La lista queda editable solo para poder limpiar una
-                asignación heredada de un rol anterior.
+                {etiquetaRol(usuario.rol)} ve toda la compañía, así que lo que
+                marque aquí no cambia lo que puede consultar. La lista queda
+                editable solo para poder limpiar una asignación heredada de un
+                rol anterior.
               </p>
             </div>
           </div>
         )}
 
         <p className="tenue">
-          Se envía el conjunto completo: lo que quede marcado es exactamente lo que tendrá la
-          cuenta. Desmarcarlo todo la deja sin ningún punto asignado.
+          Se envía el conjunto completo: lo que quede marcado es exactamente lo
+          que tendrá la cuenta. Desmarcarlo todo la deja sin ningún punto
+          asignado.
         </p>
 
         <SelectorPuntosVenta
@@ -749,7 +818,11 @@ function Auditoria({
 }) {
   const [sobre, setSobre] = useState<number | null>(null);
   const [limite, setLimite] = useState(50);
-  const { data, isLoading, error } = useAuditoriaUsuarios(sobre, limite, habilitado);
+  const { data, isLoading, error } = useAuditoriaUsuarios(
+    sobre,
+    limite,
+    habilitado,
+  );
 
   return (
     <Tarjeta
@@ -763,7 +836,11 @@ function Auditoria({
               className="campo__control"
               value={sobre === null ? "" : String(sobre)}
               onChange={(evento) =>
-                setSobre(evento.target.value === "" ? null : Number(evento.target.value))
+                setSobre(
+                  evento.target.value === ""
+                    ? null
+                    : Number(evento.target.value),
+                )
               }
             >
               <option value="">Todas las cuentas</option>
@@ -797,7 +874,10 @@ function Auditoria({
       ) : isLoading ? (
         <p className="cargando">Cargando la auditoría…</p>
       ) : (data ?? []).length === 0 ? (
-        <Vacio titulo="Sin movimientos" detalle="Todavía no hay operaciones registradas." />
+        <Vacio
+          titulo="Sin movimientos"
+          detalle="Todavía no hay operaciones registradas."
+        />
       ) : (
         <div className="tabla-envoltorio tabla-envoltorio--alta">
           <table className="tabla">
@@ -839,7 +919,10 @@ type Pendiente = {
 export function Usuarios() {
   const { usuario: yo, esAdmin } = useAuth();
 
-  const [filtros, setFiltros] = useState<FiltrosUsuarios>({ rol: "", activo: "" });
+  const [filtros, setFiltros] = useState<FiltrosUsuarios>({
+    rol: "",
+    activo: "",
+  });
   const { data: usuarios, isLoading, error } = useUsuarios(filtros, esAdmin);
   const { data: puntosVenta } = usePuntosVenta();
 
@@ -854,7 +937,10 @@ export function Usuarios() {
   const restablecer = useRestablecerClave();
 
   const catalogo = useMemo(
-    () => [...(puntosVenta ?? [])].sort((a, b) => a.nombre.localeCompare(b.nombre, "es")),
+    () =>
+      [...(puntosVenta ?? [])].sort((a, b) =>
+        a.nombre.localeCompare(b.nombre, "es"),
+      ),
     [puntosVenta],
   );
 
@@ -903,7 +989,10 @@ export function Usuarios() {
             className="campo__control"
             value={filtros.rol ?? ""}
             onChange={(evento) =>
-              setFiltros((anteriores) => ({ ...anteriores, rol: evento.target.value as Rol | "" }))
+              setFiltros((anteriores) => ({
+                ...anteriores,
+                rol: evento.target.value as Rol | "",
+              }))
             }
           >
             <option value="">Todos</option>
@@ -954,7 +1043,10 @@ export function Usuarios() {
         {isLoading ? (
           <p className="cargando">Cargando las cuentas…</p>
         ) : filas.length === 0 ? (
-          <Vacio titulo="Sin cuentas" detalle="Ninguna coincide con los filtros seleccionados." />
+          <Vacio
+            titulo="Sin cuentas"
+            detalle="Ninguna coincide con los filtros seleccionados."
+          />
         ) : (
           <div className="tabla-envoltorio">
             <table className="tabla tabla--anclada">
@@ -983,22 +1075,31 @@ export function Usuarios() {
                   const motivoPropia = propia
                     ? "Nadie se administra a sí mismo. Para su clave, use «Cambiar mi clave» en el menú de la barra lateral."
                     : undefined;
-                  const nombres = nombresDeAlcance(cuenta.puntos_venta, catalogo);
+                  const nombres = nombresDeAlcance(
+                    cuenta.puntos_venta,
+                    catalogo,
+                  );
 
                   return (
                     <tr key={cuenta.id}>
                       <th scope="row" className="columna-ancla mono">
                         {cuenta.usuario}
-                        {propia ? <span className="columna-ancla__nota">es usted</span> : null}
+                        {propia ? (
+                          <span className="columna-ancla__nota">es usted</span>
+                        ) : null}
                       </th>
                       <td>
                         {cuenta.nombre}
                         {cuenta.email ? (
-                          <span className="columna-ancla__nota">{cuenta.email}</span>
+                          <span className="columna-ancla__nota">
+                            {cuenta.email}
+                          </span>
                         ) : null}
                       </td>
                       <td>
-                        <Distintivo tono={cuenta.rol === "ADMIN" ? "info" : "neutro"}>
+                        <Distintivo
+                          tono={cuenta.rol === "ADMIN" ? "info" : "neutro"}
+                        >
                           {etiquetaRol(cuenta.rol)}
                         </Distintivo>
                       </td>
@@ -1071,7 +1172,12 @@ export function Usuarios() {
                           <button
                             type="button"
                             className="boton boton--pequeno"
-                            onClick={() => setPendiente({ tipo: "restablecer", usuario: cuenta })}
+                            onClick={() =>
+                              setPendiente({
+                                tipo: "restablecer",
+                                usuario: cuenta,
+                              })
+                            }
                             disabled={propia}
                             title={motivoPropia}
                           >
@@ -1101,7 +1207,9 @@ export function Usuarios() {
         />
       ) : null}
 
-      {edicion ? <DialogoEdicion usuario={edicion} onCerrar={() => setEdicion(null)} /> : null}
+      {edicion ? (
+        <DialogoEdicion usuario={edicion} onCerrar={() => setEdicion(null)} />
+      ) : null}
 
       {alcance ? (
         <DialogoAlcance
@@ -1123,20 +1231,22 @@ export function Usuarios() {
         mensaje={
           pendiente === null ? null : pendiente.tipo === "restablecer" ? (
             <p>
-              La clave actual de <strong>{pendiente.usuario.nombre}</strong> dejará de servir de
-              inmediato y la persona quedará fuera hasta que le entregue la nueva. Se generará una
-              clave provisional que solo se muestra una vez.
+              La clave actual de <strong>{pendiente.usuario.nombre}</strong>{" "}
+              dejará de servir de inmediato y la persona quedará fuera hasta que
+              le entregue la nueva. Se generará una clave provisional que solo
+              se muestra una vez.
             </p>
           ) : pendiente.tipo === "activar" ? (
             <p>
-              <strong>{pendiente.usuario.nombre}</strong> volverá a poder entrar con el rol{" "}
-              {etiquetaRol(pendiente.usuario.rol)}.
+              <strong>{pendiente.usuario.nombre}</strong> volverá a poder entrar
+              con el rol {etiquetaRol(pendiente.usuario.rol)}.
             </p>
           ) : (
             <p>
-              <strong>{pendiente.usuario.nombre}</strong> dejará de poder entrar. La cuenta no se
-              borra —su rastro en el historial de presupuesto y en las corridas de ingesta se
-              conserva— y se puede volver a activar cuando haga falta.
+              <strong>{pendiente.usuario.nombre}</strong> dejará de poder
+              entrar. La cuenta no se borra —su rastro en el historial de
+              presupuesto y en las corridas de ingesta se conserva— y se puede
+              volver a activar cuando haga falta.
             </p>
           )
         }
@@ -1155,7 +1265,10 @@ export function Usuarios() {
       />
 
       {secreto ? (
-        <PanelClaveProvisional secreto={secreto} onCerrar={() => setSecreto(null)} />
+        <PanelClaveProvisional
+          secreto={secreto}
+          onCerrar={() => setSecreto(null)}
+        />
       ) : null}
     </div>
   );

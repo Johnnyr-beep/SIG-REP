@@ -5,26 +5,38 @@
  * referencias de catálogo que el contrato deja abiertas (texto suelto u objeto).
  */
 
-import type { CorteClientes, Medida, ReferenciaSimple, Semaforo } from "@/api/tipos";
+import type {
+  CorteClientes,
+  Medida,
+  ReferenciaSimple,
+  Semaforo,
+} from "@/api/tipos";
 
 // ── Referencias de catálogo ──────────────────────────────────────────────────
 
 /** Nombre presentable de una referencia, venga como texto o como objeto. */
-export function etiquetaDe(referencia: ReferenciaSimple | null | undefined): string {
+export function etiquetaDe(
+  referencia: ReferenciaSimple | null | undefined,
+): string {
   if (referencia === null || referencia === undefined) return "—";
   if (typeof referencia === "string") return referencia;
   return referencia.nombre ?? referencia.codigo_co ?? referencia.codigo ?? "—";
 }
 
 /** Código de la referencia, si viaja. `null` cuando solo llegó el nombre. */
-export function codigoDe(referencia: ReferenciaSimple | null | undefined): string | null {
+export function codigoDe(
+  referencia: ReferenciaSimple | null | undefined,
+): string | null {
   if (referencia === null || referencia === undefined) return null;
   if (typeof referencia === "string") return null;
   return referencia.codigo_co ?? referencia.codigo ?? null;
 }
 
 /** Identificador estable para usar como `key` de React. */
-export function claveDe(referencia: ReferenciaSimple | null | undefined, respaldo: string): string {
+export function claveDe(
+  referencia: ReferenciaSimple | null | undefined,
+  respaldo: string,
+): string {
   return codigoDe(referencia) ?? etiquetaDe(referencia) ?? respaldo;
 }
 
@@ -50,19 +62,22 @@ const ASPECTOS: Record<Semaforo, AspectoSemaforo> = {
   VERDE: {
     simbolo: "✓",
     etiqueta: "En meta",
-    descripcion: "Verde: el cumplimiento alcanza o supera el ideal del período.",
+    descripcion:
+      "Verde: el cumplimiento alcanza o supera el ideal del período.",
     tono: "exito",
   },
   AMARILLO: {
     simbolo: "!",
     etiqueta: "En riesgo",
-    descripcion: "Amarillo: el cumplimiento va por debajo del ideal pero dentro del margen tolerado.",
+    descripcion:
+      "Amarillo: el cumplimiento va por debajo del ideal pero dentro del margen tolerado.",
     tono: "aviso",
   },
   ROJO: {
     simbolo: "▼",
     etiqueta: "Atrasado",
-    descripcion: "Rojo: el cumplimiento va por debajo del margen tolerado frente al ideal.",
+    descripcion:
+      "Rojo: el cumplimiento va por debajo del margen tolerado frente al ideal.",
     tono: "peligro",
   },
   SIN_PRESUPUESTO: {
@@ -74,23 +89,52 @@ const ASPECTOS: Record<Semaforo, AspectoSemaforo> = {
   },
 };
 
+/**
+ * De qué habla la descripción de «sin presupuesto».
+ *
+ * En carnes el sujeto es siempre un punto de venta. En agropecuaria la misma
+ * fila puede ser un vendedor, una especie o un cliente, y hay un segundo motivo
+ * para el estado: hay ejes que **no se presupuestan en absoluto**. Decir «el
+ * punto de venta no tiene presupuesto parametrizado» ahí sería falso por partida
+ * doble, así que el sujeto se puede sustituir sin duplicar la tabla de aspectos.
+ */
+const SUJETO_POR_DEFECTO = "el punto de venta";
+
 const ASPECTO_DESCONOCIDO: AspectoSemaforo = {
   simbolo: "?",
   etiqueta: "Sin clasificar",
-  descripcion: "El backend devolvió un estado de semáforo que esta versión no conoce.",
+  descripcion:
+    "El backend devolvió un estado de semáforo que esta versión no conoce.",
   tono: "neutro",
 };
 
-export function aspectoSemaforo(estado: Semaforo | null | undefined): AspectoSemaforo {
+export function aspectoSemaforo(
+  estado: Semaforo | null | undefined,
+  /** Qué entidad describe la fila; solo cambia el texto de «sin presupuesto». */
+  sujeto?: string,
+): AspectoSemaforo {
   if (!estado) return ASPECTO_DESCONOCIDO;
-  return ASPECTOS[estado] ?? ASPECTO_DESCONOCIDO;
+  const aspecto = ASPECTOS[estado] ?? ASPECTO_DESCONOCIDO;
+  if (sujeto === undefined || estado !== "SIN_PRESUPUESTO") return aspecto;
+  return {
+    ...aspecto,
+    descripcion: aspecto.descripcion.replace(SUJETO_POR_DEFECTO, sujeto),
+  };
 }
 
 // ── Medida ───────────────────────────────────────────────────────────────────
 
 export const MEDIDAS: { valor: Medida; etiqueta: string; ayuda: string }[] = [
-  { valor: "valor", etiqueta: "Pesos", ayuda: "Venta y presupuesto en pesos colombianos." },
-  { valor: "kilos", etiqueta: "Kilos", ayuda: "Venta y presupuesto en kilos (cantidad inventario)." },
+  {
+    valor: "valor",
+    etiqueta: "Pesos",
+    ayuda: "Venta y presupuesto en pesos colombianos.",
+  },
+  {
+    valor: "kilos",
+    etiqueta: "Kilos",
+    ayuda: "Venta y presupuesto en kilos (cantidad inventario).",
+  },
 ];
 
 export function esMedida(valor: string | null): valor is Medida {
@@ -113,7 +157,10 @@ export const CORTES_CLIENTES: { valor: CorteClientes; etiqueta: string }[] = [
 
 export function esCorteClientes(valor: string | null): valor is CorteClientes {
   return (
-    valor === "cliente" || valor === "vendedor" || valor === "canal" || valor === "condicion_pago"
+    valor === "cliente" ||
+    valor === "vendedor" ||
+    valor === "canal" ||
+    valor === "condicion_pago"
   );
 }
 
@@ -149,10 +196,15 @@ export const FORMULAS: Record<string, string> = {
 };
 
 /** Estados de una corrida de ingesta, con el tono con que se pintan. */
-export function tonoEstadoIngesta(estado: string): "exito" | "aviso" | "peligro" | "info" {
+export function tonoEstadoIngesta(
+  estado: string,
+): "exito" | "aviso" | "peligro" | "info" {
   const normalizado = estado.toUpperCase();
-  if (normalizado.includes("ERROR") || normalizado.includes("FALL")) return "peligro";
-  if (normalizado.includes("PARCIAL") || normalizado.includes("ADVERT")) return "aviso";
-  if (normalizado.includes("CURSO") || normalizado.includes("EJECU")) return "info";
+  if (normalizado.includes("ERROR") || normalizado.includes("FALL"))
+    return "peligro";
+  if (normalizado.includes("PARCIAL") || normalizado.includes("ADVERT"))
+    return "aviso";
+  if (normalizado.includes("CURSO") || normalizado.includes("EJECU"))
+    return "info";
   return "exito";
 }
