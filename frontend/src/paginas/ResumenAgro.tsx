@@ -18,11 +18,17 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { useExportarAgro, useResumenAgro } from "@/api/consultasAgro";
+import {
+  useExportarAgro,
+  useResumenAgro,
+  useVentaDiariaAgro,
+} from "@/api/consultasAgro";
 import type { IndicadoresAgro } from "@/api/tiposAgro";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import { Indicador } from "@/componentes/indicadores";
-import { dinero, kilos, porcentaje } from "@/utilidades/formato";
+import { AnilloCumplimiento, TendenciaAcumulada } from "@/componentes/graficos";
+import type { PuntoAcumulado } from "@/componentes/graficos";
+import { dinero, kilos, porcentaje, porMedida } from "@/utilidades/formato";
 import {
   BarraFiltrosAgro,
   filtrosAgroDe,
@@ -76,6 +82,11 @@ export function ResumenAgro() {
   );
   const { data: otra } = useResumenAgro(filtrosOtraMedida, eje);
 
+  // La tendencia sale de la serie diaria, que es otro reporte. Se pide con el
+  // mismo periodo y el mismo corte para que las dos figuras de la pantalla
+  // hablen del mismo trozo de mes.
+  const { data: diaria } = useVentaDiariaAgro(filtrosAgro);
+
   const exportar = useExportarAgro();
 
   const medida = data?.medida ?? filtros.medida;
@@ -83,6 +94,63 @@ export function ResumenAgro() {
   // Quien manda es la respuesta, no la tabla de ejes del frontend: si el backend
   // deja de publicar presupuesto para un eje, la pantalla se entera sola.
   const conMeta = data ? data.consolidado.presupuesto !== null : false;
+
+  /**
+   * La serie diaria convertida en dos acumulados.
+   *
+   * Se acumula **aqui y no en el servidor** porque no es un calculo de negocio:
+   * es la misma cifra que ya publica la respuesta, sumada para dibujarla. El
+   * total del ultimo punto tiene que coincidir con el que ensena la tabla, y
+   * coincide por construccion: sale de los mismos valores.
+   *
+   * Los dias sin venta registrada llegan `null`, que no es lo mismo que un dia
+   * de venta cero. Para el acumulado se tratan como que no aportan —la linea
+   * sigue plana— en lugar de romper la serie: un hueco en una linea acumulada
+   * se leeria como una caida, y no la hubo.
+   */
+  const acumulados = useMemo<PuntoAcumulado[]>(() => {
+    if (!diaria) return [];
+
+    const metaDiaria = diaria.totales.presupuesto_diario;
+    let corrido = 0;
+
+    return diaria.fechas.map((fecha, indice) => {
+      const valor = diaria.totales.valores[indice] ?? null;
+      if (valor !== null) corrido += Number(valor);
+
+      return {
+        fecha,
+        acumulado: corrido.toFixed(2),
+        meta:
+          metaDiaria === null
+            ? null
+            : (Number(metaDiaria) * (indice + 1)).toFixed(2),
+      };
+    });
+  }, [diaria]);
+
+  // Cual de las dos respuestas trae los pesos y cual los kilos. Se resuelve una
+  // vez: repetir el condicional en cada figura es como se acaba con una en pesos
+  // y otra en kilos sin que nadie lo note.
+  const consolidadoPesos =
+    medida === "kilos"
+      ? (otra?.consolidado ?? null)
+      : (data?.consolidado ?? null);
+  const consolidadoKilos =
+    medida === "kilos"
+      ? (data?.consolidado ?? null)
+      : (otra?.consolidado ?? null);
+
+  const enPesos = {
+    cumplimiento: consolidadoPesos?.cumplimiento ?? null,
+    ideal: consolidadoPesos?.ideal ?? null,
+    semaforo: consolidadoPesos?.semaforo,
+  };
+  const enKilos = {
+    cumplimiento: consolidadoKilos?.cumplimiento ?? null,
+    ideal: consolidadoKilos?.ideal ?? null,
+    semaforo: consolidadoKilos?.semaforo,
+  };
 
   function cambiarEje(valor: string) {
     const siguientes = new URLSearchParams(parametros);
@@ -146,17 +214,29 @@ export function ResumenAgro() {
           {conMeta ? null : <AvisoEjeSinMeta eje={opcion.singular} />}
 
           <TarjetasResumen
-            enPesos={
-              medida === "kilos"
-                ? (otra?.consolidado ?? null)
-                : data.consolidado
-            }
-            enKilos={
-              medida === "kilos"
-                ? data.consolidado
-                : (otra?.consolidado ?? null)
-            }
+            enPesos={consolidadoPesos}
+            enKilos={consolidadoKilos}
           />
+
+          <div className="rejilla rejilla--panel">
+            <Tarjeta titulo="Cumplimiento del mes">
+              <div className="anillos">
+                <AnilloCumplimiento etiqueta="Pesos" {...enPesos} />
+                <AnilloCumplimiento etiqueta="Kilos" {...enKilos} />
+              </div>
+            </Tarjeta>
+
+            <Tarjeta
+              titulo="Tendencia de ventas"
+              descripcion="Las dos series van acumuladas: la distancia entre ellas es lo que falta para la meta."
+            >
+              <TendenciaAcumulada
+                puntos={acumulados}
+                titulo="Venta acumulada contra meta acumulada"
+                formatear={(valor) => porMedida(valor, medida)}
+              />
+            </Tarjeta>
+          </div>
 
           <Tarjeta
             titulo={`Venta por ${opcion.singular}`}

@@ -277,3 +277,224 @@ export function ColumnasDiarias({
     </div>
   );
 }
+
+// ── Anillo de cumplimiento ───────────────────────────────────────────────────
+
+/**
+ * El cumplimiento como anillo, con la marca del ideal en el borde.
+ *
+ * Es la misma lectura que `BarraContraIdeal` en otra forma, y existe porque en
+ * agropecuaria se enseñan **dos a la vez** —pesos y kilos— y dos barras
+ * apiladas se leen como una sola serie partida. Dos anillos uno al lado del
+ * otro se leen como lo que son: dos medidas del mismo mes.
+ *
+ * La marca del ideal no es decoración. Sin ella un 53 % no dice nada: puede ser
+ * ir bien el día 12 e ir mal el día 28. Con la marca, la pregunta se responde
+ * mirando: ¿el relleno pasó de la muesca?
+ */
+export function AnilloCumplimiento({
+  cumplimiento,
+  ideal,
+  etiqueta,
+  semaforo,
+}: {
+  cumplimiento: string | null;
+  ideal?: string | null;
+  /** «Pesos», «Kilos»: va debajo del anillo. */
+  etiqueta: string;
+  semaforo?: Semaforo;
+}) {
+  const RADIO = 52;
+  const GROSOR = 12;
+  const PERIMETRO = 2 * Math.PI * RADIO;
+
+  // El anillo se llena hasta el 100 %; por encima se queda lleno y la cifra
+  // escrita al lado dice el resto. Un anillo que diera más de una vuelta
+  // mostraría un 120 % igual que un 20 %.
+  const proporcion = proporcionParaGrafico(cumplimiento);
+  const aspecto = semaforo ? aspectoSemaforo(semaforo) : null;
+  const sinDato = cumplimiento === null;
+
+  const gradosIdeal = ideal ? proporcionParaGrafico(ideal) * 360 : null;
+
+  return (
+    <figure className="anillo">
+      <svg
+        viewBox="0 0 140 140"
+        className="anillo__figura"
+        role="img"
+        aria-label={
+          sinDato
+            ? `${etiqueta}: sin cumplimiento que mostrar, no hay presupuesto capturado.`
+            : `${etiqueta}: ${porcentaje(cumplimiento)} del presupuesto` +
+              (ideal ? `, con un ideal de ${porcentaje(ideal)}.` : ".")
+        }
+      >
+        {/* El surco: siempre completo, para que el relleno se lea como fracción
+            de algo y no como una forma suelta. */}
+        <circle
+          cx="70"
+          cy="70"
+          r={RADIO}
+          className="anillo__surco"
+          strokeWidth={GROSOR}
+          fill="none"
+        />
+        {sinDato ? null : (
+          <circle
+            cx="70"
+            cy="70"
+            r={RADIO}
+            className={`anillo__relleno${aspecto ? ` anillo__relleno--${aspecto.tono}` : ""}`}
+            strokeWidth={GROSOR}
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray={`${PERIMETRO * proporcion} ${PERIMETRO}`}
+            transform="rotate(-90 70 70)"
+          />
+        )}
+        {gradosIdeal === null ? null : (
+          <line
+            x1="70"
+            y1={70 - RADIO - GROSOR / 2 - 2}
+            x2="70"
+            y2={70 - RADIO + GROSOR / 2 + 2}
+            className="anillo__ideal"
+            transform={`rotate(${gradosIdeal} 70 70)`}
+          />
+        )}
+        <text x="70" y="76" className="anillo__cifra" textAnchor="middle">
+          {sinDato ? SIN_DATO : porcentaje(cumplimiento)}
+        </text>
+      </svg>
+      <figcaption className="anillo__etiqueta">{etiqueta}</figcaption>
+    </figure>
+  );
+}
+
+// ── Tendencia acumulada ──────────────────────────────────────────────────────
+
+export interface PuntoAcumulado {
+  fecha: string;
+  /** Venta acumulada hasta ese día, inclusive. `null` si el día no tiene dato. */
+  acumulado: string | null;
+  /** Meta acumulada hasta ese día. `null` si no hay presupuesto. */
+  meta: string | null;
+}
+
+/**
+ * Venta acumulada contra meta acumulada, día a día.
+ *
+ * **Las dos series son acumuladas, y esa es toda la gracia.** El reporte del que
+ * nace esta figura dibujaba la venta *de cada día* contra la meta *acumulada*, y
+ * eso no se puede comparar: la venta de un día es 1/31 del mes y la meta al día
+ * 21 son 21/31, así que la serie de venta sale pegada al suelo aunque el mes
+ * vaya bien. Un gráfico que dice «vamos fatal» en un mes bueno no es un gráfico,
+ * es una alarma que la gente aprende a ignorar.
+ *
+ * Acumuladas las dos, **la distancia vertical entre las líneas es exactamente
+ * lo que falta para la meta**, y se lee sin números.
+ */
+export function TendenciaAcumulada({
+  puntos,
+  titulo,
+  formatear,
+}: {
+  puntos: PuntoAcumulado[];
+  titulo: string;
+  formatear: (valor: string | null) => string;
+}) {
+  const ANCHO = 720;
+  const ALTO = 220;
+  const MARGEN = { arriba: 12, derecha: 8, abajo: 28, izquierda: 8 };
+
+  if (puntos.length === 0) {
+    return <p className="tenue">Sin días en el rango seleccionado.</p>;
+  }
+
+  // La escala la fija el mayor de las dos series: si la fijara solo la venta, la
+  // meta se saldría del marco, y si la fijara solo la meta, un mes que la supera
+  // se vería recortado justo cuando es la buena noticia.
+  const techo = Math.max(
+    ...puntos.map((p) =>
+      Math.max(Number(p.acumulado ?? 0), Number(p.meta ?? 0)),
+    ),
+    1,
+  );
+
+  const util = {
+    ancho: ANCHO - MARGEN.izquierda - MARGEN.derecha,
+    alto: ALTO - MARGEN.arriba - MARGEN.abajo,
+  };
+  const x = (indice: number) =>
+    MARGEN.izquierda +
+    (puntos.length === 1
+      ? util.ancho / 2
+      : (indice / (puntos.length - 1)) * util.ancho);
+  const y = (valor: string | null) =>
+    MARGEN.arriba + util.alto * (1 - proporcionParaGrafico(valor, techo));
+
+  const linea = (clave: "acumulado" | "meta") =>
+    puntos
+      .map((punto, indice) =>
+        punto[clave] === null ? null : `${x(indice)},${y(punto[clave])}`,
+      )
+      .filter((par): par is string => par !== null)
+      .join(" ");
+
+  const ultimo = puntos[puntos.length - 1];
+  const hayMeta = puntos.some((punto) => punto.meta !== null);
+
+  return (
+    <figure className="tendencia">
+      <svg
+        viewBox={`0 0 ${ANCHO} ${ALTO}`}
+        className="tendencia__figura"
+        role="img"
+        aria-label={
+          `${titulo}. Venta acumulada al cierre del rango: ${formatear(ultimo?.acumulado ?? null)}` +
+          (hayMeta
+            ? `, contra una meta acumulada de ${formatear(ultimo?.meta ?? null)}.`
+            : ".")
+        }
+      >
+        {[0.25, 0.5, 0.75].map((fraccion) => (
+          <line
+            key={fraccion}
+            x1={MARGEN.izquierda}
+            x2={ANCHO - MARGEN.derecha}
+            y1={MARGEN.arriba + util.alto * fraccion}
+            y2={MARGEN.arriba + util.alto * fraccion}
+            className="tendencia__guia"
+          />
+        ))}
+
+        {hayMeta ? (
+          <polyline
+            points={linea("meta")}
+            className="tendencia__meta"
+            fill="none"
+          />
+        ) : null}
+        <polyline
+          points={linea("acumulado")}
+          className="tendencia__venta"
+          fill="none"
+        />
+      </svg>
+
+      <figcaption className="tendencia__leyenda">
+        <span className="tendencia__clave tendencia__clave--venta">
+          Venta acumulada
+        </span>
+        {hayMeta ? (
+          <span className="tendencia__clave tendencia__clave--meta">
+            Meta acumulada
+          </span>
+        ) : (
+          <span className="tenue">Sin meta: no hay presupuesto capturado</span>
+        )}
+      </figcaption>
+    </figure>
+  );
+}

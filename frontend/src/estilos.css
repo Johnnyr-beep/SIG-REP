@@ -2399,3 +2399,159 @@ textarea.campo__control {
   height: 96px;
   margin: 0 auto 0.75rem;
 }
+
+/* ── Anillo de cumplimiento ─────────────────────────────────────────────────
+   Dos anillos lado a lado —pesos y kilos— en vez de dos barras apiladas, que
+   se leerían como una sola serie partida. Ver `AnilloCumplimiento`. */
+
+.anillos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-4);
+  justify-content: space-around;
+  align-items: center;
+}
+
+.anillo {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--espacio-1);
+}
+
+.anillo__figura {
+  width: 100%;
+  max-width: 9rem;
+  height: auto;
+}
+
+.anillo__surco {
+  stroke: var(--borde);
+}
+
+/* Sin semáforo el anillo va en el acento de la marca: el color no debe afirmar
+   nada que el dato no diga. */
+.anillo__relleno {
+  stroke: var(--acento);
+  transition: stroke-dasharray 400ms ease-out;
+}
+.anillo__relleno--exito {
+  stroke: var(--exito);
+}
+.anillo__relleno--aviso {
+  stroke: var(--aviso);
+}
+.anillo__relleno--peligro {
+  stroke: var(--peligro);
+}
+
+/* La muesca del ideal: dónde debería ir hoy. Sin ella un 53 % no dice nada. */
+.anillo__ideal {
+  stroke: var(--texto);
+  stroke-width: 2.5;
+  opacity: 0.75;
+}
+
+.anillo__cifra {
+  fill: var(--texto);
+  font-size: 1.55rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.anillo__etiqueta {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anillo__relleno {
+    transition: none;
+  }
+}
+
+/* ── Tendencia acumulada ────────────────────────────────────────────────────
+   Las dos series acumuladas: la distancia vertical entre las líneas es lo que
+   falta para la meta. Ver `TendenciaAcumulada`. */
+
+.tendencia {
+  margin: 0;
+}
+
+.tendencia__figura {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.tendencia__guia {
+  stroke: var(--borde);
+  stroke-width: 1;
+  stroke-dasharray: 3 5;
+}
+
+.tendencia__venta {
+  stroke: var(--exito);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* Discontinua a propósito: la meta es una proyección, no un hecho medido, y la
+   línea lo dice sin necesidad de leyenda. */
+.tendencia__meta {
+  stroke: var(--aviso);
+  stroke-width: 2;
+  stroke-dasharray: 6 5;
+  stroke-linecap: round;
+}
+
+.tendencia__leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-4);
+  justify-content: center;
+  margin-top: var(--espacio-2);
+  font-size: 0.8rem;
+  color: var(--texto-suave);
+}
+
+.tendencia__clave {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+}
+
+.tendencia__clave::before {
+  content: "";
+  width: 1.4rem;
+  height: 0;
+  border-top-width: 2.5px;
+}
+
+.tendencia__clave--venta::before {
+  border-top-style: solid;
+  border-top-color: var(--exito);
+}
+
+.tendencia__clave--meta::before {
+  border-top-style: dashed;
+  border-top-color: var(--aviso);
+}
+
+/* Dos paneles lado a lado: el cumplimiento en anillos y la tendencia. En
+   pantallas estrechas se apilan; la tendencia es la que necesita el ancho. */
+.rejilla--panel {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1fr) minmax(20rem, 2.2fr);
+  gap: var(--espacio-4);
+  align-items: stretch;
+}
+
+@media (max-width: 62rem) {
+  .rejilla--panel {
+    grid-template-columns: 1fr;
+  }
+}
