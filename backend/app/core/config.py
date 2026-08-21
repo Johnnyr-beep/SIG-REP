@@ -191,6 +191,33 @@ class Settings(BaseSettings):
     siesa_reintentos: int = Field(default=3, ge=1, le=10)
     siesa_espera_reintento_seg: float = Field(default=2.0, ge=0, le=60)
 
+    # ── Unidad Agropecuaria (compañía 3) ──────────────────────────────────────
+    #
+    # Lo consume `FuenteVentaAgropecuaria` contra `/ventas/agropecuaria`. La
+    # **autenticación y la dirección son las mismas que las de carnes**: es la
+    # misma API de consulta, así que se reutilizan `SIGREP_SIESA_TOKEN` y
+    # `SIGREP_SIESA_URL_BASE` en lugar de duplicar el secreto en dos variables
+    # que un día divergirían. Lo que cambia es la compañía y el endpoint.
+
+    #: Compañía de la unidad agropecuaria. **Es la 3**, y es configurable para
+    #: poder probar el recorrido, no para mezclar unidades: poner aquí una
+    #: compañía de carnes (4, 6 o 7) cargaría en esta instancia venta que se
+    #: reporta en la otra, y las dos cifras dejarían de significar nada.
+    agro_compania: int = Field(default=3, ge=1, le=99)
+
+    #: Filas por página de `/ventas/agropecuaria`. **`0` = no paginar**, que es
+    #: el comportamiento medido de `format=csv` en esta familia de endpoints: la
+    #: descarga llega completa en streaming. Se sube de cero solo si algún día
+    #: esa respuesta empieza a venir truncada; una paginación mal cerrada
+    #: duplica venta, y duplicada es peor que ausente porque el total sube y
+    #: todo el mundo se lo cree.
+    agro_limite_pagina: int = Field(default=0, ge=0, le=5000)
+
+    #: Tope de filas que devuelve un reporte agropecuario sin paginar. Los
+    #: cruces por cliente (626) y por producto (252) pueden dar tablas largas y
+    #: la pantalla no las pinta enteras.
+    max_filas_reporte_agro: int = Field(default=500, ge=10, le=5000)
+
     @field_validator("secret_key")
     @classmethod
     def _validar_secret_key(cls, valor: SecretStr) -> SecretStr:
