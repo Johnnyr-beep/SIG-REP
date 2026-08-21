@@ -126,17 +126,36 @@ def urls_por_unidad() -> dict[str, str]:
     }
 
 
-def reiniciar_motores() -> None:
-    """Cierra y olvida los motores. **Solo para pruebas.**
+def _es_sqlite_en_memoria(url: str) -> bool:
+    """Las dos formas de escribirlo: `sqlite://` a secas y `sqlite:///:memory:`."""
+    return url in {"sqlite://", "sqlite:///:memory:"}
 
-    Los ajustes se cachean y los motores también; una prueba que cambie la
-    configuración de base necesita que el registro se rehaga, o seguiría
+
+def reiniciar_motores() -> None:
+    """Olvida los motores para que el registro se rehaga. **Solo para pruebas.**
+
+    Los ajustes se cachean y los motores tambien; una prueba que cambie la
+    configuracion de base necesita que el registro se rehaga, o seguiria
     hablando con la base de la prueba anterior.
+
+    **Los motores de SQLite en memoria se quedan como estan**, ni se cierran ni
+    se olvidan, y esa excepcion es la que hace que esto funcione.
+
+    Una base en memoria vive dentro de su conexion: cerrarla no libera un
+    recurso, la borra. Y el `conftest` toma su motor **una vez, al importarse**,
+    asi que si aqui se olvidara del registro, la aplicacion crearia otro nuevo a
+    la siguiente consulta: el conftest sembraria las tablas en una base y la
+    aplicacion preguntaria por otra, vacia.
+
+    Costo una integracion continua en rojo con treinta y un fallos que no se
+    reproducian en local, donde la base de pruebas es un archivo y sobrevive
+    tanto a que la cierren como a que la olviden.
     """
-    for engine in _motores.values():
-        engine.dispose()
-    _motores.clear()
-    _fabricas.clear()
+    for url in list(_motores):
+        if _es_sqlite_en_memoria(url):
+            continue
+        _motores.pop(url).dispose()
+        _fabricas.pop(url, None)
 
 
 def obtener_sesion_de(unidad: UnidadDatos) -> Generator[Session, None, None]:
