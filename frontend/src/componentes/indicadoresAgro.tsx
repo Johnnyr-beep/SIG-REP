@@ -268,14 +268,14 @@ export function AvisoEjeSinMeta({ eje }: { eje: string }) {
     <div className="aviso aviso--info" role="note">
       <div>
         <strong>
-          Este eje no se presupuesta, así que no hay cumplimiento que mostrar.
+          Aquí no hay presupuesto, así que no hay cumplimiento que mostrar.
         </strong>
         <p>
           El negocio fija la meta por centro de operación, especie, tipo
-          comercial y vendedor. Por {eje} se puede <em>leer</em> la venta, pero
-          no hay meta contra la que medirla, así que la tabla no trae
-          presupuesto, cumplimiento, ideal, brecha, semáforo ni proyección. No
-          es un dato pendiente de cargar: es que ahí no hay vara.
+          comercial y vendedor. Agrupando por {eje} se puede <em>ver</em> la
+          venta, pero no hay meta contra la que compararla, así que la tabla no
+          trae presupuesto, cumplimiento, ideal, brecha, semáforo ni proyección.
+          No es un dato pendiente de cargar: es que ahí no hay vara.
         </p>
       </div>
     </div>

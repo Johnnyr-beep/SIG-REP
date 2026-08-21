@@ -83,8 +83,8 @@ const MENU_AGRO: GrupoNav[] = [
   {
     titulo: "Gerencia",
     items: [
-      { ruta: "/agro", etiqueta: "Venta por eje", icono: "◱" },
-      { ruta: "/agro/cruce", etiqueta: "Vendedor y cliente", icono: "◇" },
+      { ruta: "/agro", etiqueta: "Resumen de ventas", icono: "◱" },
+      { ruta: "/agro/cruce", etiqueta: "Vendedor, cliente y producto", icono: "◇" },
       { ruta: "/agro/venta-diaria", etiqueta: "Venta diaria", icono: "▦" },
     ],
   },
@@ -122,7 +122,7 @@ function menuDe(marca: ClaveMarca): GrupoNav[] {
 }
 
 const TITULOS: Record<string, string> = {
-  "/agro": "Venta de agropecuaria por eje",
+  "/agro": "Resumen de ventas",
   "/agro/cruce": "Vendedor, cliente y producto",
   "/agro/venta-diaria": "Venta diaria por centro de operación",
   "/agro/presupuesto": "Presupuesto de agropecuaria",
