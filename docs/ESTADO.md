@@ -1,102 +1,106 @@
-# Donde vamos — 19 de agosto de 2026
+# Donde vamos — 21 de agosto de 2026
 
 Nota de continuidad. Lo que esta hecho, lo que falta y de quien depende.
 
 > **SIGREP esta EN PRODUCCION** en https://sigrep.grupo-santacruz.com
 > API operativa, base conectada, certificado valido. Cuentas `admin` y `gerente`
-> creadas. **La base no tiene datos todavia**: `ultima_ingesta: null`.
+> creadas. **La base de produccion no tiene datos todavia**: `ultima_ingesta: null`.
+> Lo que se cargo estos dias fue en una base **local**, para probar la cadena.
 
 ## Hecho
 
 | | |
 |---|---|
-| Backend | FastAPI · **424 pruebas en verde** · ruff y mypy limpios · migraciones hasta `0006` |
-| Frontend | React + TS · 11 pantallas · typecheck y build limpios |
-| Integración SIESA | `FuenteVentaSiesa` sobre `costos-razon-social`, validada contra el Excel: **14 de 15 puntos al peso exacto** |
-| Categorías | Las 11 reales de SIESA. `OTROS` retirada y su presupuesto repartido |
-| Repositorio | `github.com/Johnnyr-beep/SIG-REP` (privado), 19 commits |
-| Instancia local | `localhost:8080` con los datos reales cargados |
+| Backend | FastAPI · **482 pruebas en verde** · ruff y mypy limpios · migraciones hasta `0007` |
+| Frontend | React + TS · **17 pantallas** · typecheck y build limpios |
+| Integración SIESA carnes | `FuenteVentaSiesa` sobre `costos-razon-social`, validada contra el Excel: **14 de 15 puntos al peso exacto** |
+| **Unidad agropecuaria** | **Completa**: 13 endpoints, 6 pantallas, exportacion a Excel, ingesta probada contra la API real |
+| Contrato | `docs/API.md` documenta las 13 rutas de `/agro` y los tres enumerados |
+| Repositorio | `github.com/Johnnyr-beep/SIG-REP` (privado), 26 commits |
 | **Produccion** | **Desplegada y respondiendo**, dominio con TLS de Let's Encrypt |
 | Usuarios | Modulo completo: rol ADMIN, alta, roles, alcances, auditoria y cambio de clave |
-| Marcas | Selector de unidad de negocio con las tres identidades, paleta muestreada de los logos |
+| Marcas | Selector de unidad, ahora dirigido por `unidades` de `GET /salud` |
 
 ---
 
-## Lo primero manana
+## Agropecuaria: la primera carga real
 
-1. **Desplegar.** El selector de marcas y la paleta estan en GitHub, no en el
-   contenedor. Espere el CI y pulse **Deploy** en Dokploy. El paso «Desplegar en
-   Dokploy» del CI sale rojo siempre: falta el secreto `DOKPLOY_WEBHOOK_URL` y
-   el webhook rechaza con `Branch Not Match` porque tiene otra rama configurada.
-   Arreglarlo es lo que hara que dejen de hacer falta clics.
+Siete dias de julio de 2026, compania 3, contra la API de verdad:
 
-2. **Revisar el selector en produccion, en claro y en oscuro.** Los contrastes
-   se auditaron numericamente —17 pares por marca— pero nadie ha mirado las
-   tarjetas con los ojos.
+```
+2.706 lineas leidas · 2.706 aceptadas · 0 rechazos · 3 segundos
+```
 
-3. **Cargar el mes desde SIESA y cuadrar contra el Excel.** Es lo unico que
-   falta para que el sistema sirva. Hasta que los numeros cuadren, SIGREP esta
-   terminado pero no probado en lo que importa.
+Los siete ejes dan **el mismo total, 3.147.729.924,39**, que es exactamente el
+invariante que se buscaba: la misma venta cortada de siete formas.
+
+| Eje | Filas |
+|---|---|
+| Centro de operacion | 2 — `301` AGROPECUARIA SANTACRUZ LTDA (2.890 M) · `302` DISTRIBUCION SANTACRUZ MONTERIA (257 M) |
+| Tipo de item | 2 — BIENES (margen 15,64 %) · SERVICIOS (98,72 %) |
+| Tipo comercial | 13 — CORTE, CANAL, SUBPRODUCTO, SACRIFICIO, DESPOSTE, LOGISTICA, VIVERES, CHORIZO… |
+| Especie | 5 — RES, CERDO, CARNES FRIAS, VIVERES, ÑAN ÑAN |
+| Grupo | 9 — letras sueltas, mas un `SIN GRUPO` de 396 M |
+| Vendedor | 23 |
+| Cliente | 686 |
+
+**Ojo con el catalogo**: los **cortes son un tipo comercial, no una especie**, y
+`BIENES`/`SERVICIOS` es `tipo_item`, no `tipo_comercial`. Es al reves de como
+suena, y el que lo asuma de memoria se equivoca.
+
+---
+
+## Lo primero cuando se retome
+
+1. **Cargar un mes en produccion y cuadrar contra el Excel.** Sigue siendo lo
+   unico que falta para que el sistema sirva. Las dos unidades estan
+   construidas; carnes esta validada punto por punto contra el libro, pero
+   **nadie ha cerrado un mes completo con el sistema**.
+
+2. **Desplegar.** Lo de agropecuaria esta en GitHub, no en el contenedor. El
+   paso «Desplegar en Dokploy» del CI sale rojo siempre: falta el secreto
+   `DOKPLOY_WEBHOOK_URL` y el webhook rechaza con `Branch Not Match` porque
+   tiene otra rama configurada. Arreglarlo es lo que hara que dejen de hacer
+   falta clics.
+
+3. **Parametrizar el presupuesto de agropecuaria.** Hoy no hay ninguna de las
+   cuatro dimensiones capturada, asi que todos los reportes de la unidad salen
+   sin cumplimiento, sin semaforo y sin proyeccion. La pantalla lo dice, pero
+   dicho no es resuelto.
+
+---
+
+## Pendiente de decision del negocio
+
+- Dias habiles reales de las 7 zonas de carnes (se corre con el supuesto de 28).
+- Dias habiles de los dos centros de agropecuaria.
+- Umbrales del semaforo y regla de comision.
+- Confirmar el presupuesto redistribuido de 616 M tras retirar `OTROS`.
+- Fuente del historico de 2025.
+
+## Pendiente del administrador de la API SIESA
+
+Los tres estan escritos con detalle en `docs/INTEGRACION-SIESA.md`:
+
+| | Que se pide | Estado |
+|---|---|---|
+| §4.1 | Costo en el modulo `SIN ACUMULAR` | **Bloqueante** para el margen de PEREIRA |
+| §4.4 | `COUNT(DISTINCT documento)` por centro y fecha | Sin el, no hay numero de documentos ni tiquete promedio |
+| §4.5 | **Identificador del cliente en `/ventas/agropecuaria`** | Nuevo. Hoy el cliente solo llega por nombre |
+
+El §4.5 salio de esta carga: es la unica dimension del endpoint sin clave
+propia. Dos clientes con la misma razon social se funden en uno y no hay forma
+de cruzar con el ERP ni con la instancia de carnes, que si recibe NIT.
+
+---
 
 ## Deuda conocida
 
-- **La semilla no tiene `--forzar-clave`.** Si alguien pierde la clave que
-  imprime, hoy la unica salida es un fragmento de Python contra la base de
-  produccion. Ya paso una vez.
-- **La instancia de agropecuaria** tiene su marca lista pero **no su modelo**:
-  sus reportes serian los de carnes. Falta que el negocio entregue la API de
-  agropecuaria y que defina que quiere medir —si es por vendedor, especie o
-  cliente en vez de por punto de venta, el modelo actual no sirve—.
-
-## Pendiente del negocio
-
-1. **Días hábiles de 7 zonas** — MALAMBO, CONCORDE, SAN FELIPE, OLAYA, LA 93,
-   ALAMEDA y EVENTOS corren con el supuesto de 28. **Mueve el semáforo** de esos
-   puntos: es la decisión de más impacto que queda.
-2. **Umbrales del semáforo** — amarillo bajo el 90 % del ideal, supuesto mío.
-3. **Regla de comisión** — campo modelado, fórmula sin definir. No bloquea.
-4. **Confirmar el presupuesto repartido** de las cuatro categorías nuevas. El
-   reparto proporcional es un punto de partida y así lo dice cada renglón del
-   historial.
-5. **Crecimiento contra 2025** — la API no tiene 2025 (medido: 14, 22 y 4 filas
-   en todo el año). O se carga de otra fuente, o el indicador sale «—» hasta que
-   2026 sirva de base.
-
----
-
-## Pendiente con el administrador de la API
-
-Uno solo, en `INTEGRACION-SIESA.md` §4.1: **el módulo `SIN ACUMULAR` no entrega
-el costo**, así que PEREIRA no tiene margen y el consolidado de la compañía lo
-publica como «—». Es deliberado: rellenar con cero daría un 100 % de margen que
-nadie ha ganado.
-
----
-
-## Seguridad — sin cerrar
-
-1. **Rotar tres credenciales** que pasaron por el chat: token de SIESA, clave de
-   la base y webhook de Dokploy.
-2. **El panel de Dokploy está en HTTP plano** — `http://20.121.178.90:3000`
-   responde desde internet sin cifrar, y ahí se administra el despliegue de
-   todos los sistemas. Las credenciales viajan en claro. Debería ir tras HTTPS o
-   restringido por IP en el grupo de seguridad de Azure.
-3. Decisiones menores abiertas: mensaje de «cuenta desactivada» que permite
-   enumerar usuarios, `/salud` público con versión y fecha de última ingesta, y
-   sin límite de peticiones en el login.
-
----
-
-## Aparte: GSC ONE
-
-Dos defectos encontrados de rebote, **no corregidos** por estar fuera de alcance:
-
-1. **Está caído ahora mismo**: `gsc.grupo-santacruz.com` devuelve `404 page not
-   found`. Es el mismo 404 de Traefik que tuvimos en SIGREP —el
-   servicio no es de tipo Stack y el proxy no lo ve—, no un fallo de la
-   aplicación.
-2. `frontend/docker/nginx.conf` **pierde las cabeceras de seguridad** —CSP
-   incluida— en `/index.html` y `/assets/`, porque `add_header` no se hereda en
-   un `location` que declare cabeceras propias. Activo en producción.
-3. `docker-compose.yml:25` monta el volumen de PostgreSQL en la ruta que la
-   imagen 18 abandonó; con esa imagen el contenedor aborta.
+- **Modo de ejemplos sin agro.** `VITE_SIGREP_EJEMPLOS=1` no tiene datos de la
+  unidad: las pantallas de agro responden «Sin datos de ejemplo para…». No
+  afecta a produccion —la variable no se define alli— pero impide ensenar la
+  maqueta sin backend.
+- **Tres credenciales pasaron por el chat y siguen sin rotar**: el token de
+  SIESA, la clave de la base y la URL del webhook de Dokploy.
+- **El panel de Dokploy esta expuesto en HTTP plano** en el puerto 3000.
+- La semilla no admite `--forzar-clave`.

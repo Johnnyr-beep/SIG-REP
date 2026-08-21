@@ -340,13 +340,258 @@ envia es lo que queda. Asignar es mandar la lista con el codigo de mas; quitar,
 con el codigo de menos; y `[]` deja al usuario sin ninguno. Sin reemplazo, quitar
 un punto seria imposible.
 
+## Agropecuaria — `/agro`
+
+La unidad agropecuaria (compañía 3) tiene su propio bloque y no es una variante
+de los reportes de arriba: mide otras dimensiones —centro de operación, especie,
+tipo comercial, tipo de ítem, grupo, vendedor, cliente y producto— y presupuesta
+de otra forma. Las convenciones generales (§ Convenciones) se aplican tal cual y
+no se repiten aquí.
+
+Todos los reportes aceptan los mismos filtros:
+`periodo` (obligatorio), `hasta` (fecha de corte, por defecto hoy), `desde`,
+`centro` (varios códigos separados por coma) y `medida` = `valor` | `kilos`.
+
+`centro` se comporta como `punto_venta` en carnes: **estrecha, jamás ensancha**,
+y vacío equivale a no filtrar —una barra que se limpia no pide el centro de
+código vacío—.
+
+### Cuatro cosas que hay que entender antes de consumirlo
+
+**1. El presupuesto no tiene un total global, y es deliberado.** Las cuatro
+dimensiones presupuestables —`vendedor`, `centro_operacion`, `especie`,
+`tipo_comercial`— son **cuatro repartos del mismo dinero**, no cuatro metas.
+Sumar dos daría el doble de la meta; sumar las cuatro, el cuádruple. Una
+pantalla que necesite el presupuesto de la compañía **elige una dimensión**, que
+es justo la operación correcta. Por eso `GET /agro/presupuesto` devuelve una
+entrada por dimensión, cada una con **su** total, y no existe ningún campo por
+encima que las agregue.
+
+Cuando los cuatro repartos no coinciden, hay un error de captura, y eso es lo
+que publica `GET /agro/presupuesto/cuadre`. **El sistema no lo corrige**:
+repartir la diferencia sería inventarse la meta de alguien. La publica —ahí y
+dentro de `parametros_calculo` de *todos* los reportes— y quien la capturó la
+arregla. Va en todos los reportes porque un descuadre invalida la lectura de
+cualquiera de ellos, y quien mire un cumplimiento tiene derecho a saberlo sin ir
+a buscarlo a otra pantalla.
+
+**2. `lineas_facturadas` son líneas, no documentos ni tiquetes.** Una venta de
+ocho productos son ocho líneas y **un** documento, y la fuente no entrega el
+documento. El nombre es literal: no se aproxima y no se renombra. Ver
+`INTEGRACION-SIESA §4.4`.
+
+**3. `TipoItem = IMPUESTO` se ingiere, se guarda marcado y se excluye de todo.**
+De todo total, de todo porcentaje y de toda comparación contra presupuesto: no
+es venta, es recaudo a nombre de terceros. Se guarda —no se descarta— para poder
+conciliar con el origen, y lo que se excluyó se publica en `conciliacion` de
+cada reporte. Sumado a la venta publicada da el total bruto del origen.
+
+**4. Los indicadores que dependen del presupuesto viajan vacíos en los ejes que
+no se presupuestan** —`cliente`, `grupo` y `tipo_item`—. Eso es información, no
+un hueco por cargar: dice que ahí no hay meta contra la que medir.
+
+### Reportes
+
+```
+GET    /agro/resumen?por=<eje>&periodo=&hasta=&desde=&centro=&medida=
+       -> {periodo, fecha_corte, medida, por,
+           consolidado: <indicadores>,
+           filas: [{clave, nombre, ...<indicadores>}],
+           parametros_calculo}
+
+GET    /agro/cruce?por=<cruce>&...
+       -> {..., ejes: ["vendedor","cliente"],
+           consolidado, filas: [{claves:[], nombres:[], ...<indicadores>}],
+           truncado, limite, parametros_calculo}
+
+GET    /agro/venta-diaria?periodo=&desde=&hasta=&centro=&medida=
+       -> {..., desde, hasta, fechas: [],
+           presupuesto_diario_por_centro: {"301": "…"|null},
+           filas: [{centro, nombre, valores:[], total}],
+           totales: {valores:[], total, presupuesto_diario},
+           parametros_calculo}
+
+GET    /agro/exportar/{resumen|cruce|venta-diaria}?por=<eje>&<mismos filtros>
+       -> libro .xlsx  (RBAC: cualquier rol autenticado)
+```
+
+El reporte va **al final** de la ruta de exportación —`/agro/exportar/resumen`,
+no `/agro/{reporte}/exportar`— porque un comodín en la primera posición también
+capturaría `/agro/presupuesto/cuadre` y `/agro/ingesta/corridas`, que existen. Un
+`por` que no pertenezca al enumerado del reporte pedido es **404 con su motivo**,
+no 500.
+
+El bloque `<indicadores>` es el mismo en los siete ejes, en los dos cruces y en
+el consolidado:
+
+| Campo | Qué es |
+|---|---|
+| `venta` | La venta en la medida del reporte (pesos o kilos). |
+| `venta_valor` | La venta **siempre en pesos**, aunque se mire en kilos: el margen y la participación son conceptos monetarios. |
+| `kilos`, `cantidad` | Magnitudes físicas. |
+| `lineas_facturadas` | `int`. Líneas, no documentos (ver arriba). |
+| `participacion` | Fracción de la venta total del corte. Recalculada sobre totales, nunca promediada. |
+| `margen_valor`, `margen_porcentaje` | `null` si alguna línea no tiene costo. **Puede ser negativo**: la venta a otra compañía del grupo sale así. |
+| `presupuesto`, `cumplimiento`, `ideal`, `brecha`, `semaforo`, `proyeccion`, `cumplimiento_proyectado`, `venta_diaria_promedio`, `venta_diaria_requerida`, `dias_habiles`, `dias_trabajados` | Vacíos en los ejes sin meta. `semaforo` viaja como `SIN_PRESUPUESTO`. |
+
+`parametros_calculo` acompaña a **todo** reporte —un número sin origen es el
+problema que este proyecto viene a resolver— y trae `fecha_corte`,
+`dias_habiles`, `dias_trabajados`, `umbrales`, `dimension_presupuesto`,
+`formulas`, `cuadre` y `conciliacion`:
+
+```
+conciliacion: {impuesto_valor, impuesto_kilos, impuesto_lineas, nota}
+```
+
+**`impuesto_lineas` es `SUM(LineasFacturadas)`, no un conteo de filas**, y por
+eso no tiene por qué coincidir con el campo `impuesto` de una corrida de
+ingesta, que sí cuenta filas del origen. En la primera carga real fueron **170
+filas y 180 líneas**. Se dice aquí porque los dos números se leen juntos al
+conciliar contra el ERP, y sin esta nota la diferencia parece diez filas
+perdidas.
+
+#### Los cruces cuadran con el total; las filas publicadas, no
+
+La suma de las filas de un cruce es exactamente la venta del corte, porque las
+tres dimensiones son obligatorias en la línea: lo que llega sin vendedor, sin
+cliente o sin producto entra con su miembro visible —`SIN VENDEDOR`,
+`SIN CLIENTE`, `SIN PRODUCTO`— y sigue sumando. Un cruce que descartara los
+nulos publicaría menos venta que el resumen y nadie sabría por qué.
+
+Otra cosa es lo que se **publica**. `truncado: true` avisa de que la respuesta
+trae solo las primeras `limite` filas por venta. **El consolidado no se trunca**:
+es el total del corte entero, para que la participación siga siendo cierta. Por
+tanto, con `truncado: true` la suma de la columna de venta **es menor** que el
+consolidado, y la diferencia es exactamente la venta de las filas que no
+viajaron. En una carga real de siete días, el cruce de tres ejes dejó 198
+millones fuera de las 500 filas publicadas: no es una nota al pie.
+
+#### La fila de totales de la venta diaria
+
+Viaja en `totales`, en un campo propio y **no** como una fila más. Mezclada
+entre las filas, el consumidor tendría que reconocerla por su nombre, y esa
+convención se rompe el día que alguien bautice así un centro.
+
+`totales.presupuesto_diario` es `Σ (Pᵢ / Hᵢ)` sobre los centros —la suma de las
+líneas de referencia—, no el presupuesto agregado partido por unos días
+ponderados. Es `null` si ningún centro tiene presupuesto, y **también** si alguno
+lo tiene y no tiene días hábiles: ahí el término es incalculable, y sumar solo el
+resto publicaría una referencia más baja que la real con pinta de completa.
+
+### Presupuesto
+
+```
+GET    /agro/presupuesto?periodo=2026-08[&dimension=<dim>]
+       -> [{dimension, etiqueta, definido, total_monto, total_kilos,
+            filas: [{dimension, clave, nombre, monto, kilos}]}]
+PUT    /agro/presupuesto  (ANALISTA)
+       {periodo, dimension, clave, etiqueta?, monto, kilos, motivo}
+GET    /agro/presupuesto/cuadre?periodo=2026-08
+       -> {periodo, cuadra, diferencia_monto, diferencia_kilos, mensaje,
+           dimensiones: [{dimension, etiqueta, total_monto, total_kilos}]}
+POST   /agro/presupuesto/carga-masiva  (ANALISTA)  multipart .xlsx/.xlsm/.csv
+       -> {aceptadas, rechazadas, errores:[{fila, motivo}], cuadre}
+GET    /agro/presupuesto/historial?periodo=&dimension=
+       -> [{cuando, quien, dimension, clave, campo,
+            valor_anterior, valor_nuevo, motivo}]
+```
+
+`dimension` es **obligatoria** en el `PUT` y está tipada: sin ella no se sabe en
+cuál de los cuatro repartos va la cifra, y ponerla en el que no es descuadra los
+dos. El archivo de la carga masiva trae una columna `dimension` **por fila**: las
+cuatro en una sola carga. El `cuadre` viaja en la respuesta de la carga a
+propósito —el momento de ver que las cuatro descomposiciones no dan lo mismo es
+justo después de subirlas, cuando quien lo hizo todavía tiene el archivo
+abierto—.
+
+`motivo` es obligatorio y de 5 a 400 caracteres: todo cambio de presupuesto queda
+con autor, fecha y motivo (§7), y «ajuste» no sirve para evaluar a nadie seis
+meses después.
+
+`definido: false` significa que **nadie ha capturado nada** en esa dimensión. No
+es lo mismo que un presupuesto de cero: aquel es una afirmación del negocio y
+este es la ausencia de la parametrización.
+
+### Calendario
+
+```
+GET    /agro/calendario?periodo=2026-08[&hasta=]
+       -> [{centro, nombre, dias_habiles, dias_trabajados, ideal,
+            fecha_corte, derivado}]
+PUT    /agro/calendario/{codigo_centro}?periodo=2026-08  (ANALISTA)
+       {dias_habiles, dias_trabajados?}
+```
+
+La unidad de calendario de agropecuaria es el **centro de operación** —`301`
+Planta y `302` Montería—, no una zona: son dos y pueden abrir días distintos.
+**Los días admiten media jornada**, así que son decimales (`"27.5"`).
+
+`dias_trabajados: null` significa **derivado** de la fecha de corte; `derivado`
+dice cuál de los dos casos es. Un número escrito por un usuario es una afirmación
+sobre la realidad —«ese sábado no abrimos»— y manda sobre lo que el sistema
+calcularía solo.
+
+### Ingesta
+
+```
+POST   /agro/ingesta/ejecutar?desde=&hasta=  (ANALISTA)
+       -> {id, cuando, quien, fuente, desde, hasta, estado,
+           filas_leidas, aceptadas, rechazadas, impuesto, duracion_ms}
+GET    /agro/ingesta/corridas?limite=50
+GET    /agro/ingesta/corridas/{id}/rechazos  (GERENTE)
+       -> [{fila, campo, valor, motivo}]
+```
+
+**Los dos extremos del rango se incluyen**, y reprocesar un rango lo
+**reemplaza**: no duplica. El campo `impuesto` cuenta filas que van **dentro** de
+`aceptadas` —se guardan marcadas— y que no van a aparecer en ningún total; sin
+ese número, conciliar la corrida contra el origen daría una diferencia sin
+explicación.
+
+Los rechazos exigen `GERENTE` y no es burocracia: llevan valores crudos de filas
+reales de facturación.
+
+### Enumerados
+
+| Parámetro | Valores literales |
+|---|---|
+| `por` en `/agro/resumen` (`EjeResumen`) | `centro_operacion`, `tipo_item`, `especie`, `tipo_comercial`, `grupo`, `vendedor`, `cliente` |
+| `por` en `/agro/cruce` (`EjeCruce`) | `vendedor-cliente`, `vendedor-cliente-producto` |
+| `dimension` (`DimensionPresupuesto`) | `vendedor`, `centro_operacion`, `especie`, `tipo_comercial` |
+| `medida` | `valor`, `kilos` |
+
+El catálogo que devuelve la fuente, comprobado sobre una carga real: los
+**cortes son un `tipo_comercial`**, no una especie; las especies son `RES` y
+`CERDO`. `BIENES` y `SERVICIOS` son `tipo_item`, no `tipo_comercial`.
+
+**En el eje `cliente`, `clave` y `nombre` son la misma cadena.** La fuente no
+entrega NIT ni código de tercero —es la única dimensión sin identificador
+propio—, así que la clave es el nombre. Un consumidor no debe pintar una columna
+de código para ese eje. Está pedido a la API en `INTEGRACION-SIESA §4.5`.
+
+---
+
 ## Salud
 
 ```
 GET    /salud     -> {estado: "operativo"|"degradado",
+                      unidad: "todas"|"carnes"|"agropecuaria"|"carnes-frias",
+                      unidades: ["carnes","agropecuaria"],
                       version, base_datos: "disponible"|"no disponible",
                       ultima_ingesta}
 ```
+
+**Es público a propósito**: el selector de unidad de negocio va *antes* del
+acceso, así que tiene que poder preguntar qué marcas ofrecer sin sesión.
+
+`unidad` es lo que sirve esta instancia. `todas` es el caso de hoy —carnes y
+agropecuaria comparten base y despliegue, y el selector elige cuál se mira—;
+fijada a una sola el día que alguna se lleve a su propio servidor.
+
+`unidades` son las que se pueden mirar **de verdad**. El consumidor desactiva
+las que no estén ahí en lugar de dejar entrar a unas pantallas sin datos
+detrás: hoy le toca a `carnes-frias`, que es una marca sin módulo. Elegir una
+marca no puede hacer aparecer una unidad que la instancia no sirve.
 
 ---
 
