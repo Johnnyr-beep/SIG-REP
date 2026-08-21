@@ -73,7 +73,8 @@
   --espacio-7: 3rem;
 
   --fuente: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
-  --fuente-mono: "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+  --fuente-mono:
+    "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
 
   --ancho-barra: 250px;
   --alto-cabecera: 64px;
@@ -399,7 +400,9 @@ textarea {
   font-weight: 500;
   text-decoration: none;
   border-radius: var(--radio-sm);
-  transition: background 0.12s ease, color 0.12s ease;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
 }
 
 .enlace-nav:hover {
@@ -419,7 +422,6 @@ textarea {
   width: 17px;
   text-align: center;
 }
-
 
 .barra-lateral__usuario {
   padding: var(--espacio-3);
@@ -1123,7 +1125,10 @@ textarea {
   border: 1px solid var(--borde-fuerte);
   border-radius: var(--radio-sm);
   cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    opacity 0.12s ease;
 }
 
 .boton:hover:not(:disabled) {
@@ -1147,7 +1152,6 @@ textarea {
   background: var(--acento-hover);
   border-color: var(--acento-hover);
 }
-
 
 /* Acciones que dejan a alguien fuera —desactivar una cuenta, restablecer una
    clave— y que solo aparecen tras una confirmación. El color es refuerzo: el
@@ -1394,6 +1398,16 @@ textarea.campo__control {
   border-radius: var(--radio-sm);
 }
 
+/* El desplegable sin nada que ofrecer explica por que, en lugar de abrirse en
+   blanco. Ver `vacio` en `SelectorMultiple`. */
+.selector-pdv__vacio {
+  margin: 0;
+  padding: var(--espacio-3) var(--espacio-2);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
 .selector-pdv__nota {
   margin: 0;
   color: var(--texto-tenue);
@@ -1461,7 +1475,6 @@ textarea.campo__control {
   background: color-mix(in srgb, var(--info) 8%, transparent);
   border-color: color-mix(in srgb, var(--info) 26%, transparent);
 }
-
 
 .aviso--advertencia {
   color: var(--aviso);
@@ -1814,7 +1827,6 @@ textarea.campo__control {
   text-align: center;
 }
 
-
 /* El cambio obligatorio de clave añade un aviso y tres campos al bloque de
    acceso: con 400 px la tarjeta queda apretada en un portátil de 13". */
 .acceso__tarjeta--ancha {
@@ -1945,7 +1957,12 @@ textarea.campo__control {
   right: 0;
   left: 0;
   height: 6px;
-  background: linear-gradient(90deg, var(--marca-700), var(--tono) 55%, var(--marca-realce));
+  background: linear-gradient(
+    90deg,
+    var(--marca-700),
+    var(--tono) 55%,
+    var(--marca-realce)
+  );
   content: "";
 }
 
@@ -2032,7 +2049,6 @@ textarea.campo__control {
   border-radius: var(--radio-lg);
   box-shadow: var(--sombra-3);
 }
-
 
 /* Para el alcance por punto de venta y el alta: dieciséis casillas y cinco
    campos no caben con holgura en 520 px. */
@@ -2142,7 +2158,6 @@ textarea.campo__control {
   white-space: nowrap;
   clip-path: inset(50%);
 }
-
 
 /* ── Administración de usuarios ──────────────────────────────────────────────
  *
@@ -2269,7 +2284,6 @@ textarea.campo__control {
   .navegacion__grupo {
     display: none;
   }
-
 
   /* El menú de usuario deja de ser decorativo en cuanto contiene el cambio de
      clave: se compacta, pero no se esconde. */

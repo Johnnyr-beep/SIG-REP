@@ -267,6 +267,7 @@ function SelectorMultiple({
   opciones,
   seleccion,
   onCambiar,
+  vacio,
 }: {
   /** Nombre del campo, en la barra: «Punto de venta», «Centro». */
   etiqueta: string;
@@ -277,6 +278,19 @@ function SelectorMultiple({
   opciones: OpcionSeleccion[];
   seleccion: string[];
   onCambiar: (codigos: string[]) => void;
+  /**
+   * Qué decir cuando **no hay ninguna opción**.
+   *
+   * Sin esto el desplegable se abría vacío, con un «0 de 0» y la nota de
+   * siempre —«sin ninguno marcado, el reporte incluye todos»—, que es cierta y
+   * no sirve de nada: quien lo ve por primera vez no tiene forma de saber si el
+   * catálogo está vacío o si algo se rompió. Y lo natural es pensar lo segundo.
+   *
+   * El motivo cambia según el filtro —los centros de agropecuaria nacen de la
+   * ingesta, los puntos de venta vienen del catálogo—, así que lo aporta quien
+   * lo usa en lugar de intentar adivinarlo aquí.
+   */
+  vacio?: string;
 }) {
   const [abierto, setAbierto] = useState(false);
   const contenedor = useRef<HTMLDivElement>(null);
@@ -301,7 +315,9 @@ function SelectorMultiple({
   const resumen = seleccion.length === 0 ? "Todos" : nombres.join(", ");
   const lectura =
     seleccion.length === 0
-      ? `Todos los ${plural}`
+      ? total === 0
+        ? "Sin datos"
+        : `Todos los ${plural}`
       : `${seleccion.length} de ${total} ${plural}: ${nombres.join(", ")}`;
 
   function alternar(codigo: string) {
@@ -426,6 +442,11 @@ function SelectorMultiple({
             <legend className="solo-lectores">
               {etiqueta}: qué se incluye en el reporte
             </legend>
+            {total === 0 ? (
+              <p className="selector-pdv__vacio tenue">
+                {vacio ?? `Todavía no hay ${plural} que mostrar.`}
+              </p>
+            ) : null}
             {opciones.map((opcion) => (
               <label key={opcion.clave} className="casilla">
                 <input
@@ -445,15 +466,17 @@ function SelectorMultiple({
           </fieldset>
 
           <p className="selector-pdv__nota" role="status">
-            {seleccion.length === 0
-              ? `Sin ninguno marcado, el reporte incluye todos los ${plural}.`
-              : elegidos.length === total && huerfanos.length === 0
-                ? `Están marcados los ${total}: el resultado es el mismo que sin filtro.`
-                : `El reporte se limita a ${
-                    seleccion.length === 1
-                      ? singular
-                      : `${seleccion.length} ${plural}`
-                  }.`}
+            {total === 0
+              ? "El filtro se activa solo cuando hay algo que filtrar."
+              : seleccion.length === 0
+                ? `Sin ninguno marcado, el reporte incluye todos los ${plural}.`
+                : elegidos.length === total && huerfanos.length === 0
+                  ? `Están marcados los ${total}: el resultado es el mismo que sin filtro.`
+                  : `El reporte se limita a ${
+                      seleccion.length === 1
+                        ? singular
+                        : `${seleccion.length} ${plural}`
+                    }.`}
           </p>
         </div>
       ) : null}
@@ -530,6 +553,11 @@ function FiltroCentros({
       opciones={opciones}
       seleccion={seleccion}
       onCambiar={onCambiar}
+      vacio={
+        "Los centros de operación aparecen con la primera ingesta: no son un " +
+        "catálogo que se dé de alta, salen de los datos que entrega la API de " +
+        "la compañía. Cargue un rango en Parametrización → Ingesta y vuelva aquí."
+      }
     />
   );
 }
