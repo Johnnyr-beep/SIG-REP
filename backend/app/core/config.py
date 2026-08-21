@@ -53,11 +53,20 @@ MotorBD = Literal["postgresql", "mssql"]
 FuenteVentaConfigurada = Literal["excel", "siesa"]
 
 #: Unidad de negocio que sirve **esta** instancia. No es una preferencia visual:
-#: decide que pantallas tienen sentido y contra que tablas se consulta. Cada
-#: unidad corre con su propia base, asi que una instancia de carnes no puede
-#: mostrar reportes de agropecuaria aunque alguien elija esa marca —sus tablas
-#: estarian vacias— y al reves igual.
-UnidadNegocio = Literal["carnes", "agropecuaria", "carnes-frias"]
+#: decide que pantallas tienen sentido y contra que tablas se consulta.
+#:
+#: `todas` es el caso de hoy y por eso es el valor por omision: carnes y
+#: agropecuaria comparten base y cadena de migraciones, y el selector de marca
+#: elige cual se mira. El valor existe para el dia que una unidad se lleve a su
+#: propio despliegue: puesto en `agropecuaria`, la interfaz deja de ofrecer
+#: carnes en vez de llevar a alguien a unas tablas vacias.
+UnidadNegocio = Literal["todas", "carnes", "agropecuaria", "carnes-frias"]
+
+#: Que unidades tienen modulo construido. `carnes-frias` es hoy una marca sin
+#: backend: aparece en el selector desactivada y con su motivo, que es mas
+#: honesto que llevar a quien la elija a las pantallas de carnes con datos que
+#: no son los suyos.
+UNIDADES_CON_MODULO: tuple[UnidadNegocio, ...] = ("carnes", "agropecuaria")
 
 #: Esquemas heredados que los proveedores gestionados siguen entregando y que
 #: SQLAlchemy 2 ya no reconoce.
@@ -161,7 +170,19 @@ class Settings(BaseSettings):
 
     #: Unidad que sirve esta instancia. La publica `GET /salud` para que la
     #: interfaz sepa que menu montar sin que el usuario tenga que acertar.
-    unidad: UnidadNegocio = "carnes"
+    unidad: UnidadNegocio = "todas"
+
+    @property
+    def unidades_disponibles(self) -> list[str]:
+        """Las unidades que esta instancia puede mostrar de verdad.
+
+        Con `unidad = todas` son las que tienen modulo construido; fijada a una,
+        solo esa. Lo consume el selector de marca para desactivar el resto en
+        lugar de dejar que alguien entre a una pantalla sin datos detras.
+        """
+        if self.unidad == "todas":
+            return list(UNIDADES_CON_MODULO)
+        return [self.unidad]
 
     #: Ruta del libro que lee `FuenteVentaExcel` en `POST /ingesta/ejecutar`.
     #: Sin ella, la carga automática falla con un mensaje que dice qué

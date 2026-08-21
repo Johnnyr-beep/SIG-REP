@@ -17,13 +17,15 @@ router = APIRouter(tags=["Sistema"])
 
 class EstadoSalud(BaseModel):
     estado: str
-    #: Unidad de negocio que sirve esta instancia: `carnes`, `agropecuaria` o
-    #: `carnes-frias`. Va en un endpoint **publico** a proposito: la pantalla de
-    #: acceso necesita saber que marca mostrar antes de que nadie inicie sesion,
-    #: y el menu que monta despues depende de esto y no de lo que el usuario
-    #: eligiera en el selector —elegir una marca no puede hacer aparecer datos
-    #: que esta base no tiene—.
+    #: Unidad que sirve esta instancia: `todas` —el caso de hoy, carnes y
+    #: agropecuaria sobre la misma base— o una sola cuando se lleve a su propio
+    #: despliegue. Va en un endpoint **publico** a proposito: la pantalla de
+    #: acceso necesita saber que marcas ofrecer antes de que nadie entre.
     unidad: str
+    #: Las que de verdad se pueden mirar. El selector desactiva las que no estan
+    #: aqui en lugar de dejar entrar a una pantalla sin datos detras: elegir una
+    #: marca no puede hacer aparecer una unidad que esta instancia no sirve.
+    unidades: list[str]
     version: str
     base_datos: str
     ultima_ingesta: datetime | None = None
@@ -45,6 +47,7 @@ def salud(sesion: SesionDep) -> EstadoSalud:
         return EstadoSalud(
             estado="degradado",
             unidad=settings.unidad,
+            unidades=settings.unidades_disponibles,
             version=settings.version,
             base_datos="no disponible",
         )
@@ -53,6 +56,7 @@ def salud(sesion: SesionDep) -> EstadoSalud:
     return EstadoSalud(
         estado="operativo",
         unidad=settings.unidad,
+        unidades=settings.unidades_disponibles,
         version=settings.version,
         base_datos=estado_bd,
         ultima_ingesta=corrida.cuando if corrida else None,
