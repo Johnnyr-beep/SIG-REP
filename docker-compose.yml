@@ -66,6 +66,8 @@ services:
       SIGREP_DB_SERVIDOR: postgres
       SIGREP_DB_PUERTO: "5432"
       SIGREP_DB_NOMBRE: ${SIGREP_DB_NOMBRE:-sigrep}
+      # Base propia de Agropecuaria. Vacio = las dos unidades comparten base.
+      SIGREP_DB_URL_AGRO: ${SIGREP_DB_URL_AGRO:-}
       SIGREP_DB_USUARIO: ${SIGREP_DB_USUARIO:-sigrep_app}
       SIGREP_DB_PASSWORD: ${SIGREP_DB_PASSWORD}
       # Tráfico interno de la red Docker: TLS si está disponible, sin exigirlo.

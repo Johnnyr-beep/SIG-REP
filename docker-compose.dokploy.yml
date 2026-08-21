@@ -39,6 +39,14 @@ services:
       # de Dokploy, incluido el esquema `postgres://` heredado: la aplicación lo
       # normaliza al driver correcto.
       SIGREP_DB_URL_OVERRIDE: ${SIGREP_DB_URL_OVERRIDE}
+      # La base de Agropecuaria. **Vacio es un valor valido**: significa que las
+      # dos unidades comparten base, que es como arranco el sistema.
+      #
+      # Este bloque enumera las variables que se reenvian al contenedor, una por
+      # una; una que no este aqui no llega aunque este definida en el panel. Asi
+      # se perdio esta la primera vez: puesta correctamente en Dokploy, ausente
+      # de esta lista, y el contenedor arrancando sin ella sin decir nada.
+      SIGREP_DB_URL_AGRO: ${SIGREP_DB_URL_AGRO:-}
       SIGREP_CORS_ORIGENES: ${SIGREP_CORS_ORIGENES}
       # Si el `Host` público no coincide con lo declarado aquí, la API responde
       # 400 «Invalid host header» a TODO el tráfico, sonda de salud incluida, y
