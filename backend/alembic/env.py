@@ -65,24 +65,53 @@ def ejecutar_offline() -> None:
         context.run_migrations()
 
 
-def ejecutar_online() -> None:
-    """Aplica las migraciones contra cada base configurada, una tras otra."""
-    for unidad, url in _destinos().items():
-        print(f"[alembic] Migrando la base de {unidad}…")
+def _migrar(unidad: str, url: str) -> None:
+    conectable = create_engine(url, poolclass=pool.NullPool)
+    try:
+        with conectable.connect() as conexion:
+            context.configure(
+                connection=conexion,
+                target_metadata=target_metadata,
+                compare_type=True,
+                compare_server_default=True,
+            )
+            with context.begin_transaction():
+                context.run_migrations()
+        print(f"[alembic] {unidad}: al dia.")
+    finally:
+        conectable.dispose()
 
-        conectable = create_engine(url, poolclass=pool.NullPool)
+
+def ejecutar_online() -> None:
+    """Aplica las migraciones a cada base. La principal es la que puede parar todo.
+
+    La distincion importa y es deliberada. Si falla la base de carnes, el sistema
+    entero deja de tener sentido y el arranque **debe** parar: sin ella no hay
+    nada que servir. Si falla la de agropecuaria, en cambio, tumbar el
+    contenedor dejaria sin servicio a una compania que funciona por culpa de otra
+    que ni siquiera tiene datos todavia, y por algo tan tonto como un caracter
+    mal escrito en una variable de entorno.
+
+    Asi que la secundaria falla **ruidosamente y sin parar el arranque**: carnes
+    sigue en pie, agropecuaria no responde, y el motivo esta en el registro con
+    todas sus letras en lugar de en un contenedor que se reinicia en bucle.
+    """
+    destinos = _destinos()
+
+    principal = destinos.pop("carnes", None)
+    if principal is not None:
+        print("[alembic] Migrando la base de carnes…")
+        _migrar("carnes", principal)
+
+    for unidad, url in destinos.items():
+        print(f"[alembic] Migrando la base de {unidad}…")
         try:
-            with conectable.connect() as conexion:
-                context.configure(
-                    connection=conexion,
-                    target_metadata=target_metadata,
-                    compare_type=True,
-                    compare_server_default=True,
-                )
-                with context.begin_transaction():
-                    context.run_migrations()
-        finally:
-            conectable.dispose()
+            _migrar(unidad, url)
+        except Exception as error:
+            print(f"[alembic] ERROR: no se pudo migrar la base de {unidad}: {error}")
+            print(f"[alembic] La aplicacion arranca igual y {unidad} no va a responder.")
+            print("[alembic] Revise SIGREP_DB_URL_AGRO: usuario, servidor y nombre de base.")
+            print("[alembic] Carnes no esta afectada.")
 
 
 if context.is_offline_mode():
