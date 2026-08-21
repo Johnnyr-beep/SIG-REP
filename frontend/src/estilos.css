@@ -2545,7 +2545,10 @@ textarea.campo__control {
    pantallas estrechas se apilan; la tendencia es la que necesita el ancho. */
 .rejilla--panel {
   display: grid;
-  grid-template-columns: minmax(16rem, 1fr) minmax(20rem, 2.2fr);
+  grid-template-columns: minmax(14rem, 0.9fr) minmax(20rem, 2fr) minmax(
+      16rem,
+      1.2fr
+    );
   gap: var(--espacio-4);
   align-items: stretch;
 }
@@ -2554,4 +2557,66 @@ textarea.campo__control {
   .rejilla--panel {
     grid-template-columns: 1fr;
   }
+}
+
+/* ── Escalafon ──────────────────────────────────────────────────────────────
+   Los mayores del corte. El nombre puede ser largo —«INVERSIONES Y NEGOCIOS
+   ESTRATEGICAS SAS»— y la cifra no puede pisarlo: el nombre se encoge y parte
+   en varias lineas, la cifra nunca. Es el defecto que tenia el reporte de
+   origen, donde nombre e importe se superponian. */
+.escalafon {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.escalafon__fila {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--espacio-3);
+  padding: var(--espacio-3) var(--espacio-4);
+  border-bottom: 1px solid var(--borde);
+}
+
+.escalafon__fila:last-child {
+  border-bottom: none;
+}
+
+.escalafon__puesto {
+  display: grid;
+  place-items: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 50%;
+  background: var(--acento-suave);
+  color: var(--acento-texto);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.escalafon__nombre {
+  min-width: 0;
+  font-size: 0.86rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.escalafon__cifra {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.escalafon__fecha {
+  font-weight: 400;
+  font-size: 0.72rem;
+  color: var(--texto-tenue);
 }

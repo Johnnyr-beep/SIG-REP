@@ -135,6 +135,15 @@ export interface IndicadoresAgro {
 export interface FilaResumenAgro extends IndicadoresAgro {
   clave: string;
   nombre: string;
+  /**
+   * Último día **dentro del corte** con venta de este miembro.
+   *
+   * Acotado al corte, no es la última venta histórica: filtrar por julio y leer
+   * «12 de julio» significa que fue su último día *en julio*. Se llama venta y
+   * no compra porque el mismo campo, en el eje de vendedor, no describe la
+   * compra de nadie; la pantalla lo rotula según el eje.
+   */
+  ultima_venta?: string | null;
 }
 
 // ── Trazabilidad del cálculo ─────────────────────────────────────────────────

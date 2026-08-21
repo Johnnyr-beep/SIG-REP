@@ -304,6 +304,14 @@ interno del tercero, junto al nombre que ya envía, como hace
 `costos-razon-social`? Es un campo por fila y no cambia el grano de la
 agregación.
 
+**Qué está esperando a este campo.** El escalafón de clientes de agropecuaria
+publica hoy el ranking, el importe y la última venta del corte, y **no** la
+pestaña de «clientes que dejaron de comprar», que era lo que pedía el negocio.
+Decir que alguien dejó de comprar exige emparejar al mismo cliente entre dos
+períodos, y por nombre eso convierte una razón social corregida en SIESA en una
+alerta falsa: «uno dejó de comprar y apareció otro nuevo». Se decidió dejarla
+fuera antes que publicarla aproximada. Con el NIT se construye en una tarde.
+
 **Mientras tanto**, SIGREP usa el nombre como clave y lo dice: es la lectura
 correcta de lo que llega, no una aproximación disfrazada. Pero el reporte por
 cliente y el cruce vendedor × cliente valen lo que valga la unicidad de los

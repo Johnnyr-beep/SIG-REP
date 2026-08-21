@@ -254,6 +254,17 @@ class FilaResumenAgro(IndicadoresAgro):
 
     clave: str
     nombre: str
+    #: El último día **dentro del corte** en que este miembro tuvo venta.
+    #:
+    #: Se llama `ultima_venta` y no `ultima_compra` aunque en el eje de cliente
+    #: la pantalla lo rotule así: el sistema mide ventas, y el mismo campo en el
+    #: eje de vendedor o de centro no describe la compra de nadie.
+    #:
+    #: **Está acotado al corte, no es la última venta histórica.** Filtrar por
+    #: julio y leer «12 de julio» significa que ese fue su último día *en julio*;
+    #: puede haber comprado en agosto. Un campo que a veces mirara fuera del
+    #: rango y a veces no sería imposible de interpretar.
+    ultima_venta: date | None = None
 
 
 class ConciliacionAgro(EsquemaBase):

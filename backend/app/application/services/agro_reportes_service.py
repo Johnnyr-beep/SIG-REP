@@ -251,6 +251,7 @@ class AgroReportesService:
 
         columna = COLUMNA_DIMENSION[por.tipo]
         agregados = self._agregar(ctx, [columna])
+        ultimas = self._ultima_venta(ctx, columna)
         consolidado_totales = TotalesAgro()
         for totales in agregados.values():
             consolidado_totales.sumar(totales)
@@ -270,6 +271,7 @@ class AgroReportesService:
                 FilaResumenAgro(
                     clave=clave,
                     nombre=miembro.nombre if miembro is not None else clave,
+                    ultima_venta=ultimas.get(llave[0]),
                     **self._indicadores(
                         ctx,
                         totales,
@@ -567,6 +569,21 @@ class AgroReportesService:
             tuple(int(v) for v in fila[:anchura]): _totales_de(fila[anchura:])
             for fila in self._sesion.execute(consulta)
         }
+
+    def _ultima_venta(self, ctx: _Contexto, columna: InstrumentedAttribute[int]) -> dict[int, date]:
+        """El último día con venta de cada miembro, **dentro del corte**.
+
+        Consulta aparte y no una columna más de `_agregar` porque aquella la
+        comparten el resumen y los dos cruces, y un `MAX(fecha)` por cada
+        combinación de tres ejes es trabajo que nadie mira. Aquí es una
+        agregación sobre la misma tabla ya filtrada: barata y de un solo grano.
+        """
+        consulta = (
+            select(columna, func.max(AgroVentaLinea.fecha))
+            .where(*self._filtros_base(ctx))
+            .group_by(columna)
+        )
+        return {int(clave): fecha for clave, fecha in self._sesion.execute(consulta) if fecha}
 
     # ── Armado de filas ───────────────────────────────────────────────────────
 
