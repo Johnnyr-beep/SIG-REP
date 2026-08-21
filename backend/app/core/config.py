@@ -52,6 +52,13 @@ MotorBD = Literal["postgresql", "mssql"]
 #: una a otra es una variable de entorno, nunca un refactor.
 FuenteVentaConfigurada = Literal["excel", "siesa"]
 
+#: Unidad de negocio que sirve **esta** instancia. No es una preferencia visual:
+#: decide que pantallas tienen sentido y contra que tablas se consulta. Cada
+#: unidad corre con su propia base, asi que una instancia de carnes no puede
+#: mostrar reportes de agropecuaria aunque alguien elija esa marca —sus tablas
+#: estarian vacias— y al reves igual.
+UnidadNegocio = Literal["carnes", "agropecuaria", "carnes-frias"]
+
 #: Esquemas heredados que los proveedores gestionados siguen entregando y que
 #: SQLAlchemy 2 ya no reconoce.
 _ALIAS_ESQUEMA = {
@@ -151,6 +158,10 @@ class Settings(BaseSettings):
     #: Implementación activa del puerto `FuenteVenta` (§5). `excel` lee el libro
     #: que hoy arma el negocio; `siesa` responde 501 mientras su API no llegue.
     fuente_venta: FuenteVentaConfigurada = "excel"
+
+    #: Unidad que sirve esta instancia. La publica `GET /salud` para que la
+    #: interfaz sepa que menu montar sin que el usuario tenga que acertar.
+    unidad: UnidadNegocio = "carnes"
 
     #: Ruta del libro que lee `FuenteVentaExcel` en `POST /ingesta/ejecutar`.
     #: Sin ella, la carga automática falla con un mensaje que dice qué
