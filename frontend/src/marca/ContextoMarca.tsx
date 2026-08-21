@@ -23,6 +23,7 @@ import {
 import type { ReactNode } from "react";
 
 import type { ClaveMarca, Marca } from "@/marca/marcas";
+import { almacenTokens } from "@/api/cliente";
 import { obtenerMarca } from "@/marca/marcas";
 
 const CLAVE_ALMACEN = "sigrep_marca";
@@ -74,11 +75,28 @@ export function ProveedorMarca({ children }: { children: ReactNode }) {
     }
   }, [marca]);
 
-  const elegir = useCallback((clave: ClaveMarca) => {
-    setMarca(obtenerMarca(clave));
-  }, []);
+  /**
+   * Elegir unidad **cierra la sesión abierta**, si la hay y es de otra.
+   *
+   * Desde que cada compañía tiene su base, un token pertenece a una unidad y a
+   * una sola: la lleva firmada dentro, y el servidor la respeta por encima de
+   * cualquier cabecera. Cambiar de marca conservando el token dejaría al usuario
+   * en las pantallas de agropecuaria consultando la base de carnes —o al revés—,
+   * viendo tablas vacías sin ninguna explicación a la vista.
+   *
+   * Así que se limpia y se vuelve a pedir acceso, que además es lo correcto:
+   * son dos empresas distintas y las credenciales de una no valen en la otra.
+   */
+  const elegir = useCallback(
+    (clave: ClaveMarca) => {
+      if (marca && marca.clave !== clave) almacenTokens.limpiar();
+      setMarca(obtenerMarca(clave));
+    },
+    [marca],
+  );
 
   const olvidar = useCallback(() => {
+    almacenTokens.limpiar();
     setMarca(null);
   }, []);
 

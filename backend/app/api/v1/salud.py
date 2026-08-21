@@ -26,6 +26,11 @@ class EstadoSalud(BaseModel):
     #: aqui en lugar de dejar entrar a una pantalla sin datos detras: elegir una
     #: marca no puede hacer aparecer una unidad que esta instancia no sirve.
     unidades: list[str]
+    #: `True` cuando cada unidad tiene su propia base. Es la diferencia entre
+    #: «las cifras no se mezclan porque el codigo esta bien escrito» y «no se
+    #: mezclan porque no hay conexion por la que puedan pasar», y se publica
+    #: para poder comprobarlo desde fuera sin entrar al servidor.
+    bases_separadas: bool = False
     version: str
     base_datos: str
     ultima_ingesta: datetime | None = None
@@ -48,6 +53,7 @@ def salud(sesion: SesionDep) -> EstadoSalud:
             estado="degradado",
             unidad=settings.unidad,
             unidades=settings.unidades_disponibles,
+            bases_separadas=settings.bases_separadas,
             version=settings.version,
             base_datos="no disponible",
         )
@@ -57,6 +63,7 @@ def salud(sesion: SesionDep) -> EstadoSalud:
         estado="operativo",
         unidad=settings.unidad,
         unidades=settings.unidades_disponibles,
+        bases_separadas=settings.bases_separadas,
         version=settings.version,
         base_datos=estado_bd,
         ultima_ingesta=corrida.cuando if corrida else None,

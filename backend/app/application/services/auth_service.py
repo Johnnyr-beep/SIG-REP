@@ -49,9 +49,14 @@ class Credenciales:
 class AuthService:
     """Casos de uso de identidad."""
 
-    def __init__(self, sesion: Session) -> None:
+    def __init__(self, sesion: Session, unidad: str = "carnes") -> None:
         self._sesion = sesion
         self._settings = obtener_settings()
+        # La unidad de la sesión que llega, no una elección del servicio: quien
+        # la resolvió fue la dependencia, y aquí solo se sella en el token para
+        # que las siguientes peticiones vuelvan a la misma base sin depender de
+        # que el cliente lo recuerde.
+        self._unidad = unidad
 
     # ── Autenticación ─────────────────────────────────────────────────────────
 
@@ -116,19 +121,26 @@ class AuthService:
         return usuario, self._emitir_credenciales(usuario)
 
     def refrescar(self, token_refresco: str) -> Credenciales:
-        """Emite un nuevo par de tokens a partir de un refresco válido."""
+        """Emite un nuevo par de tokens a partir de un refresco válido.
+
+        La unidad sale del **token que se presenta**, no de la petición: renovar
+        no puede cambiar de compañía. Si saliera de la cabecera, un refresco de
+        carnes serviría para obtener un acceso a agropecuaria, que es justo lo
+        que la separación impide.
+        """
         datos = decodificar_token(token_refresco, tipo_esperado="refresco")
         usuario = self._sesion.get(Usuario, datos.usuario_id)
 
         if usuario is None or not usuario.activo:
             raise ErrorAutenticacion("La cuenta ya no está habilitada.")
 
-        return self._emitir_credenciales(usuario)
+        return self._emitir_credenciales(usuario, unidad=datos.unidad)
 
-    def _emitir_credenciales(self, usuario: Usuario) -> Credenciales:
+    def _emitir_credenciales(self, usuario: Usuario, unidad: str | None = None) -> Credenciales:
+        sello = unidad or self._unidad
         return Credenciales(
-            token_acceso=crear_token_acceso(usuario.id, usuario.usuario, usuario.rol),
-            token_refresco=crear_token_refresco(usuario.id, usuario.usuario, usuario.rol),
+            token_acceso=crear_token_acceso(usuario.id, usuario.usuario, usuario.rol, sello),
+            token_refresco=crear_token_refresco(usuario.id, usuario.usuario, usuario.rol, sello),
             expira_en=self._settings.access_token_minutos * 60,
         )
 

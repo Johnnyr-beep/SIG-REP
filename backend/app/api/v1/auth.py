@@ -6,7 +6,7 @@ from fastapi import APIRouter, Request
 from sqlalchemy import select
 
 from app.application.services.auth_service import AuthService
-from app.core.deps import SesionDep, UsuarioDep, obtener_ip
+from app.core.deps import SesionDep, UnidadDep, UsuarioDep, obtener_ip
 from app.domain.enums import Rol
 from app.infrastructure.models.organizacion import PuntoVenta
 from app.schemas.auth import (
@@ -23,9 +23,16 @@ router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
 
 @router.post("/acceso", response_model=RespuestaAcceso, summary="Iniciar sesión")
-def acceso(datos: SolicitudAcceso, sesion: SesionDep, request: Request) -> RespuestaAcceso:
-    """Valida credenciales y devuelve el par de tokens. Público."""
-    _, credenciales = AuthService(sesion).autenticar(
+def acceso(
+    datos: SolicitudAcceso, sesion: SesionDep, unidad: UnidadDep, request: Request
+) -> RespuestaAcceso:
+    """Valida credenciales y devuelve el par de tokens. Público.
+
+    `sesion` ya viene de la base de `unidad` —lo resuelve la dependencia—, asi
+    que las credenciales se comprueban contra la compania correcta. La unidad
+    queda sellada en el token para que las siguientes peticiones vuelvan sola.
+    """
+    _, credenciales = AuthService(sesion, unidad).autenticar(
         datos.usuario,
         datos.clave,
         ip_origen=obtener_ip(request),

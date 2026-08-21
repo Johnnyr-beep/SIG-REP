@@ -109,7 +109,10 @@ async function renovarSesion(): Promise<boolean> {
     try {
       const respuesta = await fetch(`${BASE}/auth/refrescar`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        // La unidad la lleva el propio token de refresco, así que aquí la
+        // cabecera no decide nada. Se envía por coherencia: una sola forma de
+        // armar cabeceras es una menos que revisar cuando algo no cuadra.
+        headers: { ...cabecerasBase(), "Content-Type": "application/json" },
         body: JSON.stringify({ token_refresco: refresco }),
       });
       if (!respuesta.ok) return false;
@@ -177,10 +180,46 @@ async function extraerError(respuesta: Response): Promise<ErrorApi> {
   return new ErrorApi(respuesta.status, codigo, mensaje);
 }
 
+/**
+ * La unidad elegida en el selector, tal como la guarda `marca/ContextoMarca`.
+ *
+ * Se lee del almacén y no del contexto de React a propósito: el cliente HTTP no
+ * es un componente y no puede usar hooks, y pasarle la unidad por parámetro
+ * obligaría a tocar cada una de las llamadas. La fuente es la misma clave, así
+ * que no hay dos verdades.
+ *
+ * `carnes-frias` no llega nunca hasta aquí —el selector no la deja elegir— pero
+ * si llegara, el servidor la ignoraría por no ser una unidad con datos.
+ */
+function unidadElegida(): string | null {
+  try {
+    return localStorage.getItem("sigrep_marca");
+  } catch {
+    // `localStorage` bloqueado por política del navegador. Sin cabecera, el
+    // servidor atiende como carnes, que es su valor por defecto.
+    return null;
+  }
+}
+
 function cabecerasBase(): Record<string, string> {
   const cabeceras: Record<string, string> = { Accept: "application/json" };
   const token = almacenTokens.acceso();
   if (token) cabeceras.Authorization = `Bearer ${token}`;
+
+  // A qué compañía va esta petición.
+  //
+  // **Solo decide en el acceso**, que es cuando todavía no hay token: ahí el
+  // servidor necesita saber contra qué base validar las credenciales. Después
+  // manda el token, que lleva la unidad firmada dentro, y esta cabecera se
+  // ignora — si no fuera así, cualquiera leería la otra compañía cambiándola.
+  //
+  // Se envía igualmente en todas las peticiones, y no solo en el acceso, porque
+  // el día que el token caduque a mitad de sesión la renovación tiene que
+  // encontrar el camino de vuelta a la misma base sin depender de dónde se haya
+  // disparado.
+  const unidad = unidadElegida();
+  if (unidad) cabeceras["X-SIGREP-Unidad"] = unidad;
+
   return cabeceras;
 }
 
@@ -312,9 +351,13 @@ export async function iniciarSesion(
     return;
   }
 
+  // La unidad va aquí o no va a ninguna parte: es la única petición donde la
+  // cabecera decide algo, porque es la única que ocurre sin token. Sin ella el
+  // servidor valida las credenciales contra la base de carnes, y quien eligió
+  // agropecuaria acabaría con un token de la otra compañía.
   const respuesta = await fetch(`${BASE}/auth/acceso`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { ...cabecerasBase(), "Content-Type": "application/json" },
     body: JSON.stringify({ usuario, clave }),
   });
 

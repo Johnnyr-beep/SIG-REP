@@ -397,14 +397,37 @@ def main() -> None:  # pragma: no cover - utilidad de línea de comandos
     )
     parser.add_argument("--clave-admin", help="clave del usuario admin (si no, se genera)")
     parser.add_argument("--periodo", help="siembra el calendario de un período YYYY-MM")
+    parser.add_argument(
+        "--unidad",
+        choices=["carnes", "agropecuaria"],
+        default="carnes",
+        help=(
+            "unidad cuya base se siembra. Desde que agropecuaria tiene base "
+            "propia, sus cuentas son suyas: el 'admin' de carnes no existe alli"
+        ),
+    )
     argumentos = parser.parse_args()
 
     configurar_logging(obtener_settings().entorno)
+    unidad = argumentos.unidad
+    print(f"Sembrando la base de {unidad}.")
 
-    with sesion_ambito() as sesion:
-        sembrar_estructura(sesion)
-        if argumentos.periodo:
-            sembrar_calendario(sesion, argumentos.periodo)
+    with sesion_ambito(unidad) as sesion:
+        # La estructura —zonas, puntos de venta, categorias— es de carnes y solo
+        # de carnes. Agropecuaria no tiene puntos de venta: sus dimensiones
+        # —centros, especies, tipos comerciales, vendedores— nacen de la propia
+        # ingesta, con los codigos que entrega la API de la compania 3. Sembrar
+        # aqui el catalogo de la otra compania llenaria su base de filas que no
+        # le corresponden y que ningun reporte suyo mira.
+        if unidad == "carnes":
+            sembrar_estructura(sesion)
+            if argumentos.periodo:
+                sembrar_calendario(sesion, argumentos.periodo)
+        elif argumentos.periodo:
+            print(
+                "El calendario de agropecuaria es por centro de operacion y se "
+                "fija en la pantalla de dias habiles; --periodo no aplica aqui."
+            )
         if argumentos.admin:
             creado = crear_gerente(sesion, argumentos.clave)
             if creado is not None:

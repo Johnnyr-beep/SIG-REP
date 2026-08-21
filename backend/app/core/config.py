@@ -172,6 +172,36 @@ class Settings(BaseSettings):
     #: interfaz sepa que menu montar sin que el usuario tenga que acertar.
     unidad: UnidadNegocio = "todas"
 
+    #: Conexión a la base de **Agropecuaria**. Vacío significa «no hay segunda
+    #: base»: las dos unidades comparten una, que es como arrancó el sistema y
+    #: lo que sigue pasando en cualquier despliegue que no defina esta variable.
+    #: Ponerla es lo que separa de verdad las dos compañías, porque a partir de
+    #: ahí un token de carnes no puede leer agropecuaria aunque alguien escriba
+    #: la ruta a mano: no está conectado a esa base.
+    db_url_agro: str | None = None
+
+    def url_de_unidad(self, unidad: str) -> str:
+        """La cadena de conexión que le toca a una unidad.
+
+        Sin `db_url_agro` devuelve la de siempre para las dos. No es un fallo
+        silencioso: es el estado anterior a la separación, y hacerlo explícito
+        aquí evita que el resto del código tenga que preguntárselo.
+        """
+        if unidad == "agropecuaria" and self.db_url_agro:
+            return _normalizar_url(self.db_url_agro)
+        return self.database_url
+
+    @property
+    def bases_separadas(self) -> bool:
+        """¿Cada unidad tiene su propia base?
+
+        Lo publica `GET /salud` para que se pueda comprobar desde fuera sin
+        entrar al servidor: es la diferencia entre «las cifras no se mezclan
+        porque el código está bien escrito» y «no se mezclan porque no hay
+        conexión por la que puedan pasar».
+        """
+        return bool(self.db_url_agro)
+
     @property
     def unidades_disponibles(self) -> list[str]:
         """Las unidades que esta instancia puede mostrar de verdad.

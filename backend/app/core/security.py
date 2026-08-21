@@ -74,6 +74,15 @@ class DatosToken:
     rol: str
     tipo: TipoToken
     jti: str
+    #: Unidad de negocio contra cuya base se autentico este token, y la unica
+    #: cuya base va a poder leer. Es el mecanismo que separa a las dos
+    #: companias: no es una preferencia que el cliente pueda cambiar mandando
+    #: otra cabecera, porque va firmada dentro del token.
+    #:
+    #: Los tokens emitidos antes de este campo lo traen vacio y se leen como
+    #: `carnes`, que es contra lo que se autenticaron: una sesion abierta no
+    #: tiene por que caerse al desplegar.
+    unidad: str = "carnes"
 
 
 def _crear_token(
@@ -83,6 +92,7 @@ def _crear_token(
     rol: str,
     tipo: TipoToken,
     expira_en: timedelta,
+    unidad: str = "carnes",
 ) -> str:
     settings = obtener_settings()
     ahora = datetime.now(UTC)
@@ -90,6 +100,7 @@ def _crear_token(
         "sub": str(usuario_id),
         "usuario": usuario,
         "rol": rol,
+        "unidad": unidad,
         "tipo": tipo,
         "jti": str(uuid.uuid4()),
         "iat": int(ahora.timestamp()),
@@ -103,23 +114,25 @@ def _crear_token(
     )
 
 
-def crear_token_acceso(usuario_id: int, usuario: str, rol: str) -> str:
+def crear_token_acceso(usuario_id: int, usuario: str, rol: str, unidad: str = "carnes") -> str:
     settings = obtener_settings()
     return _crear_token(
         usuario_id=usuario_id,
         usuario=usuario,
         rol=rol,
+        unidad=unidad,
         tipo="acceso",
         expira_en=timedelta(minutes=settings.access_token_minutos),
     )
 
 
-def crear_token_refresco(usuario_id: int, usuario: str, rol: str) -> str:
+def crear_token_refresco(usuario_id: int, usuario: str, rol: str, unidad: str = "carnes") -> str:
     settings = obtener_settings()
     return _crear_token(
         usuario_id=usuario_id,
         usuario=usuario,
         rol=rol,
+        unidad=unidad,
         tipo="refresco",
         expira_en=timedelta(days=settings.refresh_token_dias),
     )
@@ -154,6 +167,7 @@ def decodificar_token(token: str, *, tipo_esperado: TipoToken = "acceso") -> Dat
         usuario_id=usuario_id,
         usuario=str(payload.get("usuario", "")),
         rol=str(payload.get("rol", "")),
+        unidad=str(payload.get("unidad") or "carnes"),
         tipo=tipo_esperado,
         jti=str(payload.get("jti", "")),
     )

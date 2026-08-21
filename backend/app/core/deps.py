@@ -15,14 +15,14 @@ from __future__ import annotations
 
 import io
 import zipfile
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from typing import Annotated
 
 from fastapi import Depends, Request, UploadFile
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from app.core.db import obtener_sesion
+from app.core.db import UNIDAD_POR_DEFECTO, UnidadDatos, obtener_sesion_de
 from app.core.errors import ErrorAutenticacion, ErrorAutorizacion, ErrorValidacion
 from app.core.security import decodificar_token
 from app.domain.enums import Rol
@@ -32,7 +32,60 @@ from app.infrastructure.models.usuario import Usuario
 # del que impone Starlette.
 _esquema_bearer = HTTPBearer(auto_error=False, description="Token JWT de acceso")
 
-SesionDep = Annotated[Session, Depends(obtener_sesion)]
+#: Cabecera con la que el cliente declara a qué unidad quiere entrar. **Solo se
+#: mira cuando no hay token**, que es el caso del inicio de sesión: ahí hace
+#: falta saber contra qué base autenticar antes de que exista un token.
+CABECERA_UNIDAD = "X-SIGREP-Unidad"
+
+_UNIDADES: frozenset[str] = frozenset({"carnes", "agropecuaria"})
+
+
+def unidad_de_peticion(peticion: Request) -> UnidadDatos:
+    """A qué base va esta petición.
+
+    El orden importa y es lo que sostiene la separación entre las dos compañías:
+
+    **1. Si hay token, manda el token.** La unidad va firmada dentro, así que un
+    cliente no puede cambiarla mandando otra cabecera. Sin esta precedencia, la
+    cabecera sería una forma de leer la base de la otra compañía con un token
+    legítimo, que es exactamente el agujero que este diseño evita.
+
+    **2. Si no hay token, manda la cabecera.** Es el inicio de sesión, y ahí
+    todavía no hay nada firmado: la unidad la eligió el usuario en el selector,
+    antes de escribir sus credenciales, y viaja en la cabecera para que el propio
+    acceso se valide contra la base correcta.
+
+    **3. Si no hay ninguna de las dos, carnes.** Es la unidad de siempre y lo que
+    responde a un cliente que no sabe de esto —una sonda, un balanceador—.
+
+    Un token ilegible **no** se rechaza aquí: se cae al valor por defecto y quien
+    lo rechaza, con su mensaje, es `obtener_usuario_actual`. Levantar el error de
+    autenticación desde la dependencia de sesión lo haría aparecer en rutas
+    públicas que no piden token para nada.
+    """
+    cabecera = peticion.headers.get("authorization", "")
+    if cabecera.lower().startswith("bearer "):
+        try:
+            datos = decodificar_token(cabecera[7:].strip(), tipo_esperado="acceso")
+        except Exception:
+            return UNIDAD_POR_DEFECTO
+        if datos.unidad in _UNIDADES:
+            return datos.unidad  # type: ignore[return-value]
+        return UNIDAD_POR_DEFECTO
+
+    declarada = (peticion.headers.get(CABECERA_UNIDAD) or "").strip().lower()
+    if declarada in _UNIDADES:
+        return declarada  # type: ignore[return-value]
+    return UNIDAD_POR_DEFECTO
+
+
+def obtener_sesion_peticion(peticion: Request) -> Generator[Session, None, None]:
+    """Dependencia de sesión: la base que le toca a **esta** petición."""
+    yield from obtener_sesion_de(unidad_de_peticion(peticion))
+
+
+SesionDep = Annotated[Session, Depends(obtener_sesion_peticion)]
+UnidadDep = Annotated[UnidadDatos, Depends(unidad_de_peticion)]
 
 
 def obtener_usuario_actual(
