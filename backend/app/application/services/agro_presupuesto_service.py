@@ -55,6 +55,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.application.services import agro_presupuesto_tabla as tabla
 from app.application.services.periodos import obtener_o_crear_periodo, obtener_periodo
 from app.core.errors import ErrorNoEncontrado, ErrorPeriodoCerrado, ErrorValidacion
 from app.core.logging import obtener_logger
@@ -68,6 +69,7 @@ from app.infrastructure.models.agro_dimensiones import AgroDimension
 from app.infrastructure.models.agro_presupuesto import AgroPresupuesto, AgroPresupuestoHistorial
 from app.infrastructure.models.agro_vocabulario import (
     DimensionPresupuesto,
+    TipoDimension,
     normalizar_clave,
     normalizar_etiqueta,
 )
@@ -635,6 +637,13 @@ class AgroPresupuestoService:
         if nombre.endswith(".csv"):
             crudas = _filas_csv(contenido)
         elif nombre.endswith((".xlsx", ".xlsm")):
+            # Antes del formato genérico se prueba el libro que arma el negocio,
+            # con su tabla dinámica y sus subtotales. Pedirle que lo reformatee
+            # para poder cargarlo es la petición que acaba en «entonces lo sigo
+            # llevando en Excel».
+            propio = self._leer_libro_del_negocio(contenido)
+            if propio is not None:
+                return propio
             crudas = _filas_excel(contenido)
         else:
             raise ErrorValidacion("Formato no admitido. Use .xlsx o .csv.")
@@ -647,6 +656,91 @@ class AgroPresupuestoService:
             except ErrorValidacion as exc:
                 errores.append(ErrorFilaAgro(fila=numero, motivo=exc.mensaje))
         return filas, errores
+
+    def _claves_de_vendedor(self) -> dict[str, str]:
+        """Nombre normalizado a clave del origen, desde el catálogo de la ingesta.
+
+        Es la traducción sin la cual la carga no sirve de nada: el libro nombra
+        al vendedor y la venta lo identifica por su cédula. Guardar la meta bajo
+        el nombre la dejaría colgada de una clave que ninguna venta usa, y el
+        cumplimiento de esa persona saldría **cero para siempre** sin que nada
+        fallara.
+        """
+        filas = self._sesion.execute(
+            select(AgroDimension.nombre, AgroDimension.clave).where(
+                AgroDimension.tipo == TipoDimension.VENDEDOR.value
+            )
+        )
+        return {tabla.normalizar_nombre(nombre): clave for nombre, clave in filas}
+
+    def _leer_libro_del_negocio(
+        self, contenido: bytes
+    ) -> tuple[list[tuple[int, _FilaCarga]], list[ErrorFilaAgro]] | None:
+        """El libro con tabla dinámica, si es que lo es. `None` si no."""
+        claves = self._claves_de_vendedor()
+        lectura = tabla.leer(contenido, claves)
+        if lectura is None:
+            return None
+
+        if not claves:
+            raise ErrorValidacion(
+                "Todavía no hay vendedores en el catálogo, así que no se puede "
+                "saber a quién pertenece cada meta del archivo. Ejecute primero "
+                "una ingesta: el catálogo lo trae el origen, no este archivo."
+            )
+
+        filas = [
+            (
+                meta.fila,
+                _FilaCarga(
+                    dimension=DimensionPresupuesto.VENDEDOR,
+                    clave=meta.clave,
+                    etiqueta=meta.nombre,
+                    monto=meta.monto,
+                    kilos=meta.kilos,
+                ),
+            )
+            for meta in lectura.metas
+        ]
+
+        errores = [
+            ErrorFilaAgro(
+                fila=0,
+                motivo=(
+                    f"«{nombre}» no corresponde a ningún vendedor del catálogo ni cuadra "
+                    "como subtotal de su grupo. Su presupuesto NO se cargó."
+                ),
+            )
+            for nombre in lectura.sin_resolver
+        ]
+
+        # El propio libro trae su total. Contrastarlo contra lo cargado es lo que
+        # detecta que algo se quedó fuera sin que nadie lo note: la carga puede
+        # terminar «bien» y publicar una meta más baja que la del negocio.
+        errores.extend(self._avisos_de_cuadre(lectura, filas))
+        return filas, errores
+
+    @staticmethod
+    def _avisos_de_cuadre(
+        lectura: tabla.LecturaTabla, filas: list[tuple[int, _FilaCarga]]
+    ) -> list[ErrorFilaAgro]:
+        avisos: list[ErrorFilaAgro] = []
+        pares = (
+            ("monto", lectura.total_libro_monto, sum((f.monto for _, f in filas), Decimal(0))),
+            ("kilos", lectura.total_libro_kilos, sum((f.kilos for _, f in filas), Decimal(0))),
+        )
+        for etiqueta, del_libro, cargado in pares:
+            if del_libro is not None and del_libro != cargado:
+                avisos.append(
+                    ErrorFilaAgro(
+                        fila=0,
+                        motivo=(
+                            f"El total de {etiqueta} del archivo ({del_libro:,}) no coincide "
+                            f"con lo cargado ({cargado:,}). Falta alguien por cruzar."
+                        ),
+                    )
+                )
+        return avisos
 
     # ── Interno ───────────────────────────────────────────────────────────────
 
