@@ -347,11 +347,19 @@ def crear_gerente(sesion: Session, clave: str | None = None) -> tuple[Usuario, s
     return usuario, clave
 
 
-def crear_administrador(sesion: Session, clave: str | None = None) -> tuple[Usuario, str] | None:
+def crear_administrador(
+    sesion: Session, clave: str | None = None, *, forzar: bool = False
+) -> tuple[Usuario, str] | None:
     """Crea la cuenta `admin` (rol ADMIN) con clave provisional obligatoria.
 
     Devuelve `None` si ya existe, para que correrla dos veces no reviente ni
     —peor— reescriba la clave de la cuenta con la que Sistemas está entrando.
+
+    `forzar` **restablece la clave de una cuenta que ya existe**, y por eso no
+    es el comportamiento normal: quien la ejecuta por costumbre, en el servidor
+    equivocado, deja fuera a quien estuviera dentro. Existe porque la clave
+    provisional se imprime una sola vez y no se guarda en ninguna parte, asi que
+    perderla dejaba la unica salida de borrar la cuenta a mano en la base.
 
     Es idéntica en forma a `crear_gerente` a propósito: dos funciones parecidas
     se leen mejor que una con un parámetro `rol` y tres `if` dentro, y estas dos
@@ -361,8 +369,27 @@ def crear_administrador(sesion: Session, clave: str | None = None) -> tuple[Usua
         select(Usuario).where(Usuario.usuario == "admin")
     ).scalar_one_or_none()
     if existente is not None:
-        logger.info("semilla_administrador_existente")
-        return None
+        if not forzar:
+            logger.info("semilla_administrador_existente")
+            return None
+
+        nueva = clave or generar_password_temporal(18)
+        if clave is not None:
+            AuthService.validar_fortaleza_clave(clave, usuario_nombre="admin")
+
+        existente.password_hash = hashear_password(nueva)
+        # Se restablece la cuenta entera, no solo la clave: si estaba bloqueada
+        # por intentos fallidos —lo habitual cuando alguien lleva un rato
+        # probando la que creia recordar— cambiarle la clave sin desbloquearla
+        # dejaria la sesion igual de cerrada y con una causa nueva que buscar.
+        existente.debe_cambiar_password = True
+        existente.activo = True
+        existente.intentos_fallidos = 0
+        existente.bloqueado_hasta = None
+        sesion.flush()
+
+        logger.warning("semilla_administrador_restablecido")
+        return existente, nueva
 
     if clave is None:
         clave = generar_password_temporal(18)
@@ -396,6 +423,14 @@ def main() -> None:  # pragma: no cover - utilidad de línea de comandos
         help="crea el usuario admin, rol ADMIN, que administra las cuentas",
     )
     parser.add_argument("--clave-admin", help="clave del usuario admin (si no, se genera)")
+    parser.add_argument(
+        "--forzar-clave",
+        action="store_true",
+        help=(
+            "restablece la clave del admin AUNQUE YA EXISTA. Deja fuera a quien "
+            "estuviera usando esa cuenta: uselo solo si perdio la clave"
+        ),
+    )
     parser.add_argument("--periodo", help="siembra el calendario de un período YYYY-MM")
     parser.add_argument(
         "--unidad",
@@ -434,7 +469,9 @@ def main() -> None:  # pragma: no cover - utilidad de línea de comandos
                 _, clave = creado
                 print(f"Usuario 'gerente' creado. Clave provisional: {clave}")
         if argumentos.administrador:
-            creado = crear_administrador(sesion, argumentos.clave_admin)
+            creado = crear_administrador(
+                sesion, argumentos.clave_admin, forzar=argumentos.forzar_clave
+            )
             if creado is not None:
                 _, clave = creado
                 # Se imprime **una sola vez** y no se guarda en ninguna parte.
@@ -444,6 +481,7 @@ def main() -> None:  # pragma: no cover - utilidad de línea de comandos
                 print("Anótela ahora: no vuelve a mostrarse. Se cambia en el primer acceso.")
             else:
                 print("El usuario 'admin' ya existe; no se toca su clave.")
+                print("Si perdio la clave, repita con --forzar-clave para restablecerla.")
 
 
 if __name__ == "__main__":  # pragma: no cover
