@@ -391,10 +391,19 @@ export function useEjecutarIngestaAgro(): UseMutationResult<
         parametros: { desde, hasta },
       }),
     onSuccess: () => {
-      void cliente.invalidateQueries({ queryKey: clavesAgro.corridas });
       void cliente.invalidateQueries({ queryKey: ["salud"] });
-      // Una ingesta cambia la venta: los reportes en pantalla ya no valen.
-      void cliente.invalidateQueries({ queryKey: ["agro", "reporte"] });
+      // Una ingesta no solo cambia la venta: **crea el catálogo**. Los centros,
+      // las especies y los vendedores nacen ahí, así que después de correrla ya
+      // no vale nada de lo que hubiera en pantalla —ni los reportes, ni el
+      // calendario, ni el presupuesto—.
+      //
+      // Se invalida el bloque `agro` entero y no una lista de claves. Invalidar
+      // por partes es cómo pasó esto: la ingesta avisaba a los reportes y a la
+      // sonda, y el calendario seguía sirviendo durante cinco minutos la lista
+      // vacía que había pedido *antes* de que existieran los centros. El usuario
+      // cargaba 7.037 líneas y la pantalla de días hábiles seguía diciendo «no
+      // hay centros registrados todavía».
+      void cliente.invalidateQueries({ queryKey: ["agro"] });
     },
   });
 }
