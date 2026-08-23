@@ -6,7 +6,8 @@ from fastapi import APIRouter, Request
 from sqlalchemy import select
 
 from app.application.services.auth_service import AuthService
-from app.core.deps import SesionDep, UnidadDep, UsuarioDep, obtener_ip
+from app.core.db import sesion_ambito
+from app.core.deps import SesionDep, UnidadDep, UsuarioDep, obtener_ip, unidad_de_refresco
 from app.domain.enums import Rol
 from app.infrastructure.models.organizacion import PuntoVenta
 from app.schemas.auth import (
@@ -47,9 +48,23 @@ def acceso(
 
 
 @router.post("/refrescar", response_model=RespuestaRefresco, summary="Renovar token de acceso")
-def refrescar(datos: SolicitudRefresco, sesion: SesionDep) -> RespuestaRefresco:
-    """Público: la autorización la da el propio token de refresco."""
-    credenciales = AuthService(sesion).refrescar(datos.token_refresco)
+def refrescar(datos: SolicitudRefresco) -> RespuestaRefresco:
+    """Público: la autorización la da el propio token de refresco.
+
+    **No usa `SesionDep`, y ese es el punto.** El refresco viaja en el cuerpo,
+    no en `Authorization`, así que la dependencia de sesión no lo ve: resolvía
+    la unidad por la cabecera —o por el valor por defecto— y renovaba una sesión
+    de agropecuaria contra la base de carnes. Allí el mismo `id` de usuario es
+    otra persona, de modo que la comprobación de «la cuenta sigue habilitada» se
+    hacía sobre una cuenta ajena y el token salía a nombre de un desconocido:
+    desactivar a alguien en su compañía no le cerraba la renovación, y un
+    usuario cuyo `id` no existiera en carnes se quedaba sin poder renovar.
+
+    Aquí la unidad se saca del propio refresco, que es donde va firmada, y la
+    sesión se abre contra **esa** base.
+    """
+    with sesion_ambito(unidad_de_refresco(datos.token_refresco)) as sesion:
+        credenciales = AuthService(sesion).refrescar(datos.token_refresco)
     return RespuestaRefresco(
         token_acceso=credenciales.token_acceso,
         tipo=credenciales.tipo,

@@ -178,7 +178,13 @@ def obtener_sesion() -> Generator[Session, None, None]:
 
 @contextmanager
 def sesion_ambito(unidad: UnidadDatos = UNIDAD_POR_DEFECTO) -> Iterator[Session]:
-    """Sesión transaccional para jobs y scripts fuera del ciclo HTTP."""
+    """Sesión transaccional para jobs y scripts, y para el puñado de endpoints
+    que no pueden usar la dependencia.
+
+    `POST /auth/refrescar` es el caso: su unidad va dentro del token de refresco,
+    que viaja en el cuerpo, así que la dependencia de sesión —que solo mira las
+    cabeceras— resolvería la base equivocada.
+    """
     sesion = fabrica_de(unidad)()
     try:
         yield sesion

@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import UNIDAD_POR_DEFECTO, UnidadDatos, obtener_sesion_de
 from app.core.errors import ErrorAutenticacion, ErrorAutorizacion, ErrorValidacion
-from app.core.security import decodificar_token
+from app.core.security import TipoToken, decodificar_token
 from app.domain.enums import Rol
 from app.infrastructure.models.usuario import Usuario
 
@@ -65,17 +65,45 @@ def unidad_de_peticion(peticion: Request) -> UnidadDatos:
     """
     cabecera = peticion.headers.get("authorization", "")
     if cabecera.lower().startswith("bearer "):
-        try:
-            datos = decodificar_token(cabecera[7:].strip(), tipo_esperado="acceso")
-        except Exception:
-            return UNIDAD_POR_DEFECTO
-        if datos.unidad in _UNIDADES:
-            return datos.unidad  # type: ignore[return-value]
-        return UNIDAD_POR_DEFECTO
+        return _unidad_de_token(cabecera[7:].strip(), tipo="acceso")
 
     declarada = (peticion.headers.get(CABECERA_UNIDAD) or "").strip().lower()
     if declarada in _UNIDADES:
         return declarada  # type: ignore[return-value]
+    return UNIDAD_POR_DEFECTO
+
+
+def unidad_de_refresco(token_refresco: str) -> UnidadDatos:
+    """A qué base va una renovación: a la que diga el **refresco presentado**.
+
+    Hace falta porque el token de refresco viaja en el cuerpo y no en
+    `Authorization`, así que `unidad_de_peticion` no puede verlo. Sin esto, la
+    renovación de una sesión de agropecuaria resolvía por la cabecera —o por el
+    valor por defecto— y abría la base de carnes: el usuario se buscaba por su
+    `id` en la compañía equivocada, donde ese mismo `id` es otra persona, y la
+    renovación devolvía un token a nombre de un desconocido después de comprobar
+    «la cuenta sigue habilitada» sobre una cuenta ajena.
+
+    Un refresco ilegible cae al valor por defecto, igual que en
+    `unidad_de_peticion` y por el mismo motivo: quien lo rechaza con su mensaje
+    es `AuthService.refrescar`, que es el que lo decodifica de verdad.
+    """
+    return _unidad_de_token(token_refresco, tipo="refresco")
+
+
+def _unidad_de_token(token: str, *, tipo: TipoToken) -> UnidadDatos:
+    """La unidad firmada dentro de un token, o la de por defecto si no se lee.
+
+    Una unidad desconocida —un token de otra instalación, uno manipulado que no
+    llega a verificar— también cae al valor por defecto: lo contrario sería
+    abrir una conexión a partir de una cadena que llegó de fuera.
+    """
+    try:
+        datos = decodificar_token(token, tipo_esperado=tipo)
+    except Exception:
+        return UNIDAD_POR_DEFECTO
+    if datos.unidad in _UNIDADES:
+        return datos.unidad  # type: ignore[return-value]
     return UNIDAD_POR_DEFECTO
 
 
@@ -280,13 +308,14 @@ async def leer_subida(
 
 
 def _verificar_zip(contenido: bytes, max_descomprimido: int) -> None:
-    """Rechaza lo que no es un ZIP y lo que declara descomprimirse de más."""
+    """Rechaza lo que no es un ZIP, lo que no es un libro y lo que se infla."""
     if not contenido.startswith(_FIRMA_ZIP):
         raise ErrorValidacion("El archivo no es un libro de Excel: no tiene formato ZIP.")
 
     try:
         with zipfile.ZipFile(io.BytesIO(contenido)) as libro:
-            declarado = sum(entrada.file_size for entrada in libro.infolist())
+            entradas = libro.infolist()
+            declarado = sum(entrada.file_size for entrada in entradas)
     except zipfile.BadZipFile as exc:
         raise ErrorValidacion("El archivo no es un libro de Excel legible.") from exc
 
@@ -298,4 +327,33 @@ def _verificar_zip(contenido: bytes, max_descomprimido: int) -> None:
     if declarado > len(contenido) * MAX_RATIO_COMPRESION:
         raise ErrorValidacion(
             "El archivo se descomprime en una proporción impropia de un libro de Excel."
+        )
+
+    # Lo último, después de las dos guardas de tamaño: aquellas protegen el
+    # servidor y esta protege al usuario, así que un archivo que sea las dos
+    # cosas se rechaza primero por lo grave.
+    _verificar_que_es_un_libro(entradas)
+
+
+def _verificar_que_es_un_libro(entradas: list[zipfile.ZipInfo]) -> None:
+    """Que dentro del ZIP haya un libro, y no un documento de otro programa.
+
+    Un `.docx` y un `.pptx` **también** son ZIP y pasan la firma, así que hasta
+    aquí llegaban intactos: `openpyxl` los abría, no encontraba las partes que
+    esperaba y levantaba un `KeyError` crudo que salía por la API como un 500.
+    Quien subió el archivo equivocado —que es lo que suele pasar: se adjunta el
+    acta de la reunión en lugar del presupuesto— veía «error interno» y no tenía
+    forma de saber que el problema era suyo y de un segundo.
+
+    Se mira solo el listado de nombres, que ya está leído: ni se descomprime
+    nada ni se hace una segunda pasada. La comprobación es deliberadamente laxa
+    —basta con que exista la carpeta `xl/`— porque su trabajo es distinguir un
+    libro de un documento de otra familia, no validar OOXML; un libro corrupto lo
+    sigue detectando quien lo abre de verdad.
+    """
+    nombres = [entrada.filename for entrada in entradas]
+    if not any(nombre.startswith("xl/") for nombre in nombres):
+        raise ErrorValidacion(
+            "El archivo es un ZIP válido pero no un libro de Excel: no contiene ninguna "
+            "hoja de cálculo. Compruebe que está subiendo el libro y no otro documento."
         )

@@ -216,6 +216,45 @@ def test_refrescar_conserva_la_unidad_del_token_presentado(dos_bases: TestClient
     assert decodificar_token(renovado.json()["token_acceso"]).unidad == "agropecuaria"
 
 
+def test_refrescar_busca_al_usuario_en_la_base_de_su_unidad(dos_bases: TestClient) -> None:
+    """Y no solo sella bien la unidad: **lee la base correcta**.
+
+    Comprobar solo el sello es lo que dejó pasar el fallo. El refresco viaja en
+    el cuerpo, así que la dependencia de sesión no lo veía y abría la de carnes;
+    allí el `id` 1 es `jefe_carnes` y no `jefe_agro`, de modo que la renovación
+    salía a nombre del usuario de la otra compañía con el sello correcto encima.
+    """
+    _, cuerpo = _entrar(dos_bases, "jefe_agro", "agropecuaria")
+
+    renovado = dos_bases.post(
+        "/api/v1/auth/refrescar", json={"token_refresco": cuerpo["token_refresco"]}
+    )
+
+    assert renovado.status_code == 200
+    assert decodificar_token(renovado.json()["token_acceso"]).usuario == "jefe_agro"
+
+
+def test_desactivar_una_cuenta_le_cierra_la_renovacion(dos_bases: TestClient) -> None:
+    """Y se comprueba en **su** base, que es donde alguien la desactiva.
+
+    Con la comprobación hecha contra carnes, desactivar a `jefe_agro` en su
+    compañía no le cerraba nada: seguía renovando mientras el usuario que ocupa
+    ese mismo `id` en la otra base siguiera activo.
+    """
+    _, cuerpo = _entrar(dos_bases, "jefe_agro", "agropecuaria")
+
+    sesion: Session
+    with fabrica_de("agropecuaria")() as sesion:  # type: ignore[arg-type]
+        sesion.query(Usuario).filter_by(usuario="jefe_agro").one().activo = False
+        sesion.commit()
+
+    renovado = dos_bases.post(
+        "/api/v1/auth/refrescar", json={"token_refresco": cuerpo["token_refresco"]}
+    )
+
+    assert renovado.status_code == 401
+
+
 # ── Los datos tampoco se ven entre sí ─────────────────────────────────────────
 
 
