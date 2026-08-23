@@ -22,12 +22,13 @@ import { useSearchParams } from "react-router-dom";
 
 import {
   useCargaMasivaAgro,
+  useDimensionesAgro,
   useCuadreAgro,
   useGuardarPresupuestoAgro,
   useHistorialAgro,
   usePresupuestoAgro,
 } from "@/api/consultasAgro";
-import type { MetaAgro } from "@/api/tiposAgro";
+import type { MetaAgro, MiembroDimensionAgro } from "@/api/tiposAgro";
 import {
   AvisoError,
   Cargando,
@@ -48,6 +49,15 @@ import {
   periodoActual,
   periodoLargo,
 } from "@/utilidades/formato";
+
+/** La marca de «todavía no hay miembro elegido»: obliga a escoger uno. */
+const NUEVA: MetaAgro = {
+  dimension: "",
+  clave: "",
+  nombre: "",
+  monto: "0",
+  kilos: "0",
+};
 
 export function PresupuestoAgro() {
   const [parametros, setParametros] = useSearchParams();
@@ -101,6 +111,13 @@ export function PresupuestoAgro() {
           </select>
         </label>
         <div className="filtros__acciones">
+          <button
+            type="button"
+            className="boton boton--pequeno"
+            onClick={() => setEdicion(NUEVA)}
+          >
+            Fijar una meta
+          </button>
           <CargaMasiva carga={carga} />
         </div>
       </section>
@@ -248,31 +265,56 @@ function FormularioMeta({
   guardar: ReturnType<typeof useGuardarPresupuestoAgro>;
   onCerrar: () => void;
 }) {
+  const esNueva = meta.clave === "";
+  const [clave, setClave] = useState(meta.clave);
   const [monto, setMonto] = useState(meta.monto);
   const [kilosMeta, setKilos] = useState(meta.kilos);
   const [motivo, setMotivo] = useState("");
 
+  // El catálogo de la dimensión, para elegir a quién. La clave es la del origen
+  // —la cédula del vendedor, el `CO_Id` del centro—, así que no se teclea: se
+  // escoge. Escribirla a mano es como se acaba con una meta colgada de una
+  // clave que ninguna venta usa.
+  const { data: miembros } = useDimensionesAgro(dimension);
+
   function enviar(evento: React.FormEvent) {
     evento.preventDefault();
     guardar.mutate(
-      {
-        periodo,
-        dimension,
-        clave: meta.clave,
-        monto,
-        kilos: kilosMeta,
-        motivo,
-      },
+      { periodo, dimension, clave, monto, kilos: kilosMeta, motivo },
       { onSuccess: onCerrar },
     );
   }
 
   return (
     <Tarjeta
-      titulo={`Meta de ${meta.nombre}`}
+      titulo={esNueva ? "Fijar una meta" : `Meta de ${meta.nombre}`}
       descripcion={`Período ${periodoLargo(periodo)}.`}
     >
       <form className="formulario" onSubmit={enviar}>
+        {esNueva ? (
+          <Campo
+            etiqueta="¿A quién?"
+            ayuda={
+              miembros && miembros.length === 0
+                ? "Este catálogo está vacío: los miembros aparecen con la primera ingesta."
+                : "Sale del catálogo que dejó la ingesta, no se escribe a mano."
+            }
+          >
+            <select
+              className="campo__control"
+              value={clave}
+              onChange={(evento) => setClave(evento.target.value)}
+              required
+            >
+              <option value="">Elija uno…</option>
+              {(miembros ?? []).map((m: MiembroDimensionAgro) => (
+                <option key={m.clave} value={m.clave}>
+                  {m.nombre} · {m.clave}
+                </option>
+              ))}
+            </select>
+          </Campo>
+        ) : null}
         <Campo etiqueta="Meta en pesos">
           <input
             className="campo__control"

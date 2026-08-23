@@ -24,6 +24,7 @@ import type {
   EntradaCalendarioAgro,
   EntradaPresupuestoAgro,
   HistorialAgro,
+  MiembroDimensionAgro,
   PresupuestoDimensionAgro,
   RechazoAgro,
   RespuestaCruceAgro,
@@ -211,6 +212,21 @@ export function usePresupuestoAgro(
 }
 
 /** ¿Cuadran las cuatro descomposiciones entre sí? */
+/**
+ * El catálogo de una dimensión, para poder elegir a quién se le fija la meta.
+ *
+ * Lo crea la ingesta, no esta consulta: si viene vacío no es un fallo, es que
+ * todavía no se ha cargado venta de la que deducirlo.
+ */
+export function useDimensionesAgro(tipo: string): UseQueryResult<MiembroDimensionAgro[]> {
+  return useQuery({
+    queryKey: ["agro", "dimensiones", tipo],
+    queryFn: () =>
+      peticion<MiembroDimensionAgro[]>("/agro/dimensiones", { parametros: { tipo } }),
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function useCuadreAgro(
   periodo: string,
 ): UseQueryResult<CuadrePresupuestoAgro> {

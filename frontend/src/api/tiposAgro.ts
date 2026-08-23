@@ -328,6 +328,13 @@ export interface RespuestaVentaDiariaAgro {
 // ── Presupuesto ──────────────────────────────────────────────────────────────
 
 /** La meta de un miembro dentro de una dimensión. */
+export interface MiembroDimensionAgro {
+  tipo: string;
+  clave: string;
+  nombre: string;
+  activo: boolean;
+}
+
 export interface MetaAgro {
   dimension: string;
   clave: string;

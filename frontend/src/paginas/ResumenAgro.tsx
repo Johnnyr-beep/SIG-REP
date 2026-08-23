@@ -33,8 +33,10 @@ import {
   dinero,
   fecha,
   kilos,
+  multiplicar,
   porcentaje,
   porMedida,
+  sumar,
 } from "@/utilidades/formato";
 import {
   BarraFiltrosAgro,
@@ -44,6 +46,7 @@ import {
 import {
   AvisoCuadre,
   AvisoEjeSinMeta,
+  AvisoSinPresupuestoCapturado,
   CeldasIndicadoresAgro,
   EncabezadosIndicadoresAgro,
   PieCalculoAgro,
@@ -51,6 +54,7 @@ import {
 } from "@/componentes/indicadoresAgro";
 import {
   EJES_RESUMEN,
+  dimensionDeEje,
   esEjeResumen,
   ejeSinClavePropia,
   opcionDeEje,
@@ -119,19 +123,20 @@ export function ResumenAgro() {
     if (!diaria) return [];
 
     const metaDiaria = diaria.totales.presupuesto_diario;
-    let corrido = 0;
+    let corrido: string | null = "0";
 
     return diaria.fechas.map((fecha, indice) => {
       const valor = diaria.totales.valores[indice] ?? null;
-      if (valor !== null) corrido += Number(valor);
+      // Suma exacta sobre las cadenas del contrato, sin pasar por `Number`.
+      // Acumulando en coma flotante, veintiún días de cifras de mil millones
+      // acaban desviando la línea de la cifra que publica la tabla de abajo, y
+      // la pantalla se contradice consigo misma por un problema de binario.
+      if (valor !== null) corrido = sumar(corrido, valor);
 
       return {
         fecha,
-        acumulado: corrido.toFixed(2),
-        meta:
-          metaDiaria === null
-            ? null
-            : (Number(metaDiaria) * (indice + 1)).toFixed(2),
+        acumulado: corrido,
+        meta: multiplicar(metaDiaria, String(indice + 1)),
       };
     });
   }, [diaria]);
@@ -218,7 +223,22 @@ export function ResumenAgro() {
       {data ? (
         <>
           <AvisoCuadre cuadre={data.parametros_calculo.cuadre} />
-          {conMeta ? null : <AvisoEjeSinMeta eje={opcion.singular} />}
+          {/* Dos avisos distintos para dos hechos distintos, que el backend
+              no separa: en los dos manda `presupuesto` vacio. Si el eje es una
+              de las cuatro dimensiones presupuestables, hay vara y lo que falta
+              es capturarla —y el aviso lleva al sitio donde se captura—; si no
+              lo es, ahi no hay vara y no la va a haber. Decir lo segundo
+              agrupando por centro se contradecia con su propia frase
+              siguiente. */}
+          {conMeta ? null : dimensionDeEje(eje) ? (
+            <AvisoSinPresupuestoCapturado
+              eje={opcion.singular}
+              dimension={dimensionDeEje(eje)!}
+              periodo={filtros.periodo}
+            />
+          ) : (
+            <AvisoEjeSinMeta eje={opcion.singular} />
+          )}
 
           <TarjetasResumen
             enPesos={consolidadoPesos}

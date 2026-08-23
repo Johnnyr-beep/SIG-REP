@@ -15,17 +15,29 @@ export function Cargando({ texto = "Cargando…" }: { texto?: string }) {
   );
 }
 
+/**
+ * Lo que se pinta donde no hay nada que pintar.
+ *
+ * `accion` no es adorno: una pantalla vacía sin salida deja al usuario
+ * adivinando qué hacer, y eso pasó de verdad con el presupuesto de
+ * agropecuaria —«esta dimensión no tiene presupuesto capturado» y ningún botón
+ * a la vista para capturarlo—. Donde el vacío se resuelve con una acción
+ * concreta, la acción va aquí mismo y no tres pantallas más allá.
+ */
 export function Vacio({
   titulo,
   detalle,
+  accion,
 }: {
   titulo: string;
-  detalle?: string;
+  detalle?: ReactNode;
+  accion?: ReactNode;
 }) {
   return (
     <div className="vacio">
       <p style={{ fontWeight: 600 }}>{titulo}</p>
       {detalle ? <p className="tenue">{detalle}</p> : null}
+      {accion ? <div className="vacio__acciones">{accion}</div> : null}
     </div>
   );
 }

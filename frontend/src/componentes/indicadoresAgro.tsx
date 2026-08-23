@@ -15,11 +15,13 @@
  */
 
 import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 
 import type { Medida } from "@/api/tipos";
 import type {
   ConciliacionAgro,
   CuadrePresupuestoAgro,
+  DimensionPresupuestoAgro,
   IndicadoresAgro,
   ParametrosCalculoAgro,
 } from "@/api/tiposAgro";
@@ -31,6 +33,7 @@ import {
   dinero,
   kilos as formatearKilos,
   numero,
+  periodoLargo,
   porMedida,
   porcentaje,
   puntos,
@@ -282,6 +285,57 @@ export function AvisoEjeSinMeta({ eje }: { eje: string }) {
   );
 }
 
+/**
+ * El eje **sí** se presupuesta, pero nadie ha capturado la meta del período.
+ *
+ * Es el otro caso, y decir el de arriba en su lugar es mentir. Agrupando por
+ * centro de operación hay vara —el negocio la fija por ahí—; lo que falta es
+ * escribirla. El backend no distingue los dos casos en la respuesta: en los dos
+ * manda `presupuesto` vacío y el semáforo en `SIN_PRESUPUESTO`, así que quien
+ * decide qué texto va es la pantalla, con `dimensionDeEje`.
+ *
+ * Lleva enlace a la captura porque este aviso aparece con la base recién
+ * creada, que es justo cuando el usuario no sabe adónde ir.
+ */
+export function AvisoSinPresupuestoCapturado({
+  eje,
+  dimension,
+  periodo,
+}: {
+  /** «centro», «vendedor»: cómo se llama una fila de este eje. */
+  eje: string;
+  /** La dimensión de presupuesto contra la que se mediría. */
+  dimension: DimensionPresupuestoAgro;
+  /** Para llevar el enlace al mismo mes que se está mirando. */
+  periodo: string;
+}) {
+  return (
+    <div className="aviso aviso--atencion" role="note">
+      <div>
+        <strong>
+          Todavía no hay presupuesto capturado para este período, así que no hay
+          cumplimiento que calcular.
+        </strong>
+        <p>
+          Por {eje} sí se fija meta —es una de las cuatro descomposiciones del
+          presupuesto—, pero nadie la ha escrito para{" "}
+          {periodoLargo(periodo)}. Mientras siga así, la tabla enseña la venta y
+          deja fuera presupuesto, cumplimiento, ideal, brecha, semáforo y
+          proyección: publicar un cero ahí sería afirmar que la meta es cero.
+        </p>
+        <p>
+          <Link
+            className="boton boton--pequeno"
+            to={`/agro/presupuesto?periodo=${periodo}&dimension=${dimension}`}
+          >
+            Capturar el presupuesto de {periodoLargo(periodo)}
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── Cuadre entre las cuatro dimensiones ──────────────────────────────────────
 
 /**
@@ -395,8 +449,15 @@ export function NotaConciliacion({
  *
  * Reutiliza el `PieCalculo` de carnes —fecha de corte, H, T, medida y
  * umbrales— y le añade lo que solo publica esta unidad: las fórmulas tal como
- * las envía el backend, la conciliación del impuesto y el cuadre. Un número sin
- * origen es exactamente el problema que SIGREP viene a resolver.
+ * las envía el backend y la conciliación del impuesto. Un número sin origen es
+ * exactamente el problema que SIGREP viene a resolver.
+ *
+ * **El cuadre no va aquí.** Las tres pantallas que usan este pie ya lo publican
+ * arriba del todo con `AvisoCuadre`, que es donde corresponde: un descuadre
+ * invalida la lectura del reporte entero y hay que enterarse antes de leerlo, no
+ * después. Repetirlo al pie duplicaba el mismo `role="alert"` en la misma
+ * pantalla —el lector de pantalla lo anunciaba dos veces— y de paso hacía
+ * parecer que eran dos descuadres distintos.
  */
 export function PieCalculoAgro({
   parametros,
@@ -426,7 +487,6 @@ export function PieCalculoAgro({
             </p>
           ) : null}
           <NotaConciliacion conciliacion={parametros.conciliacion} />
-          <AvisoCuadre cuadre={parametros.cuadre} />
           {extra}
         </>
       }

@@ -142,6 +142,239 @@ function componer(valor: Decimal): string {
   return `${signo}${agruparMiles(valor.entero)}${decimales}`;
 }
 
+// ── Aritmética decimal sobre cadenas ─────────────────────────────────────────
+//
+// Existe por un caso concreto: la línea acumulada de la tendencia, que suma
+// cifras **ya publicadas** para poder dibujarlas. Todo lo demás lo calcula el
+// backend con `Decimal` y aquí se pinta tal cual.
+//
+// Se hace con dígitos sueltos —el mayor producto parcial es 9×9 más acarreos,
+// un entero de dos cifras— y nunca con el valor entero. Un «3278067652.00»
+// jamás entra en un `double`, que es el paso exacto por el que se corrompen los
+// importes de esta compañía. El acumulado del último día tiene que dar lo mismo
+// que el total de la tabla, y con `Number` no lo daba.
+
+/** Quita ceros a la izquierda dejando al menos un dígito. */
+function sinCeros(digitos: string): string {
+  const limpio = digitos.replace(/^0+(?=\d)/, "");
+  return limpio === "" ? "0" : limpio;
+}
+
+/** Compara dos cadenas de dígitos por magnitud, sin convertirlas a número. */
+function compararDigitos(a: string, b: string): -1 | 0 | 1 {
+  const x = sinCeros(a);
+  const y = sinCeros(b);
+  if (x.length !== y.length) return x.length < y.length ? -1 : 1;
+  if (x === y) return 0;
+  return x < y ? -1 : 1;
+}
+
+function sumarDigitos(a: string, b: string): string {
+  const largo = Math.max(a.length, b.length);
+  const x = a.padStart(largo, "0");
+  const y = b.padStart(largo, "0");
+  const salida: string[] = [];
+  let acarreo = 0;
+
+  for (let posicion = largo - 1; posicion >= 0; posicion -= 1) {
+    const suma =
+      DIGITOS.indexOf(x.charAt(posicion)) +
+      DIGITOS.indexOf(y.charAt(posicion)) +
+      acarreo;
+    salida.unshift(DIGITOS.charAt(suma % 10));
+    acarreo = suma >= 10 ? 1 : 0;
+  }
+
+  if (acarreo === 1) salida.unshift("1");
+  return salida.join("");
+}
+
+/** Resta suponiendo que `mayor` no es menor que `menor`; lo garantiza el llamador. */
+function restarDigitos(mayor: string, menor: string): string {
+  const largo = Math.max(mayor.length, menor.length);
+  const x = mayor.padStart(largo, "0");
+  const y = menor.padStart(largo, "0");
+  const salida: string[] = [];
+  let prestamo = 0;
+
+  for (let posicion = largo - 1; posicion >= 0; posicion -= 1) {
+    let resta =
+      DIGITOS.indexOf(x.charAt(posicion)) -
+      DIGITOS.indexOf(y.charAt(posicion)) -
+      prestamo;
+    if (resta < 0) {
+      resta += 10;
+      prestamo = 1;
+    } else {
+      prestamo = 0;
+    }
+    salida.unshift(DIGITOS.charAt(resta));
+  }
+
+  return salida.join("");
+}
+
+function multiplicarDigitos(a: string, b: string): string {
+  const x = sinCeros(a);
+  const y = sinCeros(b);
+  const salida = new Array<number>(x.length + y.length).fill(0);
+
+  for (let i = x.length - 1; i >= 0; i -= 1) {
+    const digitoA = DIGITOS.indexOf(x.charAt(i));
+    let acarreo = 0;
+
+    for (let j = y.length - 1; j >= 0; j -= 1) {
+      const posicion = i + j + 1;
+      const suma =
+        (salida[posicion] ?? 0) +
+        digitoA * DIGITOS.indexOf(y.charAt(j)) +
+        acarreo;
+      salida[posicion] = suma % 10;
+      acarreo = (suma - (suma % 10)) / 10;
+    }
+
+    // La posición `i` no la tocó ninguna vuelta anterior —cada una escribe de
+    // `i+1` hacia la derecha—, así que el acarreo cabe ahí sin normalizar nada.
+    salida[i] = (salida[i] ?? 0) + acarreo;
+  }
+
+  return sinCeros(salida.join(""));
+}
+
+/** Recompone un `Decimal` a partir de sus dígitos y de dónde cae la coma. */
+function partir(digitos: string, decimales: number, negativo: boolean): Decimal {
+  const relleno = digitos.padStart(decimales + 1, "0");
+  const corte = relleno.length - decimales;
+  return {
+    negativo,
+    entero: sinCeros(relleno.slice(0, corte)),
+    fraccion: decimales === 0 ? "" : relleno.slice(corte),
+  };
+}
+
+function sumarPartes(a: Decimal, b: Decimal): Decimal {
+  const decimales = Math.max(a.fraccion.length, b.fraccion.length);
+  const x = a.entero + a.fraccion.padEnd(decimales, "0");
+  const y = b.entero + b.fraccion.padEnd(decimales, "0");
+
+  if (a.negativo === b.negativo)
+    return partir(sumarDigitos(x, y), decimales, a.negativo);
+
+  // Signos distintos: manda el de mayor magnitud. La igualdad se resuelve
+  // aparte para no publicar un «-0» donde el resultado es cero.
+  const orden = compararDigitos(x, y);
+  if (orden === 0) return partir("0", decimales, false);
+  return orden > 0
+    ? partir(restarDigitos(x, y), decimales, a.negativo)
+    : partir(restarDigitos(y, x), decimales, b.negativo);
+}
+
+function multiplicarPartes(a: Decimal, b: Decimal): Decimal {
+  return partir(
+    multiplicarDigitos(a.entero + a.fraccion, b.entero + b.fraccion),
+    a.fraccion.length + b.fraccion.length,
+    a.negativo !== b.negativo,
+  );
+}
+
+/**
+ * División entre un entero pequeño, por el algoritmo de la escuela.
+ *
+ * El divisor siempre es un contador de la propia pantalla —cuántos días se
+ * dibujan—, así que «resto por diez más un dígito» ni se acerca al límite de los
+ * enteros exactos de JavaScript.
+ */
+function dividirPartes(
+  valor: Decimal,
+  divisor: number,
+  decimales: number,
+): Decimal | null {
+  if (!Number.isInteger(divisor) || divisor <= 0) return null;
+
+  // Un decimal más de los pedidos: es el que mira `redondear` para decidir.
+  const escala = Math.max(valor.fraccion.length, decimales + 1);
+  const dividendo = valor.entero + valor.fraccion.padEnd(escala, "0");
+
+  const cociente: string[] = [];
+  let resto = 0;
+  for (const caracter of dividendo) {
+    const actual = resto * 10 + DIGITOS.indexOf(caracter);
+    cociente.push(DIGITOS.charAt((actual - (actual % divisor)) / divisor));
+    resto = actual % divisor;
+  }
+
+  return redondear(partir(cociente.join(""), escala, valor.negativo), decimales);
+}
+
+/**
+ * Vuelve al formato de la API (`-1234.50`), no al de pantalla.
+ *
+ * El resultado de una suma tiene que poder volver a entrar en `dinero`, `kilos`
+ * o `porMedida`, y esas esperan lo que envía el backend: punto decimal y sin
+ * separador de miles.
+ */
+function componerCrudo(valor: Decimal): string {
+  const signo = valor.negativo && !esCero(valor) ? "-" : "";
+  const decimales = valor.fraccion === "" ? "" : `.${valor.fraccion}`;
+  return `${signo}${valor.entero}${decimales}`;
+}
+
+/**
+ * Suma dos importes tal como llegan de la API, sin pasar por `number`.
+ *
+ * `null` significa «no aporta», no «cero»: sumar un día sin venta registrada
+ * devuelve el acumulado intacto, que es lo que mantiene plana la línea de la
+ * tendencia en lugar de dibujar una caída que no ocurrió.
+ */
+export function sumar(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): string | null {
+  const izquierda = descomponer(a);
+  const derecha = descomponer(b);
+  if (!izquierda) return derecha ? componerCrudo(derecha) : null;
+  if (!derecha) return componerCrudo(izquierda);
+  return componerCrudo(sumarPartes(izquierda, derecha));
+}
+
+/** Producto de dos decimales de la API. `null` si falta cualquiera de los dos. */
+export function multiplicar(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): string | null {
+  const izquierda = descomponer(a);
+  const derecha = descomponer(b);
+  if (!izquierda || !derecha) return null;
+  return componerCrudo(multiplicarPartes(izquierda, derecha));
+}
+
+/**
+ * `valor × veces ÷ partes`, para repartir una cifra publicada entre N tramos.
+ *
+ * Con `veces === partes` devuelve el valor de vuelta —la división deshace la
+ * multiplicación—, y de ahí sale la propiedad que importa: el último punto de
+ * una serie repartida coincide con la cifra que la originó, en vez de quedar a
+ * unos pesos por acumulación de redondeos.
+ */
+export function repartir(
+  valor: string | null | undefined,
+  veces: number,
+  partes: number,
+  decimales = 2,
+): string | null {
+  const partido = descomponer(valor);
+  if (!partido) return null;
+  if (!Number.isInteger(veces) || veces < 0) return null;
+
+  const escalado = multiplicarPartes(partido, {
+    negativo: false,
+    entero: String(veces),
+    fraccion: "",
+  });
+  const dividido = dividirPartes(escalado, partes, decimales);
+  return dividido === null ? null : componerCrudo(dividido);
+}
+
 function formatear(
   valor: string | number | null | undefined,
   decimales: number,

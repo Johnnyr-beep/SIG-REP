@@ -297,12 +297,23 @@ export function AnilloCumplimiento({
   ideal,
   etiqueta,
   semaforo,
+  razonSinDato = "no hay presupuesto capturado",
 }: {
   cumplimiento: string | null;
   ideal?: string | null;
   /** «Pesos», «Kilos»: va debajo del anillo. */
   etiqueta: string;
   semaforo?: Semaforo;
+  /**
+   * Por qué no hay cifra, para el lector de pantalla y la nota del pie.
+   *
+   * El motivo habitual es que nadie capturó el presupuesto, pero no es el
+   * único: los dos anillos de agropecuaria salen de dos consultas distintas y
+   * mientras la segunda viaja el anillo de kilos también está sin cifra.
+   * Afirmar ahí «no hay presupuesto capturado» es decir algo falso durante un
+   * segundo y luego desdecirse, que es peor que no decir nada.
+   */
+  razonSinDato?: string;
 }) {
   const RADIO = 52;
   const GROSOR = 12;
@@ -325,7 +336,7 @@ export function AnilloCumplimiento({
         role="img"
         aria-label={
           sinDato
-            ? `${etiqueta}: sin cumplimiento que mostrar, no hay presupuesto capturado.`
+            ? `${etiqueta}: sin cumplimiento que mostrar, ${razonSinDato}.`
             : `${etiqueta}: ${porcentaje(cumplimiento)} del presupuesto` +
               (ideal ? `, con un ideal de ${porcentaje(ideal)}.` : ".")
         }
@@ -363,11 +374,28 @@ export function AnilloCumplimiento({
             transform={`rotate(${gradosIdeal} 70 70)`}
           />
         )}
-        <text x="70" y="76" className="anillo__cifra" textAnchor="middle">
+        {/* Un cumplimiento de cuatro cifras —«1.240,5 %», que sale de una meta
+            capturada de menos— no cabe a tamaño completo dentro de 140 unidades
+            de lienzo y se derramaba fuera del anillo. La cifra se encoge; el
+            anillo no se toca. */}
+        <text
+          x="70"
+          y="76"
+          className={`anillo__cifra${sinDato || porcentaje(cumplimiento).length <= 7 ? "" : " anillo__cifra--larga"}`}
+          textAnchor="middle"
+        >
           {sinDato ? SIN_DATO : porcentaje(cumplimiento)}
         </text>
       </svg>
-      <figcaption className="anillo__etiqueta">{etiqueta}</figcaption>
+      <figcaption className="anillo__etiqueta">
+        {etiqueta}
+        {/* El «—» del centro no explica nada por sí solo. El motivo va escrito
+            debajo, no solo en el `aria-label`: quien mira la pantalla tiene el
+            mismo derecho a saberlo que quien la escucha. */}
+        {sinDato ? (
+          <span className="anillo__razon">{razonSinDato}</span>
+        ) : null}
+      </figcaption>
     </figure>
   );
 }
@@ -412,6 +440,19 @@ export function TendenciaAcumulada({
     return <p className="tenue">Sin días en el rango seleccionado.</p>;
   }
 
+  // Un lienzo con las guías puestas y ninguna línea dentro se lee como una
+  // figura rota, no como «todavía no hay venta cargada». Con la base recién
+  // creada eso es lo que salía: treinta días de rango y ni un dato.
+  const hayVenta = puntos.some((punto) => punto.acumulado !== null);
+  if (!hayVenta) {
+    return (
+      <p className="tenue">
+        Todavía no hay venta cargada en este rango, así que no hay línea que
+        dibujar. La venta entra por la pantalla de ingesta.
+      </p>
+    );
+  }
+
   // La escala la fija el mayor de las dos series: si la fijara solo la venta, la
   // meta se saldría del marco, y si la fijara solo la meta, un mes que la supera
   // se vería recortado justo cuando es la buena noticia.
@@ -444,6 +485,11 @@ export function TendenciaAcumulada({
 
   const ultimo = puntos[puntos.length - 1];
   const hayMeta = puntos.some((punto) => punto.meta !== null);
+
+  const indiceUnico = puntos.findIndex((punto) => punto.acumulado !== null);
+  const puntosDibujados = puntos.filter(
+    (punto) => punto.acumulado !== null,
+  ).length;
 
   return (
     <figure className="tendencia">
@@ -481,6 +527,18 @@ export function TendenciaAcumulada({
           className="tendencia__venta"
           fill="none"
         />
+
+        {/* El día 1 del mes la serie tiene un solo punto y una polilínea de un
+            punto no dibuja nada: el gerente abría el tablero el primero y veía
+            el recuadro vacío. Con un punto suelto hay marca. */}
+        {puntosDibujados === 1 ? (
+          <circle
+            cx={x(indiceUnico)}
+            cy={y(puntos[indiceUnico]?.acumulado ?? null)}
+            r="4"
+            className="tendencia__punto"
+          />
+        ) : null}
       </svg>
 
       <figcaption className="tendencia__leyenda">

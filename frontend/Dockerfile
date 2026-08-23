@@ -35,6 +35,16 @@ COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 # fuera de ese comodín y disponible para los `include` explícitos.
 COPY docker/cabeceras-seguridad.conf /etc/nginx/conf.d/cabeceras-seguridad.inc
 
+# Identidad de la compilación, servida como archivo estático.
+#
+# La API publica la suya en `/api/v1/salud`; esta es la de la interfaz. Las dos
+# imágenes se publican juntas y con el mismo valor, así que si `/version.txt` y
+# la sonda no coinciden es que una de las dos no se relevó: el caso en que la API
+# ya trae un contrato nuevo y el navegador sigue sirviendo el anterior, que desde
+# fuera se ve como «la pantalla está rara» y no como un despliegue a medias.
+ARG SIGREP_VERSION=0.0.0+local
+RUN echo "${SIGREP_VERSION}" > /usr/share/nginx/html/version.txt
+
 # Nginx necesita escribir en estos directorios para correr sin root.
 RUN touch /var/run/nginx.pid \
     && chown -R nginx:nginx /var/run/nginx.pid /var/cache/nginx /usr/share/nginx/html
