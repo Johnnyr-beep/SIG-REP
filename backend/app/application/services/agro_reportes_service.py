@@ -244,6 +244,16 @@ class AgroReportesService:
         y semáforo. Los tres ejes que no se presupuestan —cliente, grupo y tipo
         de ítem— publican los indicadores de meta vacíos; no es un hueco por
         cargar, es que ahí no hay meta.
+
+        PENDIENTE DE CONFIRMAR CON EL NEGOCIO: con un filtro de centro activo, la
+        meta del consolidado se recorta a los centros pedidos —ver
+        `_claves_del_filtro`—, pero en los ejes que **no** son el centro sigue
+        publicándose la meta entera del miembro. Es lo único que hay: la meta de
+        un vendedor no está repartida por centro, así que su cumplimiento
+        filtrado a Montería compara la venta de un centro contra la meta de los
+        dos y sale por debajo. La alternativa sería vaciar el cumplimiento
+        —«aquí no hay vara para lo que estás mirando»—, que es más honesto y
+        cambia lo que hoy ve la pantalla; hay que decidirlo, no adivinarlo.
         """
         ctx = self._contexto(filtros)
         dimension = por.dimension_presupuesto
@@ -289,7 +299,7 @@ class AgroReportesService:
             ctx,
             consolidado_totales,
             base,
-            presupuesto=self._meta_total(plan, ctx.medida),
+            presupuesto=self._meta_total(plan, ctx.medida, self._claves_del_filtro(ctx, dimension)),
             dias_habiles=habiles_cia,
             dias_trabajados=trabajados_cia,
             ideal_agregado=ideal_cia,
@@ -660,17 +670,55 @@ class AgroReportesService:
         return plan.monto_de(clave) if medida is Medida.VALOR else plan.kilos_de(clave)
 
     @staticmethod
-    def _meta_total(plan: PlanPresupuesto | None, medida: Medida) -> Decimal | None:
-        """El total de **una** dimensión, que ya es el de la compañía.
+    def _meta_total(
+        plan: PlanPresupuesto | None, medida: Medida, claves: set[str] | None = None
+    ) -> Decimal | None:
+        """El total de **una** dimensión, restringido a lo que el filtro deja ver.
 
         Las cuatro dimensiones reparten el mismo total, así que el total de
         cualquiera de ellas es el presupuesto de la compañía. Por eso aquí no
         hay ninguna suma entre dimensiones ni puede haberla: se usa el plan que
         corresponde al eje que se está mirando y punto.
+
+        **`claves` es el denominador del cumplimiento y por eso existe.** Con un
+        filtro de centro activo, la venta del consolidado es la de los centros
+        pedidos y su meta tiene que ser la de esos mismos centros. Sumando el
+        plan entero se comparaba la venta de Montería contra la meta de Montería
+        **más la de Planta**, y el cumplimiento salía muy por debajo del real —en
+        la fila del centro salía bien y en el consolidado mal, contradiciéndose
+        en la misma pantalla—. Es la regla que carnes ya fija en
+        `test_el_presupuesto_del_consolidado_tambien_se_limita_a_los_puntos_pedidos`.
+
+        Si ninguno de los miembros pedidos tiene meta el resultado es `None`, no
+        cero: no hay vara contra la que medir lo que se está enseñando.
         """
         if plan is None or not plan.definido:
             return None
-        return plan.total_monto if medida is Medida.VALOR else plan.total_kilos
+        if claves is None:
+            return plan.total_monto if medida is Medida.VALOR else plan.total_kilos
+
+        metas = [meta for clave, meta in plan.metas.items() if clave in claves]
+        if not metas:
+            return None
+        # Sin lambda: en contexto tipado una funcion anonima sin anotar es una
+        # llamada a ciegas, y aqui lo que se suma es dinero.
+        if medida is Medida.VALOR:
+            return sum((meta.monto for meta in metas), start=CERO)
+        return sum((meta.kilos for meta in metas), start=CERO)
+
+    def _claves_del_filtro(
+        self, ctx: _Contexto, dimension: DimensionPresupuesto | None
+    ) -> set[str] | None:
+        """A qué miembros del plan limita el filtro de centro. `None` = a ninguno.
+
+        Solo la dimensión `centro_operacion` se puede recortar, porque es la
+        única cuyos miembros **son** los centros que el filtro nombra. La meta de
+        un vendedor no está repartida por centro, así que un filtro de centro no
+        se puede proyectar sobre ella; ver la nota al respecto en `resumen`.
+        """
+        if ctx.centros_pedidos is None or dimension is not DimensionPresupuesto.CENTRO_OPERACION:
+            return None
+        return {centro.clave for centro in self._centros_visibles(ctx)}
 
     # ── Días hábiles y trabajados ─────────────────────────────────────────────
 
