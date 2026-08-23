@@ -14,6 +14,7 @@ import { Calendario } from "@/paginas/Calendario";
 import { CalendarioAgro } from "@/paginas/CalendarioAgro";
 import { CruceAgro } from "@/paginas/CruceAgro";
 import { IngestaAgro } from "@/paginas/IngestaAgro";
+import { InteligenciaAgro } from "@/paginas/InteligenciaAgro";
 import { PresupuestoAgro } from "@/paginas/PresupuestoAgro";
 import { ResumenAgro } from "@/paginas/ResumenAgro";
 import { VentaDiariaAgro } from "@/paginas/VentaDiariaAgro";
@@ -112,6 +113,7 @@ export function App() {
               />
               <Route path="calendario" element={<CalendarioAgro />} />
               <Route path="ingesta" element={<IngestaAgro />} />
+              <Route path="inteligencia" element={<InteligenciaAgro />} />
             </Route>
           </>
         ) : (

@@ -20,6 +20,40 @@
 
 import type { Medida, Semaforo } from "./tipos";
 
+export interface AlertaComercial {
+  tipo: string;
+  cliente: string;
+  producto: string | null;
+  venta_anterior: string;
+  venta_actual: string;
+  variacion: string | null;
+  detalle: string;
+}
+
+export interface OportunidadComercial {
+  cliente: string;
+  producto: string;
+  venta_producto: string;
+  detalle: string;
+}
+
+export interface RecomendacionComercial {
+  prioridad: string;
+  titulo: string;
+  detalle: string;
+}
+
+export interface RespuestaInteligencia {
+  periodo: string;
+  periodo_anterior: string;
+  disponible: boolean;
+  mensaje: string | null;
+  alertas: AlertaComercial[];
+  productos_no_solicitados: AlertaComercial[];
+  oportunidades: OportunidadComercial[];
+  recomendaciones: RecomendacionComercial[];
+}
+
 // ── Vocabulario ──────────────────────────────────────────────────────────────
 
 /**

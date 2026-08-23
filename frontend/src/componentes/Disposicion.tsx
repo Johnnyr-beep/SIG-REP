@@ -86,6 +86,7 @@ const MENU_AGRO: GrupoNav[] = [
       { ruta: "/agro", etiqueta: "Resumen de ventas", icono: "◱" },
       { ruta: "/agro/cruce", etiqueta: "Vendedor, cliente y producto", icono: "◇" },
       { ruta: "/agro/venta-diaria", etiqueta: "Venta diaria", icono: "▦" },
+      { ruta: "/agro/inteligencia", etiqueta: "Inteligencia comercial", icono: "◇" },
     ],
   },
   {
@@ -125,6 +126,7 @@ const TITULOS: Record<string, string> = {
   "/agro": "Resumen de ventas",
   "/agro/cruce": "Vendedor, cliente y producto",
   "/agro/venta-diaria": "Venta diaria por centro de operación",
+  "/agro/inteligencia": "Inteligencia comercial",
   "/agro/presupuesto": "Presupuesto de agropecuaria",
   "/agro/calendario": "Días hábiles por centro de operación",
   "/agro/ingesta": "Ingesta de agropecuaria",

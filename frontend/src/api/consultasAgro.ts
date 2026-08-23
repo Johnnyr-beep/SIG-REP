@@ -31,6 +31,7 @@ import type {
   RespuestaResumenAgro,
   RespuestaVentaDiariaAgro,
   ResultadoCargaAgro,
+  RespuestaInteligencia,
 } from "./tiposAgro";
 
 /**
@@ -98,9 +99,21 @@ export const clavesAgro = {
   historial: (periodo: string, dimension: string) =>
     ["agro", "presupuesto", "historial", periodo, dimension] as const,
   calendario: (periodo: string) => ["agro", "calendario", periodo] as const,
+  inteligencia: (periodo: string) => ["agro", "inteligencia", periodo] as const,
   corridas: ["agro", "ingesta", "corridas"] as const,
   rechazos: (id: number) => ["agro", "ingesta", "rechazos", id] as const,
 };
+
+export function useInteligenciaAgro(periodo: string): UseQueryResult<RespuestaInteligencia> {
+  return useQuery({
+    queryKey: clavesAgro.inteligencia(periodo),
+    queryFn: () =>
+      peticion<RespuestaInteligencia>("/agro/inteligencia", {
+        parametros: { periodo },
+      }),
+    staleTime: 5 * 60_000,
+  });
+}
 
 // ── Reportes ─────────────────────────────────────────────────────────────────
 

@@ -30,6 +30,7 @@ from app.application.services.agro_calendario_service import AgroCalendarioServi
 from app.application.services.agro_ingesta_service import AgroIngestaService
 from app.application.services.agro_presupuesto_service import AgroPresupuestoService
 from app.application.services.agro_reportes_service import AgroReportesService, FiltrosAgro
+from app.application.services.inteligencia_comercial_service import InteligenciaComercialService
 from app.core.deps import SesionDep, leer_subida
 from app.domain.enums import Medida
 from app.infrastructure.models.agro_vocabulario import (
@@ -54,6 +55,7 @@ from app.schemas.agro import (
     RespuestaVentaDiariaAgro,
     ResultadoCargaAgro,
 )
+from app.schemas.inteligencia import RespuestaInteligencia
 
 TIPO_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
@@ -345,6 +347,17 @@ def calendario(
     _: LecturaDep, sesion: SesionDep, periodo: str = PeriodoQuery, hasta: date | None = None
 ) -> list[CalendarioAgroSalida]:
     return AgroCalendarioService(sesion).listar(periodo, hasta)
+
+
+@router.get(
+    "/inteligencia",
+    response_model=RespuestaInteligencia,
+    summary="Alertas y oportunidades comerciales",
+)
+def inteligencia(
+    _: LecturaDep, sesion: SesionDep, periodo: str = PeriodoQuery
+) -> RespuestaInteligencia:
+    return InteligenciaComercialService(sesion).analizar(periodo)
 
 
 @router.put(
