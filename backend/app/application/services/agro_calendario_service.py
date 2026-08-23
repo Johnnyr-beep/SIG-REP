@@ -15,10 +15,10 @@ Lo que sí se reutiliza tal cual, porque es puro y está probado, es
 proporción a los días transcurridos, y una sobreescritura del usuario manda
 sobre la derivación porque el negocio sabe cosas que el calendario no.
 
-**Un centro sin fila de calendario no aparece con días por defecto.** Sale con
-`H` y `T` vacíos, semáforo `SIN_PRESUPUESTO` y los indicadores que dependen del
-calendario en `null`. Rellenar con un valor silencioso sería inventar la vara de
-medir, y todo el sistema existe para que la vara se vea.
+**Un centro sin fila de calendario aparece con el supuesto de días hábiles por
+defecto.** El supuesto es visible en pantalla y no se persiste hasta que el
+usuario lo guarda. Así la ingesta puede poblar el catálogo y la pantalla puede
+parametrizarlo de inmediato sin crear filas silenciosamente.
 """
 
 from __future__ import annotations
@@ -31,6 +31,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.application.services.periodos import fecha_corte_efectiva, obtener_o_crear_periodo
+from app.core.config import obtener_settings
 from app.core.errors import ErrorNoEncontrado
 from app.domain.calendario import derivar_dias_trabajados
 from app.domain.indicadores import ideal
@@ -89,26 +90,42 @@ class AgroCalendarioService:
         return resultado
 
     def listar(self, codigo_periodo: str, hasta: date | None = None) -> list[CalendarioAgroSalida]:
-        """Calendario de los centros que tienen fila en el período."""
+        """Calendario de todos los centros del catálogo.
+
+        Una ingesta crea el catálogo antes de que el usuario configure el
+        calendario. Por eso un centro nuevo debe aparecer de inmediato con el
+        supuesto de días hábiles por defecto, aunque todavía no tenga fila
+        persistida para el período. La fila se crea solo cuando el usuario la
+        guarda explícitamente.
+        """
         periodo = obtener_o_crear_periodo(self._sesion, codigo_periodo)
         corte = fecha_corte_efectiva(periodo, hasta)
         dias = self.dias_por_centro(periodo, corte)
+        dias_por_defecto = obtener_settings().dias_habiles_por_defecto
 
         centros = self._centros()
         salida: list[CalendarioAgroSalida] = []
         for centro in sorted(centros.values(), key=lambda c: c.clave):
             datos = dias.get(centro.id)
             if datos is None:
-                continue
+                dias_habiles = dias_por_defecto
+                dias_trabajados = derivar_dias_trabajados(
+                    dias_habiles, periodo.anio, periodo.mes, corte
+                )
+                derivado = True
+            else:
+                dias_habiles = datos.dias_habiles
+                dias_trabajados = datos.dias_trabajados
+                derivado = datos.derivado
             salida.append(
                 CalendarioAgroSalida(
                     centro=centro.clave,
                     nombre=centro.nombre,
-                    dias_habiles=datos.dias_habiles,
-                    dias_trabajados=datos.dias_trabajados,
-                    ideal=ideal(datos.dias_trabajados, datos.dias_habiles),
+                    dias_habiles=dias_habiles,
+                    dias_trabajados=dias_trabajados,
+                    ideal=ideal(dias_trabajados, dias_habiles),
                     fecha_corte=corte,
-                    derivado=datos.derivado,
+                    derivado=derivado,
                 )
             )
         return salida
