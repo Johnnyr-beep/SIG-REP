@@ -43,10 +43,7 @@ class InteligenciaComercialService:
                 periodo=codigo_periodo,
                 periodo_anterior=anterior,
                 disponible=False,
-                mensaje=(
-                    f"No hay datos cargados para comparar {codigo_periodo} "
-                    f"con {anterior}."
-                ),
+                mensaje=(f"No hay datos cargados para comparar {codigo_periodo} con {anterior}."),
                 alertas=[],
                 productos_no_solicitados=[],
                 oportunidades=[],
@@ -63,8 +60,7 @@ class InteligenciaComercialService:
             )
 
         catalogo = {
-            fila.id: fila.nombre
-            for fila in self._sesion.execute(select(AgroDimension)).scalars()
+            fila.id: fila.nombre for fila in self._sesion.execute(select(AgroDimension)).scalars()
         }
         actual_data = self._agregados(actual.id)
         previo_data = self._agregados(previo.id)
@@ -152,8 +148,7 @@ class InteligenciaComercialService:
                 prioridad="media",
                 titulo="Recuperar productos no solicitados",
                 detalle=(
-                    f"Revisar {len(productos)} combinaciones cliente-producto "
-                    "en la próxima visita."
+                    f"Revisar {len(productos)} combinaciones cliente-producto en la próxima visita."
                 ),
             ),
         ]
