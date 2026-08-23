@@ -52,6 +52,12 @@ services:
     build:
       context: ./backend
       target: produccion
+      args:
+        # Sin interpolación: el valor es fijo a propósito. Una imagen compilada
+        # aquí informa `0.0.0+local` en `/api/v1/salud`, mientras que las del CI
+        # informan `<versión>+<commit>`. Si producción llega a informar
+        # `0.0.0+local`, la imagen que corre se construyó a mano.
+        SIGREP_VERSION: 0.0.0+local
     container_name: sigrep-api
     depends_on:
       postgres:

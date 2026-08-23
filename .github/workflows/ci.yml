@@ -5,21 +5,19 @@ on:
     branches: [main, desarrollo]
   pull_request:
     branches: [main, desarrollo]
+  # Volver a construir y desplegar `main` sin empujar un commit vacío y sin
+  # pegar ningún hash en ningún panel: Actions → CI → Run workflow.
+  workflow_dispatch:
 
-# Un push nuevo cancela la ejecución anterior de la misma rama: no tiene sentido
-# gastar minutos validando un commit que ya quedó atrás.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # En `main` no se cancela. Una ejecución cancelada a mitad del despliegue deja
+  # la peor situación posible: nadie sabe si el webhook llegó a dispararse ni qué
+  # imagen quedó corriendo. En las demás ramas sí: solo se validan commits.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
-
-env:
-  # Clave ficticia: la configuración se niega a arrancar sin una, y en CI no se
-  # firma nada que salga del runner.
-  SIGREP_SECRET_KEY: clave-de-integracion-continua-con-mas-de-32-caracteres
-  SIGREP_ENTORNO: pruebas
 
 jobs:
   backend:
@@ -50,6 +48,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cargar el entorno de pruebas
+        working-directory: .
+        # El mismo archivo que cargan `scripts/pruebas-como-ci.sh` y su gemelo
+        # de PowerShell. Antes estas variables vivían en el bloque `env:` de este
+        # flujo y en la cabeza de quien desarrollaba: el CI probaba sobre SQLite
+        # en memoria y en local se probaba sobre un archivo `.db` con estado de
+        # la corrida anterior. Esa diferencia dejó pasar una prueba que vaciaba
+        # el registro de motores y aquí tumbó 31.
+        #
+        # $GITHUB_ENV solo admite líneas `NOMBRE=valor`: los comentarios y las
+        # líneas en blanco se filtran o el runner aborta con «Invalid format».
+        run: grep -v -e '^#' -e '^[[:space:]]*$' scripts/entorno-pruebas.env >> "$GITHUB_ENV"
+
       - uses: actions/setup-python@v5
         with:
           # Idéntica a la de la imagen de producción y a `requires-python` de
@@ -76,14 +87,16 @@ jobs:
         run: mypy app
 
       - name: Pruebas y cobertura
-        env:
-          # SQLite en memoria: las pruebas crean el esquema con
-          # `Base.metadata.create_all` y no necesitan servidor.
-          SIGREP_DB_URL_OVERRIDE: "sqlite://"
+        # Sin `env:` aquí a propósito: `SIGREP_DB_URL_OVERRIDE` viene del archivo
+        # compartido con local. Repetir el valor en este archivo es lo que dejó
+        # que los dos entornos se separaran sin que nadie lo notara.
         run: pytest --cov=app --cov-report=xml --cov-report=term
 
       - name: Migraciones sobre una base efímera
         env:
+          # Este sí pisa al del archivo compartido, y a propósito: las
+          # migraciones se verifican contra PostgreSQL real, que es el motor de
+          # producción. Las pruebas no lo necesitan; las migraciones sí.
           SIGREP_DB_URL_OVERRIDE: postgresql://sigrep_ci:sigrep_ci@localhost:5432/sigrep_ci
         run: |
           alembic upgrade head
@@ -168,13 +181,19 @@ jobs:
     name: Imágenes Docker
     runs-on: ubuntu-latest
     needs: [backend, frontend]
-    if: github.event_name == 'push'
+    # Todo lo que no sea un pull request: push a `main` o `desarrollo`, y el
+    # disparo manual. En un PR no hay dónde publicar.
+    if: github.event_name != 'pull_request'
 
     # `packages: write` es lo que permite publicar en GHCR con el token que
     # GitHub ya inyecta. No hace falta ningún secreto adicional.
     permissions:
       contents: read
       packages: write
+
+    outputs:
+      version: ${{ steps.identidad.outputs.version }}
+      sha_corto: ${{ steps.identidad.outputs.sha_corto }}
 
     steps:
       - uses: actions/checkout@v4
@@ -193,6 +212,26 @@ jobs:
         # GHCR solo admite minúsculas y el propietario puede tener mayúsculas.
         run: echo "valor=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
 
+      - name: Calcular la identidad de la compilación
+        id: identidad
+        # `1.0.0` a secas no distingue una compilación de otra: producción estuvo
+        # seis versiones atrasada informando exactamente ese mismo número, y
+        # descubrirlo costó horas. La base sale de pyproject.toml para no tener
+        # el número en dos sitios; el sufijo es el commit, que es lo único que
+        # identifica de verdad lo que se está ejecutando.
+        run: |
+          sha_corto="${GITHUB_SHA:0:7}"
+          base=$(sed -n 's/^version = "\(.*\)"$/\1/p' backend/pyproject.toml | head -n1)
+          if [ -z "$base" ]; then
+            echo "::error::No se pudo leer 'version' de backend/pyproject.toml."
+            exit 1
+          fi
+          {
+            echo "sha_corto=${sha_corto}"
+            echo "version=${base}+${sha_corto}"
+            echo "fecha=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Publicar la imagen del backend
         uses: docker/build-push-action@v6
         with:
@@ -204,6 +243,17 @@ jobs:
           tags: |
             ${{ steps.ns.outputs.valor }}/sigrep-api:latest
             ${{ steps.ns.outputs.valor }}/sigrep-api:${{ github.sha }}
+          # La versión se hornea en la imagen; no se pasa por el panel de
+          # Dokploy. Una imagen tiene que poder decir qué es sin depender de una
+          # variable que alguien pudo dejar mal puesta.
+          build-args: |
+            SIGREP_VERSION=${{ steps.identidad.outputs.version }}
+          labels: |
+            org.opencontainers.image.title=sigrep-api
+            org.opencontainers.image.version=${{ steps.identidad.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ steps.identidad.outputs.fecha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -216,37 +266,98 @@ jobs:
           tags: |
             ${{ steps.ns.outputs.valor }}/sigrep-web:latest
             ${{ steps.ns.outputs.valor }}/sigrep-web:${{ github.sha }}
+          build-args: |
+            SIGREP_VERSION=${{ steps.identidad.outputs.version }}
+          labels: |
+            org.opencontainers.image.title=sigrep-web
+            org.opencontainers.image.version=${{ steps.identidad.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ steps.identidad.outputs.fecha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Anotar qué se publicó
+        run: |
+          {
+            echo "### Imágenes publicadas"
+            echo
+            echo "| Dato | Valor |"
+            echo "|---|---|"
+            echo "| Versión | \`${{ steps.identidad.outputs.version }}\` |"
+            echo "| Commit | \`${GITHUB_SHA}\` |"
+            echo "| Etiquetas | \`latest\` y \`${GITHUB_SHA}\` |"
+            echo
+            echo "Con el despliegue terminado, \`GET /api/v1/salud\` debe informar"
+            echo "\`\"version\":\"${{ steps.identidad.outputs.version }}\"\`."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   desplegar:
     name: Desplegar en Dokploy
     runs-on: ubuntu-latest
     # Solo se despliega si TODO pasó: formato, lint, tipos, pruebas, migraciones
     # sin deriva y ambas imágenes construidas. Nunca se publica un commit que la
-    # integración continua no validó.
+    # integración continua no validó. `imagenes` está además en la lista porque
+    # de ahí sale la versión que hay que verificar en producción.
     needs: [backend, frontend, imagenes]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     # Con un `environment` protegido en la configuración del repositorio,
     # GitHub puede exigir aprobación manual antes de este paso.
     environment: produccion
 
+    env:
+      # El contexto `secrets` no está disponible en un `if:`, pero sí al definir
+      # el `env` del trabajo. Así «¿hay secreto?» se vuelve un booleano que los
+      # pasos sí pueden consultar, y una configuración que falta se resuelve
+      # saltando pasos en lugar de tumbando la ejecución entera.
+      HAY_WEBHOOK: ${{ secrets.DOKPLOY_WEBHOOK_URL != '' }}
+      # Variable de repositorio, no secreto: el dominio público es público.
+      # Settings → Secrets and variables → Actions → pestaña Variables.
+      URL_PUBLICA: ${{ vars.SIGREP_URL_PUBLICA }}
+      VERSION_ESPERADA: ${{ needs.imagenes.outputs.version }}
+
     steps:
+      - name: Sin webhook configurado no hay despliegue automático
+        if: env.HAY_WEBHOOK != 'true'
+        # Este paso NO falla, y esa es toda la razón por la que existe.
+        #
+        # Antes hacía `exit 1`, así que cada ejecución terminaba en rojo aunque
+        # pruebas, tipos e imágenes estuvieran en verde. El rojo dejó de
+        # significar nada, nadie volvió a mirarlo, y cuando el CI se rompió de
+        # verdad —31 pruebas caídas, ninguna imagen publicada— el aviso llegó del
+        # mismo color de siempre y pasó desapercibido tres commits seguidos.
+        #
+        # Una configuración que falta se avisa; un fallo real se tumba.
+        run: |
+          echo "::warning title=Despliegue omitido::Falta el secreto DOKPLOY_WEBHOOK_URL; las imágenes se publicaron pero nadie avisó a Dokploy."
+          {
+            echo "### Despliegue omitido"
+            echo
+            echo "Falta el secreto \`DOKPLOY_WEBHOOK_URL\`, así que **nadie avisó a Dokploy**."
+            echo "Las imágenes sí se publicaron en GHCR: producción sigue con la anterior"
+            echo "hasta que se despliegue a mano o se configure el secreto."
+            echo
+            echo "Para configurarlo:"
+            echo
+            echo "1. Dokploy → servicio \`sigrep-app\` → *Deployments* → copiar la *Webhook URL*."
+            echo "2. GitHub → Settings → Secrets and variables → Actions → *New repository secret*."
+            echo "3. Nombre \`DOKPLOY_WEBHOOK_URL\`, valor la URL copiada."
+            echo
+            echo "Quien tenga esa URL puede desplegar: es una credencial."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Disparar el despliegue
+        if: env.HAY_WEBHOOK == 'true'
         env:
           # La URL del webhook autoriza a desplegar por sí sola: va en los
           # secretos del repositorio, nunca en este archivo.
           WEBHOOK: ${{ secrets.DOKPLOY_WEBHOOK_URL }}
         run: |
-          if [ -z "$WEBHOOK" ]; then
-            echo "::error::Falta el secreto DOKPLOY_WEBHOOK_URL."
-            exit 1
-          fi
-
           # El webhook de Dokploy espera el cuerpo de un evento push de Git y
           # compara la rama con la que tiene configurada. Un POST vacío se
-          # rechaza con {"message":"Branch Not Match"}, así que hay que enviar
-          # el `ref` explícitamente.
+          # rechaza con {"message":"Branch Not Match"}, así que hay que enviar el
+          # `ref` explícitamente. En un disparo manual GITHUB_REF ya vale
+          # `refs/heads/main`, que es la rama configurada en el servicio.
           codigo=$(curl --silent --show-error --location \
                         --request POST "$WEBHOOK" \
                         --header 'Content-Type: application/json' \
@@ -261,6 +372,8 @@ jobs:
           cat /tmp/respuesta.txt || true
           echo
 
+          # Un rechazo sí es un fallo real: la URL existe, el servicio contestó,
+          # y contestó que no. Eso se tumba.
           if grep -qi "not match\|error\|unauthorized" /tmp/respuesta.txt 2>/dev/null; then
             echo "::error::Dokploy rechazó el disparo: $(cat /tmp/respuesta.txt)"
             echo "::error::Verifique que la rama configurada en el servicio sea 'main'."
@@ -272,7 +385,187 @@ jobs:
             *) echo "::error::Dokploy respondió HTTP $codigo."; exit 1 ;;
           esac
 
-      - name: Recordatorio de verificación
+      - name: Sin dominio configurado no se puede verificar
+        if: env.HAY_WEBHOOK == 'true' && env.URL_PUBLICA == ''
         run: |
-          echo "::notice::Verifique en el panel de Dokploy que la construcción terminó."
-          echo "::notice::Después compruebe /api/v1/salud y /listo en el dominio."
+          echo "::warning title=Sin verificación::Defina la variable SIGREP_URL_PUBLICA para comprobar qué versión quedó corriendo."
+          {
+            echo "### Despliegue disparado, sin verificar"
+            echo
+            echo "Dokploy aceptó el disparo, pero **nadie comprobó qué quedó corriendo**."
+            echo "Ese hueco es el que tuvo a producción seis versiones atrás informando"
+            echo "\`1.0.0\` todo el tiempo."
+            echo
+            echo "Para cerrarlo: GitHub → Settings → Secrets and variables → Actions →"
+            echo "pestaña *Variables* → *New repository variable*:"
+            echo
+            echo "| Nombre | Valor |"
+            echo "|---|---|"
+            echo "| \`SIGREP_URL_PUBLICA\` | dominio público de SIGREP, p. ej. \`https://sigrep.grupo-santacruz.com\` |"
+            echo
+            echo "Es una variable y no un secreto: el dominio es público."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verificar qué versión quedó corriendo
+        if: env.HAY_WEBHOOK == 'true' && env.URL_PUBLICA != ''
+        # La comprobación que faltaba. Dokploy responde «desplegado» aunque haya
+        # vuelto a levantar exactamente la misma imagen de siempre: sin preguntar
+        # a la aplicación qué versión es, «desplegado correctamente» y «no cambió
+        # nada» son indistinguibles desde aquí.
+        run: |
+          url="${URL_PUBLICA%/}"
+          case "$url" in
+            http://* | https://*) ;;
+            *) url="https://$url" ;;
+          esac
+
+          echo "Esperando a que ${url} informe la versión ${VERSION_ESPERADA}…"
+
+          # Dokploy tiene que descargar dos imágenes y Swarm relevar los
+          # servicios con `start-first`: antes de ~20 s contesta la instancia
+          # vieja y esa respuesta no significa nada.
+          sleep 20
+
+          limite=$((SECONDS + 480))
+          respondio=0
+          reportada=""
+
+          while [ "$SECONDS" -lt "$limite" ]; do
+            cuerpo=$(curl --silent --location --max-time 10 "${url}/api/v1/salud" || true)
+            if [ -n "$cuerpo" ]; then
+              respondio=1
+              # Con `sed` y no con `jq`: esta comprobación es la que decide si
+              # producción quedó bien, así que no puede depender de que una
+              # herramienta esté instalada en el runner. El campo `version` es
+              # un literal plano en un JSON de un nivel.
+              reportada=$(printf '%s' "$cuerpo" | sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+              if [ "$reportada" = "$VERSION_ESPERADA" ]; then
+                echo "::notice title=Producción al día::Informa ${reportada}."
+                web=$(curl --silent --location --max-time 10 "${url}/version.txt" 2>/dev/null | tr -d '[:space:]' || true)
+                if [ -n "$web" ] && [ "$web" != "$VERSION_ESPERADA" ]; then
+                  echo "::warning::La API informa ${reportada} y la interfaz informa ${web}: las dos imágenes no quedaron a la misma altura."
+                fi
+                {
+                  echo "### Producción verificada"
+                  echo
+                  echo "\`${url}/api/v1/salud\` informa \`${reportada}\`, que es esta compilación."
+                } >> "$GITHUB_STEP_SUMMARY"
+                exit 0
+              fi
+            fi
+            sleep 15
+          done
+
+          if [ "$respondio" -eq 0 ]; then
+            # No se puede afirmar ni negar nada: puede estar caído, puede ser el
+            # dominio mal escrito, puede ser el runner sin salida. Se avisa, no
+            # se tumba: un rojo que no distingue esos tres casos no sirve.
+            echo "::warning title=Sin respuesta::${url}/api/v1/salud no contestó en 8 minutos; no se pudo verificar la versión."
+            exit 0
+          fi
+
+          if [ -z "$reportada" ]; then
+            # Contesta algo que no es la sonda: el dominio no está sirviendo esta
+            # aplicación. Los dos casos conocidos están en docs/DESPLIEGUE.md §9.
+            echo "::error title=El dominio no sirve la API::${url}/api/v1/salud contesta, pero sin un JSON con 'version'."
+            {
+              echo "### El dominio contesta, pero no es la API de SIGREP"
+              echo
+              echo "Últimos 300 caracteres de la respuesta:"
+              echo
+              echo '```'
+              printf '%s' "$cuerpo" | tail -c 300
+              echo
+              echo '```'
+              echo
+              echo "- **404 en texto plano**: el servicio de Dokploy no es de tipo *Stack* y"
+              echo "  Traefik, en modo Swarm, no ve sus contenedores."
+              echo "- **400 «Invalid host header»**: \`SIGREP_HOSTS_PERMITIDOS\` no incluye el"
+              echo "  dominio público."
+              echo "- **Otra cosa**: \`SIGREP_URL_PUBLICA\` apunta a un sitio que no es SIGREP."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          echo "::error title=Producción no quedó en esta versión::Informa '${reportada}' y se esperaba '${VERSION_ESPERADA}'."
+          {
+            echo "### Producción NO quedó en esta versión"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Informa | \`${reportada}\` |"
+            echo "| Se esperaba | \`${VERSION_ESPERADA}\` |"
+            echo
+            echo "Causas, en orden de probabilidad:"
+            echo
+            echo "1. **\`SIGREP_IMAGEN_TAG\` fijado en el panel de Dokploy.** Clava producción en"
+            echo "   una imagen concreta y ningún despliegue posterior la mueve. Se pone una vez"
+            echo "   para diagnosticar y se queda. Bórrelo del *Environment* del servicio."
+            echo "2. **El despliegue falló después de aceptar el disparo.** Dokploy → servicio →"
+            echo "   *Deployments* → log de la última."
+            echo "3. **El servicio apunta a otra rama o a otro archivo compose.**"
+            echo "4. Si informa una versión **sin \`+\`** (p. ej. \`1.0.0\`), lo que corre es una"
+            echo "   imagen anterior a que el CI horneara la versión: nunca llegó lo nuevo."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+  resultado:
+    name: Resultado
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, seguridad, imagenes, desplegar]
+    # `always()` para que corra incluso cuando algo de arriba falló o se saltó:
+    # es justo entonces cuando hace falta que alguien traduzca el resultado.
+    if: always()
+
+    steps:
+      - name: Resumir y traducir consecuencias
+        env:
+          R_BACKEND: ${{ needs.backend.result }}
+          R_FRONTEND: ${{ needs.frontend.result }}
+          R_SEGURIDAD: ${{ needs.seguridad.result }}
+          R_IMAGENES: ${{ needs.imagenes.result }}
+          R_DESPLEGAR: ${{ needs.desplegar.result }}
+          ES_MAIN: ${{ github.ref == 'refs/heads/main' }}
+        # Existe porque el encadenamiento no es evidente: `imagenes` depende de
+        # `backend` y `frontend`, así que una prueba en rojo no publica imagen, y
+        # sin imagen nueva Dokploy despliega «correctamente» la de siempre. En
+        # producción eso se ve como «no cambia nada», que no se parece en nada a
+        # «una prueba falló». Tres commits se perdieron en esa distancia.
+        run: |
+          {
+            echo "## Resultado"
+            echo
+            echo "| Trabajo | Resultado |"
+            echo "|---|---|"
+            echo "| Backend | ${R_BACKEND} |"
+            echo "| Frontend | ${R_FRONTEND} |"
+            echo "| Seguridad | ${R_SEGURIDAD} |"
+            echo "| Imágenes | ${R_IMAGENES} |"
+            echo "| Despliegue | ${R_DESPLEGAR} |"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          fallo=0
+          for resultado in "$R_BACKEND" "$R_FRONTEND" "$R_SEGURIDAD" "$R_IMAGENES" "$R_DESPLEGAR"; do
+            case "$resultado" in
+              success | skipped) ;;
+              *) fallo=1 ;;
+            esac
+          done
+
+          if [ "$ES_MAIN" = "true" ] && [ "$R_IMAGENES" != "success" ]; then
+            echo "::error title=Producción no cambió::No se publicaron imágenes nuevas: producción sigue ejecutando la anterior."
+            {
+              echo "> **No se publicaron imágenes nuevas.** Producción sigue ejecutando la"
+              echo "> anterior: el síntoma allí será «no cambia nada», no «algo falló»."
+              echo "> Arregle lo que esté en rojo aquí arriba y vuelva a empujar. Este commit"
+              echo "> no está en producción."
+              echo
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ "$fallo" -eq 1 ]; then
+            exit 1
+          fi
+
+          echo "Todo en verde." >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,150 @@
+name: Verificar producción
+
+# Pregunta a producción qué versión está corriendo y la compara con `main`.
+#
+# Existe porque una variable puesta para diagnosticar —fijar la imagen a un
+# commit concreto— se quedó en el panel y clavó producción en esa versión
+# mientras se publicaban seis más. Nadie lo notó: cada despliegue terminaba
+# «correctamente», la aplicación informaba `1.0.0` como siempre, y el único
+# síntoma era que los cambios no aparecían. Descubrirlo costó cuatro horas.
+#
+# Con esto, ese desfase se detecta al día siguiente y por correo, en vez de
+# cuando alguien pregunta por qué su cambio no está.
+
+on:
+  schedule:
+    # 12:00 UTC = 07:00 en Colombia, días hábiles: antes de que nadie empiece a
+    # trabajar sobre una versión que no es la que cree.
+    - cron: "0 12 * * 1-5"
+  # Botón «¿qué está corriendo ahora mismo?»: Actions → Verificar producción →
+  # Run workflow. Sin entrar al servidor y sin pegar ningún hash.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: Comparar producción con main
+    runs-on: ubuntu-latest
+
+    env:
+      URL_PUBLICA: ${{ vars.SIGREP_URL_PUBLICA }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Historia completa para poder contar cuántos commits separan lo que
+          # corre en producción de lo que hay en `main`.
+          fetch-depth: 0
+
+      - name: Sin dominio configurado no hay nada que comparar
+        if: env.URL_PUBLICA == ''
+        # Termina en verde a propósito. Una comprobación que se pone roja todos
+        # los días por una variable que falta se convierte en ruido, y el ruido
+        # es exactamente lo que dejó pasar el fallo que este flujo vigila.
+        run: |
+          echo "::notice title=Sin verificar::Defina la variable SIGREP_URL_PUBLICA para que esta comprobación tenga contra qué preguntar."
+          {
+            echo "### Sin dominio configurado"
+            echo
+            echo "GitHub → Settings → Secrets and variables → Actions → *Variables* →"
+            echo "*New repository variable*: \`SIGREP_URL_PUBLICA\` con el dominio público de"
+            echo "SIGREP. Es una variable y no un secreto."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Qué versión corre y cuánto le falta a main
+        if: env.URL_PUBLICA != ''
+        run: |
+          url="${URL_PUBLICA%/}"
+          case "$url" in
+            http://* | https://*) ;;
+            *) url="https://$url" ;;
+          esac
+
+          sha_main="${GITHUB_SHA:0:7}"
+          base=$(sed -n 's/^version = "\(.*\)"$/\1/p' backend/pyproject.toml | head -n1)
+          esperada="${base}+${sha_main}"
+
+          # Tres intentos: una petición perdida no es una caída, pero tres
+          # seguidas en un minuto ya no se explican por mala suerte de la red.
+          cuerpo=""
+          for intento in 1 2 3; do
+            cuerpo=$(curl --silent --location --max-time 15 "${url}/api/v1/salud" || true)
+            [ -n "$cuerpo" ] && break
+            echo "Intento ${intento}: sin respuesta; reintentando en 20 s…"
+            sleep 20
+          done
+
+          if [ -z "$cuerpo" ]; then
+            echo "::error title=Producción no responde::${url}/api/v1/salud no contestó en tres intentos."
+            {
+              echo "### Producción no responde"
+              echo
+              echo "\`${url}/api/v1/salud\` no contestó en tres intentos durante un minuto."
+              echo "O el servicio está caído, o el dominio dejó de resolver, o"
+              echo "\`SIGREP_URL_PUBLICA\` está mal escrita."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          # Con `sed` y no con `jq`: esta comprobación no puede depender de qué
+          # herramientas trae el runner. El campo es un literal en un JSON plano.
+          reportada=$(printf '%s' "$cuerpo" | sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+
+          if [ -z "$reportada" ]; then
+            echo "::error title=El dominio no sirve la API::Contesta, pero sin un JSON con 'version'."
+            {
+              echo "### El dominio contesta, pero no es la API de SIGREP"
+              echo
+              echo "Un **404** en texto plano suele ser el servicio de Dokploy creado sin"
+              echo "*Compose Type = Stack*; un **400 «Invalid host header»**, un"
+              echo "\`SIGREP_HOSTS_PERMITIDOS\` que no incluye el dominio. Ver"
+              echo "docs/DESPLIEGUE.md §9."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          if [ "$reportada" = "$esperada" ]; then
+            echo "::notice title=Producción al día::Corre ${reportada}, que es la punta de main."
+            {
+              echo "### Producción al día"
+              echo
+              echo "\`${url}\` corre \`${reportada}\`, que es exactamente la punta de \`main\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # Cuántos commits de distancia hay. El número es lo que convierte
+          # «está desfasado» en «lleva seis versiones sin actualizarse».
+          distancia="desconocida"
+          sha_prod="${reportada#*+}"
+          if [ "$sha_prod" != "$reportada" ] && git cat-file -e "${sha_prod}^{commit}" 2>/dev/null; then
+            distancia="$(git rev-list --count "${sha_prod}..HEAD") commit(s)"
+          fi
+
+          echo "::error title=Producción desfasada::Corre ${reportada} y main va por ${esperada}."
+          {
+            echo "### Producción NO está en la punta de main"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Producción corre | \`${reportada}\` |"
+            echo "| \`main\` va por | \`${esperada}\` |"
+            echo "| Distancia | ${distancia} |"
+            echo
+            echo "Causas, en orden de probabilidad:"
+            echo
+            echo "1. **\`SIGREP_IMAGEN_TAG\` fijado en el *Environment* de Dokploy.** Clava"
+            echo "   producción en una imagen concreta y ningún despliegue posterior la mueve."
+            echo "   Es exactamente lo que pasó una vez: se puso para diagnosticar y se quedó."
+            echo "   Bórrelo y vuelva a desplegar."
+            echo "2. **El último CI no publicó imágenes** porque algo se puso en rojo. Revise"
+            echo "   la última ejecución del flujo *CI* en \`main\`."
+            echo "3. **El despliegue falló en el servidor** después de aceptar el disparo."
+            echo "   Dokploy → servicio → *Deployments* → log de la última."
+            echo
+            echo "Para volver a desplegar la punta de \`main\` sin tocar el panel:"
+            echo "Actions → *CI* → *Run workflow* sobre \`main\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1

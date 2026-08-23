@@ -69,6 +69,26 @@ COPY --chown=sigrep:sigrep alembic.ini ./
 COPY --chown=sigrep:sigrep docker/arranque.sh /usr/local/bin/arranque.sh
 RUN chmod +x /usr/local/bin/arranque.sh
 
+# ── Identidad de la compilación ───────────────────────────────────────────────
+#
+# `GET /api/v1/salud` publica `settings.version`, y su valor por omisión —`1.0.0`
+# para toda compilación— no distingue una imagen de otra. Producción estuvo seis
+# versiones atrasada informando ese mismo número y averiguarlo costó una tarde:
+# el sistema decía la verdad, pero una verdad que no servía para nada.
+#
+# El CI pasa aquí `<versión de pyproject.toml>+<sha corto>`, de modo que la
+# imagen sabe qué es sin preguntarle a nadie. Por eso mismo `SIGREP_VERSION`
+# **no debe aparecer** en el bloque `environment:` de ningún compose: una imagen
+# que informa lo que le dictan desde un panel no sirve para verificar nada.
+#
+# El valor por omisión delata una compilación hecha a mano: si producción llega a
+# informar `0.0.0+local`, esa imagen no salió del CI.
+#
+# Va al final del archivo a propósito. Cambiar este valor invalida la caché de
+# todas las capas siguientes, y a partir de aquí ya no queda nada caro.
+ARG SIGREP_VERSION=0.0.0+local
+ENV SIGREP_VERSION=${SIGREP_VERSION}
+
 USER sigrep
 EXPOSE 8000
 

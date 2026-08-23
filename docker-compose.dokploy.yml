@@ -24,6 +24,11 @@
 #   2. Provider: este repositorio, rama `main`, Compose Path este archivo.
 #   3. Environment: el bloque de docs/DESPLIEGUE.md §3.
 #   4. Domains: servicio `web`, puerto 8080, HTTPS con Let's Encrypt.
+#   5. **Auto Deploy desactivado.** Quien dispara el despliegue es el CI, y solo
+#      después de que pasen las pruebas y de publicar las imágenes. Con Auto
+#      Deploy activo, un push despliega antes de que exista la imagen nueva: el
+#      panel dice «desplegado correctamente» habiendo vuelto a levantar la de
+#      siempre, que es indistinguible de un despliegue real y esconde un CI roto.
 #
 # Requisito de una sola vez: los paquetes `sigrep-api` y `sigrep-web` deben ser
 # **públicos** en GHCR, o el servidor no podrá descargarlos. Se cambia en
@@ -31,9 +36,30 @@
 
 services:
   api:
-    image: ${SIGREP_REGISTRO:-ghcr.io/johnnyr-beep}/sigrep-api:${SIGREP_VERSION:-latest}
+    # `SIGREP_IMAGEN_TAG` **normalmente no se define**, y la etiqueta es `latest`:
+    # lo que el CI publica en cada push a `main` después de que pase todo.
+    #
+    # Se llamaba `SIGREP_VERSION` y cambió de nombre a propósito. Se fijó una vez
+    # a un commit concreto para forzar una imagen durante un diagnóstico;
+    # funcionó, el problema se resolvió y la variable se quedó en el panel. A
+    # partir de ahí producción quedó clavada en ese commit mientras el CI
+    # publicaba seis versiones más: cada despliegue terminaba «correctamente» y
+    # nada cambiaba. El nombre nuevo dice lo que la variable hace de verdad
+    # —fijar una etiqueta de imagen, no declarar la versión de nada— y de paso
+    # deja sin efecto el `SIGREP_VERSION` viejo si alguien lo dejó en el panel.
+    #
+    # Fijarla es legítimo para revertir (docs/DESPLIEGUE.md §5), pero es un
+    # ancla: quítela en cuanto la reversión deje de hacer falta. Mientras siga
+    # puesta, el flujo «Verificar producción» avisa todos los días.
+    image: ${SIGREP_REGISTRO:-ghcr.io/johnnyr-beep}/sigrep-api:${SIGREP_IMAGEN_TAG:-latest}
     environment:
       SIGREP_ENTORNO: produccion
+      # `SIGREP_VERSION` NO está en esta lista, y es deliberado. La versión que
+      # publica `/api/v1/salud` viene horneada en la imagen por el CI (ver
+      # backend/Dockerfile). Declararla aquí dejaría que el panel dictara qué
+      # versión dice ser el contenedor, y una imagen que informa lo que le mandan
+      # no sirve para averiguar qué está corriendo —que es exactamente lo que
+      # costó cuatro horas averiguar.
       SIGREP_SECRET_KEY: ${SIGREP_SECRET_KEY}
       # `SIGREP_DB_URL_OVERRIDE` admite la cadena tal cual la entrega el panel
       # de Dokploy, incluido el esquema `postgres://` heredado: la aplicación lo
@@ -113,7 +139,11 @@ services:
         order: start-first
 
   web:
-    image: ${SIGREP_REGISTRO:-ghcr.io/johnnyr-beep}/sigrep-web:${SIGREP_VERSION:-latest}
+    # La misma etiqueta que `api`, siempre. Las dos imágenes salen de la misma
+    # ejecución del CI y del mismo commit: separarlas es servir una interfaz que
+    # habla con una API que ya no existe. `/version.txt` publica cuál quedó, para
+    # poder compararla con la que informa la sonda de la API.
+    image: ${SIGREP_REGISTRO:-ghcr.io/johnnyr-beep}/sigrep-web:${SIGREP_IMAGEN_TAG:-latest}
     networks:
       # `interna` para que nginx resuelva `api:8000` en su proxy_pass;
       # `dokploy-network` para que Traefik lo alcance. Sin la segunda, el router
