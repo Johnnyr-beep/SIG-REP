@@ -36,6 +36,7 @@ from app.infrastructure.models.agro_vocabulario import (
     DimensionPresupuesto,
     EjeCruce,
     EjeResumen,
+    TipoDimension,
 )
 from app.schemas.agro import (
     CalendarioAgroEntrada,
@@ -43,6 +44,7 @@ from app.schemas.agro import (
     CorridaAgroSalida,
     CuadrePresupuestoSalida,
     HistorialAgroSalida,
+    MiembroDimensionSalida,
     PresupuestoAgroEntrada,
     PresupuestoAgroSalida,
     PresupuestoDimensionSalida,
@@ -309,6 +311,30 @@ def historial(
     dimension: DimensionPresupuesto | None = None,
 ) -> list[HistorialAgroSalida]:
     return AgroPresupuestoService(sesion).historial(periodo, dimension)
+
+
+# ── Catalogo ──────────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/dimensiones",
+    response_model=list[MiembroDimensionSalida],
+    summary="Miembros de una dimension",
+)
+def dimensiones(
+    _: LecturaDep, sesion: SesionDep, tipo: TipoDimension
+) -> list[MiembroDimensionSalida]:
+    """Los miembros que existen en una dimension, para poder elegir uno.
+
+    Lo consume la pantalla de presupuesto: fijar una meta a mano exige saber a
+    quien, y la clave es la del origen —la cedula del vendedor, el `CO_Id` del
+    centro—, no algo que se pueda teclear de memoria. Sin esta lista, la unica
+    forma de capturar el presupuesto era subir un archivo.
+
+    **El catalogo lo crea la ingesta**, no esta ruta. Si viene vacio no es un
+    fallo: es que todavia no se ha cargado venta de la que deducirlo.
+    """
+    return AgroPresupuestoService(sesion).miembros(tipo)
 
 
 # ── Calendario ────────────────────────────────────────────────────────────────

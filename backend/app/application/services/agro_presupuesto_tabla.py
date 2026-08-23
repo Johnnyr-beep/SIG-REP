@@ -269,6 +269,16 @@ def _leer_hoja(
             sin_resolver.append(nombre)
             continue
 
+        if monto_p is None and kilos_p is None:
+            # Sin ninguna cifra no hay nada que cuadre con nada, y la condición
+            # de abajo —«o coincide o viene vacío»— se cumplía de forma vacía y
+            # lo daba por subtotal. Una fila así es justo lo contrario: un nombre
+            # que no cruzó con el catálogo y del que nadie se iba a enterar,
+            # porque salía en `omitidas` junto a los subtotales legítimos que
+            # nadie revisa.
+            sin_resolver.append(nombre)
+            continue
+
         suma_monto = _redondear(sum((m.monto for m in grupo), Decimal(0)), DECIMALES_MONTO)
         suma_kilos = _redondear(sum((m.kilos for m in grupo), Decimal(0)), DECIMALES_KILOS)
         es_subtotal = (monto_p is None or monto_p == suma_monto) and (

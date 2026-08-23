@@ -57,7 +57,12 @@ from sqlalchemy.orm import Session
 
 from app.application.services import agro_presupuesto_tabla as tabla
 from app.application.services.periodos import obtener_o_crear_periodo, obtener_periodo
-from app.core.errors import ErrorNoEncontrado, ErrorPeriodoCerrado, ErrorValidacion
+from app.core.errors import (
+    ErrorNoEncontrado,
+    ErrorPeriodoCerrado,
+    ErrorSigrep,
+    ErrorValidacion,
+)
 from app.core.logging import obtener_logger
 from app.domain.normalizacion import (
     ESCALA_DINERO,
@@ -81,6 +86,7 @@ from app.schemas.agro import (
     CuadrePresupuestoSalida,
     ErrorFilaAgro,
     HistorialAgroSalida,
+    MiembroDimensionSalida,
     PresupuestoAgroSalida,
     PresupuestoDimensionSalida,
     ResultadoCargaAgro,
@@ -567,6 +573,33 @@ class AgroPresupuestoService:
             kilos=Decimal(fila.kilos),
         )
 
+    # ── Catálogo de dimensiones ───────────────────────────────────────────────
+
+    def miembros(self, tipo: TipoDimension) -> list[MiembroDimensionSalida]:
+        """El catálogo de una dimensión, en orden alfabético.
+
+        Sale de lo que dejó la ingesta y no de una tabla que alguien mantenga a
+        mano: si aquí se pudieran inventar miembros, se crearía un «Planta» que
+        no case con el `301` que manda el origen y el presupuesto quedaría
+        colgado de una clave que ninguna venta usa.
+
+        Se publica el `activo` de cada fila y no un `True` fijo: el catálogo
+        tiene esa columna para poder retirar un miembro sin borrarlo —borrarlo se
+        llevaría por delante el presupuesto que cuelga de su clave—, y anunciar
+        a todos como activos convertiría esa marca en decoración. La lista sale
+        entera y con su estado; que la pantalla ofrezca o no un miembro retirado
+        es decisión suya, pero con el dato delante.
+        """
+        filas = self._sesion.execute(
+            select(AgroDimension)
+            .where(AgroDimension.tipo == tipo.value)
+            .order_by(AgroDimension.nombre)
+        ).scalars()
+        return [
+            MiembroDimensionSalida(tipo=d.tipo, clave=d.clave, nombre=d.nombre, activo=d.activo)
+            for d in filas
+        ]
+
     # ── Carga masiva ──────────────────────────────────────────────────────────
 
     def cargar_masivo(
@@ -637,14 +670,31 @@ class AgroPresupuestoService:
         if nombre.endswith(".csv"):
             crudas = _filas_csv(contenido)
         elif nombre.endswith((".xlsx", ".xlsm")):
-            # Antes del formato genérico se prueba el libro que arma el negocio,
-            # con su tabla dinámica y sus subtotales. Pedirle que lo reformatee
-            # para poder cargarlo es la petición que acaba en «entonces lo sigo
-            # llevando en Excel».
-            propio = self._leer_libro_del_negocio(contenido)
-            if propio is not None:
-                return propio
-            crudas = _filas_excel(contenido)
+            # Los dos intentos de abrir el libro van bajo la misma guarda. Un
+            # `.xlsx` truncado a medio subir tiene las partes en su sitio —así
+            # que pasa la comprobación de `leer_subida`— y revienta al parsearlo:
+            # `openpyxl` no promete un tipo de excepción concreto y lo que llegue
+            # sin envolver sale por la API como un 500 en lugar de decirle a
+            # quien subió el archivo que vuelva a subirlo.
+            try:
+                # Antes del formato genérico se prueba el libro que arma el
+                # negocio, con su tabla dinámica y sus subtotales. Pedirle que lo
+                # reformatee para poder cargarlo es la petición que acaba en
+                # «entonces lo sigo llevando en Excel».
+                propio = self._leer_libro_del_negocio(contenido)
+                if propio is not None:
+                    return propio
+                crudas = _filas_excel(contenido)
+            except ErrorSigrep:
+                # Los errores del dominio ya dicen lo suyo —«todavía no hay
+                # vendedores en el catálogo»— y taparlos con el mensaje genérico
+                # mandaría a buscar un archivo corrupto que está perfecto.
+                raise
+            except Exception as exc:
+                raise ErrorValidacion(
+                    "No se pudo abrir el libro: está dañado o incompleto. Vuelva a "
+                    "guardarlo desde Excel y súbalo de nuevo."
+                ) from exc
         else:
             raise ErrorValidacion("Formato no admitido. Use .xlsx o .csv.")
 
@@ -724,13 +774,45 @@ class AgroPresupuestoService:
     def _avisos_de_cuadre(
         lectura: tabla.LecturaTabla, filas: list[tuple[int, _FilaCarga]]
     ) -> list[ErrorFilaAgro]:
+        """Avisa si lo cargado no llega al total que el propio libro declara.
+
+        ── Por qué hay tolerancia aquí y no la hay en el cuadre entre dimensiones
+
+        Parecen la misma comparación y no lo son. El cuadre entre dimensiones
+        contrasta cuatro cifras que **alguien tecleó**, y ahí un peso de
+        diferencia es un dedazo que hay que ver. Esto contrasta el total del
+        libro contra la suma de sus propias filas, y las filas se redondean al
+        leerlas: el libro trae `6.315.016.727,261173` por vendedor y el sistema
+        guarda dos decimales, así que veintiún redondeos de hasta medio centavo
+        cada uno separan la suma del total sin que falte nadie.
+
+        La tolerancia es exactamente eso —`filas × medio paso`—, el máximo que el
+        redondeo por sí solo puede explicar. Cualquier diferencia mayor no la
+        produce el redondeo: falta alguien, y se dice.
+
+        Comparar exacto convertía este aviso en ruido de cada carga, y un aviso
+        que sale siempre es un aviso que nadie lee el día que es cierto.
+        """
         avisos: list[ErrorFilaAgro] = []
         pares = (
-            ("monto", lectura.total_libro_monto, sum((f.monto for _, f in filas), Decimal(0))),
-            ("kilos", lectura.total_libro_kilos, sum((f.kilos for _, f in filas), Decimal(0))),
+            (
+                "monto",
+                lectura.total_libro_monto,
+                sum((f.monto for _, f in filas), Decimal(0)),
+                tabla.DECIMALES_MONTO,
+            ),
+            (
+                "kilos",
+                lectura.total_libro_kilos,
+                sum((f.kilos for _, f in filas), Decimal(0)),
+                tabla.DECIMALES_KILOS,
+            ),
         )
-        for etiqueta, del_libro, cargado in pares:
-            if del_libro is not None and del_libro != cargado:
+        for etiqueta, del_libro, cargado, paso in pares:
+            if del_libro is None:
+                continue
+            tolerancia = paso * len(filas) / 2
+            if abs(del_libro - cargado) > tolerancia:
                 avisos.append(
                     ErrorFilaAgro(
                         fila=0,
