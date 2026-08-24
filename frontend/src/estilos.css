@@ -593,6 +593,59 @@ textarea {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
+/* ── Inteligencia comercial ─────────────────────────────────────────────── */
+
+.inteligencia__encabezado {
+  display: flex;
+  align-items: end;
+  min-height: 104px;
+  padding: var(--espacio-5);
+  background: var(--acento-suave);
+  border: 1px solid color-mix(in srgb, var(--acento) 28%, var(--borde));
+  border-radius: var(--radio);
+}
+
+.inteligencia__encabezado h2 {
+  margin-bottom: var(--espacio-2);
+  font-size: 1.45rem;
+}
+
+.inteligencia__eyebrow {
+  margin-bottom: var(--espacio-2);
+  color: var(--acento);
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.inteligencia__dos-columnas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--espacio-4);
+}
+
+.inteligencia__plan {
+  display: grid;
+  gap: var(--espacio-4);
+  padding: 0 0 0 1.4rem;
+  margin: 0;
+}
+
+.inteligencia__plan li {
+  padding-left: var(--espacio-2);
+}
+
+.inteligencia__plan strong,
+.inteligencia__plan span {
+  display: block;
+}
+
+.inteligencia__plan span {
+  margin-top: 2px;
+  color: var(--texto-suave);
+}
+
 /* ── Indicadores ─────────────────────────────────────────────────────────── */
 
 .indicador {
@@ -2361,6 +2414,10 @@ textarea.campo__control {
     position: sticky;
     left: auto;
     bottom: 0;
+  }
+
+  .inteligencia__dos-columnas {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
