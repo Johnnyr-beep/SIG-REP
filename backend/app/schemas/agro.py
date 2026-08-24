@@ -52,6 +52,21 @@ class MiembroDimensionSalida(EsquemaBase):
     activo: bool = True
 
 
+class FilaVentaComercialAgro(EsquemaBase):
+    """Venta por tipo comercial y especie, sin sumar dimensiones distintas."""
+
+    tipo_comercial: str
+    especie: str
+    venta_valor: DecimalStr
+    kilos: DecimalStr
+
+
+class RespuestaVentasComercialesAgro(EsquemaBase):
+    periodo: str
+    fecha_corte: date
+    filas: list[FilaVentaComercialAgro]
+
+
 # ── Presupuesto ───────────────────────────────────────────────────────────────
 
 

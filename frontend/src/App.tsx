@@ -16,6 +16,7 @@ import { CruceAgro } from "@/paginas/CruceAgro";
 import { IngestaAgro } from "@/paginas/IngestaAgro";
 import { InteligenciaAgro } from "@/paginas/InteligenciaAgro";
 import { PresupuestoAgro } from "@/paginas/PresupuestoAgro";
+import { ReportesVentasAgro } from "@/paginas/ReportesVentasAgro";
 import { ResumenAgro } from "@/paginas/ResumenAgro";
 import { VentaDiariaAgro } from "@/paginas/VentaDiariaAgro";
 import { CambioClaveObligatorio } from "@/paginas/CambioClave";
@@ -103,6 +104,7 @@ export function App() {
               <Route index element={<ResumenAgro />} />
               <Route path="cruce" element={<CruceAgro />} />
               <Route path="venta-diaria" element={<VentaDiariaAgro />} />
+              <Route path="reportes-ventas" element={<ReportesVentasAgro />} />
               <Route
                 path="presupuesto"
                 element={

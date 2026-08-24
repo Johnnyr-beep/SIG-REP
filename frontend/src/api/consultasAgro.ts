@@ -30,6 +30,7 @@ import type {
   RespuestaCruceAgro,
   RespuestaResumenAgro,
   RespuestaVentaDiariaAgro,
+  RespuestaVentasComercialesAgro,
   ResultadoCargaAgro,
   RespuestaInteligencia,
 } from "./tiposAgro";
@@ -92,6 +93,8 @@ export const clavesAgro = {
     ["agro", "reporte", "cruce", por, filtros] as const,
   ventaDiaria: (filtros: FiltrosAgro) =>
     ["agro", "reporte", "venta-diaria", filtros] as const,
+  ventasComerciales: (filtros: FiltrosAgro) =>
+    ["agro", "reporte", "ventas-comerciales", filtros] as const,
   presupuesto: (periodo: string, dimension: string) =>
     ["agro", "presupuesto", periodo, dimension] as const,
   cuadre: (periodo: string) =>
@@ -126,6 +129,19 @@ export function useResumenAgro(
     queryFn: () =>
       peticion<RespuestaResumenAgro>("/agro/resumen", {
         parametros: { ...comoParametros(filtros), por },
+      }),
+    staleTime: 60_000,
+  });
+}
+
+export function useVentasComercialesAgro(
+  filtros: FiltrosAgro,
+): UseQueryResult<RespuestaVentasComercialesAgro> {
+  return useQuery({
+    queryKey: clavesAgro.ventasComerciales(filtros),
+    queryFn: () =>
+      peticion<RespuestaVentasComercialesAgro>("/agro/ventas-comerciales", {
+        parametros: comoParametros(filtros),
       }),
     staleTime: 60_000,
   });

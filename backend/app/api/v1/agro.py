@@ -53,6 +53,7 @@ from app.schemas.agro import (
     RespuestaCruceAgro,
     RespuestaResumenAgro,
     RespuestaVentaDiariaAgro,
+    RespuestaVentasComercialesAgro,
     ResultadoCargaAgro,
 )
 from app.schemas.inteligencia import RespuestaInteligencia
@@ -136,6 +137,24 @@ def resumen(
     ademas cumplimiento, ideal, proyeccion y semaforo.
     """
     return AgroReportesService(sesion).resumen(_filtros(periodo, hasta, desde, centro, medida), por)
+
+
+@router.get(
+    "/ventas-comerciales",
+    response_model=RespuestaVentasComercialesAgro,
+    summary="Ventas por categoría comercial y especie",
+)
+def ventas_comerciales(
+    _: LecturaDep,
+    sesion: SesionDep,
+    periodo: str = PeriodoQuery,
+    hasta: date | None = None,
+    centro: str | None = None,
+    medida: Medida = Medida.VALOR,
+) -> RespuestaVentasComercialesAgro:
+    return AgroReportesService(sesion).ventas_comerciales(
+        _filtros(periodo, hasta, None, centro, medida)
+    )
 
 
 @router.get("/cruce", response_model=RespuestaCruceAgro, summary="Vendedor x cliente [x producto]")

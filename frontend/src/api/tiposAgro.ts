@@ -54,6 +54,19 @@ export interface RespuestaInteligencia {
   recomendaciones: RecomendacionComercial[];
 }
 
+export interface FilaVentaComercialAgro {
+  tipo_comercial: string;
+  especie: string;
+  venta_valor: string;
+  kilos: string;
+}
+
+export interface RespuestaVentasComercialesAgro {
+  periodo: string;
+  fecha_corte: string;
+  filas: FilaVentaComercialAgro[];
+}
+
 // ── Vocabulario ──────────────────────────────────────────────────────────────
 
 /**

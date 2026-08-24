@@ -87,12 +87,14 @@ from app.schemas.agro import (
     ConciliacionAgro,
     FilaCruceAgro,
     FilaResumenAgro,
+    FilaVentaComercialAgro,
     FilaVentaDiariaAgro,
     IndicadoresAgro,
     ParametrosCalculoAgro,
     RespuestaCruceAgro,
     RespuestaResumenAgro,
     RespuestaVentaDiariaAgro,
+    RespuestaVentasComercialesAgro,
     TotalesVentaDiariaAgro,
 )
 
@@ -312,6 +314,38 @@ class AgroReportesService:
             consolidado=consolidado,
             filas=filas,
             parametros_calculo=self._parametros(ctx, consolidado, dimension),
+        )
+
+    def ventas_comerciales(self, filtros: FiltrosAgro) -> RespuestaVentasComercialesAgro:
+        """Venta por categoría comercial y especie.
+
+        No mezcla res con cerdo ni convierte las categorías en especies: cada
+        fila conserva ambas dimensiones para que la pantalla pueda leer cortes,
+        subproductos, sacrificio, desposte y canales por separado.
+        """
+        ctx = self._contexto(filtros)
+        agregados = self._agregar(
+            ctx,
+            [
+                COLUMNA_DIMENSION[TipoDimension.TIPO_COMERCIAL],
+                COLUMNA_DIMENSION[TipoDimension.ESPECIE],
+            ],
+        )
+        filas: list[FilaVentaComercialAgro] = []
+        for (tipo_id, especie_id), totales in agregados.items():
+            tipo = ctx.catalogo.get(tipo_id)
+            especie = ctx.catalogo.get(especie_id)
+            filas.append(
+                FilaVentaComercialAgro(
+                    tipo_comercial=tipo.nombre if tipo is not None else str(tipo_id),
+                    especie=especie.nombre if especie is not None else str(especie_id),
+                    venta_valor=redondear_no_nulo(totales.valor, 2),
+                    kilos=redondear_no_nulo(totales.kilos, 3),
+                )
+            )
+        filas.sort(key=lambda fila: (fila.tipo_comercial, fila.especie))
+        return RespuestaVentasComercialesAgro(
+            periodo=ctx.periodo.codigo, fecha_corte=ctx.fecha_corte, filas=filas
         )
 
     # ── Los dos cruces ────────────────────────────────────────────────────────
