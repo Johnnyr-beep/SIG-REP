@@ -589,9 +589,13 @@ class AgroReportesService:
         como venta y el total subiría sin que nada fallara.
         """
         criterios: list[ColumnElement[bool]] = [AgroVentaLinea.es_impuesto.is_(False)]
-        if por_periodo:
+        if por_periodo and ctx.filtros.desde is None:
             criterios.append(AgroVentaLinea.periodo_id == ctx.periodo.id)
             criterios.append(AgroVentaLinea.fecha <= ctx.fecha_corte)
+        elif por_periodo:
+            desde, hasta = self._rango(ctx, ctx.filtros)
+            criterios.append(AgroVentaLinea.fecha >= desde)
+            criterios.append(AgroVentaLinea.fecha <= hasta)
         else:
             if desde is not None:
                 criterios.append(AgroVentaLinea.fecha >= desde)

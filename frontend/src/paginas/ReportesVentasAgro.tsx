@@ -24,7 +24,7 @@ export function ReportesVentasAgro() {
 
   return (
     <div className="pila">
-      <BarraFiltrosAgro control={control} />
+      <BarraFiltrosAgro control={control} mostrar={{ rango: true }} />
       <AvisoError error={comerciales.error ?? tipoItem.error ?? especie.error} />
       {comerciales.isLoading || tipoItem.isLoading || especie.isLoading ? (
         <Cargando texto="Preparando reportes de ventas…" />

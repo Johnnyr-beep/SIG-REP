@@ -149,11 +149,12 @@ def ventas_comerciales(
     sesion: SesionDep,
     periodo: str = PeriodoQuery,
     hasta: date | None = None,
+    desde: date | None = None,
     centro: str | None = None,
     medida: Medida = Medida.VALOR,
 ) -> RespuestaVentasComercialesAgro:
     return AgroReportesService(sesion).ventas_comerciales(
-        _filtros(periodo, hasta, None, centro, medida)
+        _filtros(periodo, hasta, desde, centro, medida)
     )
 
 

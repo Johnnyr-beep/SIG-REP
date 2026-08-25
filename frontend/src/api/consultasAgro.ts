@@ -66,6 +66,7 @@ export interface FiltrosAgro {
 function comoParametros(filtros: FiltrosAgro): Record<string, ValorParametro> {
   return {
     periodo: filtros.periodo,
+    desde: filtros.desde,
     hasta: filtros.hasta,
     centro: filtros.centro,
     medida: filtros.medida,
