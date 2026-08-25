@@ -619,6 +619,56 @@ textarea {
   text-transform: uppercase;
 }
 
+/* ── Reportes comerciales ────────────────────────────────────────────────── */
+
+.reportes-comerciales__cabecera {
+  padding: var(--espacio-5) 0 var(--espacio-2);
+  border-bottom: 1px solid var(--borde);
+}
+
+.reportes-comerciales__cabecera h2 {
+  margin-bottom: var(--espacio-2);
+  font-size: 1.45rem;
+}
+
+.reportes-comerciales__principal {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: var(--espacio-4);
+  align-items: start;
+}
+
+.reportes-comerciales__lista {
+  display: grid;
+  gap: var(--espacio-2);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.reportes-comerciales__lista li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--espacio-3);
+  align-items: center;
+  padding: var(--espacio-3) 0;
+  border-bottom: 1px solid var(--borde);
+}
+
+.reportes-comerciales__lista li:last-child {
+  border-bottom: 0;
+}
+
+.reportes-comerciales__lista span,
+.reportes-comerciales__lista small {
+  display: block;
+}
+
+.reportes-comerciales__lista small {
+  margin-top: 2px;
+  color: var(--texto-suave);
+}
+
 .inteligencia__dos-columnas {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2417,6 +2467,10 @@ textarea.campo__control {
   }
 
   .inteligencia__dos-columnas {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reportes-comerciales__principal {
     grid-template-columns: minmax(0, 1fr);
   }
 }
