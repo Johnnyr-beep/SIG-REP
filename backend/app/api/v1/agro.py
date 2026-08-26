@@ -35,6 +35,7 @@ from app.application.services.agro_presupuesto_service import AgroPresupuestoSer
 from app.application.services.agro_reportes_service import AgroReportesService, FiltrosAgro
 from app.application.services.inteligencia_comercial_service import InteligenciaComercialService
 from app.core.deps import SesionDep, leer_subida
+from app.core.errors import ErrorValidacion
 from app.domain.enums import Medida
 from app.infrastructure.models.agro_vocabulario import (
     DimensionPresupuesto,
@@ -60,6 +61,7 @@ from app.schemas.agro import (
     PresupuestoDimensionSalida,
     RechazoAgroSalida,
     RespuestaCruceAgro,
+    RespuestaCuboAgro,
     RespuestaResumenAgro,
     RespuestaVentaDiariaAgro,
     RespuestaVentasComercialesAgro,
@@ -94,6 +96,39 @@ def _centros(valor: str | None) -> tuple[str, ...] | None:
         return None
     codigos = tuple(dict.fromkeys(p.strip() for p in valor.split(",") if p.strip()))
     return codigos or None
+
+
+def _dimensiones(valor: str) -> list[TipoDimension]:
+    """Dimensiones separadas por coma, validadas contra ``TipoDimension``.
+
+    Devuelve una lista no vacía y ordenada según se pidió. Un valor desconocido
+    se rechaza como un parámetro inválido, antes de consultar la base.
+    """
+    partes = [p.strip() for p in valor.split(",") if p.strip()]
+    if not partes:
+        raise ErrorValidacion(
+            "El parametro 'dimensiones' no puede estar vacio. Opciones: "
+            + ", ".join(t.value for t in TipoDimension)
+            + "."
+        )
+    dims: list[TipoDimension] = []
+    for parte in partes:
+        try:
+            dims.append(TipoDimension(parte))
+        except ValueError:
+            raise ErrorValidacion(
+                f"Dimension {parte!r} no valida. Opciones: "
+                + ", ".join(t.value for t in TipoDimension)
+                + "."
+            ) from None
+    if len(dims) > 3:
+        raise ErrorValidacion(
+            "El cubo admite hasta tres dimensiones por consulta. "
+            "Reduzca la selección para conservar una lectura operativa."
+        )
+    if len(set(dims)) != len(dims):
+        raise ErrorValidacion("Cada dimensión solo puede aparecer una vez en el cubo.")
+    return dims
 
 
 def _eje[E: StrEnum](enumerado: type[E], valor: str | None, por_defecto: E) -> E:
@@ -168,6 +203,44 @@ def ventas_comerciales(
 ) -> RespuestaVentasComercialesAgro:
     return AgroReportesService(sesion).ventas_comerciales(
         _filtros(periodo, hasta, desde, centro, medida)
+    )
+
+
+@router.get(
+    "/cubo",
+    response_model=RespuestaCuboAgro,
+    summary="Cubo de ventas: N dimensiones, todas las medidas",
+)
+def cubo(
+    _: LecturaDep,
+    sesion: SesionDep,
+    dimensiones: str = Query(
+        ...,
+        description=(
+            "Dimensiones separadas por coma, en orden: "
+            "'tipo_comercial,grupo,tipo_item'. Valores validos: "
+            "centro_operacion, tipo_item, especie, tipo_comercial, grupo, "
+            "vendedor, cliente, item."
+        ),
+        examples=["tipo_comercial,grupo,tipo_item"],
+    ),
+    periodo: str = PeriodoQuery,
+    hasta: date | None = None,
+    desde: date | None = None,
+    centro: str | None = None,
+    medida: Medida = Medida.VALOR,
+) -> RespuestaCuboAgro:
+    """Venta agregada por cualquier combinacion de dimensiones.
+
+    Replica el «Filtro Cubo» del ERP SIESA: el negocio elige que dimensiones
+    poner en las filas y el cubo agrega la venta por esa combinacion, con todas
+    las medidas que trae la fuente (cantidad, kilos, valor bruto, valor
+    subtotal, valor neto, costo y utilidad). El total refleja el corte entero,
+    sin truncar.
+    """
+    dims = _dimensiones(dimensiones)
+    return AgroReportesService(sesion).cubo(
+        _filtros(periodo, hasta, desde, centro, medida), dims
     )
 
 

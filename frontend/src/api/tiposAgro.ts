@@ -67,6 +67,43 @@ export interface RespuestaVentasComercialesAgro {
   filas: FilaVentaComercialAgro[];
 }
 
+// ── Cubo de ventas ──────────────────────────────────────────────────────────
+
+/** Las ocho dimensiones disponibles en el cubo comercial de SIESA/SIGREP. */
+export type DimensionCuboAgro =
+  | "centro_operacion"
+  | "tipo_item"
+  | "especie"
+  | "tipo_comercial"
+  | "grupo"
+  | "vendedor"
+  | "cliente"
+  | "item";
+
+/** Una combinación agrupada del cubo, con sus medidas de facturación. */
+export interface FilaCuboAgro {
+  claves: string[];
+  nombres: string[];
+  cantidad_inv: string;
+  kilos_total: string;
+  valor_bruto: string;
+  valor_subtotal: string;
+  total_neto: string;
+  total_costo: string | null;
+  utilidad_bruta: string | null;
+  lineas_facturadas: number;
+}
+
+export interface RespuestaCuboAgro {
+  periodo: string;
+  fecha_corte: string;
+  dimensiones: DimensionCuboAgro[];
+  filas: FilaCuboAgro[];
+  total: FilaCuboAgro;
+  truncado: boolean;
+  limite: number;
+}
+
 // ── Vocabulario ──────────────────────────────────────────────────────────────
 
 /**

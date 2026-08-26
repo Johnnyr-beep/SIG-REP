@@ -862,6 +862,111 @@ textarea {
   overflow: auto;
 }
 
+/* ── Cubo comercial ─────────────────────────────────────────────────────── */
+
+.cubo__configuracion {
+  display: grid;
+  grid-template-columns: minmax(16rem, 0.8fr) minmax(22rem, 1.4fr);
+  gap: var(--espacio-5);
+  align-items: start;
+  padding: var(--espacio-5);
+  background: var(--superficie-2);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+}
+
+.cubo__introduccion h2 {
+  margin: var(--espacio-1) 0 var(--espacio-2);
+}
+
+.cubo__introduccion p:last-child {
+  max-width: 52ch;
+  margin-bottom: 0;
+}
+
+.cubo__dimensiones {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.cubo__dimensiones legend {
+  margin-bottom: var(--espacio-2);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cubo__opciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2);
+}
+
+.cubo__opcion {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-1);
+  min-height: 2.25rem;
+  padding: 0 var(--espacio-3);
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  color: var(--texto-tenue);
+  cursor: pointer;
+}
+
+.cubo__opcion:has(input:checked) {
+  border-color: var(--acento);
+  color: var(--texto);
+  background: var(--acento-suave);
+  font-weight: 600;
+}
+
+.cubo__opcion:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.cubo__orden {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cubo__orden li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  min-height: 2.5rem;
+  padding: 0 var(--espacio-2) 0 var(--espacio-1);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+}
+
+.cubo__paso {
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--acento);
+  color: var(--acento-texto);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.cubo__orden-acciones {
+  display: inline-flex;
+  gap: 0.125rem;
+}
+
 .tabla {
   width: 100%;
   border-collapse: separate;

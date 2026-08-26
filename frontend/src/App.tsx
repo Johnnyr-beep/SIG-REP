@@ -13,6 +13,7 @@ import { Acceso } from "@/paginas/Acceso";
 import { Calendario } from "@/paginas/Calendario";
 import { CalendarioAgro } from "@/paginas/CalendarioAgro";
 import { CruceAgro } from "@/paginas/CruceAgro";
+import { CuboComercialAgro } from "@/paginas/CuboComercialAgro";
 import { IngestaAgro } from "@/paginas/IngestaAgro";
 import { InteligenciaAgro } from "@/paginas/InteligenciaAgro";
 import { PresupuestoAgro } from "@/paginas/PresupuestoAgro";
@@ -103,6 +104,7 @@ export function App() {
             <Route path="agro">
               <Route index element={<ResumenAgro />} />
               <Route path="cruce" element={<CruceAgro />} />
+              <Route path="cubo-comercial" element={<CuboComercialAgro />} />
               <Route path="venta-diaria" element={<VentaDiariaAgro />} />
               <Route path="reportes-ventas" element={<ReportesVentasAgro />} />
               <Route

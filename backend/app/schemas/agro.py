@@ -683,3 +683,52 @@ class ResultadoImportacionComercial(EsquemaBase):
     total_monto: DecimalStr
     total_kilos: DecimalStr
     filas: list[FilaImportacionComercial] = Field(default_factory=list)
+
+
+# ── Cubo de ventas (cubo dinámico) ────────────────────────────────────────────
+
+
+class FilaCuboAgro(EsquemaBase):
+    """Una fila del cubo de ventas: valores de las dimensiones + todas las medidas.
+
+    Replica el «Filtro Cubo» del ERP SIESA: el negocio elige qué dimensiones
+    poner en las filas (tipo comercial, grupo, tipo de ítem, etc.) y el cubo
+    agrega la venta por esa combinación, con todas las medidas que trae la
+    fuente: cantidad, kilos, valor bruto, valor subtotal, valor neto, costo y
+    utilidad.
+
+    `claves` y `nombres` son listas alineadas con `dimensiones` de la respuesta,
+    igual que en el cruce: cada elemento corresponde a una de las dimensiones
+    pedidas, en el mismo orden.
+    """
+
+    claves: list[str] = Field(default_factory=list)
+    nombres: list[str] = Field(default_factory=list)
+    cantidad_inv: DecimalStr
+    kilos_total: DecimalStr
+    valor_bruto: DecimalStr
+    valor_subtotal: DecimalStr
+    total_neto: DecimalStr
+    total_costo: DecimalStr | None = None
+    utilidad_bruta: DecimalStr | None = None
+    lineas_facturadas: int = 0
+
+
+class RespuestaCuboAgro(EsquemaBase):
+    """`GET /agro/cubo` — venta agregada por N dimensiones, con todas las medidas.
+
+    A diferencia del resumen (una dimensión) y el cruce (dos o tres fijas), el
+    cubo admite cualquier combinación de dimensiones en las filas. Es la vista
+    dinámica que el negocio usa en SIESA y la que se quiso traer a SIGREP.
+
+    El `total` es la suma de todas las filas, sin truncar: aunque `filas` se
+    limite, el total refleja el corte entero.
+    """
+
+    periodo: str
+    fecha_corte: date
+    dimensiones: list[str] = Field(default_factory=list)
+    filas: list[FilaCuboAgro] = Field(default_factory=list)
+    total: FilaCuboAgro
+    truncado: bool = False
+    limite: int = 0

@@ -10,10 +10,34 @@
  */
 
 import type {
+  DimensionCuboAgro,
   DimensionPresupuestoAgro,
   EjeCruceAgro,
   EjeResumenAgro,
 } from "@/api/tiposAgro";
+
+export const DIMENSIONES_CUBO: readonly {
+  valor: DimensionCuboAgro;
+  etiqueta: string;
+  ayuda: string;
+}[] = [
+  { valor: "tipo_comercial", etiqueta: "Tipo comercial", ayuda: "Línea de negocio facturada." },
+  { valor: "grupo", etiqueta: "Grupo", ayuda: "Grupo comercial del ítem." },
+  { valor: "tipo_item", etiqueta: "Tipo de ítem", ayuda: "Bienes y servicios, sin impuestos." },
+  { valor: "centro_operacion", etiqueta: "Centro de operación", ayuda: "Centro que factura la venta." },
+  { valor: "vendedor", etiqueta: "Vendedor", ayuda: "Responsable comercial de la factura." },
+  { valor: "cliente", etiqueta: "Cliente factura", ayuda: "Razón social del cliente facturado." },
+  { valor: "item", etiqueta: "Ítem", ayuda: "Producto o servicio facturado." },
+  { valor: "especie", etiqueta: "Especie", ayuda: "Especie comercial de la venta." },
+];
+
+export function esDimensionCubo(valor: string): valor is DimensionCuboAgro {
+  return DIMENSIONES_CUBO.some((dimension) => dimension.valor === valor);
+}
+
+export function etiquetaDimensionCubo(dimension: string): string {
+  return DIMENSIONES_CUBO.find((opcion) => opcion.valor === dimension)?.etiqueta ?? dimension;
+}
 
 // ── Ejes del resumen ─────────────────────────────────────────────────────────
 

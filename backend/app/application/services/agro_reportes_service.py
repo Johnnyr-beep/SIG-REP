@@ -86,12 +86,14 @@ from app.infrastructure.models.periodo import Periodo
 from app.schemas.agro import (
     ConciliacionAgro,
     FilaCruceAgro,
+    FilaCuboAgro,
     FilaResumenAgro,
     FilaVentaComercialAgro,
     FilaVentaDiariaAgro,
     IndicadoresAgro,
     ParametrosCalculoAgro,
     RespuestaCruceAgro,
+    RespuestaCuboAgro,
     RespuestaResumenAgro,
     RespuestaVentaDiariaAgro,
     RespuestaVentasComercialesAgro,
@@ -179,6 +181,40 @@ class TotalesAgro:
 
     def medida(self, medida: Medida) -> Decimal:
         return self.valor if medida is Medida.VALOR else self.kilos
+
+
+@dataclass
+class TotalesCuboAgro:
+    """Sumas de un corte del cubo: todas las medidas que trae la fuente.
+
+    A diferencia de `TotalesAgro`, incluye `valor_bruto` y `valor_subtotal`,
+    que el cubo publica como columnas independientes para que la pantalla pueda
+    mostrar la cadena `bruto - descuentos = subtotal` del ERP.
+    """
+
+    valor_neto: Decimal = CERO
+    kilos: Decimal = CERO
+    cantidad: Decimal = CERO
+    valor_bruto: Decimal = CERO
+    valor_subtotal: Decimal = CERO
+    costo: Decimal = CERO
+    costo_completo: bool = True
+    utilidad_bruta: Decimal | None = None
+    utilidad_completa: bool = True
+    lineas: int = 0
+
+    def sumar(self, otro: TotalesCuboAgro) -> None:
+        self.valor_neto += otro.valor_neto
+        self.kilos += otro.kilos
+        self.cantidad += otro.cantidad
+        self.valor_bruto += otro.valor_bruto
+        self.valor_subtotal += otro.valor_subtotal
+        self.costo += otro.costo
+        self.costo_completo = self.costo_completo and otro.costo_completo
+        self.lineas += otro.lineas
+        self.utilidad_completa = self.utilidad_completa and otro.utilidad_completa
+        if otro.utilidad_bruta is not None:
+            self.utilidad_bruta = (self.utilidad_bruta or CERO) + otro.utilidad_bruta
 
 
 def _totales_de(fila: Sequence[object]) -> TotalesAgro:
@@ -346,6 +382,98 @@ class AgroReportesService:
         filas.sort(key=lambda fila: (fila.tipo_comercial, fila.especie))
         return RespuestaVentasComercialesAgro(
             periodo=ctx.periodo.codigo, fecha_corte=ctx.fecha_corte, filas=filas
+        )
+
+    # ── Cubo dinámico ─────────────────────────────────────────────────────────
+
+    def cubo(
+        self, filtros: FiltrosAgro, dimensiones: list[TipoDimension]
+    ) -> RespuestaCuboAgro:
+        """Venta agregada por N dimensiones, con todas las medidas.
+
+        Replica el «Filtro Cubo» del ERP SIESA: el negocio elige qué
+        dimensiones poner en las filas y el cubo agrega la venta por esa
+        combinación. A diferencia del resumen (una sola dimensión) y del cruce
+        (dos o tres fijas), aquí cualquier combinación de las ocho dimensiones
+        es válida.
+
+        **No calcula indicadores**: cumplimiento, ideal, proyección y semáforo
+        dependen de una dimensión de presupuesto, y el cubo puede mezclar
+        dimensiones que no se presupuestan. Publica las medidas crudas —las que
+        trae la fuente— y deja que la pantalla las lea.
+
+        Las filas se ordenan por venta neta descendente. El total refleja el
+        corte entero, sin truncar.
+        """
+        ctx = self._contexto(filtros)
+        columnas = [COLUMNA_DIMENSION[dim] for dim in dimensiones]
+        agregados = self._agregar_cubo(ctx, columnas)
+
+        filas: list[FilaCuboAgro] = []
+        total_cubo = TotalesCuboAgro()
+        for llaves, totales in agregados.items():
+            total_cubo.sumar(totales)
+            miembros = [ctx.catalogo.get(identificador) for identificador in llaves]
+            filas.append(
+                FilaCuboAgro(
+                    claves=[
+                        miembro.clave if miembro is not None else str(identificador)
+                        for miembro, identificador in zip(miembros, llaves, strict=True)
+                    ],
+                    nombres=[
+                        miembro.nombre if miembro is not None else str(identificador)
+                        for miembro, identificador in zip(miembros, llaves, strict=True)
+                    ],
+                    cantidad_inv=redondear_no_nulo(totales.cantidad, 3),
+                    kilos_total=redondear_no_nulo(totales.kilos, 3),
+                    valor_bruto=redondear_no_nulo(totales.valor_bruto, 2),
+                    valor_subtotal=redondear_no_nulo(totales.valor_subtotal, 2),
+                    total_neto=redondear_no_nulo(totales.valor_neto, 2),
+                    total_costo=(
+                        redondear_no_nulo(totales.costo, 2)
+                        if totales.costo_completo
+                        else None
+                    ),
+                    utilidad_bruta=(
+                        redondear_no_nulo(totales.utilidad_bruta, 2)
+                        if totales.utilidad_completa and totales.utilidad_bruta is not None
+                        else None
+                    ),
+                    lineas_facturadas=totales.lineas,
+                )
+            )
+
+        filas.sort(key=lambda f: -Decimal(f.total_neto))
+
+        limite = self._settings.max_filas_reporte_agro
+        truncado = len(filas) > limite
+        return RespuestaCuboAgro(
+            periodo=ctx.periodo.codigo,
+            fecha_corte=ctx.fecha_corte,
+            dimensiones=[d.value for d in dimensiones],
+            filas=filas[:limite],
+            total=FilaCuboAgro(
+                claves=[],
+                nombres=[],
+                cantidad_inv=redondear_no_nulo(total_cubo.cantidad, 3),
+                kilos_total=redondear_no_nulo(total_cubo.kilos, 3),
+                valor_bruto=redondear_no_nulo(total_cubo.valor_bruto, 2),
+                valor_subtotal=redondear_no_nulo(total_cubo.valor_subtotal, 2),
+                total_neto=redondear_no_nulo(total_cubo.valor_neto, 2),
+                total_costo=(
+                    redondear_no_nulo(total_cubo.costo, 2)
+                    if total_cubo.costo_completo
+                    else None
+                ),
+                utilidad_bruta=(
+                    redondear_no_nulo(total_cubo.utilidad_bruta, 2)
+                    if total_cubo.utilidad_completa and total_cubo.utilidad_bruta is not None
+                    else None
+                ),
+                lineas_facturadas=total_cubo.lineas,
+            ),
+            truncado=truncado,
+            limite=limite,
         )
 
     # ── Los dos cruces ────────────────────────────────────────────────────────
@@ -617,6 +745,65 @@ class AgroReportesService:
             tuple(int(v) for v in fila[:anchura]): _totales_de(fila[anchura:])
             for fila in self._sesion.execute(consulta)
         }
+
+    def _agregar_cubo(
+        self, ctx: _Contexto, columnas: Sequence[InstrumentedAttribute[int]]
+    ) -> dict[tuple[int, ...], TotalesCuboAgro]:
+        """Agrupa las medidas del cubo en una sola consulta.
+
+        Los dos conteos de costo y utilidad preservan su semántica de origen:
+        si SIESA omitió una de esas medidas en cualquier línea de una
+        combinación, la columna completa se publica vacía. Sumar los valores
+        presentes la convertiría en una cifra aparentemente precisa pero
+        incompleta.
+        """
+        consulta = (
+            select(
+                *columnas,
+                func.sum(AgroVentaLinea.cantidad_inv),
+                func.sum(AgroVentaLinea.kilos_total),
+                func.sum(AgroVentaLinea.valor_bruto),
+                func.sum(AgroVentaLinea.valor_subtotal),
+                func.sum(AgroVentaLinea.total_neto),
+                func.sum(AgroVentaLinea.total_costo),
+                func.count(),
+                func.count(AgroVentaLinea.total_costo),
+                func.sum(AgroVentaLinea.utilidad_bruta),
+                func.count(AgroVentaLinea.utilidad_bruta),
+                func.sum(AgroVentaLinea.lineas_facturadas),
+            )
+            .where(*self._filtros_base(ctx))
+            .group_by(*columnas)
+        )
+        anchura = len(columnas)
+        agregados: dict[tuple[int, ...], TotalesCuboAgro] = {}
+        for fila in self._sesion.execute(consulta):
+            (
+                cantidad,
+                kilos,
+                bruto,
+                subtotal,
+                neto,
+                costo,
+                lineas,
+                con_costo,
+                utilidad,
+                con_utilidad,
+                facturadas,
+            ) = fila[anchura:]
+            agregados[tuple(int(valor) for valor in fila[:anchura])] = TotalesCuboAgro(
+                cantidad=_dec(cantidad),
+                kilos=_dec(kilos),
+                valor_bruto=_dec(bruto),
+                valor_subtotal=_dec(subtotal),
+                valor_neto=_dec(neto),
+                costo=_dec(costo),
+                costo_completo=_ent(lineas) == _ent(con_costo),
+                utilidad_bruta=_dec(utilidad) if utilidad is not None else None,
+                utilidad_completa=_ent(lineas) == _ent(con_utilidad),
+                lineas=_ent(facturadas),
+            )
+        return agregados
 
     def _ultima_venta(self, ctx: _Contexto, columna: InstrumentedAttribute[int]) -> dict[int, date]:
         """El último día con venta de cada miembro, **dentro del corte**.

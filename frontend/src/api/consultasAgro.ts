@@ -36,6 +36,7 @@ import type {
   RechazoAgro,
   ResumenPresupuestoMensual,
   RespuestaCruceAgro,
+  RespuestaCuboAgro,
   RespuestaInteligencia,
   RespuestaResumenAgro,
   RespuestaVentaDiariaAgro,
@@ -102,6 +103,8 @@ export const clavesAgro = {
     ["agro", "reporte", "resumen", por, filtros] as const,
   cruce: (filtros: FiltrosAgro, por: EjeCruceAgro) =>
     ["agro", "reporte", "cruce", por, filtros] as const,
+  cubo: (filtros: FiltrosAgro, dimensiones: string) =>
+    ["agro", "reporte", "cubo", dimensiones, filtros] as const,
   ventaDiaria: (filtros: FiltrosAgro) =>
     ["agro", "reporte", "venta-diaria", filtros] as const,
   ventasComerciales: (filtros: FiltrosAgro) =>
@@ -180,6 +183,22 @@ export function useCruceAgro(
       peticion<RespuestaCruceAgro>("/agro/cruce", {
         parametros: { ...comoParametros(filtros), por },
       }),
+    staleTime: 60_000,
+  });
+}
+
+/** Cubo comercial de SIESA, agrupado por una a tres dimensiones en orden. */
+export function useCuboAgro(
+  filtros: FiltrosAgro,
+  dimensiones: string,
+): UseQueryResult<RespuestaCuboAgro> {
+  return useQuery({
+    queryKey: clavesAgro.cubo(filtros, dimensiones),
+    queryFn: () =>
+      peticion<RespuestaCuboAgro>("/agro/cubo", {
+        parametros: { ...comoParametros(filtros), dimensiones },
+      }),
+    enabled: Boolean(dimensiones),
     staleTime: 60_000,
   });
 }
