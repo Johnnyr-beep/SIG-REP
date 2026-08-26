@@ -386,9 +386,7 @@ class AgroReportesService:
 
     # ── Cubo dinámico ─────────────────────────────────────────────────────────
 
-    def cubo(
-        self, filtros: FiltrosAgro, dimensiones: list[TipoDimension]
-    ) -> RespuestaCuboAgro:
+    def cubo(self, filtros: FiltrosAgro, dimensiones: list[TipoDimension]) -> RespuestaCuboAgro:
         """Venta agregada por N dimensiones, con todas las medidas.
 
         Replica el «Filtro Cubo» del ERP SIESA: el negocio elige qué
@@ -430,9 +428,7 @@ class AgroReportesService:
                     valor_subtotal=redondear_no_nulo(totales.valor_subtotal, 2),
                     total_neto=redondear_no_nulo(totales.valor_neto, 2),
                     total_costo=(
-                        redondear_no_nulo(totales.costo, 2)
-                        if totales.costo_completo
-                        else None
+                        redondear_no_nulo(totales.costo, 2) if totales.costo_completo else None
                     ),
                     utilidad_bruta=(
                         redondear_no_nulo(totales.utilidad_bruta, 2)
@@ -461,9 +457,7 @@ class AgroReportesService:
                 valor_subtotal=redondear_no_nulo(total_cubo.valor_subtotal, 2),
                 total_neto=redondear_no_nulo(total_cubo.valor_neto, 2),
                 total_costo=(
-                    redondear_no_nulo(total_cubo.costo, 2)
-                    if total_cubo.costo_completo
-                    else None
+                    redondear_no_nulo(total_cubo.costo, 2) if total_cubo.costo_completo else None
                 ),
                 utilidad_bruta=(
                     redondear_no_nulo(total_cubo.utilidad_bruta, 2)

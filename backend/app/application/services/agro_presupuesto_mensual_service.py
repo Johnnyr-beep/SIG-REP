@@ -487,9 +487,7 @@ class AgroPresupuestoMensualService:
 
     def listar_canales_mapeos(self) -> list[CanalMapeoMensualSalida]:
         """Lista los mapeos de canal del Excel → vendedor / cliente / categoría."""
-        consulta = select(AgroPptoMensualCanalMapeo).order_by(
-            AgroPptoMensualCanalMapeo.canal
-        )
+        consulta = select(AgroPptoMensualCanalMapeo).order_by(AgroPptoMensualCanalMapeo.canal)
         return [
             CanalMapeoMensualSalida(
                 id=m.id,
@@ -591,9 +589,7 @@ class AgroPresupuestoMensualService:
         mapeos: dict[str, AgroPptoMensualCanalMapeo] = {
             m.canal: m
             for m in self._sesion.execute(
-                select(AgroPptoMensualCanalMapeo).where(
-                    AgroPptoMensualCanalMapeo.activo.is_(True)
-                )
+                select(AgroPptoMensualCanalMapeo).where(AgroPptoMensualCanalMapeo.activo.is_(True))
             ).scalars()
         }
 

@@ -239,9 +239,7 @@ def cubo(
     sin truncar.
     """
     dims = _dimensiones(dimensiones)
-    return AgroReportesService(sesion).cubo(
-        _filtros(periodo, hasta, desde, centro, medida), dims
-    )
+    return AgroReportesService(sesion).cubo(_filtros(periodo, hasta, desde, centro, medida), dims)
 
 
 @router.get("/cruce", response_model=RespuestaCruceAgro, summary="Vendedor x cliente [x producto]")
@@ -672,9 +670,7 @@ def presupuesto_mensual_guardar_canal_mapeo(
     manejador global. Los tres campos —vendedor, cliente y categoría— son
     obligatorios, porque la importación escribe filas del bloque comercial.
     """
-    return AgroPresupuestoMensualService(sesion).guardar_canal_mapeo(
-        datos, mapeo_id=mapeo_id
-    )
+    return AgroPresupuestoMensualService(sesion).guardar_canal_mapeo(datos, mapeo_id=mapeo_id)
 
 
 @router.post(

@@ -47,8 +47,18 @@ from app.core.errors import ErrorValidacion
 #: las grafías que trae el encabezado de `RESUMEN (MES)`; la comparación es
 #: normalizada (mayúsculas, sin tildes), así que `Ene` y `ENE` son la misma.
 _MESES: tuple[str, ...] = (
-    "ENE", "FEB", "MAR", "ABR", "MAY", "JUN",
-    "JUL", "AGO", "SEP", "OCT", "NOV", "DIC",
+    "ENE",
+    "FEB",
+    "MAR",
+    "ABR",
+    "MAY",
+    "JUN",
+    "JUL",
+    "AGO",
+    "SEP",
+    "OCT",
+    "NOV",
+    "DIC",
 )
 
 #: Espacios que hay que recortar, incluidos el no separable (U+00A0) y el de
@@ -262,13 +272,11 @@ def _a_decimal(valor: object, canal: str, fila: int) -> Decimal:
             numero = Decimal(texto)
         except (InvalidOperation, ValueError) as exc:
             raise ErrorValidacion(
-                f"El valor del canal «{canal}» en la fila {fila} no es un número: "
-                f"{valor!r}."
+                f"El valor del canal «{canal}» en la fila {fila} no es un número: {valor!r}."
             ) from exc
     if numero < CERO:
         raise ErrorValidacion(
-            f"El valor del canal «{canal}» en la fila {fila} no puede ser negativo: "
-            f"{valor!r}."
+            f"El valor del canal «{canal}» en la fila {fila} no puede ser negativo: {valor!r}."
         )
     return numero.quantize(ESCALA_DINERO)
 
