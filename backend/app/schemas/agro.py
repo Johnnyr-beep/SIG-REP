@@ -500,3 +500,114 @@ class RechazoAgroSalida(EsquemaBase):
     campo: str | None = None
     valor: str | None = None
     motivo: str = Field(description="Por qué no se pudo aceptar la fila")
+
+
+# ── Presupuesto mensual configurable ──────────────────────────────────────────
+#
+# Este es un módulo **distinto** de `PresupuestoDimensionSalida`. Aquí hay cuatro
+# bloques independientes —commercial, agro_distribucion, servicio, nacional— y
+# el total mensual **es la suma de los cuatro**. En el presupuesto por
+# dimensiones, las cuatro descomposiciones describen el mismo dinero y no se
+# suman; aquí cada bloque es una meta distinta y se suman. Por eso las rutas
+# viven bajo `/agro/presupuesto-mensual` y no se mezclan con las de
+# `/agro/presupuesto`.
+
+
+class MapeoMensualSalida(EsquemaBase):
+    """Una asignación configurable: bloque → vendedor / cliente / categoría."""
+
+    id: int
+    bloque: str
+    vendedor_clave: str | None = None
+    cliente_clave: str | None = None
+    categoria: str | None = None
+    activo: bool = True
+
+
+class MapeoMensualEntrada(BaseModel):
+    """Alta o modificación de una asignación de bloque.
+
+    `vendedor_clave`, `cliente_clave` y `categoria` son opcionales porque no
+    todos los bloques los usan: el bloque de servicio no tiene vendedor ni
+    cliente, y la categoría A–F solo aplica al bloque comercial.
+    """
+
+    bloque: str = Field(
+        pattern=r"^(commercial|agro_distribucion|servicio|nacional)$",
+        examples=["commercial"],
+    )
+    vendedor_clave: str | None = Field(default=None, max_length=60)
+    cliente_clave: str | None = Field(default=None, max_length=60)
+    categoria: str | None = Field(default=None, pattern=r"^[A-F]$")
+    activo: bool = True
+
+
+class DetalleMensualSalida(EsquemaBase):
+    """Una fila de presupuesto mensual de un bloque."""
+
+    id: int | None = None
+    bloque: str
+    cliente_clave: str | None = None
+    vendedor_clave: str | None = None
+    categoria: str | None = None
+    cliente_etiqueta: str | None = None
+    vendedor_etiqueta: str | None = None
+    monto: DecimalStr
+    kilos: DecimalStr
+
+
+class DetalleMensualEntrada(BaseModel):
+    """Alta o modificación de una fila de presupuesto mensual de detalle.
+
+    El bloque de servicio no usa esta ruta: tiene su propio endpoint porque es
+    un solo valor mensual sin descomposición.
+    """
+
+    bloque: str = Field(
+        pattern=r"^(commercial|agro_distribucion|nacional)$",
+        examples=["commercial"],
+        description="Bloque del presupuesto. Servicio se captura aparte.",
+    )
+    cliente_clave: str | None = Field(default=None, max_length=60)
+    vendedor_clave: str | None = Field(default=None, max_length=60)
+    categoria: str | None = Field(default=None, pattern=r"^[A-F]$")
+    cliente_etiqueta: str | None = Field(default=None, max_length=200)
+    vendedor_etiqueta: str | None = Field(default=None, max_length=200)
+    monto: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    kilos: Decimal = Field(ge=0, max_digits=18, decimal_places=3)
+
+
+class ServicioMensualSalida(EsquemaBase):
+    """El bloque de servicio: un solo valor mensual."""
+
+    monto: DecimalStr
+    kilos: DecimalStr
+
+
+class ServicioMensualEntrada(BaseModel):
+    """Alta o modificación del presupuesto mensual de servicio."""
+
+    monto: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    kilos: Decimal = Field(ge=0, max_digits=18, decimal_places=3)
+
+
+class BloqueMensualSalida(EsquemaBase):
+    """El total de un bloque en el período, con sus filas de detalle."""
+
+    bloque: str
+    total_monto: DecimalStr
+    total_kilos: DecimalStr
+    filas: list[DetalleMensualSalida] = Field(default_factory=list)
+
+
+class ResumenPresupuestoMensualSalida(EsquemaBase):
+    """El presupuesto mensual completo: los cuatro bloques y el total.
+
+    A diferencia del presupuesto por dimensiones, aquí el `total_monto` **es la
+    suma de los cuatro bloques**, porque cada bloque es una meta independiente.
+    """
+
+    periodo: str
+    bloques: list[BloqueMensualSalida]
+    total_monto: DecimalStr
+    total_kilos: DecimalStr

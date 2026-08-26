@@ -580,6 +580,12 @@ textarea {
   border-radius: 0 0 var(--radio) var(--radio);
 }
 
+/* Tarjeta simple: una caja con padding, para los resúmenes de bloques dentro
+   del total mensual. Sin cabecera ni cuerpo: va directa al borde. */
+.tarjeta--simple {
+  padding: var(--espacio-3) var(--espacio-4);
+}
+
 .rejilla {
   display: grid;
   gap: var(--espacio-4);
@@ -2270,6 +2276,35 @@ textarea.campo__control {
   overflow: hidden;
   white-space: nowrap;
   clip-path: inset(50%);
+}
+
+/* ── Pestañas ─────────────────────────────────────────────────────────────── */
+
+.pestanas {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--borde);
+}
+
+.pestana {
+  padding: var(--espacio-2) var(--espacio-4);
+  font: inherit;
+  font-weight: 600;
+  color: var(--texto-suave);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.pestana:hover {
+  color: var(--texto);
+}
+
+.pestana--activa {
+  color: var(--acento);
+  border-bottom-color: var(--acento);
 }
 
 /* ── Administración de usuarios ──────────────────────────────────────────────

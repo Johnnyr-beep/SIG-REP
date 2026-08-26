@@ -515,3 +515,133 @@ export interface RechazoAgro {
   valor: string | null;
   motivo: string;
 }
+
+// ── Presupuesto mensual configurable ──────────────────────────────────────────
+//
+// Este módulo es **distinto** del presupuesto por dimensiones de arriba. Aquí
+// hay cuatro bloques independientes —comercial, agro distribución, servicio y
+// nacional— y el total mensual **es la suma de los cuatro**, porque cada bloque
+// es una meta distinta. En el presupuesto por dimensiones, las cuatro
+// descomposiciones describen el mismo dinero y no se suman; aquí sí.
+//
+// Fuente: `backend/app/schemas/agro.py` (clases `*Mensual*`) y
+// `backend/app/api/v1/agro.py` (rutas bajo `/agro/presupuesto-mensual`).
+
+/** Los cuatro bloques del presupuesto mensual. Son independientes y se suman. */
+export type BloqueMensual =
+  | "commercial"
+  | "agro_distribucion"
+  | "servicio"
+  | "nacional";
+
+/**
+ * Los tres bloques que se capturan como filas de detalle.
+ *
+ * El bloque de servicio se captura aparte —un solo valor mensual— y no
+ * admite filas de detalle.
+ */
+export type BloqueDetalleMensual =
+  | "commercial"
+  | "agro_distribucion"
+  | "nacional";
+
+/** Categorías A–F que se asignan a los vendedores del bloque comercial. */
+export type CategoriaMensual = "A" | "B" | "C" | "D" | "E" | "F";
+
+/** Una fila de presupuesto mensual de un bloque de detalle. */
+export interface DetalleMensual {
+  id: number | null;
+  bloque: BloqueMensual;
+  cliente_clave: string | null;
+  vendedor_clave: string | null;
+  categoria: string | null;
+  cliente_etiqueta: string | null;
+  vendedor_etiqueta: string | null;
+  monto: string;
+  kilos: string;
+}
+
+/**
+ * Cuerpo de `PUT /agro/presupuesto-mensual/detalle?periodo=`.
+ *
+ * El bloque de servicio no se captura aquí: tiene su propio endpoint porque es
+ * un solo valor mensual sin descomposición.
+ *
+ * Los bloques `agro_distribucion` y `nacional` tienen vendedor fijo en el
+ * backend (`AGROPECUARIA` y `JUAN SIERRA`): si no se envía, el backend lo fija;
+ * si se envía con otro valor, lo rechaza. La pantalla no lo envía para esos
+ * bloques.
+ */
+export interface EntradaDetalleMensual {
+  bloque: BloqueDetalleMensual;
+  cliente_clave?: string | null;
+  vendedor_clave?: string | null;
+  categoria?: string | null;
+  cliente_etiqueta?: string | null;
+  vendedor_etiqueta?: string | null;
+  monto: string;
+  kilos: string;
+}
+
+/** El bloque de servicio: un solo valor mensual. */
+export interface ServicioMensual {
+  monto: string;
+  kilos: string;
+}
+
+/** Cuerpo de `PUT /agro/presupuesto-mensual/servicio?periodo=`. */
+export interface EntradaServicioMensual {
+  monto: string;
+  kilos: string;
+}
+
+/**
+ * Una asignación configurable: bloque → vendedor / cliente / categoría.
+ *
+ * `vendedor_clave`, `cliente_clave` y `categoria` son opcionales porque no
+ * todos los bloques los usan: el bloque de servicio no tiene vendedor ni
+ * cliente, y la categoría A–F solo aplica al bloque comercial.
+ */
+export interface MapeoMensual {
+  id: number;
+  bloque: BloqueMensual;
+  vendedor_clave: string | null;
+  cliente_clave: string | null;
+  categoria: string | null;
+  activo: boolean;
+}
+
+/**
+ * Cuerpo de `PUT /agro/presupuesto-mensual/mapeos`.
+ *
+ * Si `mapeo_id` se envía como parámetro de consulta, el backend actualiza la
+ * asignación existente; si no, crea una nueva.
+ */
+export interface EntradaMapeoMensual {
+  bloque: BloqueMensual;
+  vendedor_clave?: string | null;
+  cliente_clave?: string | null;
+  categoria?: string | null;
+  activo: boolean;
+}
+
+/** El total de un bloque en el período, con sus filas de detalle. */
+export interface BloqueMensualResumen {
+  bloque: BloqueMensual;
+  total_monto: string;
+  total_kilos: string;
+  filas: DetalleMensual[];
+}
+
+/**
+ * El presupuesto mensual completo: los cuatro bloques y el total.
+ *
+ * A diferencia del presupuesto por dimensiones, aquí `total_monto` **es la
+ * suma de los cuatro bloques**, porque cada bloque es una meta independiente.
+ */
+export interface ResumenPresupuestoMensual {
+  periodo: string;
+  bloques: BloqueMensualResumen[];
+  total_monto: string;
+  total_kilos: string;
+}

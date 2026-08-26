@@ -28,6 +28,9 @@ from app.api.v1 import AnalistaDep, GerenteDep, LecturaDep
 from app.application.services import agro_exportacion_service
 from app.application.services.agro_calendario_service import AgroCalendarioService
 from app.application.services.agro_ingesta_service import AgroIngestaService
+from app.application.services.agro_presupuesto_mensual_service import (
+    AgroPresupuestoMensualService,
+)
 from app.application.services.agro_presupuesto_service import AgroPresupuestoService
 from app.application.services.agro_reportes_service import AgroReportesService, FiltrosAgro
 from app.application.services.inteligencia_comercial_service import InteligenciaComercialService
@@ -44,7 +47,11 @@ from app.schemas.agro import (
     CalendarioAgroSalida,
     CorridaAgroSalida,
     CuadrePresupuestoSalida,
+    DetalleMensualEntrada,
+    DetalleMensualSalida,
     HistorialAgroSalida,
+    MapeoMensualEntrada,
+    MapeoMensualSalida,
     MiembroDimensionSalida,
     PresupuestoAgroEntrada,
     PresupuestoAgroSalida,
@@ -55,6 +62,9 @@ from app.schemas.agro import (
     RespuestaVentaDiariaAgro,
     RespuestaVentasComercialesAgro,
     ResultadoCargaAgro,
+    ResumenPresupuestoMensualSalida,
+    ServicioMensualEntrada,
+    ServicioMensualSalida,
 )
 from app.schemas.inteligencia import RespuestaInteligencia
 
@@ -421,3 +431,107 @@ def corridas(_: LecturaDep, sesion: SesionDep, limite: int = 50) -> list[Corrida
 def rechazos(usuario: GerenteDep, sesion: SesionDep, corrida_id: int) -> list[RechazoAgroSalida]:
     """Rol restringido: los rechazos llevan valores crudos de filas reales."""
     return AgroIngestaService(sesion).rechazos(corrida_id)
+
+
+# ── Presupuesto mensual configurable ──────────────────────────────────────────
+#
+# Es un módulo **distinto** del presupuesto por dimensiones. Aquí hay cuatro
+# bloques independientes —commercial, agro_distribucion, servicio, nacional— y
+# el total mensual **es la suma de los cuatro**. En el presupuesto por
+# dimensiones las cuatro descomposiciones describen el mismo dinero y no se
+# suman; aquí cada bloque es una meta distinta y se suman.
+
+
+@router.get(
+    "/presupuesto-mensual",
+    response_model=ResumenPresupuestoMensualSalida,
+    summary="Presupuesto mensual: los cuatro bloques y el total",
+)
+def presupuesto_mensual_resumen(
+    _: LecturaDep,
+    sesion: SesionDep,
+    periodo: str = PeriodoQuery,
+) -> ResumenPresupuestoMensualSalida:
+    """Devuelve los cuatro bloques con sus totales y el total mensual sumado.
+
+    A diferencia del presupuesto por dimensiones, aquí el total **es la suma de
+    los cuatro bloques**, porque cada bloque es una meta independiente.
+    """
+    return AgroPresupuestoMensualService(sesion).resumen(periodo)
+
+
+@router.get(
+    "/presupuesto-mensual/mapeos",
+    response_model=list[MapeoMensualSalida],
+    summary="Asignaciones configurables por bloque",
+)
+def presupuesto_mensual_mapeos(
+    _: LecturaDep,
+    sesion: SesionDep,
+    bloque: str | None = None,
+) -> list[MapeoMensualSalida]:
+    """Lista las asignaciones de bloque → vendedor / cliente / categoría."""
+    return AgroPresupuestoMensualService(sesion).listar_mapeos(bloque)
+
+
+@router.put(
+    "/presupuesto-mensual/mapeos",
+    response_model=MapeoMensualSalida,
+    summary="Crear o actualizar una asignación de bloque",
+)
+def presupuesto_mensual_guardar_mapeo(
+    datos: MapeoMensualEntrada,
+    usuario: AnalistaDep,
+    sesion: SesionDep,
+    mapeo_id: int | None = None,
+) -> MapeoMensualSalida:
+    """Crea una asignación nueva o actualiza una existente si `mapeo_id` se envía."""
+    return AgroPresupuestoMensualService(sesion).guardar_mapeo(datos, mapeo_id=mapeo_id)
+
+
+@router.put(
+    "/presupuesto-mensual/detalle",
+    response_model=DetalleMensualSalida,
+    summary="Fijar una fila de presupuesto mensual de un bloque",
+)
+def presupuesto_mensual_guardar_detalle(
+    datos: DetalleMensualEntrada,
+    usuario: AnalistaDep,
+    sesion: SesionDep,
+    periodo: str = PeriodoQuery,
+) -> DetalleMensualSalida:
+    """Crea o actualiza una fila de presupuesto de commercial, agro_distribucion o nacional.
+
+    El bloque de servicio no se captura aquí: tiene su propio endpoint porque es
+    un solo valor mensual sin descomposición.
+    """
+    return AgroPresupuestoMensualService(sesion).guardar_detalle(periodo, datos, usuario=usuario)
+
+
+@router.get(
+    "/presupuesto-mensual/servicio",
+    response_model=ServicioMensualSalida,
+    summary="Presupuesto mensual del bloque de servicio",
+)
+def presupuesto_mensual_servicio(
+    _: LecturaDep,
+    sesion: SesionDep,
+    periodo: str = PeriodoQuery,
+) -> ServicioMensualSalida:
+    """Lee el valor mensual del bloque de servicio."""
+    return AgroPresupuestoMensualService(sesion).obtener_servicio(periodo)
+
+
+@router.put(
+    "/presupuesto-mensual/servicio",
+    response_model=ServicioMensualSalida,
+    summary="Fijar el presupuesto mensual del bloque de servicio",
+)
+def presupuesto_mensual_guardar_servicio(
+    datos: ServicioMensualEntrada,
+    usuario: AnalistaDep,
+    sesion: SesionDep,
+    periodo: str = PeriodoQuery,
+) -> ServicioMensualSalida:
+    """Fija el valor mensual del bloque de servicio: un solo importe por período."""
+    return AgroPresupuestoMensualService(sesion).guardar_servicio(periodo, datos, usuario=usuario)

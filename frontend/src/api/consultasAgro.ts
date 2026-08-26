@@ -15,6 +15,7 @@ import { descargar, enviarArchivo, peticion } from "./cliente";
 import type { ValorParametro } from "./cliente";
 import type { Medida } from "./tipos";
 import type {
+  BloqueMensual,
   CalendarioAgro,
   CorridaAgro,
   CuadrePresupuestoAgro,
@@ -22,17 +23,23 @@ import type {
   EjeCruceAgro,
   EjeResumenAgro,
   EntradaCalendarioAgro,
+  EntradaDetalleMensual,
+  EntradaMapeoMensual,
   EntradaPresupuestoAgro,
+  EntradaServicioMensual,
   HistorialAgro,
+  MapeoMensual,
   MiembroDimensionAgro,
   PresupuestoDimensionAgro,
   RechazoAgro,
+  ResumenPresupuestoMensual,
   RespuestaCruceAgro,
+  RespuestaInteligencia,
   RespuestaResumenAgro,
   RespuestaVentaDiariaAgro,
   RespuestaVentasComercialesAgro,
   ResultadoCargaAgro,
-  RespuestaInteligencia,
+  ServicioMensual,
 } from "./tiposAgro";
 
 /**
@@ -106,6 +113,15 @@ export const clavesAgro = {
   inteligencia: (periodo: string) => ["agro", "inteligencia", periodo] as const,
   corridas: ["agro", "ingesta", "corridas"] as const,
   rechazos: (id: number) => ["agro", "ingesta", "rechazos", id] as const,
+  // Presupuesto mensual configurable: rutas bajo /agro/presupuesto-mensual.
+  // Claves aparte de las de /agro/presupuesto porque son módulos distintos:
+  // invalidar una no debe tirar la caché de la otra.
+  presupuestoMensual: (periodo: string) =>
+    ["agro", "presupuesto-mensual", periodo] as const,
+  mapeosMensual: (bloque?: string) =>
+    ["agro", "presupuesto-mensual", "mapeos", bloque ?? "todos"] as const,
+  servicioMensual: (periodo: string) =>
+    ["agro", "presupuesto-mensual", "servicio", periodo] as const,
 };
 
 export function useInteligenciaAgro(periodo: string): UseQueryResult<RespuestaInteligencia> {
@@ -450,6 +466,146 @@ export function useEjecutarIngestaAgro(): UseMutationResult<
       // cargaba 7.037 líneas y la pantalla de días hábiles seguía diciendo «no
       // hay centros registrados todavía».
       void cliente.invalidateQueries({ queryKey: ["agro"] });
+    },
+  });
+}
+
+// ── Presupuesto mensual configurable ──────────────────────────────────────────
+//
+// Cuatro bloques independientes —comercial, agro distribución, servicio y
+// nacional— que **sí se suman** para dar el total mensual. Es lo opuesto al
+// presupuesto por dimensiones de arriba, donde las cuatro descomposiciones
+// describen el mismo dinero y no se suman. Por eso las claves y las rutas viven
+// aparte: `/agro/presupuesto-mensual` y no `/agro/presupuesto`.
+
+/**
+ * El presupuesto mensual completo: los cuatro bloques y el total sumado.
+ *
+ * El total **es la suma de los cuatro bloques**, porque cada bloque es una
+ * meta independiente. Esto es lo opuesto al presupuesto por dimensiones, donde
+ * las cuatro descomposiciones describen el mismo dinero y no se suman.
+ */
+export function usePresupuestoMensual(
+  periodo: string,
+): UseQueryResult<ResumenPresupuestoMensual> {
+  return useQuery({
+    queryKey: clavesAgro.presupuestoMensual(periodo),
+    queryFn: () =>
+      peticion<ResumenPresupuestoMensual>("/agro/presupuesto-mensual", {
+        parametros: { periodo },
+      }),
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * Las asignaciones configurables de bloque → vendedor / cliente / categoría.
+ *
+ * Opcionalmente filtradas por bloque. Es la configuración que hace que la
+ * captura sea configurable en lugar de codificada: el negocio decide qué
+ * vendedor atiende a qué cliente, en qué bloque y con qué categoría (A–F).
+ */
+export function useMapeosMensual(
+  bloque?: BloqueMensual,
+): UseQueryResult<MapeoMensual[]> {
+  return useQuery({
+    queryKey: clavesAgro.mapeosMensual(bloque),
+    queryFn: () =>
+      peticion<MapeoMensual[]>("/agro/presupuesto-mensual/mapeos", {
+        parametros: { bloque },
+      }),
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * Crea o actualiza una asignación de bloque.
+ *
+ * Si `mapeoId` se envía, el backend actualiza la asignación existente; si no,
+ * crea una nueva. La unicidad (bloque, vendedor, cliente, categoría) la
+ * garantiza la restricción de la tabla y se traduce a 409 por el manejador
+ * global.
+ */
+export function useGuardarMapeoMensual(): UseMutationResult<
+  MapeoMensual,
+  Error,
+  { datos: EntradaMapeoMensual; mapeoId?: number }
+> {
+  const cliente = useQueryClient();
+  return useMutation({
+    mutationFn: ({ datos, mapeoId }) =>
+      peticion<MapeoMensual>("/agro/presupuesto-mensual/mapeos", {
+        metodo: "PUT",
+        cuerpo: datos,
+        parametros: { mapeo_id: mapeoId },
+      }),
+    onSuccess: () => {
+      void cliente.invalidateQueries({
+        queryKey: ["agro", "presupuesto-mensual", "mapeos"],
+      });
+    },
+  });
+}
+
+/**
+ * Crea o actualiza una fila de presupuesto de commercial, agro_distribucion o
+ * nacional.
+ *
+ * El bloque de servicio no se captura aquí: tiene su propio endpoint porque es
+ * un solo valor mensual sin descomposición.
+ */
+export function useGuardarDetalleMensual(
+  periodo: string,
+): UseMutationResult<unknown, Error, EntradaDetalleMensual> {
+  const cliente = useQueryClient();
+  return useMutation({
+    mutationFn: (datos) =>
+      peticion("/agro/presupuesto-mensual/detalle", {
+        metodo: "PUT",
+        parametros: { periodo },
+        cuerpo: datos,
+      }),
+    onSuccess: () => {
+      void cliente.invalidateQueries({
+        queryKey: clavesAgro.presupuestoMensual(periodo),
+      });
+    },
+  });
+}
+
+/** Lee el valor mensual del bloque de servicio. */
+export function useServicioMensual(
+  periodo: string,
+): UseQueryResult<ServicioMensual> {
+  return useQuery({
+    queryKey: clavesAgro.servicioMensual(periodo),
+    queryFn: () =>
+      peticion<ServicioMensual>("/agro/presupuesto-mensual/servicio", {
+        parametros: { periodo },
+      }),
+    staleTime: 60_000,
+  });
+}
+
+/** Fija el valor mensual del bloque de servicio: un solo importe por período. */
+export function useGuardarServicioMensual(
+  periodo: string,
+): UseMutationResult<unknown, Error, EntradaServicioMensual> {
+  const cliente = useQueryClient();
+  return useMutation({
+    mutationFn: (datos) =>
+      peticion("/agro/presupuesto-mensual/servicio", {
+        metodo: "PUT",
+        parametros: { periodo },
+        cuerpo: datos,
+      }),
+    onSuccess: () => {
+      void cliente.invalidateQueries({
+        queryKey: clavesAgro.servicioMensual(periodo),
+      });
+      void cliente.invalidateQueries({
+        queryKey: clavesAgro.presupuestoMensual(periodo),
+      });
     },
   });
 }
