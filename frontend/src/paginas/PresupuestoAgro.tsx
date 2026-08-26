@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Parametrización del presupuesto de agropecuaria.
  *
  * Esta pantalla tiene dos vistas, cada una alrededor de una regla distinta:
@@ -21,15 +21,18 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import {
+  useCanalesMapeosMensual,
   useCargaMasivaAgro,
   useDimensionesAgro,
   useEliminarPresupuestoAgro,
   useCuadreAgro,
+  useGuardarCanalMapeoMensual,
   useGuardarDetalleMensual,
   useGuardarMapeoMensual,
   useGuardarPresupuestoAgro,
   useGuardarServicioMensual,
   useHistorialAgro,
+  useImportarComercial,
   useMapeosMensual,
   usePresupuestoAgro,
   usePresupuestoMensual,
@@ -38,13 +41,16 @@ import {
 import type {
   BloqueDetalleMensual,
   BloqueMensual,
+  CanalMapeoMensual,
   DetalleMensual,
+  EntradaCanalMapeoMensual,
   EntradaDetalleMensual,
   EntradaMapeoMensual,
   EntradaServicioMensual,
   MapeoMensual,
   MetaAgro,
   MiembroDimensionAgro,
+  ResultadoImportacionComercial,
 } from "@/api/tiposAgro";
 import {
   AvisoError,
@@ -630,6 +636,12 @@ function VistaMensual() {
               cliente, en qué bloque y con qué categoría. Es lo que hace que la
               captura sea configurable en lugar de codificada. */}
           <ConfiguracionMapeos />
+
+          {/* ConfiguraciÃ³n de canales del Excel: a quÃ© vendedor, cliente y
+              categorÃ­a pertenece cada canal del libro anual. Es lo que usa la
+              importaciÃ³n del Excel comercial para volcar cada canal en el
+              bloque comercial. */}
+          <ConfiguracionCanales />
         </>
       ) : null}
     </div>
@@ -682,16 +694,19 @@ function BloqueDetalle({
         </>
       }
       acciones={
-        <button
-          type="button"
-          className="boton boton--pequeno"
-          onClick={() => {
-            setEdicion(null);
-            setAbrirFormulario(true);
-          }}
-        >
-          Agregar fila
-        </button>
+        <>
+          {esComercial ? <ImportarExcelComercial periodo={periodo} /> : null}
+          <button
+            type="button"
+            className="boton boton--pequeno"
+            onClick={() => {
+              setEdicion(null);
+              setAbrirFormulario(true);
+            }}
+          >
+            Agregar fila
+          </button>
+        </>
       }
       sinRelleno
     >
@@ -1368,6 +1383,399 @@ function FormularioMapeoMensual({
             <span className="tenue">
               Si está inactiva, la asignación se retira sin borrarla, para no
               perder la historia.
+            </span>
+          </label>
+        </Campo>
+      </form>
+    </Dialogo>
+  );
+}
+
+
+// ── Importación del Excel comercial ──────────────────────────────────────────
+//
+// El libro anual trae una hoja `RESUMEN (MES)` con los canales como filas
+// (`SUPER MAYORISTA`, `MAYORISTA`, `TAT`, `Call Center`…) y los meses `ENE..DIC`
+// como columnas. La importación lee el valor del mes del período **tal cual
+// está almacenado** (sin escalar por 1 000) y lo vuelca en el bloque
+// **commercial**, mapeando cada canal a vendedor, cliente y categoría A–F
+// mediante la configuración de canales. Los canales sin mapeo se rechazan con
+// su motivo.
+
+function ImportarExcelComercial({ periodo }: { periodo: string }) {
+  const importar = useImportarComercial(periodo);
+  const [resultado, setResultado] =
+    useState<ResultadoImportacionComercial | null>(null);
+
+  function alSeleccionar(evento: React.ChangeEvent<HTMLInputElement>) {
+    const archivo = evento.target.files?.[0];
+    if (!archivo) return;
+    importar.mutate(
+      { archivo, motivo: `Importación del Excel ${archivo.name}` },
+      {
+        onSuccess: (res) => setResultado(res),
+      },
+    );
+    evento.target.value = "";
+  }
+
+  return (
+    <>
+      <label className="boton boton--pequeno">
+        {importar.isPending ? "Importando…" : "Importar Excel Comercial"}
+        <input
+          type="file"
+          accept=".xlsx,.xlsm"
+          hidden
+          onChange={alSeleccionar}
+        />
+      </label>
+      {resultado ? (
+        <Dialogo
+          abierto
+          titulo={`Importación del Excel comercial · ${periodoLargo(periodo)}`}
+          onCerrar={() => setResultado(null)}
+          ancho
+          pie={
+            <button
+              type="button"
+              className="boton"
+              onClick={() => setResultado(null)}
+            >
+              Cerrar
+            </button>
+          }
+        >
+          <div className="pila--compacta">
+            <AvisoError error={importar.error} />
+            <div className="fila">
+              <div>
+                <p className="tenue" style={{ fontWeight: 600 }}>
+                  Aceptadas
+                </p>
+                <p style={{ fontSize: "1.25rem", fontWeight: 700 }}>
+                  {resultado.aceptadas}
+                </p>
+              </div>
+              <div>
+                <p className="tenue" style={{ fontWeight: 600 }}>
+                  Rechazadas
+                </p>
+                <p style={{ fontSize: "1.25rem", fontWeight: 700 }}>
+                  {resultado.rechazadas}
+                </p>
+              </div>
+              <div>
+                <p className="tenue" style={{ fontWeight: 600 }}>
+                  Total importado
+                </p>
+                <p style={{ fontSize: "1.25rem", fontWeight: 700 }}>
+                  {dinero(resultado.total_monto)}
+                </p>
+              </div>
+            </div>
+            <p className="tenue">
+              El total es la suma de las filas aceptadas, no la del libro: lo que
+              se rechazó no entra al presupuesto.
+            </p>
+
+            {resultado.filas.length > 0 ? (
+              <div className="tabla-envoltorio">
+                <table className="tabla tabla--compacta">
+                  <thead>
+                    <tr>
+                      <th scope="col">Canal</th>
+                      <th scope="col">Vendedor</th>
+                      <th scope="col">Cliente</th>
+                      <th scope="col">Cat.</th>
+                      <th scope="col">Monto</th>
+                      <th scope="col">Estado</th>
+                      <th scope="col">Motivo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resultado.filas.map((fila, indice) => (
+                      <tr key={`${fila.canal}-${indice}`}>
+                        <td>{fila.canal}</td>
+                        <td className="mono">
+                          {fila.vendedor_clave ?? "—"}
+                        </td>
+                        <td className="mono">
+                          {fila.cliente_clave ?? "—"}
+                        </td>
+                        <td className="mono">{fila.categoria ?? "—"}</td>
+                        <td className="numero">{dinero(fila.monto)}</td>
+                        <td>
+                          {fila.aceptada ? (
+                            <span className="distintivo distintivo--exito">
+                              Aceptada
+                            </span>
+                          ) : (
+                            <span className="distintivo distintivo--peligro">
+                              Rechazada
+                            </span>
+                          )}
+                        </td>
+                        <td className="tenue">{fila.motivo ?? ""}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </div>
+        </Dialogo>
+      ) : null}
+    </>
+  );
+}
+
+// ── Configuración de canales del Excel ────────────────────────────────────────
+
+function ConfiguracionCanales() {
+  const { data: mapeos, isLoading, error } = useCanalesMapeosMensual();
+  const [abrirFormulario, setAbrirFormulario] = useState(false);
+  const [mapeoEditar, setMapeoEditar] = useState<CanalMapeoMensual | null>(
+    null,
+  );
+
+  return (
+    <Tarjeta
+      titulo="Mapeo de canales del Excel"
+      descripcion="Configura a qué vendedor, cliente y categoría (A–F) pertenece cada canal del libro anual (`SUPER MAYORISTA`, `MAYORISTA`, `TAT`…). Es lo que usa la importación del Excel comercial: los canales sin mapeo se rechazan con su motivo."
+      acciones={
+        <button
+          type="button"
+          className="boton boton--pequeno"
+          onClick={() => {
+            setMapeoEditar(null);
+            setAbrirFormulario(true);
+          }}
+        >
+          Nuevo mapeo
+        </button>
+      }
+      sinRelleno
+    >
+      <AvisoError error={error} />
+
+      {isLoading ? <Cargando texto="Cargando mapeos de canal…" /> : null}
+
+      {!isLoading && (mapeos === undefined || mapeos.length === 0) ? (
+        <Vacio
+          titulo="No hay mapeos de canal configurados"
+          detalle="Los mapeos dicen al sistema a qué vendedor, cliente y categoría pertenece cada canal del Excel. Sin ellos, la importación rechaza todos los canales."
+        />
+      ) : null}
+
+      {mapeos && mapeos.length > 0 ? (
+        <div className="tabla-envoltorio">
+          <table className="tabla tabla--compacta">
+            <thead>
+              <tr>
+                <th scope="col">Canal</th>
+                <th scope="col">Vendedor</th>
+                <th scope="col">Cliente</th>
+                <th scope="col">Categoría</th>
+                <th scope="col">Activo</th>
+                <th scope="col">
+                  <span className="solo-lectores">Acciones</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {mapeos.map((mapeo) => (
+                <tr key={mapeo.id}>
+                  <td>{mapeo.canal}</td>
+                  <td className="mono">{mapeo.vendedor_clave ?? "—"}</td>
+                  <td className="mono">{mapeo.cliente_clave ?? "—"}</td>
+                  <td className="mono">{mapeo.categoria ?? "—"}</td>
+                  <td>{mapeo.activo ? "Sí" : "No"}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="boton boton--sutil boton--pequeno"
+                      onClick={() => {
+                        setMapeoEditar(mapeo);
+                        setAbrirFormulario(true);
+                      }}
+                    >
+                      Cambiar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      {abrirFormulario ? (
+        <FormularioCanalMapeo
+          mapeoExistente={mapeoEditar}
+          onCerrar={() => setAbrirFormulario(false)}
+        />
+      ) : null}
+    </Tarjeta>
+  );
+}
+
+function FormularioCanalMapeo({
+  mapeoExistente,
+  onCerrar,
+}: {
+  mapeoExistente: CanalMapeoMensual | null;
+  onCerrar: () => void;
+}) {
+  const guardar = useGuardarCanalMapeoMensual();
+  const esEdicion = mapeoExistente !== null;
+
+  const [canal, setCanal] = useState(mapeoExistente?.canal ?? "");
+  const [vendedorClave, setVendedorClave] = useState(
+    mapeoExistente?.vendedor_clave ?? "",
+  );
+  const [clienteClave, setClienteClave] = useState(
+    mapeoExistente?.cliente_clave ?? "",
+  );
+  const [categoria, setCategoria] = useState(mapeoExistente?.categoria ?? "A");
+  const [activo, setActivo] = useState(mapeoExistente?.activo ?? true);
+
+  // Catálogos de vendedor y cliente para elegir a quién. La clave es la del
+  // origen —la cédula del vendedor, el NIT del cliente—, así que no se teclea:
+  // se escoge del catálogo que dejó la ingesta.
+  const { data: vendedores } = useDimensionesAgro("vendedor");
+  const { data: clientes } = useDimensionesAgro("cliente");
+
+  function enviar(evento: React.FormEvent) {
+    evento.preventDefault();
+    const datos: EntradaCanalMapeoMensual = {
+      canal,
+      vendedor_clave: vendedorClave,
+      cliente_clave: clienteClave,
+      categoria,
+      activo,
+    };
+    guardar.mutate(
+      { datos, mapeoId: esEdicion ? mapeoExistente!.id : undefined },
+      { onSuccess: onCerrar },
+    );
+  }
+
+  return (
+    <Dialogo
+      abierto
+      titulo={esEdicion ? "Cambiar mapeo de canal" : "Nuevo mapeo de canal"}
+      onCerrar={onCerrar}
+      pie={
+        <>
+          <button
+            type="button"
+            className="boton boton--sutil"
+            onClick={onCerrar}
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            form="formulario-canal-mapeo"
+            className="boton"
+            disabled={guardar.isPending}
+          >
+            {guardar.isPending ? "Guardando…" : "Guardar"}
+          </button>
+        </>
+      }
+    >
+      <form
+        id="formulario-canal-mapeo"
+        className="pila--compacta"
+        onSubmit={enviar}
+      >
+        <AvisoError error={guardar.error} />
+
+        <Campo
+          etiqueta="Canal del Excel"
+          ayuda="El nombre tal como aparece en la hoja `RESUMEN (MES)`. Se normaliza (mayúsculas, sin tildes) al guardar."
+        >
+          <input
+            className="campo__control"
+            type="text"
+            minLength={1}
+            maxLength={120}
+            value={canal}
+            onChange={(evento) => setCanal(evento.target.value)}
+            required
+            disabled={esEdicion}
+            placeholder="SUPER MAYORISTA"
+          />
+        </Campo>
+
+        <Campo
+          etiqueta="Vendedor"
+          ayuda="Sale del catálogo que dejó la ingesta, no se escribe a mano."
+        >
+          <select
+            className="campo__control"
+            value={vendedorClave}
+            onChange={(evento) => setVendedorClave(evento.target.value)}
+            required
+          >
+            <option value="">Elija uno…</option>
+            {(vendedores ?? []).map((m) => (
+              <option key={m.clave} value={m.clave}>
+                {m.nombre} · {m.clave}
+              </option>
+            ))}
+          </select>
+        </Campo>
+
+        <Campo
+          etiqueta="Cliente"
+          ayuda="Sale del catálogo que dejó la ingesta, no se escribe a mano."
+        >
+          <select
+            className="campo__control"
+            value={clienteClave}
+            onChange={(evento) => setClienteClave(evento.target.value)}
+            required
+          >
+            <option value="">Elija uno…</option>
+            {(clientes ?? []).map((m) => (
+              <option key={m.clave} value={m.clave}>
+                {m.nombre} · {m.clave}
+              </option>
+            ))}
+          </select>
+        </Campo>
+
+        <Campo
+          etiqueta="Categoría"
+          ayuda="Categoría A–F del bloque comercial. Obligatoria."
+        >
+          <select
+            className="campo__control"
+            value={categoria}
+            onChange={(evento) => setCategoria(evento.target.value)}
+            required
+          >
+            {CATEGORIAS_MENSUAL.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+        </Campo>
+
+        <Campo etiqueta="Activo">
+          <label className="fila">
+            <input
+              type="checkbox"
+              checked={activo}
+              onChange={(evento) => setActivo(evento.target.checked)}
+            />
+            <span className="tenue">
+              Si está inactivo, el mapeo se retira sin borrarse: la importación
+              lo ignora.
             </span>
           </label>
         </Campo>

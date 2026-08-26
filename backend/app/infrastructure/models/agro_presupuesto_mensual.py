@@ -236,3 +236,61 @@ class AgroPptoMensualServicio(Base, TimestampMixin):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<AgroPptoMensualServicio periodo={self.periodo_id} monto={self.monto}>"
+
+
+class AgroPptoMensualCanalMapeo(Base, TimestampMixin):
+    """Mapeo de canal del Excel anual → vendedor / cliente / categoría A–F.
+
+    Es la configuración que hace que la importación del libro anual de
+    agropecuaria (`POST /agro/presupuesto-mensual/importar-comercial`) sea
+    configurable en lugar de codificada. El negocio decide a qué vendedor,
+    cliente y categoría (A–F) del bloque **commercial** pertenece cada canal del
+    Excel (`SUPER MAYORISTA`, `MAYORISTA`, `TAT`, `Call Center`…), y lo activa o
+    desactiva sin borrar el registro.
+
+    `canal` es la **forma normalizada** del nombre del canal —mayúsculas, sin
+    tildes y con espacios colapsados— y es única: un canal se mapea a una sola
+    combinación de vendedor / cliente / categoría. La importación normaliza el
+    nombre que lee del Excel y lo busca aquí; lo que no encuentra se rechaza
+    con su motivo, en lugar de adivinarle un destino.
+
+    `vendedor_clave`, `cliente_clave` y `categoria` son obligatorios para el
+    bloque comercial: la importación escribe filas de detalle del bloque
+    `commercial`, y ese bloque exige los tres. No son claves ajenas a
+    `agro_dimensiones` por la misma razón que el resto de las tablas de
+    presupuesto mensual: el presupuesto se fija antes de que la ingesta pueble
+    el catálogo.
+    """
+
+    __tablename__ = "agro_ppto_mensual_canal_mapeo"
+    __table_args__ = (
+        UniqueConstraint("canal", name="uq_agro_ppto_mensual_canal_mapeo_canal"),
+        CheckConstraint(
+            "categoria IS NULL OR categoria = 'A' OR categoria = 'B' OR categoria = 'C' "
+            "OR categoria = 'D' OR categoria = 'E' OR categoria = 'F'",
+            name="ck_agro_ppto_mensual_canal_mapeo_categoria",
+        ),
+        Index(
+            "ix_agro_ppto_mensual_canal_mapeo_activo",
+            "activo",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    #: Nombre del canal normalizado: mayúsculas, sin tildes, espacios colapsados.
+    #: Es la llave con la que la importación busca el canal del Excel.
+    canal: Mapped[str] = mapped_column(String(120), nullable=False)
+    #: Clave del vendedor normalizada. Obligatoria para el bloque comercial.
+    vendedor_clave: Mapped[str | None] = mapped_column(String(60))
+    #: Clave del cliente normalizada. Obligatoria para el bloque comercial.
+    cliente_clave: Mapped[str | None] = mapped_column(String(60))
+    #: Categoría A–F. Obligatoria para el bloque comercial.
+    categoria: Mapped[str | None] = mapped_column(String(1))
+    #: `False` retira el mapeo sin borrarlo, para no perder la historia.
+    activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return (
+            f"<AgroPptoMensualCanalMapeo {self.canal} "
+            f"v={self.vendedor_clave} c={self.cliente_clave} cat={self.categoria}>"
+        )

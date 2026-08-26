@@ -20,6 +20,7 @@ from app.infrastructure.models.agro_presupuesto import (
     AgroPresupuestoHistorial,
 )
 from app.infrastructure.models.agro_presupuesto_mensual import (
+    AgroPptoMensualCanalMapeo,
     AgroPptoMensualDetalle,
     AgroPptoMensualMapeo,
     AgroPptoMensualServicio,
@@ -42,6 +43,7 @@ __all__ = [
     "AgroCalendario",
     "AgroCorridaIngesta",
     "AgroDimension",
+    "AgroPptoMensualCanalMapeo",
     "AgroPptoMensualDetalle",
     "AgroPptoMensualMapeo",
     "AgroPptoMensualServicio",

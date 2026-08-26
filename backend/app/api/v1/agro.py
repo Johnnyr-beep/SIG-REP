@@ -45,6 +45,8 @@ from app.infrastructure.models.agro_vocabulario import (
 from app.schemas.agro import (
     CalendarioAgroEntrada,
     CalendarioAgroSalida,
+    CanalMapeoMensualEntrada,
+    CanalMapeoMensualSalida,
     CorridaAgroSalida,
     CuadrePresupuestoSalida,
     DetalleMensualEntrada,
@@ -62,6 +64,7 @@ from app.schemas.agro import (
     RespuestaVentaDiariaAgro,
     RespuestaVentasComercialesAgro,
     ResultadoCargaAgro,
+    ResultadoImportacionComercial,
     ResumenPresupuestoMensualSalida,
     ServicioMensualEntrada,
     ServicioMensualSalida,
@@ -553,3 +556,85 @@ def presupuesto_mensual_guardar_servicio(
 ) -> ServicioMensualSalida:
     """Fija el valor mensual del bloque de servicio: un solo importe por período."""
     return AgroPresupuestoMensualService(sesion).guardar_servicio(periodo, datos, usuario=usuario)
+
+
+# ── Importación configurable del Excel comercial ─────────────────────────────
+#
+# El libro anual de agropecuaria trae una hoja `RESUMEN (MES)` con los canales
+# como filas (`SUPER MAYORISTA`, `MAYORISTA`, `TAT`, `Call Center`…) y los meses
+# `ENE..DIC` como columnas. La importación lee el valor del mes elegido **tal
+# cual está almacenado** (sin escalar por 1 000) y lo vuelca en el bloque
+# **commercial** del presupuesto mensual, mapeando cada canal a vendedor, cliente
+# y categoría A–F mediante la configuración de canales. Los canales sin mapeo
+# se rechazan con su motivo.
+
+
+@router.get(
+    "/presupuesto-mensual/canales/mapeos",
+    response_model=list[CanalMapeoMensualSalida],
+    summary="Mapeos de canal del Excel comercial",
+)
+def presupuesto_mensual_canales_mapeos(
+    _: LecturaDep, sesion: SesionDep
+) -> list[CanalMapeoMensualSalida]:
+    """Lista los mapeos de canal del Excel → vendedor / cliente / categoría A–F."""
+    return AgroPresupuestoMensualService(sesion).listar_canales_mapeos()
+
+
+@router.put(
+    "/presupuesto-mensual/canales/mapeos",
+    response_model=CanalMapeoMensualSalida,
+    summary="Crear o actualizar un mapeo de canal",
+)
+def presupuesto_mensual_guardar_canal_mapeo(
+    datos: CanalMapeoMensualEntrada,
+    usuario: AnalistaDep,
+    sesion: SesionDep,
+    mapeo_id: int | None = None,
+) -> CanalMapeoMensualSalida:
+    """Crea un mapeo de canal nuevo o actualiza uno existente si `mapeo_id` se envía.
+
+    El canal se normaliza (mayúsculas, sin tildes, espacios colapsados) y es
+    único: la restricción de la tabla lo garantiza y se traduce a 409 por el
+    manejador global. Los tres campos —vendedor, cliente y categoría— son
+    obligatorios, porque la importación escribe filas del bloque comercial.
+    """
+    return AgroPresupuestoMensualService(sesion).guardar_canal_mapeo(
+        datos, mapeo_id=mapeo_id
+    )
+
+
+@router.post(
+    "/presupuesto-mensual/importar-comercial",
+    response_model=ResultadoImportacionComercial,
+    summary="Importar el Excel anual al bloque comercial",
+)
+async def presupuesto_mensual_importar_comercial(
+    usuario: AnalistaDep,
+    sesion: SesionDep,
+    archivo: Annotated[UploadFile, File(description="Archivo .xlsx del presupuesto anual")],
+    periodo: Annotated[str, Form(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")],
+    motivo: Annotated[str, Form(min_length=5, max_length=400)] = "Importación del Excel comercial",
+) -> ResultadoImportacionComercial:
+    """Importa el libro anual al bloque **commercial** del período.
+
+    Lee la hoja `RESUMEN (MES)`, toma el valor del mes del período **tal cual
+    está almacenado** (sin escalar por 1 000) y, por cada canal del Excel, lo
+    vuelca en una fila de detalle del bloque comercial usando el mapeo
+    configurado. Los canales sin mapeo se rechazan con su motivo: no se adivina
+    un destino. Reusa los mismos topes de subida, la misma autenticación y el
+    mismo bloqueo de período cerrado que el resto del presupuesto mensual.
+    """
+    contenido = await leer_subida(
+        archivo,
+        extensiones=EXTENSIONES_CARGA,
+        max_bytes=MAX_BYTES_CARGA,
+        max_descomprimido=MAX_DESCOMPRIMIDO_CARGA,
+    )
+    return AgroPresupuestoMensualService(sesion).importar_comercial(
+        contenido,
+        archivo.filename or "presupuesto.xlsx",
+        codigo_periodo=periodo,
+        motivo=motivo,
+        usuario=usuario,
+    )

@@ -611,3 +611,75 @@ class ResumenPresupuestoMensualSalida(EsquemaBase):
     bloques: list[BloqueMensualSalida]
     total_monto: DecimalStr
     total_kilos: DecimalStr
+
+
+# ── Importación configurable del Excel comercial ──────────────────────────────
+#
+# El libro anual de agropecuaria trae una hoja `RESUMEN (MES)` con los canales
+# como filas (`SUPER MAYORISTA`, `MAYORISTA`, `TAT`, `Call Center`…) y los meses
+# `ENE..DIC` como columnas. La importación lee el valor del mes elegido **tal
+# cual está almacenado** (sin escalar por 1 000) y lo vuelca en el bloque
+# **commercial** del presupuesto mensual, mapeando cada canal a vendedor, cliente
+# y categoría A–F mediante la configuración de `agro_ppto_mensual_canal_mapeo`.
+# Los canales sin mapeo se rechazan con su motivo, no se adivinan.
+
+
+class CanalMapeoMensualSalida(EsquemaBase):
+    """Un mapeo de canal del Excel → vendedor / cliente / categoría A–F."""
+
+    id: int
+    canal: str
+    vendedor_clave: str | None = None
+    cliente_clave: str | None = None
+    categoria: str | None = None
+    activo: bool = True
+
+
+class CanalMapeoMensualEntrada(BaseModel):
+    """Alta o modificación de un mapeo de canal.
+
+    `canal` se normaliza en el backend (mayúsculas, sin tildes, espacios
+    colapsados) y es único: un canal se mapea a una sola combinación de
+    vendedor / cliente / categoría. Los tres son obligatorios para el bloque
+    comercial, porque la importación escribe filas de detalle de ese bloque.
+    """
+
+    canal: str = Field(min_length=1, max_length=120, examples=["SUPER MAYORISTA"])
+    vendedor_clave: str = Field(min_length=1, max_length=60)
+    cliente_clave: str = Field(min_length=1, max_length=60)
+    categoria: str = Field(pattern=r"^[A-F]$")
+    activo: bool = True
+
+
+class FilaImportacionComercial(EsquemaBase):
+    """Una fila del resultado de la importación: un canal del Excel.
+
+    `aceptada` distingue los canales que se volcaron al bloque comercial de los
+    que se rechazaron; `motivo` explica por qué en los rechazados y queda
+    `None` en los aceptados.
+    """
+
+    canal: str
+    vendedor_clave: str | None = None
+    cliente_clave: str | None = None
+    categoria: str | None = None
+    monto: DecimalStr
+    kilos: DecimalStr
+    aceptada: bool
+    motivo: str | None = None
+
+
+class ResultadoImportacionComercial(EsquemaBase):
+    """Resultado de la importación del Excel comercial: aceptados y rechazados.
+
+    El total es la suma de las filas aceptadas, no la del libro: lo que se
+    rechazó no entra al presupuesto y publicarlo como parte del total sería
+    engañoso. Cada canal del Excel aparece aquí una sola vez, con su veredicto.
+    """
+
+    periodo: str
+    aceptadas: int
+    rechazadas: int
+    total_monto: DecimalStr
+    total_kilos: DecimalStr
+    filas: list[FilaImportacionComercial] = Field(default_factory=list)

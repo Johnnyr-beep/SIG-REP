@@ -645,3 +645,69 @@ export interface ResumenPresupuestoMensual {
   total_monto: string;
   total_kilos: string;
 }
+
+// ── Importación configurable del Excel comercial ──────────────────────────────
+//
+// El libro anual trae una hoja `RESUMEN (MES)` con los canales como filas
+// (`SUPER MAYORISTA`, `MAYORISTA`, `TAT`, `Call Center`…) y los meses `ENE..DIC`
+// como columnas. La importación lee el valor del mes del período **tal cual
+// está almacenado** (sin escalar por 1 000) y lo vuelca en el bloque
+// **commercial**, mapeando cada canal a vendedor, cliente y categoría A–F
+// mediante la configuración de canales. Los canales sin mapeo se rechazan con
+// su motivo.
+
+/** Un mapeo de canal del Excel → vendedor / cliente / categoría A–F. */
+export interface CanalMapeoMensual {
+  id: number;
+  /** Canal normalizado: mayúsculas, sin tildes, espacios colapsados. */
+  canal: string;
+  vendedor_clave: string | null;
+  cliente_clave: string | null;
+  categoria: string | null;
+  activo: boolean;
+}
+
+/**
+ * Cuerpo de `PUT /agro/presupuesto-mensual/canales/mapeos`.
+ *
+ * Si `mapeo_id` se envía como parámetro de consulta, el backend actualiza el
+ * mapeo existente; si no, crea uno nuevo. Los tres campos —vendedor, cliente y
+ * categoría— son obligatorios, porque la importación escribe filas del bloque
+ * comercial y ese bloque los exige.
+ */
+export interface EntradaCanalMapeoMensual {
+  canal: string;
+  vendedor_clave: string;
+  cliente_clave: string;
+  categoria: string;
+  activo: boolean;
+}
+
+/** Una fila del resultado de la importación: un canal del Excel. */
+export interface FilaImportacionComercial {
+  canal: string;
+  vendedor_clave: string | null;
+  cliente_clave: string | null;
+  categoria: string | null;
+  monto: string;
+  kilos: string;
+  /** `true` si se volcó al bloque comercial; `false` si se rechazó. */
+  aceptada: boolean;
+  /** Por qué se rechazó; `null` en las aceptadas. */
+  motivo: string | null;
+}
+
+/**
+ * Resultado de la importación del Excel comercial: aceptados y rechazados.
+ *
+ * El total es la suma de las filas aceptadas, no la del libro: lo que se
+ * rechazó no entra al presupuesto.
+ */
+export interface ResultadoImportacionComercial {
+  periodo: string;
+  aceptadas: number;
+  rechazadas: number;
+  total_monto: string;
+  total_kilos: string;
+  filas: FilaImportacionComercial[];
+}

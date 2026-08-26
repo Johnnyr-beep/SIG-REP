@@ -39,11 +39,16 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.application.services.agro_importacion_comercial_parser import (
+    leer_canales,
+    normalizar_canal,
+)
 from app.application.services.periodos import obtener_o_crear_periodo, obtener_periodo
 from app.core.errors import ErrorNoEncontrado, ErrorPeriodoCerrado, ErrorValidacion
 from app.core.logging import obtener_logger
 from app.infrastructure.models.agro_presupuesto_mensual import (
     BLOQUES_PRESUPUESTO_MENSUAL,
+    AgroPptoMensualCanalMapeo,
     AgroPptoMensualDetalle,
     AgroPptoMensualMapeo,
     AgroPptoMensualServicio,
@@ -57,10 +62,14 @@ from app.infrastructure.models.periodo import Periodo
 from app.infrastructure.models.usuario import Usuario
 from app.schemas.agro import (
     BloqueMensualSalida,
+    CanalMapeoMensualEntrada,
+    CanalMapeoMensualSalida,
     DetalleMensualEntrada,
     DetalleMensualSalida,
+    FilaImportacionComercial,
     MapeoMensualEntrada,
     MapeoMensualSalida,
+    ResultadoImportacionComercial,
     ResumenPresupuestoMensualSalida,
     ServicioMensualEntrada,
     ServicioMensualSalida,
@@ -472,4 +481,208 @@ class AgroPresupuestoMensualService:
             vendedor_etiqueta=fila.vendedor_etiqueta,
             monto=Decimal(fila.monto),
             kilos=Decimal(fila.kilos),
+        )
+
+    # ── Mapeo de canales del Excel ────────────────────────────────────────────
+
+    def listar_canales_mapeos(self) -> list[CanalMapeoMensualSalida]:
+        """Lista los mapeos de canal del Excel → vendedor / cliente / categoría."""
+        consulta = select(AgroPptoMensualCanalMapeo).order_by(
+            AgroPptoMensualCanalMapeo.canal
+        )
+        return [
+            CanalMapeoMensualSalida(
+                id=m.id,
+                canal=m.canal,
+                vendedor_clave=m.vendedor_clave,
+                cliente_clave=m.cliente_clave,
+                categoria=m.categoria,
+                activo=m.activo,
+            )
+            for m in self._sesion.execute(consulta).scalars()
+        ]
+
+    def guardar_canal_mapeo(
+        self,
+        datos: CanalMapeoMensualEntrada,
+        *,
+        mapeo_id: int | None = None,
+    ) -> CanalMapeoMensualSalida:
+        """Crea o actualiza un mapeo de canal del Excel.
+
+        El canal se normaliza (mayúsculas, sin tildes, espacios colapsados) y
+        es único: la restricción de la tabla lo garantiza y se traduce a 409 por
+        el manejador global. Los tres campos —vendedor, cliente y categoría—
+        son obligatorios, porque la importación escribe filas del bloque
+        comercial y ese bloque los exige.
+        """
+        canal = normalizar_canal(datos.canal)
+        if not canal:
+            raise ErrorValidacion("El canal no puede estar vacío.")
+
+        vendedor_norm = normalizar_clave(TipoDimension.VENDEDOR, datos.vendedor_clave)
+        cliente_norm = normalizar_clave(TipoDimension.CLIENTE, datos.cliente_clave)
+        categoria = datos.categoria.upper()
+
+        if mapeo_id is not None:
+            mapeo = self._sesion.get(AgroPptoMensualCanalMapeo, mapeo_id)
+            if mapeo is None:
+                raise ErrorNoEncontrado(f"No existe el mapeo de canal {mapeo_id}.")
+            mapeo.canal = canal
+            mapeo.vendedor_clave = vendedor_norm
+            mapeo.cliente_clave = cliente_norm
+            mapeo.categoria = categoria
+            mapeo.activo = datos.activo
+        else:
+            mapeo = AgroPptoMensualCanalMapeo(
+                canal=canal,
+                vendedor_clave=vendedor_norm,
+                cliente_clave=cliente_norm,
+                categoria=categoria,
+                activo=datos.activo,
+            )
+            self._sesion.add(mapeo)
+
+        self._sesion.flush()
+        logger.info(
+            "agro_ppto_mensual_canal_mapeo_guardado",
+            canal=mapeo.canal,
+            vendedor=mapeo.vendedor_clave,
+            cliente=mapeo.cliente_clave,
+        )
+        return CanalMapeoMensualSalida(
+            id=mapeo.id,
+            canal=mapeo.canal,
+            vendedor_clave=mapeo.vendedor_clave,
+            cliente_clave=mapeo.cliente_clave,
+            categoria=mapeo.categoria,
+            activo=mapeo.activo,
+        )
+
+    # ── Importación del Excel comercial ───────────────────────────────────────
+
+    def importar_comercial(
+        self,
+        contenido: bytes,
+        nombre_archivo: str,
+        codigo_periodo: str,
+        motivo: str,
+        *,
+        usuario: Usuario | None = None,
+    ) -> ResultadoImportacionComercial:
+        """Importa el libro anual al bloque **commercial** del período.
+
+        Lee la hoja `RESUMEN (MES)`, toma el valor del mes del período **tal
+        cual está almacenado** (sin escalar por 1 000) y, por cada canal del
+        Excel, lo vuelca en una fila de detalle del bloque comercial usando el
+        mapeo configurado. Los canales sin mapeo se rechazan con su motivo: no
+        se adivina un destino.
+
+        Una fila mala no aborta las buenas: cada canal se procesa por su cuenta
+        y el resultado publica aceptados y rechazados. El total es la suma de
+        las filas aceptadas, no la del libro: lo que se rechazó no entra al
+        presupuesto.
+        """
+        periodo = obtener_o_crear_periodo(self._sesion, codigo_periodo)
+        self._exigir_periodo_abierto(periodo)
+
+        canales = leer_canales(contenido, codigo_periodo)
+
+        mapeos: dict[str, AgroPptoMensualCanalMapeo] = {
+            m.canal: m
+            for m in self._sesion.execute(
+                select(AgroPptoMensualCanalMapeo).where(
+                    AgroPptoMensualCanalMapeo.activo.is_(True)
+                )
+            ).scalars()
+        }
+
+        filas: list[FilaImportacionComercial] = []
+        aceptadas = 0
+        rechazadas = 0
+        total_monto = CERO
+        total_kilos = CERO
+
+        for canal_leido in canales:
+            canal_norm = normalizar_canal(canal_leido.canal)
+            mapeo = mapeos.get(canal_norm)
+
+            if mapeo is None:
+                filas.append(
+                    FilaImportacionComercial(
+                        canal=canal_leido.canal,
+                        monto=canal_leido.monto,
+                        kilos=CERO,
+                        aceptada=False,
+                        motivo=(
+                            f"El canal «{canal_leido.canal}» no tiene mapeo "
+                            "configurado. Créelo en la configuración de canales "
+                            "y vuelva a importar."
+                        ),
+                    )
+                )
+                rechazadas += 1
+                continue
+
+            if not mapeo.vendedor_clave or not mapeo.cliente_clave or not mapeo.categoria:
+                filas.append(
+                    FilaImportacionComercial(
+                        canal=canal_leido.canal,
+                        vendedor_clave=mapeo.vendedor_clave,
+                        cliente_clave=mapeo.cliente_clave,
+                        categoria=mapeo.categoria,
+                        monto=canal_leido.monto,
+                        kilos=CERO,
+                        aceptada=False,
+                        motivo=(
+                            f"El mapeo del canal «{canal_leido.canal}» está "
+                            "incompleto: requiere vendedor, cliente y categoría."
+                        ),
+                    )
+                )
+                rechazadas += 1
+                continue
+
+            datos = DetalleMensualEntrada(
+                bloque="commercial",
+                vendedor_clave=mapeo.vendedor_clave,
+                cliente_clave=mapeo.cliente_clave,
+                categoria=mapeo.categoria,
+                monto=canal_leido.monto,
+                kilos=CERO,
+            )
+            self.guardar_detalle(codigo_periodo, datos, usuario=usuario)
+
+            filas.append(
+                FilaImportacionComercial(
+                    canal=canal_leido.canal,
+                    vendedor_clave=mapeo.vendedor_clave,
+                    cliente_clave=mapeo.cliente_clave,
+                    categoria=mapeo.categoria,
+                    monto=canal_leido.monto,
+                    kilos=CERO,
+                    aceptada=True,
+                )
+            )
+            aceptadas += 1
+            total_monto += canal_leido.monto
+            total_kilos += CERO
+
+        logger.info(
+            "agro_importacion_comercial",
+            periodo=codigo_periodo,
+            archivo=nombre_archivo,
+            motivo=motivo,
+            aceptadas=aceptadas,
+            rechazadas=rechazadas,
+            total_monto=total_monto,
+        )
+
+        return ResultadoImportacionComercial(
+            periodo=codigo_periodo,
+            aceptadas=aceptadas,
+            rechazadas=rechazadas,
+            total_monto=total_monto,
+            total_kilos=total_kilos,
+            filas=filas,
         )

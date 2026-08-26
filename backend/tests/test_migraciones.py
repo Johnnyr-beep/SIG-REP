@@ -86,7 +86,7 @@ def test_alembic_upgrade_head_recorre_todas_las_migraciones_sobre_sqlite(tmp_pat
 
     # Se recorrieron **todas** las revisiones, no solo la primera.
     aplicadas = proceso.stderr + proceso.stdout
-    for revision in ("0001", "0002", "0003", "0004", "0005"):
+    for revision in ("0001", "0002", "0003", "0004", "0005", "0009"):
         assert f"-> {revision}" in aplicadas, f"la revisión {revision} no llegó a ejecutarse"
 
     actual = _alembic(entorno, "current")

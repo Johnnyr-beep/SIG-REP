@@ -17,12 +17,14 @@ import type { Medida } from "./tipos";
 import type {
   BloqueMensual,
   CalendarioAgro,
+  CanalMapeoMensual,
   CorridaAgro,
   CuadrePresupuestoAgro,
   DimensionPresupuestoAgro,
   EjeCruceAgro,
   EjeResumenAgro,
   EntradaCalendarioAgro,
+  EntradaCanalMapeoMensual,
   EntradaDetalleMensual,
   EntradaMapeoMensual,
   EntradaPresupuestoAgro,
@@ -39,6 +41,7 @@ import type {
   RespuestaVentaDiariaAgro,
   RespuestaVentasComercialesAgro,
   ResultadoCargaAgro,
+  ResultadoImportacionComercial,
   ServicioMensual,
 } from "./tiposAgro";
 
@@ -122,6 +125,9 @@ export const clavesAgro = {
     ["agro", "presupuesto-mensual", "mapeos", bloque ?? "todos"] as const,
   servicioMensual: (periodo: string) =>
     ["agro", "presupuesto-mensual", "servicio", periodo] as const,
+  // Mapeos de canal del Excel comercial: configuración aparte de los mapeos de
+  // bloque, porque mapean canales del Excel y no combinaciones de bloque.
+  canalesMapeosMensual: ["agro", "presupuesto-mensual", "canales", "mapeos"] as const,
 };
 
 export function useInteligenciaAgro(periodo: string): UseQueryResult<RespuestaInteligencia> {
@@ -619,6 +625,97 @@ export function useGuardarServicioMensual(
       void cliente.invalidateQueries({
         queryKey: clavesAgro.servicioMensual(periodo),
       });
+      void cliente.invalidateQueries({
+        queryKey: clavesAgro.presupuestoMensual(periodo),
+      });
+    },
+  });
+}
+
+// ── Importación configurable del Excel comercial ──────────────────────────────
+//
+// El libro anual trae una hoja `RESUMEN (MES)` con los canales como filas y los
+// meses `ENE..DIC` como columnas. La importación lee el valor del mes del
+// período **tal cual está almacenado** (sin escalar por 1 000) y lo vuelca en
+// el bloque **commercial**, mapeando cada canal a vendedor, cliente y categoría
+// A–F mediante la configuración de canales. Los canales sin mapeo se rechazan
+// con su motivo.
+
+/**
+ * Los mapeos de canal del Excel → vendedor / cliente / categoría A–F.
+ *
+ * Es la configuración que hace que la importación sea configurable en lugar de
+ * codificada: el negocio decide a qué vendedor, cliente y categoría pertenece
+ * cada canal del Excel.
+ */
+export function useCanalesMapeosMensual(): UseQueryResult<CanalMapeoMensual[]> {
+  return useQuery({
+    queryKey: clavesAgro.canalesMapeosMensual,
+    queryFn: () =>
+      peticion<CanalMapeoMensual[]>(
+        "/agro/presupuesto-mensual/canales/mapeos",
+      ),
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * Crea o actualiza un mapeo de canal.
+ *
+ * Si `mapeoId` se envía, el backend actualiza el mapeo existente; si no, crea
+ * uno nuevo. La unicidad del canal la garantiza la restricción de la tabla y
+ * se traduce a 409 por el manejador global.
+ */
+export function useGuardarCanalMapeoMensual(): UseMutationResult<
+  CanalMapeoMensual,
+  Error,
+  { datos: EntradaCanalMapeoMensual; mapeoId?: number }
+> {
+  const cliente = useQueryClient();
+  return useMutation({
+    mutationFn: ({ datos, mapeoId }) =>
+      peticion<CanalMapeoMensual>(
+        "/agro/presupuesto-mensual/canales/mapeos",
+        {
+          metodo: "PUT",
+          cuerpo: datos,
+          parametros: { mapeo_id: mapeoId },
+        },
+      ),
+    onSuccess: () => {
+      void cliente.invalidateQueries({
+        queryKey: clavesAgro.canalesMapeosMensual,
+      });
+    },
+  });
+}
+
+/**
+ * Importa el libro anual al bloque **commercial** del período.
+ *
+ * Lee la hoja `RESUMEN (MES)`, toma el valor del mes del período tal cual está
+ * almacenado y, por cada canal del Excel, lo vuelca en una fila de detalle del
+ * bloque comercial usando el mapeo configurado. Los canales sin mapeo se
+ * rechazan con su motivo. El resultado lista aceptados y rechazados.
+ */
+export function useImportarComercial(
+  periodo: string,
+): UseMutationResult<
+  ResultadoImportacionComercial,
+  Error,
+  { archivo: File; motivo: string }
+> {
+  const cliente = useQueryClient();
+  return useMutation({
+    mutationFn: ({ archivo, motivo }) =>
+      enviarArchivo<ResultadoImportacionComercial>(
+        "/agro/presupuesto-mensual/importar-comercial",
+        archivo,
+        { periodo, motivo },
+      ),
+    onSuccess: () => {
+      // La importación escribe filas del bloque comercial: el resumen mensual
+      // entero ya no vale.
       void cliente.invalidateQueries({
         queryKey: clavesAgro.presupuestoMensual(periodo),
       });
