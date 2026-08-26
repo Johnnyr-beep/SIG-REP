@@ -330,6 +330,22 @@ export function useGuardarPresupuestoAgro(): UseMutationResult<
   });
 }
 
+export function useEliminarPresupuestoAgro(): UseMutationResult<
+  unknown,
+  Error,
+  { periodo: string; dimension: DimensionPresupuestoAgro; clave: string }
+> {
+  const invalidar = useInvalidarPresupuestoAgro();
+  return useMutation({
+    mutationFn: ({ periodo, dimension, clave }) =>
+      peticion("/agro/presupuesto", {
+        metodo: "DELETE",
+        parametros: { periodo, dimension, clave },
+      }),
+    onSuccess: invalidar,
+  });
+}
+
 /**
  * Carga masiva: el archivo trae una columna `dimension` por fila.
  *

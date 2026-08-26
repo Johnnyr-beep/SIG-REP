@@ -23,6 +23,7 @@ import { useSearchParams } from "react-router-dom";
 import {
   useCargaMasivaAgro,
   useDimensionesAgro,
+  useEliminarPresupuestoAgro,
   useCuadreAgro,
   useGuardarDetalleMensual,
   useGuardarMapeoMensual,
@@ -49,6 +50,7 @@ import {
   AvisoError,
   Cargando,
   Campo,
+  Confirmacion,
   Dialogo,
   Tarjeta,
   Vacio,
@@ -152,9 +154,11 @@ function VistaDimensiones() {
   const { data: cuadre } = useCuadreAgro(periodo);
   const { data: historial } = useHistorialAgro(periodo, dimension);
   const guardar = useGuardarPresupuestoAgro();
+  const eliminar = useEliminarPresupuestoAgro();
   const carga = useCargaMasivaAgro(periodo);
 
   const [edicion, setEdicion] = useState<MetaAgro | null>(null);
+  const [eliminacion, setEliminacion] = useState<MetaAgro | null>(null);
 
   function fijar(clave: string, valor: string) {
     const siguientes = new URLSearchParams(parametros);
@@ -207,6 +211,7 @@ function VistaDimensiones() {
 
       <AvisoError error={error} />
       <AvisoError error={guardar.error} />
+      <AvisoError error={eliminar.error} />
 
       {/* El cuadre va arriba y visible aunque cuadre: es la única señal de que
           las otras tres dimensiones existen y de que esta no vive sola. */}
@@ -264,6 +269,13 @@ function VistaDimensiones() {
                         >
                           Cambiar
                         </button>
+                        <button
+                          type="button"
+                          className="boton boton--sutil boton--pequeno"
+                          onClick={() => setEliminacion(fila)}
+                        >
+                          Eliminar
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -292,6 +304,27 @@ function VistaDimensiones() {
           onCerrar={() => setEdicion(null)}
         />
       ) : null}
+      <Confirmacion
+        abierto={eliminacion !== null}
+        titulo="Eliminar meta presupuestal"
+        mensaje={
+          eliminacion
+            ? `Se eliminará la meta de ${eliminacion.nombre}. El historial se conserva.`
+            : ""
+        }
+        textoConfirmar="Eliminar meta"
+        peligrosa
+        trabajando={eliminar.isPending}
+        error={eliminar.error}
+        onCancelar={() => setEliminacion(null)}
+        onConfirmar={() => {
+          if (!eliminacion) return;
+          eliminar.mutate(
+            { periodo, dimension, clave: eliminacion.clave },
+            { onSuccess: () => setEliminacion(null) },
+          );
+        }}
+      />
 
       {historial && historial.length > 0 ? (
         <Tarjeta

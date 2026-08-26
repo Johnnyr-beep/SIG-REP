@@ -303,6 +303,24 @@ def guardar_presupuesto(
     )
 
 
+@router.delete("/presupuesto", status_code=204, summary="Eliminar una meta")
+def eliminar_presupuesto(
+    usuario: AnalistaDep,
+    sesion: SesionDep,
+    periodo: str = PeriodoQuery,
+    dimension: DimensionPresupuesto = DimensionPresupuesto.CENTRO_OPERACION,
+    clave: str = "",
+    motivo: str = "Meta eliminada desde SIGREP",
+) -> None:
+    AgroPresupuestoService(sesion).eliminar(
+        codigo_periodo=periodo,
+        dimension=dimension,
+        clave=clave,
+        motivo=motivo,
+        usuario=usuario,
+    )
+
+
 @router.post(
     "/presupuesto/carga-masiva",
     response_model=ResultadoCargaAgro,

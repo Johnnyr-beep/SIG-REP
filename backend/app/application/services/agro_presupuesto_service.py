@@ -573,6 +573,41 @@ class AgroPresupuestoService:
             kilos=Decimal(fila.kilos),
         )
 
+    def eliminar(
+        self,
+        *,
+        codigo_periodo: str,
+        dimension: DimensionPresupuesto,
+        clave: str,
+        motivo: str,
+        usuario: Usuario | None,
+    ) -> None:
+        """Retira una meta activa sin destruir su rastro de auditoría."""
+        periodo = obtener_periodo(self._sesion, codigo_periodo)
+        self._exigir_periodo_abierto(periodo)
+        clave_normalizada = normalizar_clave(dimension.tipo, clave)
+        fila = self._sesion.execute(
+            select(AgroPresupuesto).where(
+                AgroPresupuesto.periodo_id == periodo.id,
+                AgroPresupuesto.dimension == dimension.value,
+                AgroPresupuesto.clave == clave_normalizada,
+            )
+        ).scalar_one_or_none()
+        if fila is None:
+            raise ErrorNoEncontrado("La meta que intenta eliminar ya no existe.")
+
+        self._historiar(fila, "monto", Decimal(fila.monto), None, motivo, usuario)
+        self._historiar(fila, "kilos", Decimal(fila.kilos), None, motivo, usuario)
+        self._sesion.flush()
+        for evento in self._sesion.execute(
+            select(AgroPresupuestoHistorial).where(
+                AgroPresupuestoHistorial.presupuesto_id == fila.id
+            )
+        ).scalars():
+            evento.presupuesto_id = None
+        self._sesion.delete(fila)
+        self._sesion.flush()
+
     # ── Catálogo de dimensiones ───────────────────────────────────────────────
 
     def miembros(self, tipo: TipoDimension) -> list[MiembroDimensionSalida]:
@@ -840,7 +875,7 @@ class AgroPresupuestoService:
         fila: AgroPresupuesto,
         campo: str,
         anterior: Decimal | None,
-        nuevo: Decimal,
+        nuevo: Decimal | None,
         motivo: str,
         usuario: Usuario | None,
     ) -> None:
