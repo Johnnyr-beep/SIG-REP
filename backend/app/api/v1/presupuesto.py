@@ -13,10 +13,13 @@ from typing import Annotated
 from fastapi import APIRouter, File, Form, Query, UploadFile
 
 from app.api.v1 import AnalistaDep, GerenteDep, LecturaDep
+from app.application.services.historia_venta_service import HistoriaVentaService
 from app.application.services.presupuesto_service import PresupuestoService
 from app.core.deps import SesionDep, alcance_escritura, alcance_puntos_venta, leer_subida
 from app.schemas.presupuesto import (
     HistorialSalida,
+    HistoriaVentaEntrada,
+    HistoriaVentaSalida,
     PeriodoSalida,
     PresupuestoEntrada,
     PresupuestoSalida,
@@ -25,6 +28,7 @@ from app.schemas.presupuesto import (
 
 router = APIRouter(prefix="/presupuesto", tags=["Presupuesto"])
 periodos_router = APIRouter(prefix="/periodos", tags=["Presupuesto"])
+historia_router = APIRouter(prefix="/historia-venta", tags=["Historia de venta"])
 
 PeriodoQuery = Query(pattern=r"^\d{4}-(0[1-9]|1[0-2])$", examples=["2026-08"])
 
@@ -131,6 +135,34 @@ def historial(
     """
     return PresupuestoService(sesion).historial(
         periodo, punto_venta, alcance=alcance_puntos_venta(usuario)
+    )
+
+
+@historia_router.get(
+    "", response_model=list[HistoriaVentaSalida], summary="Historia manual por PDV"
+)
+def listar_historia_venta(
+    usuario: LecturaDep,
+    sesion: SesionDep,
+    periodo: str = PeriodoQuery,
+) -> list[HistoriaVentaSalida]:
+    return HistoriaVentaService(sesion).listar(periodo, alcance=alcance_puntos_venta(usuario))
+
+
+@historia_router.put(
+    "", response_model=HistoriaVentaSalida, summary="Guardar historia manual de un PDV"
+)
+def guardar_historia_venta(
+    datos: HistoriaVentaEntrada, usuario: AnalistaDep, sesion: SesionDep
+) -> HistoriaVentaSalida:
+    return HistoriaVentaService(sesion).guardar(
+        codigo_periodo=datos.periodo,
+        punto_venta_id=datos.punto_venta_id,
+        monto=datos.monto,
+        kilos=datos.kilos,
+        motivo=datos.motivo,
+        usuario=usuario,
+        alcance=alcance_escritura(usuario),
     )
 
 

@@ -22,12 +22,14 @@ import type {
   CorteClientes,
   EntradaCalendario,
   EntradaIngesta,
+  EntradaHistoriaVenta,
   EntradaPresupuesto,
   EntradaUsuario,
   EventoAuditoria,
   FilaCalendario,
   FilaPresupuesto,
   Grupo,
+  HistoriaVenta,
   MapeoCategoria,
   Medida,
   Periodo,
@@ -124,6 +126,7 @@ export const claves = {
     ["presupuesto", periodo, puntoVenta] as const,
   historialPresupuesto: (periodo: string, puntoVenta: string) =>
     ["presupuesto-historial", periodo, puntoVenta] as const,
+  historiaVenta: (periodo: string) => ["historia-venta", periodo] as const,
   periodos: ["periodos"] as const,
   tablero: (filtros: FiltrosReporte) =>
     ["reporte", "tablero", filtros] as const,
@@ -457,6 +460,38 @@ export function useCerrarPeriodo(): UseMutationResult<Periodo, Error, string> {
     onSuccess: () => {
       void cliente.invalidateQueries({ queryKey: claves.periodos });
       void cliente.invalidateQueries({ queryKey: ["presupuesto"] });
+    },
+  });
+}
+
+// ── Historia de venta ────────────────────────────────────────────────────────
+
+export function useHistoriaVenta(
+  periodo: string,
+): UseQueryResult<HistoriaVenta[]> {
+  return useQuery({
+    queryKey: claves.historiaVenta(periodo),
+    queryFn: () =>
+      peticion<HistoriaVenta[]>("/historia-venta", {
+        parametros: { periodo },
+      }),
+    enabled: periodo.length === 7,
+  });
+}
+
+export function useGuardarHistoriaVenta(
+  periodo: string,
+): UseMutationResult<HistoriaVenta, Error, EntradaHistoriaVenta> {
+  const cliente = useQueryClient();
+  return useMutation({
+    mutationFn: (datos) =>
+      peticion<HistoriaVenta>("/historia-venta", {
+        metodo: "PUT",
+        cuerpo: datos,
+      }),
+    onSuccess: () => {
+      void cliente.invalidateQueries({ queryKey: claves.historiaVenta(periodo) });
+      void cliente.invalidateQueries({ queryKey: ["reporte"] });
     },
   });
 }

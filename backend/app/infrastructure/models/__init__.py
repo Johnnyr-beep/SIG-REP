@@ -27,6 +27,7 @@ from app.infrastructure.models.agro_presupuesto_mensual import (
 )
 from app.infrastructure.models.agro_venta import AgroVentaLinea
 from app.infrastructure.models.catalogo import Categoria, MapeoCategoria
+from app.infrastructure.models.historia_venta import HistoriaVentaManual
 from app.infrastructure.models.ingesta import CorridaIngesta, RechazoIngesta
 from app.infrastructure.models.organizacion import Grupo, PuntoVenta, Zona
 from app.infrastructure.models.periodo import CalendarioZona, Periodo
@@ -56,6 +57,7 @@ __all__ = [
     "Cliente",
     "CorridaIngesta",
     "Grupo",
+    "HistoriaVentaManual",
     "IntentoAcceso",
     "MapeoCategoria",
     "Periodo",

@@ -64,6 +64,12 @@ const MENU_CARNES: GrupoNav[] = [
         icono: "≡",
         roles: ["ADMIN", "GERENTE", "ANALISTA"],
       },
+      {
+        ruta: "/historia-venta",
+        etiqueta: "Venta año anterior",
+        icono: "↶",
+        roles: ["ADMIN", "GERENTE", "ANALISTA"],
+      },
       { ruta: "/calendario", etiqueta: "Días hábiles", icono: "◷" },
       { ruta: "/ingesta", etiqueta: "Ingesta", icono: "⇄" },
     ],
@@ -139,6 +145,7 @@ const TITULOS: Record<string, string> = {
   "/venta-diaria": "Venta diaria",
   "/clientes": "Clientes y vendedores",
   "/presupuesto": "Parametrización de presupuesto",
+  "/historia-venta": "Venta del año anterior",
 
   "/calendario": "Calendario de días hábiles",
   "/ingesta": "Ingesta desde SIESA",

@@ -24,6 +24,7 @@ import { CambioClaveObligatorio } from "@/paginas/CambioClave";
 import { Clientes } from "@/paginas/Clientes";
 import { Cumplimiento } from "@/paginas/Cumplimiento";
 import { Ingesta } from "@/paginas/Ingesta";
+import { HistoriaVenta } from "@/paginas/HistoriaVenta";
 import { Presupuesto } from "@/paginas/Presupuesto";
 import { SelectorMarca } from "@/paginas/SelectorMarca";
 import { Tablero } from "@/paginas/Tablero";
@@ -136,6 +137,14 @@ export function App() {
             />
             <Route path="calendario" element={<Calendario />} />
             <Route path="ingesta" element={<Ingesta />} />
+            <Route
+              path="historia-venta"
+              element={
+                <Restringido roles={["ADMIN", "GERENTE", "ANALISTA"]}>
+                  <HistoriaVenta />
+                </Restringido>
+              }
+            />
           </>
         )}
 

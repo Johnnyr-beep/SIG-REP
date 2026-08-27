@@ -54,6 +54,7 @@ from app.domain.indicadores import (
 )
 from app.domain.semaforo import UmbralesSemaforo
 from app.infrastructure.models.catalogo import Categoria
+from app.infrastructure.models.historia_venta import HistoriaVentaManual
 from app.infrastructure.models.organizacion import Grupo, PuntoVenta
 from app.infrastructure.models.periodo import Periodo
 from app.infrastructure.models.presupuesto import Presupuesto
@@ -297,6 +298,7 @@ class _Contexto:
     venta: dict[ClaveCelda, Totales] = field(default_factory=dict)
     presupuesto: dict[ClaveCelda, Presupuestado] = field(default_factory=dict)
     venta_anterior: dict[ClaveCelda, Totales] = field(default_factory=dict)
+    historia_manual: dict[int, Totales] = field(default_factory=dict)
     #: Venta de puntos no presupuestados, aparte del consolidado (§3.1).
     venta_sin_presupuesto: dict[int, Totales] = field(default_factory=dict)
 
@@ -661,8 +663,34 @@ class ReportesService:
                 ctx.venta_anterior = self._agregar_venta(
                     anterior, _corte_equivalente(anterior, corte), ctx, ctx.categoria_id
                 )
+                if ctx.categoria_id is None:
+                    ctx.historia_manual = self._agregar_historia_manual(
+                        anterior, ctx, ctx.venta_anterior
+                    )
 
         return ctx
+
+    def _agregar_historia_manual(
+        self,
+        periodo: Periodo,
+        ctx: _Contexto,
+        venta_transaccional: dict[ClaveCelda, Totales],
+    ) -> dict[int, Totales]:
+        """Historia manual solo para PDVs sin ninguna línea real en el período."""
+        con_transacciones = {punto_id for punto_id, _categoria_id in venta_transaccional}
+        consulta = select(
+            HistoriaVentaManual.punto_venta_id,
+            HistoriaVentaManual.monto,
+            HistoriaVentaManual.kilos,
+        ).where(
+            HistoriaVentaManual.periodo_id == periodo.id,
+            HistoriaVentaManual.punto_venta_id.in_(list(ctx.puntos) or [-1]),
+        )
+        return {
+            punto_id: Totales(valor=Decimal(monto), kilos=Decimal(kilos))
+            for punto_id, monto, kilos in self._sesion.execute(consulta)
+            if punto_id not in con_transacciones
+        }
 
     def _consulta_alcance(self, filtros: FiltrosReporte) -> Select[tuple[PuntoVenta]]:
         """Los puntos de venta que esta petición puede mirar, presupuestados o no.
@@ -859,7 +887,9 @@ class ReportesService:
         comparable = Totales()
         anterior = Totales()
         presu = Presupuestado()
-        con_historia = {punto_id for (punto_id, _cat) in ctx.venta_anterior}
+        con_historia = {punto_id for (punto_id, _cat) in ctx.venta_anterior} | set(
+            ctx.historia_manual
+        )
 
         for (punto_id, _cat), totales in ctx.venta.items():
             if punto_id in ids:
@@ -867,6 +897,9 @@ class ReportesService:
                 if punto_id in con_historia:
                     comparable.sumar(totales)
         for (punto_id, _cat), totales in ctx.venta_anterior.items():
+            if punto_id in ids:
+                anterior.sumar(totales)
+        for punto_id, totales in ctx.historia_manual.items():
             if punto_id in ids:
                 anterior.sumar(totales)
         for (punto_id, _cat), valores in ctx.presupuesto.items():

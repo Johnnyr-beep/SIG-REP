@@ -142,6 +142,7 @@ api.include_router(catalogos_api.router)
 api.include_router(calendario_api.router)
 api.include_router(presupuesto_api.router)
 api.include_router(presupuesto_api.periodos_router)
+api.include_router(presupuesto_api.historia_router)
 api.include_router(reportes_api.router)
 # La unidad agropecuaria vive bajo su propio prefijo: es otro negocio, con
 # sus dimensiones y su presupuesto por descomposicion, no una variante.

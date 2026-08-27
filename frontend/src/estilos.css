@@ -1449,6 +1449,31 @@ textarea {
   font-size: 0.78rem;
 }
 
+.formulario-en-linea {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.8fr) minmax(10rem, 0.7fr) minmax(18rem, 1.5fr) auto;
+  align-items: end;
+  gap: var(--espacio-4);
+  padding: var(--espacio-3) 0;
+}
+
+.formulario-en-linea .acciones {
+  display: flex;
+  gap: var(--espacio-2);
+  align-items: center;
+}
+
+.formulario-en-linea .campo__error {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .formulario-en-linea {
+    grid-template-columns: 1fr;
+  }
+}
+
 textarea.campo__control {
   min-height: 78px;
   font-family: inherit;

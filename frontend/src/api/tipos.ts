@@ -176,6 +176,26 @@ export interface Periodo {
   cerrado_en: string | null;
 }
 
+export interface HistoriaVenta {
+  periodo: string;
+  punto_venta_id: number;
+  punto_venta: string;
+  nombre: string;
+  monto: string;
+  kilos: string;
+  motivo: string;
+  actualizado_en: string;
+  actualizado_por: string | null;
+}
+
+export interface EntradaHistoriaVenta {
+  periodo: string;
+  punto_venta_id: number;
+  monto: string;
+  kilos: string;
+  motivo: string;
+}
+
 // ── Reportes ─────────────────────────────────────────────────────────────────
 
 export type Medida = "valor" | "kilos";

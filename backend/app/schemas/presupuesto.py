@@ -35,6 +35,28 @@ class PresupuestoEntrada(BaseModel):
     motivo: str = Field(min_length=5, max_length=400)
 
 
+class HistoriaVentaEntrada(BaseModel):
+    """Total histórico de un PDV para alimentar la comparación interanual."""
+
+    periodo: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$", examples=["2025-08"])
+    punto_venta_id: int
+    monto: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    kilos: Decimal = Field(ge=0, max_digits=18, decimal_places=3)
+    motivo: str = Field(min_length=5, max_length=400)
+
+
+class HistoriaVentaSalida(EsquemaBase):
+    periodo: str
+    punto_venta_id: int
+    punto_venta: str
+    nombre: str
+    monto: DecimalStr
+    kilos: DecimalStr
+    motivo: str
+    actualizado_en: datetime
+    actualizado_por: str | None = None
+
+
 class ErrorFila(BaseModel):
     fila: int
     motivo: str
