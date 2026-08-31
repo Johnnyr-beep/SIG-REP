@@ -676,6 +676,7 @@ class IngestaService:
                 aceptadas=c.aceptadas,
                 rechazadas=c.rechazadas,
                 duracion_ms=c.duracion_ms,
+                mensaje=c.mensaje,
             )
             for c in corridas
         ]
@@ -718,4 +719,5 @@ class IngestaService:
             aceptadas=corrida.aceptadas,
             rechazadas=corrida.rechazadas,
             duracion_ms=corrida.duracion_ms,
+            mensaje=corrida.mensaje,
         )

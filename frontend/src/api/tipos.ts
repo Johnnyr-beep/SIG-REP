@@ -404,6 +404,7 @@ export interface CorridaIngesta {
   aceptadas: number;
   rechazadas: number;
   duracion_ms: number;
+  mensaje: string | null;
 }
 
 export interface RechazoIngesta {

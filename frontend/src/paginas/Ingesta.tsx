@@ -248,6 +248,9 @@ export function Ingesta() {
                       <Distintivo tono={tonoEstadoIngesta(corrida.estado)}>
                         {humanizar(corrida.estado)}
                       </Distintivo>
+                      {corrida.mensaje ? (
+                        <p className="tenue">{corrida.mensaje}</p>
+                      ) : null}
                     </td>
                     <td className="numero">{numero(corrida.filas_leidas)}</td>
                     <td className="numero">{numero(corrida.aceptadas)}</td>

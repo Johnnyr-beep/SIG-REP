@@ -1055,6 +1055,7 @@ const CORRIDAS: CorridaIngesta[] = [
     aceptadas: 131_791,
     rechazadas: 28,
     duracion_ms: 47_320,
+    mensaje: null,
   },
   {
     id: 313,
@@ -1068,6 +1069,7 @@ const CORRIDAS: CorridaIngesta[] = [
     aceptadas: 117_204,
     rechazadas: 0,
     duracion_ms: 41_880,
+    mensaje: null,
   },
   {
     id: 312,
@@ -1081,6 +1083,7 @@ const CORRIDAS: CorridaIngesta[] = [
     aceptadas: 0,
     rechazadas: 0,
     duracion_ms: 1_204,
+    mensaje: null,
   },
 ];
 

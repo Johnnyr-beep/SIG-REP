@@ -41,6 +41,7 @@ class CorridaSalida(EsquemaBase):
     aceptadas: int
     rechazadas: int
     duracion_ms: int | None = None
+    mensaje: str | None = None
 
 
 class RechazoSalida(EsquemaBase):
