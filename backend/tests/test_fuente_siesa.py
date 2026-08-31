@@ -662,9 +662,7 @@ def test_una_rentabilidad_fuera_del_rango_persistible_no_cuesta_la_venta() -> No
     Es una columna de conciliación: el valor corrupto queda anotado y en NULL,
     pero no puede revertir el lote completo de ventas válidas.
     """
-    fuente, lineas = leer(
-        ApiFalsa().ventas(fila(porc_rentabilidad="1000000", subtotal="100"))
-    )
+    fuente, lineas = leer(ApiFalsa().ventas(fila(porc_rentabilidad="1000000", subtotal="100")))
 
     assert len(lineas) == 1
     assert lineas[0].valor_subtotal == D("100.00")  # type: ignore[attr-defined]
