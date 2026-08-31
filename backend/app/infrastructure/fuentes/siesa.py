@@ -223,6 +223,9 @@ COLUMNAS_OBLIGATORIAS = (COL_ORIGEN, COL_DESC_CO, COL_FECHA, COL_SUBTOTAL)
 ESTADOS_REINTENTABLES = frozenset({408, 429, 500, 502, 503, 504})
 
 _CERO = Decimal("0")
+#: `Numeric(12, 6)` admite seis enteros y seis decimales; el límite superior
+#: es exclusivo porque `1_000_000.000000` ya requiere siete enteros.
+_LIMITE_ABSOLUTO_MARGEN = Decimal("1000000")
 
 #: `noqa: S105`: es el texto que se muestra cuando **falta** el token, no un
 #: token. El nombre de la constante es lo único que dispara la regla.
@@ -672,6 +675,16 @@ class FuenteVentaSiesa:
                 "conciliar (§4.4) y el margen del reporte se recalcula sobre totales—, "
                 "pero `margen_siesa` queda en NULL para esta línea.",
             )
+        elif abs(margen) >= _LIMITE_ABSOLUTO_MARGEN:
+            self._anotar(
+                numero,
+                "PorcRentabilidad",
+                crudo,
+                "Excede el rango persistible de margen_siesa; la venta se carga igual —"
+                "este campo solo sirve para conciliar (§4.4)—, pero queda en NULL para "
+                "esta línea.",
+            )
+            return None
         return margen
 
     # ── HTTP ──────────────────────────────────────────────────────────────────

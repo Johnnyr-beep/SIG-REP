@@ -656,6 +656,25 @@ def test_una_rentabilidad_ilegible_no_cuesta_la_venta() -> None:
     assert any(a.campo == "PorcRentabilidad" for a in fuente.anotaciones)
 
 
+def test_una_rentabilidad_fuera_del_rango_persistible_no_cuesta_la_venta() -> None:
+    """`Numeric(12, 6)` no admite un séptimo dígito entero.
+
+    Es una columna de conciliación: el valor corrupto queda anotado y en NULL,
+    pero no puede revertir el lote completo de ventas válidas.
+    """
+    fuente, lineas = leer(
+        ApiFalsa().ventas(fila(porc_rentabilidad="1000000", subtotal="100"))
+    )
+
+    assert len(lineas) == 1
+    assert lineas[0].valor_subtotal == D("100.00")  # type: ignore[attr-defined]
+    assert lineas[0].margen_siesa is None  # type: ignore[attr-defined]
+    assert any(
+        anotacion.campo == "PorcRentabilidad" and "rango persistible" in anotacion.motivo
+        for anotacion in fuente.anotaciones
+    )
+
+
 def test_los_campos_que_este_endpoint_no_trae_van_a_nulo() -> None:
     """Reescrita. Antes: mismo nombre, pero `vendedor` sí venía.
 
