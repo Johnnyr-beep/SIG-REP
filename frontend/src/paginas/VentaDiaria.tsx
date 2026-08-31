@@ -249,7 +249,7 @@ export function VentaDiaria() {
     <div className="pila">
       <BarraFiltros
         control={control}
-        mostrar={{ rango: true }}
+        mostrar={{ rango: true, categoria: true }}
         acciones={
           <button
             type="button"
