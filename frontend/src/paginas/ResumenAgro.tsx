@@ -21,14 +21,21 @@ import { useSearchParams } from "react-router-dom";
 import {
   useExportarAgro,
   useResumenAgro,
+  useSerieMensualAgro,
   useVentaDiariaAgro,
+  useVentasComercialesAgro,
 } from "@/api/consultasAgro";
 import type { FilaResumenAgro, IndicadoresAgro } from "@/api/tiposAgro";
 import type { Medida } from "@/api/tipos";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import { Indicador } from "@/componentes/indicadores";
-import { AnilloCumplimiento, TendenciaAcumulada } from "@/componentes/graficos";
-import type { PuntoAcumulado } from "@/componentes/graficos";
+import {
+  AnilloCumplimiento,
+  BarrasRanking,
+  ColumnasComparadas,
+  TendenciaAcumulada,
+} from "@/componentes/graficos";
+import type { ColumnaComparada, FilaRanking, PuntoAcumulado } from "@/componentes/graficos";
 import {
   dinero,
   fecha,
@@ -92,6 +99,13 @@ export function ResumenAgro() {
     [filtrosAgro],
   );
   const { data: otra } = useResumenAgro(filtrosOtraMedida, eje);
+  const vendedores = useResumenAgro(filtrosAgro, "vendedor");
+  const comerciales = useVentasComercialesAgro(filtrosAgro);
+  const serieMensual = useSerieMensualAgro(
+    Number(filtros.periodo.slice(0, 4)),
+    "centro_operacion",
+    { hasta: filtros.hasta, centro: filtros.centro },
+  );
 
   // La tendencia sale de la serie diaria, que es otro reporte. Se pide con el
   // mismo periodo y el mismo corte para que las dos figuras de la pantalla
@@ -164,6 +178,41 @@ export function ResumenAgro() {
     semaforo: consolidadoKilos?.semaforo,
   };
 
+  const columnasMensuales = useMemo<ColumnaComparada[]>(
+    () =>
+      (serieMensual.data?.totales.meses ?? []).map((mes) => ({
+        clave: mes.periodo,
+        etiqueta: mes.periodo.slice(-2),
+        valor: mes.venta_valor,
+        referencia: mes.presupuesto,
+        atenuada: !mes.abierto,
+      })),
+    [serieMensual.data],
+  );
+
+  const rankingVendedores = useMemo<FilaRanking[]>(
+    () =>
+      (vendedores.data?.filas ?? []).slice(0, 5).map((fila) => ({
+        clave: fila.clave,
+        etiqueta: fila.nombre,
+        valor: fila.venta_valor,
+        participacion: fila.participacion,
+      })),
+    [vendedores.data],
+  );
+
+  const rankingComercial = useMemo<FilaRanking[]>(() => {
+    const porTipo = new Map<string, string>();
+    for (const fila of comerciales.data?.filas ?? []) {
+      const anterior = porTipo.get(fila.tipo_comercial) ?? "0";
+      porTipo.set(fila.tipo_comercial, sumar(anterior, fila.venta_valor) ?? anterior);
+    }
+    return [...porTipo.entries()]
+      .map(([etiqueta, valor]) => ({ clave: etiqueta, etiqueta, valor }))
+      .sort((izquierda, derecha) => Number(derecha.valor) - Number(izquierda.valor))
+      .slice(0, 5);
+  }, [comerciales.data]);
+
   function cambiarEje(valor: string) {
     const siguientes = new URLSearchParams(parametros);
     siguientes.set("por", valor);
@@ -213,7 +262,9 @@ export function ResumenAgro() {
         }
       />
 
-      <AvisoError error={error} />
+      <AvisoError
+        error={error ?? vendedores.error ?? comerciales.error ?? serieMensual.error}
+      />
       <AvisoError error={exportar.error} />
 
       {isLoading ? (
@@ -246,6 +297,17 @@ export function ResumenAgro() {
           />
 
           <div className="rejilla rejilla--panel">
+            <Tarjeta
+              titulo="Evolución mensual"
+              descripcion="Venta neta y presupuesto de enero a diciembre. Los meses aún no abiertos se muestran atenuados."
+            >
+              <ColumnasComparadas
+                columnas={columnasMensuales}
+                titulo="Venta mensual frente a presupuesto"
+                formatear={dinero}
+              />
+            </Tarjeta>
+
             <Tarjeta titulo="Cumplimiento del mes">
               <div className="anillos">
                 <AnilloCumplimiento etiqueta="Pesos" {...enPesos} />
@@ -261,6 +323,32 @@ export function ResumenAgro() {
                 puntos={acumulados}
                 titulo="Venta acumulada contra meta acumulada"
                 formatear={(valor) => porMedida(valor, medida)}
+              />
+            </Tarjeta>
+
+            <Tarjeta
+              titulo="Vendedores con mayor venta"
+              descripcion="Los cinco responsables con mayor venta neta del corte."
+              sinRelleno
+            >
+              <BarrasRanking
+                filas={rankingVendedores}
+                titulo="Vendedores con mayor venta"
+                formatear={dinero}
+              />
+            </Tarjeta>
+          </div>
+
+          <div className="rejilla rejilla--panel">
+            <Tarjeta
+              titulo="Composición comercial"
+              descripcion="Tipos comerciales con mayor peso en la venta neta."
+              sinRelleno
+            >
+              <BarrasRanking
+                filas={rankingComercial}
+                titulo="Composición comercial por tipo"
+                formatear={dinero}
               />
             </Tarjeta>
 

@@ -41,7 +41,7 @@ qué.
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import Decimal
@@ -88,13 +88,16 @@ from app.schemas.agro import (
     FilaCruceAgro,
     FilaCuboAgro,
     FilaResumenAgro,
+    FilaSerieAgro,
     FilaVentaComercialAgro,
     FilaVentaDiariaAgro,
     IndicadoresAgro,
+    MesSerieAgro,
     ParametrosCalculoAgro,
     RespuestaCruceAgro,
     RespuestaCuboAgro,
     RespuestaResumenAgro,
+    RespuestaSerieMensualAgro,
     RespuestaVentaDiariaAgro,
     RespuestaVentasComercialesAgro,
     TotalesVentaDiariaAgro,
@@ -181,6 +184,78 @@ class TotalesAgro:
 
     def medida(self, medida: Medida) -> Decimal:
         return self.valor if medida is Medida.VALOR else self.kilos
+
+
+#: Los doce meses, siempre los doce y siempre en orden. La serie anual publica
+#: columna para todos, incluidos los que no existen todavía en `periodos`: una
+#: rejilla de doce columnas que a veces trae ocho se lee como una rejilla rota.
+_MESES: tuple[int, ...] = tuple(range(1, 13))
+
+
+def _sumar_completo(valores: Iterable[Decimal | None]) -> Decimal | None:
+    """Suma que **se rinde si falta un término**, y también con la lista vacía.
+
+    Es la regla de §7 aplicada al año: sumar solo los meses que tienen meta
+    publicaría un presupuesto anual más bajo que el real con toda la pinta de
+    estar completo, y con él un cumplimiento por encima del 100 % que nadie
+    podría explicar. Vacío dice «esto no se puede sumar todavía».
+    """
+    total = CERO
+    alguno = False
+    for valor in valores:
+        if valor is None:
+            return None
+        total += valor
+        alguno = True
+    return total if alguno else None
+
+
+@dataclass(frozen=True, slots=True)
+class _InsumoMes:
+    """Los insumos de un mes de la serie anual, antes de calcular indicadores.
+
+    Separa el acopio del cálculo: quien lo llena decide de dónde salen los días
+    y la meta —del centro o de la compañía, del miembro o del consolidado— y
+    `_publicar_mes` no tiene que saberlo.
+    """
+
+    mes: int
+    #: `False` cuando el mes no tiene fila en `periodos`. No es lo mismo que un
+    #: mes sin venta: aquel está abierto y no vendió, y este no existe.
+    abierto: bool = False
+    valor: Decimal = CERO
+    kilos: Decimal = CERO
+    meta_valor: Decimal | None = None
+    meta_kilos: Decimal | None = None
+    dias_habiles: Decimal | None = None
+    dias_trabajados: Decimal | None = None
+    ideal_agregado: Decimal | None = None
+
+    @staticmethod
+    def anual(meses: Sequence[_InsumoMes]) -> _InsumoMes:
+        """Los doce meses en uno: el año, sumado y sin promediar ningún ratio.
+
+        La venta suma los doce meses, porque la venta del año es la venta del
+        año. Las magnitudes que pueden faltar —las dos metas y los dos días—
+        solo suman los meses **abiertos** y se rinden si a alguno le falta el
+        término; ver `_sumar_completo`.
+
+        `ideal_agregado` se deja vacío a propósito: en el año el ideal es
+        `Σ T / Σ H`, que es lo que calcula el dominio cuando no se le pasa uno
+        ponderado. Ponderar por presupuesto tiene sentido entre centros con
+        calendarios distintos, no entre los doce meses del mismo calendario.
+        """
+        abiertos = [mes for mes in meses if mes.abierto]
+        return _InsumoMes(
+            mes=0,
+            abierto=bool(abiertos),
+            valor=sum((mes.valor for mes in meses), start=CERO),
+            kilos=sum((mes.kilos for mes in meses), start=CERO),
+            meta_valor=_sumar_completo(mes.meta_valor for mes in abiertos),
+            meta_kilos=_sumar_completo(mes.meta_kilos for mes in abiertos),
+            dias_habiles=_sumar_completo(mes.dias_habiles for mes in abiertos),
+            dias_trabajados=_sumar_completo(mes.dias_trabajados for mes in abiertos),
+        )
 
 
 @dataclass
@@ -382,6 +457,312 @@ class AgroReportesService:
         filas.sort(key=lambda fila: (fila.tipo_comercial, fila.especie))
         return RespuestaVentasComercialesAgro(
             periodo=ctx.periodo.codigo, fecha_corte=ctx.fecha_corte, filas=filas
+        )
+
+    # ── Serie mensual del año ─────────────────────────────────────────────────
+
+    def serie_mensual(
+        self,
+        anio: int,
+        eje: EjeResumen,
+        *,
+        centros: tuple[str, ...] | None = None,
+        hasta: date | None = None,
+    ) -> RespuestaSerieMensualAgro:
+        """El año mes a mes por un eje, con la venta en pesos **y** en kilos.
+
+        Es el único reporte agropecuario que cruza de período, y cruza porque la
+        pregunta que responde no cabe en un mes: «¿cómo viene el año?». Los
+        demás miden dentro de un mes; este pone los doce en columnas.
+
+        **El corte se aplica una sola vez, al año entero.** Un `WHERE fecha <=
+        corte` sobre los períodos del año deja completos los meses ya cerrados
+        —su último día es anterior al corte— y recorta solo el mes en curso, que
+        es justo lo que hace falta, sin doce condiciones distintas ni doce
+        consultas: la agregación del año entero es **una**.
+
+        Publica las dos medidas en la misma respuesta en lugar de depender del
+        conmutador pesos/kilos. El tablero enseña las dos columnas juntas, y con
+        una medida por respuesta habría que pedir el año dos veces y casar dos
+        listas de doce meses por índice; el día que se desalinearan, nadie lo
+        notaría.
+
+        Los indicadores salen de `calcular_indicadores`, el mismo del resto del
+        sistema, tanto en cada mes como en el total del año. El total **no
+        promedia los doce cumplimientos**: los recalcula sobre las sumas del año
+        (§7), porque promediarlos daría el mismo peso a un enero de mil millones
+        que a un diciembre de cien.
+        """
+        catalogo = self._catalogo()
+        centros_pedidos = self._resolver_centros(catalogo, centros)
+        corte = hasta or date.today()
+        dimension = eje.dimension_presupuesto
+
+        periodos = {
+            fila.mes: fila
+            for fila in self._sesion.execute(select(Periodo).where(Periodo.anio == anio)).scalars()
+        }
+        ventas = self._agregar_anual(
+            COLUMNA_DIMENSION[eje.tipo],
+            {fila.id: mes for mes, fila in periodos.items()},
+            corte,
+            centros_pedidos,
+        )
+
+        contextos = {
+            mes: self._contexto_de(
+                periodo,
+                FiltrosAgro(periodo=f"{anio:04d}-{mes:02d}", hasta=hasta, centros=centros),
+                catalogo,
+                centros_pedidos,
+            )
+            for mes, periodo in periodos.items()
+        }
+        planes: dict[int, PlanPresupuesto | None] = {
+            mes: (self._plan(ctx, dimension) if dimension is not None else None)
+            for mes, ctx in contextos.items()
+        }
+
+        filas = [
+            self._fila_serie(anio, miembro, contextos, planes, ventas, eje)
+            for miembro in self._miembros_del_eje(catalogo, eje, centros_pedidos, planes, ventas)
+        ]
+        filas.sort(key=lambda f: (-Decimal(f.total.venta_valor), f.nombre))
+
+        return RespuestaSerieMensualAgro(
+            anio=anio,
+            eje=eje,
+            dimension_presupuesto=dimension.value if dimension is not None else None,
+            fecha_corte=corte,
+            periodos=[f"{anio:04d}-{mes:02d}" for mes in _MESES],
+            filas=filas,
+            totales=self._total_serie(anio, contextos, planes, ventas, dimension),
+        )
+
+    def _agregar_anual(
+        self,
+        columna: InstrumentedAttribute[int],
+        meses_por_periodo: dict[int, int],
+        corte: date,
+        centros_pedidos: list[int] | None,
+    ) -> dict[tuple[int, int], tuple[Decimal, Decimal]]:
+        """`{(miembro, mes): (pesos, kilos)}` del año entero, en una consulta.
+
+        No pasa por `_filtros_base` porque su `WHERE` es de un solo período y
+        aquí el corte abarca doce; lo que sí reproduce, y es lo que importa, es
+        la exclusión del impuesto y el filtro de centros. Ver la regla 1 del
+        encabezado del módulo: el impuesto no suma, nunca.
+        """
+        if not meses_por_periodo:
+            return {}
+
+        criterios: list[ColumnElement[bool]] = [
+            AgroVentaLinea.es_impuesto.is_(False),
+            AgroVentaLinea.periodo_id.in_(list(meses_por_periodo)),
+            AgroVentaLinea.fecha <= corte,
+        ]
+        if centros_pedidos is not None:
+            criterios.append(AgroVentaLinea.centro_id.in_(centros_pedidos or [-1]))
+
+        consulta = (
+            select(
+                columna,
+                AgroVentaLinea.periodo_id,
+                func.sum(COLUMNA_VENTA),
+                func.sum(AgroVentaLinea.kilos_total),
+            )
+            .where(*criterios)
+            .group_by(columna, AgroVentaLinea.periodo_id)
+        )
+        return {
+            (int(miembro), meses_por_periodo[int(periodo_id)]): (_dec(valor), _dec(kilos))
+            for miembro, periodo_id, valor, kilos in self._sesion.execute(consulta)
+        }
+
+    def _miembros_del_eje(
+        self,
+        catalogo: dict[int, AgroDimension],
+        eje: EjeResumen,
+        centros_pedidos: list[int] | None,
+        planes: dict[int, PlanPresupuesto | None],
+        ventas: dict[tuple[int, int], tuple[Decimal, Decimal]],
+    ) -> list[AgroDimension]:
+        """Qué miembros son fila: los que vendieron **y** los presupuestados.
+
+        Los presupuestados sin venta entran a propósito. Son el peor caso que
+        puede tener el reporte —una meta sin nada vendido contra ella— y
+        dejarlos fuera por no tener ninguna línea haría que el problema
+        desapareciera de la pantalla justo cuando es más grave.
+        """
+        del_tipo = [fila for fila in catalogo.values() if fila.tipo == eje.tipo.value]
+        if eje.tipo is TipoDimension.CENTRO_OPERACION and centros_pedidos is not None:
+            permitidos = set(centros_pedidos)
+            del_tipo = [fila for fila in del_tipo if fila.id in permitidos]
+
+        con_venta = {miembro for miembro, _ in ventas}
+        con_meta: set[str] = set()
+        for plan in planes.values():
+            if plan is not None:
+                con_meta.update(plan.metas)
+
+        return [fila for fila in del_tipo if fila.id in con_venta or fila.clave in con_meta]
+
+    def _fila_serie(
+        self,
+        anio: int,
+        miembro: AgroDimension,
+        contextos: dict[int, _Contexto],
+        planes: dict[int, PlanPresupuesto | None],
+        ventas: dict[tuple[int, int], tuple[Decimal, Decimal]],
+        eje: EjeResumen,
+    ) -> FilaSerieAgro:
+        """Los doce meses de un miembro y su total del año."""
+        insumos = []
+        for mes in _MESES:
+            ctx = contextos.get(mes)
+            plan = planes.get(mes)
+            valor, kilos = ventas.get((miembro.id, mes), (CERO, CERO))
+            if ctx is None:
+                insumos.append(_InsumoMes(mes=mes, valor=valor, kilos=kilos))
+                continue
+            # Los días son los del centro cuando el eje **es** el centro, y los
+            # de la compañía en los demás: un vendedor factura en los dos
+            # centros, así que su `H` no es el de ninguno. Misma regla que
+            # `resumen`, y sale del mismo par de métodos.
+            if eje is EjeResumen.CENTRO_OPERACION:
+                habiles, trabajados, ideal_fila = self._dias_centro(ctx, miembro.id)
+            else:
+                habiles, trabajados, ideal_fila = self._dias_compania(ctx)
+            insumos.append(
+                _InsumoMes(
+                    mes=mes,
+                    abierto=True,
+                    valor=valor,
+                    kilos=kilos,
+                    meta_valor=self._meta(plan, miembro.clave, Medida.VALOR),
+                    meta_kilos=self._meta(plan, miembro.clave, Medida.KILOS),
+                    dias_habiles=habiles,
+                    dias_trabajados=trabajados,
+                    ideal_agregado=ideal_fila,
+                )
+            )
+
+        return FilaSerieAgro(
+            clave=miembro.clave,
+            nombre=miembro.nombre,
+            meses=[self._publicar_mes(anio, insumo) for insumo in insumos],
+            total=self._publicar_mes(anio, _InsumoMes.anual(insumos)),
+        )
+
+    def _total_serie(
+        self,
+        anio: int,
+        contextos: dict[int, _Contexto],
+        planes: dict[int, PlanPresupuesto | None],
+        ventas: dict[tuple[int, int], tuple[Decimal, Decimal]],
+        dimension: DimensionPresupuesto | None,
+    ) -> FilaSerieAgro:
+        """El consolidado del año: la venta de todos los miembros, mes a mes.
+
+        La meta **no se saca sumando las filas publicadas**: sale de
+        `_meta_total`, el mismo método que usa el consolidado del resumen, y por
+        el mismo motivo. Con un filtro de centro activo la meta se recorta a los
+        centros pedidos; sin él es la de la compañía. Sumar las filas daría lo
+        mismo cuando todo cuadra y una cifra distinta —sin avisar— cuando no.
+        """
+        por_mes: dict[int, tuple[Decimal, Decimal]] = {}
+        for (_, mes), (valor, kilos) in ventas.items():
+            acumulado = por_mes.get(mes, (CERO, CERO))
+            por_mes[mes] = (acumulado[0] + valor, acumulado[1] + kilos)
+
+        insumos = []
+        for mes in _MESES:
+            ctx = contextos.get(mes)
+            valor, kilos = por_mes.get(mes, (CERO, CERO))
+            if ctx is None:
+                insumos.append(_InsumoMes(mes=mes, valor=valor, kilos=kilos))
+                continue
+            plan = planes.get(mes)
+            claves = self._claves_del_filtro(ctx, dimension)
+            habiles, trabajados, ideal_cia = self._dias_compania(ctx)
+            insumos.append(
+                _InsumoMes(
+                    mes=mes,
+                    abierto=True,
+                    valor=valor,
+                    kilos=kilos,
+                    meta_valor=self._meta_total(plan, Medida.VALOR, claves),
+                    meta_kilos=self._meta_total(plan, Medida.KILOS, claves),
+                    dias_habiles=habiles,
+                    dias_trabajados=trabajados,
+                    ideal_agregado=ideal_cia,
+                )
+            )
+
+        return FilaSerieAgro(
+            clave="",
+            nombre="CONSOLIDADO",
+            meses=[self._publicar_mes(anio, insumo) for insumo in insumos],
+            total=self._publicar_mes(anio, _InsumoMes.anual(insumos)),
+        )
+
+    def _publicar_mes(self, anio: int, insumo: _InsumoMes) -> MesSerieAgro:
+        """Un mes de la serie, con sus indicadores calculados por el dominio.
+
+        Se llama a `calcular_indicadores` **dos veces**, una por medida, en vez
+        de dividir a mano la segunda: el cumplimiento en kilos es el mismo
+        indicador que el de pesos con otras entradas, y calcularlo aquí sería
+        una segunda verdad esperando a divergir de la primera.
+
+        `costo_completo=False` a propósito: la serie no publica margen, y
+        afirmar que el costo está completo cuando no se consultó sería
+        habilitar un margen que nadie calculó.
+        """
+        en_pesos = calcular_indicadores(
+            InsumosIndicadores(
+                venta=insumo.valor,
+                costo=CERO,
+                costo_completo=False,
+                presupuesto=insumo.meta_valor,
+                dias_habiles=insumo.dias_habiles,
+                dias_trabajados=insumo.dias_trabajados,
+                ideal_agregado=insumo.ideal_agregado,
+            ),
+            self._umbrales,
+            decimales_medida=Medida.VALOR.decimales,
+        )
+        en_kilos = calcular_indicadores(
+            InsumosIndicadores(
+                venta=insumo.kilos,
+                costo=CERO,
+                costo_completo=False,
+                presupuesto=insumo.meta_kilos,
+                dias_habiles=insumo.dias_habiles,
+                dias_trabajados=insumo.dias_trabajados,
+                ideal_agregado=insumo.ideal_agregado,
+            ),
+            self._umbrales,
+            decimales_medida=Medida.KILOS.decimales,
+        )
+
+        return MesSerieAgro(
+            periodo=f"{anio:04d}" if insumo.mes == 0 else f"{anio:04d}-{insumo.mes:02d}",
+            mes=insumo.mes,
+            abierto=insumo.abierto,
+            venta_valor=redondear_no_nulo(insumo.valor, 2),
+            kilos=redondear_no_nulo(insumo.kilos, 3),
+            presupuesto=en_pesos.presupuesto,
+            presupuesto_kilos=en_kilos.presupuesto,
+            cumplimiento=en_pesos.cumplimiento,
+            cumplimiento_kilos=en_kilos.cumplimiento,
+            diferencia=(
+                None
+                if insumo.meta_valor is None
+                else redondear_no_nulo(insumo.valor - insumo.meta_valor, 2)
+            ),
+            proyeccion=en_pesos.proyeccion,
+            cumplimiento_proyectado=en_pesos.cumplimiento_proyectado,
+            semaforo=en_pesos.semaforo,
         )
 
     # ── Cubo dinámico ─────────────────────────────────────────────────────────
@@ -655,21 +1036,43 @@ class AgroReportesService:
 
     def _contexto(self, filtros: FiltrosAgro) -> _Contexto:
         periodo = obtener_periodo(self._sesion, filtros.periodo)
+        catalogo = self._catalogo()
+        return self._contexto_de(
+            periodo, filtros, catalogo, self._resolver_centros(catalogo, filtros.centros)
+        )
+
+    def _catalogo(self) -> dict[int, AgroDimension]:
+        """El catálogo entero de dimensiones, `{id: fila}`. Son ~900 miembros."""
+        return {fila.id: fila for fila in self._sesion.execute(select(AgroDimension)).scalars()}
+
+    def _resolver_centros(
+        self, catalogo: dict[int, AgroDimension], centros: tuple[str, ...] | None
+    ) -> list[int] | None:
+        """Los `id` de los centros pedidos, o `None` si no se filtró."""
+        if not centros:
+            return None
+        claves = {normalizar_clave(TipoDimension.CENTRO_OPERACION, codigo) for codigo in centros}
+        return [
+            fila.id
+            for fila in catalogo.values()
+            if fila.tipo == TipoDimension.CENTRO_OPERACION.value and fila.clave in claves
+        ]
+
+    def _contexto_de(
+        self,
+        periodo: Periodo,
+        filtros: FiltrosAgro,
+        catalogo: dict[int, AgroDimension],
+        centros_pedidos: list[int] | None,
+    ) -> _Contexto:
+        """El contexto de un período **sobre un catálogo ya cargado**.
+
+        Existe separado de `_contexto` por la serie mensual, que arma doce
+        contextos en una sola petición: rearmarlos con `_contexto` releería las
+        ~900 filas de dimensiones doce veces y resolvería doce veces el mismo
+        filtro de centros, para obtener siempre lo mismo.
+        """
         corte = fecha_corte_efectiva(periodo, filtros.hasta)
-        catalogo = {fila.id: fila for fila in self._sesion.execute(select(AgroDimension)).scalars()}
-
-        centros_pedidos: list[int] | None = None
-        if filtros.centros:
-            claves = {
-                normalizar_clave(TipoDimension.CENTRO_OPERACION, codigo)
-                for codigo in filtros.centros
-            }
-            centros_pedidos = [
-                fila.id
-                for fila in catalogo.values()
-                if fila.tipo == TipoDimension.CENTRO_OPERACION.value and fila.clave in claves
-            ]
-
         return _Contexto(
             periodo=periodo,
             fecha_corte=corte,

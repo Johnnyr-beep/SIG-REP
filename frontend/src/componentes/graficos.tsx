@@ -278,6 +278,257 @@ export function ColumnasDiarias({
   );
 }
 
+// ── Columnas contra una referencia ───────────────────────────────────────────
+
+export interface ColumnaComparada {
+  clave: string;
+  etiqueta: string;
+  valor: string | null;
+  /**
+   * La vara contra la que se compara esta columna, normalmente el presupuesto.
+   *
+   * Omitida o `null` dibuja una sola barra: hay categorías sin meta —los meses
+   * que nadie presupuestó, los ejes que no se presupuestan— y ahí una barra de
+   * referencia en cero afirmaría que la meta era ninguna.
+   */
+  referencia?: string | null;
+  /**
+   * `true` para atenuar la columna.
+   *
+   * Lo usan los meses que todavía no existen en `periodos`. Sin la atenuación,
+   * un diciembre en cero se lee igual que un diciembre que vendió cero, y son
+   * dos cosas distintas.
+   */
+  atenuada?: boolean;
+}
+
+const COMPARADAS = { ancho: 720, alto: 210, margenX: 10, arriba: 14, abajo: 30 };
+
+/**
+ * Venta contra presupuesto, categoría por categoría.
+ *
+ * Dos barras pareadas por categoría y no una barra apilada ni un porcentaje: la
+ * pregunta que responde es «¿cuánto de lo que tocaba?», y para eso las dos
+ * magnitudes tienen que estar en la misma escala y una al lado de la otra. Una
+ * barra de cumplimiento ya está en `BarraContraIdeal`; esta enseña los dos
+ * tamaños, que es lo que hace evidente que Planta pesa veinte veces Montería.
+ *
+ * Sirve a los tres cortes del tablero con la misma forma —meses, centros y
+ * categorías— porque estructuralmente son el mismo gráfico: N categorías, un
+ * valor y una referencia opcional. Tener tres componentes casi iguales es cómo
+ * se acaba con tres escalas distintas en la misma pantalla.
+ */
+export function ColumnasComparadas({
+  columnas,
+  titulo,
+  formatear,
+  etiquetaValor = "Venta",
+  etiquetaReferencia = "Presupuesto",
+}: {
+  columnas: ColumnaComparada[];
+  titulo: string;
+  formatear: (valor: string | null) => string;
+  etiquetaValor?: string;
+  etiquetaReferencia?: string;
+}) {
+  if (columnas.length === 0) {
+    return <p className="tenue">Sin categorías que dibujar.</p>;
+  }
+
+  const hayReferencia = columnas.some(
+    (columna) => columna.referencia !== undefined && columna.referencia !== null,
+  );
+  const hayValor = columnas.some((columna) => columna.valor !== null);
+
+  if (!hayValor && !hayReferencia) {
+    return (
+      <p className="tenue">
+        Todavía no hay venta ni presupuesto en este corte, así que no hay nada
+        que dibujar.
+      </p>
+    );
+  }
+
+  // El techo lo fija el mayor de las dos series. Si lo fijara solo la venta, un
+  // presupuesto que la supera se saldría del marco; si lo fijara solo el
+  // presupuesto, un mes que lo bate se vería recortado justo cuando es la buena
+  // noticia. Un 12 % de aire evita que la más alta toque el borde.
+  const techo =
+    Math.max(
+      ...columnas.map((columna) =>
+        Math.max(Number(columna.valor ?? 0), Number(columna.referencia ?? 0)),
+      ),
+      1,
+    ) * 1.12;
+
+  const util = {
+    ancho: COMPARADAS.ancho - COMPARADAS.margenX * 2,
+    alto: COMPARADAS.alto - COMPARADAS.arriba - COMPARADAS.abajo,
+  };
+  const paso = util.ancho / columnas.length;
+  // Con referencia caben dos barras en el hueco; sin ella, una más ancha usa el
+  // sitio en lugar de dejar la mitad del gráfico en blanco.
+  const ancho = Math.max(3, paso * (hayReferencia ? 0.3 : 0.46));
+  const separacion = hayReferencia ? ancho * 0.18 : 0;
+  const bloque = hayReferencia ? ancho * 2 + separacion : ancho;
+
+  const alturaDe = (valor: string | null) =>
+    valor === null ? 0 : proporcionParaGrafico(valor, techo) * util.alto;
+
+  const resumen = columnas
+    .map(
+      (columna) =>
+        `${columna.etiqueta}: ${formatear(columna.valor)}` +
+        (hayReferencia
+          ? ` de ${formatear(columna.referencia ?? null)}`
+          : ""),
+    )
+    .join("; ");
+
+  return (
+    <figure className="comparadas">
+      <svg
+        viewBox={`0 0 ${COMPARADAS.ancho} ${COMPARADAS.alto}`}
+        className="comparadas__figura"
+        role="img"
+        aria-label={`${titulo}. ${resumen}.`}
+      >
+        {[0.25, 0.5, 0.75].map((fraccion) => (
+          <line
+            key={fraccion}
+            x1={COMPARADAS.margenX}
+            x2={COMPARADAS.ancho - COMPARADAS.margenX}
+            y1={COMPARADAS.arriba + util.alto * fraccion}
+            y2={COMPARADAS.arriba + util.alto * fraccion}
+            className="comparadas__guia"
+          />
+        ))}
+
+        {columnas.map((columna, indice) => {
+          const centro = COMPARADAS.margenX + paso * indice + paso / 2;
+          const inicio = centro - bloque / 2;
+          const altoValor = alturaDe(columna.valor);
+          const altoMeta = alturaDe(columna.referencia ?? null);
+          const base = COMPARADAS.arriba + util.alto;
+
+          return (
+            <g key={columna.clave}>
+              <rect
+                className={`comparadas__valor${columna.atenuada ? " comparadas__valor--atenuada" : ""}`}
+                x={inicio}
+                y={base - altoValor}
+                width={ancho}
+                height={columna.valor === null ? 0 : Math.max(altoValor, 1)}
+                rx="2"
+              />
+              {hayReferencia &&
+              columna.referencia !== undefined &&
+              columna.referencia !== null ? (
+                <rect
+                  className="comparadas__referencia"
+                  x={inicio + ancho + separacion}
+                  y={base - altoMeta}
+                  width={ancho}
+                  height={Math.max(altoMeta, 1)}
+                  rx="2"
+                />
+              ) : null}
+              <text
+                className={`comparadas__etiqueta${columna.atenuada ? " comparadas__etiqueta--atenuada" : ""}`}
+                x={centro}
+                y={COMPARADAS.alto - 10}
+                textAnchor="middle"
+              >
+                {columna.etiqueta}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+
+      <figcaption className="comparadas__leyenda">
+        <span className="comparadas__clave comparadas__clave--valor">
+          {etiquetaValor}
+        </span>
+        {hayReferencia ? (
+          <span className="comparadas__clave comparadas__clave--referencia">
+            {etiquetaReferencia}
+          </span>
+        ) : (
+          <span className="tenue">Sin presupuesto capturado en este corte</span>
+        )}
+      </figcaption>
+    </figure>
+  );
+}
+
+// ── Escalafón con barra ──────────────────────────────────────────────────────
+
+export interface FilaRanking {
+  clave: string;
+  etiqueta: string;
+  valor: string | null;
+  /** Fracción del total del corte. Se escribe al lado; no la calcula la figura. */
+  participacion?: string | null;
+}
+
+/**
+ * Categorías ordenadas por peso, con su barra y su cifra.
+ *
+ * **Es la forma honesta del embudo.** El informe del que nace esta figura
+ * dibujaba las categorías como un embudo, que codifica la magnitud en el *ancho*
+ * de una banda: dos categorías que se diferencian un 20 % se ven casi iguales, y
+ * un embudo sin etapas —estas no son etapas de un proceso, son categorías
+ * paralelas— insinúa una conversión que no existe. La barra codifica la magnitud
+ * en la longitud, que es la comparación que el ojo hace bien, y conserva lo único
+ * que el embudo comunicaba de verdad: el orden.
+ */
+export function BarrasRanking({
+  filas,
+  formatear,
+  titulo,
+}: {
+  filas: FilaRanking[];
+  formatear: (valor: string | null) => string;
+  /** Qué se está ordenando; entra en la descripción accesible. */
+  titulo: string;
+}) {
+  if (filas.length === 0) {
+    return <p className="tenue">Sin categorías con venta en este corte.</p>;
+  }
+
+  const mayor = Math.max(
+    ...filas.map((fila) => Number(fila.valor ?? 0)),
+    1,
+  );
+
+  return (
+    <ol className="ranking" aria-label={titulo}>
+      {filas.map((fila) => (
+        <li key={fila.clave} className="ranking__fila">
+          <span className="ranking__etiqueta">{fila.etiqueta}</span>
+          <span className="ranking__pista" aria-hidden="true">
+            <span
+              className="ranking__barra"
+              style={{
+                width: `${proporcionParaGrafico(fila.valor, mayor) * 100}%`,
+              }}
+            />
+          </span>
+          <span className="ranking__cifra">
+            {formatear(fila.valor)}
+            {fila.participacion ? (
+              <span className="ranking__parte">
+                {porcentaje(fila.participacion)}
+              </span>
+            ) : null}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 // ── Anillo de cumplimiento ───────────────────────────────────────────────────
 
 /**

@@ -39,6 +39,7 @@ import type {
   RespuestaCuboAgro,
   RespuestaInteligencia,
   RespuestaResumenAgro,
+  RespuestaSerieMensualAgro,
   RespuestaVentaDiariaAgro,
   RespuestaVentasComercialesAgro,
   ResultadoCargaAgro,
@@ -109,6 +110,15 @@ export const clavesAgro = {
     ["agro", "reporte", "venta-diaria", filtros] as const,
   ventasComerciales: (filtros: FiltrosAgro) =>
     ["agro", "reporte", "ventas-comerciales", filtros] as const,
+  // La serie anual no lleva período ni medida: su unidad es el año y publica las
+  // dos medidas. La clave lleva lo que de verdad la distingue —año, eje, corte y
+  // centros— y nada más, o dos peticiones idénticas ocuparían dos entradas.
+  serieMensual: (
+    anio: number,
+    por: EjeResumenAgro,
+    hasta: string | undefined,
+    centro: string | undefined,
+  ) => ["agro", "reporte", "serie-mensual", anio, por, hasta ?? "", centro ?? ""] as const,
   presupuesto: (periodo: string, dimension: string) =>
     ["agro", "presupuesto", periodo, dimension] as const,
   cuadre: (periodo: string) =>
@@ -155,6 +165,30 @@ export function useResumenAgro(
     queryFn: () =>
       peticion<RespuestaResumenAgro>("/agro/resumen", {
         parametros: { ...comoParametros(filtros), por },
+      }),
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * El año mes a mes por un eje, en pesos **y** kilos.
+ *
+ * Es el único reporte de agropecuaria que no recibe `FiltrosAgro`: no lleva
+ * período —su unidad es el año— ni medida —publica las dos—. Lo que sí comparte
+ * son el corte y el filtro de centros, que se le pasan sueltos porque son los
+ * dos únicos del contrato.
+ */
+export function useSerieMensualAgro(
+  anio: number,
+  por: EjeResumenAgro,
+  opciones: { hasta?: string; centro?: string } = {},
+): UseQueryResult<RespuestaSerieMensualAgro> {
+  const { hasta, centro } = opciones;
+  return useQuery({
+    queryKey: clavesAgro.serieMensual(anio, por, hasta, centro),
+    queryFn: () =>
+      peticion<RespuestaSerieMensualAgro>("/agro/serie-mensual", {
+        parametros: { anio, por, hasta, centro },
       }),
     staleTime: 60_000,
   });

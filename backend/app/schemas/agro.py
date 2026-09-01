@@ -371,6 +371,93 @@ class RespuestaResumenAgro(EsquemaBase):
     parametros_calculo: ParametrosCalculoAgro
 
 
+# ── Serie mensual del año ─────────────────────────────────────────────────────
+
+
+class MesSerieAgro(EsquemaBase):
+    """Un mes de un miembro: la venta en las **dos** medidas y su meta.
+
+    Publica pesos y kilos a la vez en lugar de depender del conmutador
+    `medida`. No es un capricho de forma: el tablero anual enseña las dos
+    columnas juntas —«Ventas $» al lado de «Ventas Kg»— y con una sola medida
+    por respuesta la pantalla tendría que pedir el año dos veces y casar dos
+    listas de doce meses por índice. Cuando eso se desalinea nadie lo nota.
+
+    `presupuesto` viaja vacío —nunca en cero— cuando ese miembro no está
+    presupuestado en el mes, o cuando el eje no es una de las cuatro
+    dimensiones de presupuesto. Vacío dice «no hay vara»; un cero afirmaría
+    que la meta era ninguna.
+    """
+
+    #: `2026-08`. Va aunque el mes no exista en `periodos`: la columna se pinta
+    #: igual y lo que falta es la venta, no el mes. En el total del año lleva
+    #: solo el año (`2026`), porque ahí no hay un mes al que referirse.
+    periodo: str
+    #: 1–12, y **0 en el total del año**. El cero no es un mes: es la etiqueta
+    #: de «esto es el año entero», y tenerla explícita evita que la pantalla
+    #: tenga que reconocer el total por su posición en la lista.
+    mes: int = Field(ge=0, le=12)
+    #: `False` si el mes no tiene fila en `periodos`. La columna sale vacía y la
+    #: pantalla puede decir por qué en lugar de enseñar doce ceros.
+    abierto: bool = False
+
+    venta_valor: DecimalStr
+    kilos: DecimalStr
+
+    presupuesto: DecimalStr | None = None
+    presupuesto_kilos: DecimalStr | None = None
+    cumplimiento: DecimalStr | None = None
+    cumplimiento_kilos: DecimalStr | None = None
+    #: `V - P` en pesos. Negativo cuando falta para la meta, que es el signo con
+    #: el que el negocio lee la diferencia contra presupuesto.
+    diferencia: DecimalStr | None = None
+    proyeccion: DecimalStr | None = None
+    cumplimiento_proyectado: DecimalStr | None = None
+    semaforo: Semaforo = Semaforo.SIN_PRESUPUESTO
+
+
+class FilaSerieAgro(EsquemaBase):
+    """Un miembro del eje con sus doce meses y el total del año.
+
+    `total` **no es la suma de los porcentajes de los meses**: es un mes más
+    calculado sobre las sumas del año, con lo que el cumplimiento anual sale de
+    `Σ ventas / Σ metas` y no de promediar doce cumplimientos (§7). Promediarlos
+    daría el mismo peso a un enero de mil millones que a un diciembre de cien.
+    """
+
+    clave: str
+    nombre: str
+    #: Doce entradas, de enero a diciembre, siempre en orden y siempre las doce.
+    meses: list[MesSerieAgro]
+    total: MesSerieAgro
+
+
+class RespuestaSerieMensualAgro(EsquemaBase):
+    """`GET /agro/serie-mensual` — el año mes a mes por un eje.
+
+    Es el único reporte agropecuario que cruza de período. Los demás miden
+    **dentro** de un mes; este pone los doce en columnas para que la gerencia
+    lea la tendencia y el cumplimiento acumulado del año sin abrir doce
+    pantallas.
+
+    El corte se aplica una sola vez, al año entero: los meses ya cerrados salen
+    completos y el mes en curso sale hasta la fecha de corte. Un mes futuro sale
+    en cero y con `abierto` en `false`.
+    """
+
+    anio: int
+    eje: EjeResumen
+    #: La dimensión de presupuesto contra la que se midió, o `null` si el eje no
+    #: tiene meta —cliente, grupo y tipo de ítem—.
+    dimension_presupuesto: str | None = None
+    fecha_corte: date
+    #: `["2026-01", …, "2026-12"]`, para alinear las columnas de la pantalla.
+    periodos: list[str]
+    filas: list[FilaSerieAgro]
+    #: El año entero, con los mismos doce meses agregados sobre todas las filas.
+    totales: FilaSerieAgro
+
+
 class FilaCruceAgro(IndicadoresAgro):
     """Una fila de un cruce: las claves de sus dos o tres ejes.
 

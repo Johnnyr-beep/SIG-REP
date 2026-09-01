@@ -63,6 +63,7 @@ from app.schemas.agro import (
     RespuestaCruceAgro,
     RespuestaCuboAgro,
     RespuestaResumenAgro,
+    RespuestaSerieMensualAgro,
     RespuestaVentaDiariaAgro,
     RespuestaVentasComercialesAgro,
     ResultadoCargaAgro,
@@ -203,6 +204,35 @@ def ventas_comerciales(
 ) -> RespuestaVentasComercialesAgro:
     return AgroReportesService(sesion).ventas_comerciales(
         _filtros(periodo, hasta, desde, centro, medida)
+    )
+
+
+@router.get(
+    "/serie-mensual",
+    response_model=RespuestaSerieMensualAgro,
+    summary="El año mes a mes por un eje, en pesos y kilos",
+)
+def serie_mensual(
+    _: LecturaDep,
+    sesion: SesionDep,
+    anio: Annotated[int, Query(ge=2000, le=2100, examples=[2026])],
+    por: EjeResumen = EjeResumen.CENTRO_OPERACION,
+    centro: str | None = None,
+    hasta: date | None = None,
+) -> RespuestaSerieMensualAgro:
+    """El año en doce columnas: venta, meta, cumplimiento y proyección por mes.
+
+    Es el único reporte agropecuario que **no** lleva `periodo`, porque el año
+    entero es su unidad. Lleva `anio` y una fecha de corte que se aplica una sola
+    vez: los meses cerrados salen completos y el mes en curso hasta el corte.
+
+    Tampoco lleva `medida`, y esa es la otra diferencia deliberada: publica
+    pesos y kilos en la misma respuesta. El tablero enseña las dos columnas una
+    al lado de otra, y pedirlo dos veces obligaría a casar dos listas de doce
+    meses por índice para volver a juntar lo que nunca debió separarse.
+    """
+    return AgroReportesService(sesion).serie_mensual(
+        anio, por, centros=_centros(centro), hasta=hasta
     )
 
 

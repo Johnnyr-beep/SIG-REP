@@ -316,6 +316,82 @@ export interface RespuestaResumenAgro {
   parametros_calculo: ParametrosCalculoAgro;
 }
 
+// ── Serie mensual del año ────────────────────────────────────────────────────
+
+/**
+ * Un mes de un miembro: la venta en las **dos** medidas y su meta.
+ *
+ * Trae pesos y kilos a la vez en lugar de depender del conmutador `medida`,
+ * porque el tablero anual enseña las dos columnas juntas. Con una medida por
+ * respuesta habría que pedir el año dos veces y casar dos listas de doce meses
+ * por índice; el día que se desalinearan, nadie lo notaría.
+ */
+export interface MesSerieAgro {
+  /** `"2026-08"`, y solo el año (`"2026"`) en el total. */
+  periodo: string;
+  /**
+   * 1–12, y **0 en el total del año**.
+   *
+   * El cero no es un mes: es la etiqueta de «esto es el año entero», explícita
+   * para que la pantalla no tenga que reconocer el total por su posición.
+   */
+  mes: number;
+  /**
+   * `false` si el mes no tiene fila en `periodos`.
+   *
+   * No es lo mismo que un mes sin venta: aquel está abierto y no vendió, y este
+   * no existe todavía. La pantalla los distingue en lugar de pintar doce ceros.
+   */
+  abierto: boolean;
+
+  venta_valor: string;
+  kilos: string;
+
+  presupuesto: string | null;
+  presupuesto_kilos: string | null;
+  cumplimiento: string | null;
+  cumplimiento_kilos: string | null;
+  /** `V - P` en pesos. Negativo cuando falta para la meta. */
+  diferencia: string | null;
+  proyeccion: string | null;
+  cumplimiento_proyectado: string | null;
+  semaforo: Semaforo;
+}
+
+/**
+ * Un miembro del eje con sus doce meses y el total del año.
+ *
+ * `total` **no promedia los doce cumplimientos**: es un mes más calculado sobre
+ * las sumas del año. Promediar ratios daría el mismo peso a un enero de mil
+ * millones que a un diciembre de cien.
+ *
+ * Las magnitudes del total que pueden faltar —las dos metas, la proyección—
+ * viajan vacías si les falta el término en algún mes abierto. Sumar solo los
+ * meses que la tienen publicaría un año más barato que el real con toda la
+ * pinta de estar completo.
+ */
+export interface FilaSerieAgro {
+  clave: string;
+  nombre: string;
+  /** Doce entradas, de enero a diciembre, siempre las doce y en orden. */
+  meses: MesSerieAgro[];
+  total: MesSerieAgro;
+}
+
+/** `GET /agro/serie-mensual` — el año mes a mes por un eje. */
+export interface RespuestaSerieMensualAgro {
+  anio: number;
+  eje: EjeResumenAgro;
+  /** La dimensión contra la que se midió, o `null` si el eje no tiene meta. */
+  dimension_presupuesto: string | null;
+  fecha_corte: string;
+  /** `["2026-01", …, "2026-12"]`, para alinear las columnas. */
+  periodos: string[];
+  filas: FilaSerieAgro[];
+  /** El año entero, con los mismos doce meses agregados sobre todas las filas. */
+  totales: FilaSerieAgro;
+}
+
 /**
  * Una fila de un cruce: las claves de sus dos o tres ejes.
  *
