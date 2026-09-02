@@ -979,6 +979,10 @@ textarea {
   table-layout: fixed;
 }
 
+.tabla--costos thead th.numero {
+  text-align: right;
+}
+
 .tabla--costos__nombre {
   width: 18%;
 }
