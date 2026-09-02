@@ -21,6 +21,10 @@ dependencies = [
     # de pruebas: la ingesta desde la API descarga el CSV en streaming —un mes
     # son ~1 000 000 de filas— con timeouts separados de conexión y de lectura.
     "httpx>=0.27.0",
+    # AnyIO 4.10 depreca un alias que Starlette usa al importar TestClient.
+    # Las pruebas convierten deprecaciones en errores, así que se acota hasta
+    # que FastAPI/Starlette adopten el reemplazo sin romper CI por terceros.
+    "anyio>=4.0,<4.10",
     "structlog>=24.4.0",
     "email-validator>=2.1.0",
 ]
