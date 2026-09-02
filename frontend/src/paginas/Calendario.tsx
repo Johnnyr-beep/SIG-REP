@@ -41,6 +41,12 @@ interface EdicionZona {
   derivar: boolean;
 }
 
+interface FilaCalendarioVisible {
+  zonaId: number;
+  nombre: string;
+  calendario: FilaCalendario | null;
+}
+
 export function Calendario() {
   const { filtros, fijar } = useFiltros();
   const { puedeParametrizar } = useAuth();
@@ -64,6 +70,21 @@ export function Calendario() {
     return mapa;
   }, [zonas]);
 
+  // El calendario puede estar vacío al abrir un período nuevo, pero las zonas
+  // siguen existiendo y el endpoint PUT crea su primera fila al guardar.
+  const filasVisibles = useMemo<FilaCalendarioVisible[]>(
+    () =>
+      (zonas ?? []).map((zona) => ({
+        zonaId: zona.id,
+        nombre: zona.nombre,
+        calendario:
+          (calendario ?? []).find(
+            (fila) => etiquetaDe(fila.zona).toUpperCase() === zona.nombre.toUpperCase(),
+          ) ?? null,
+      })),
+    [calendario, zonas],
+  );
+
   function resolverId(fila: FilaCalendario): number | null {
     return (
       idDe(fila.zona) ??
@@ -82,6 +103,17 @@ export function Calendario() {
       dias_habiles: fila.dias_habiles ?? "",
       dias_trabajados: fila.dias_trabajados ?? "",
       derivar: false,
+    });
+  }
+
+  function abrirNueva(zona: FilaCalendarioVisible) {
+    setErrorFormulario(null);
+    setEdicion({
+      zonaId: zona.zonaId,
+      nombre: zona.nombre,
+      dias_habiles: "",
+      dias_trabajados: "",
+      derivar: true,
     });
   }
 
@@ -158,10 +190,10 @@ export function Calendario() {
       >
         {isLoading ? (
           <p className="cargando">Cargando el calendario…</p>
-        ) : (calendario ?? []).length === 0 ? (
+        ) : filasVisibles.length === 0 ? (
           <Vacio
             titulo="Sin zonas parametrizadas"
-            detalle="El período no tiene calendario cargado."
+            detalle="No hay zonas activas en esta instancia de Carnes."
           />
         ) : (
           <div className="tabla-envoltorio">
@@ -187,29 +219,25 @@ export function Calendario() {
                 </tr>
               </thead>
               <tbody>
-                {(calendario ?? []).map((fila, indice) => (
-                  <tr key={`${etiquetaDe(fila.zona)}-${indice}`}>
-                    <th scope="row">{etiquetaDe(fila.zona)}</th>
-                    <td className="numero">{dias(fila.dias_habiles)}</td>
-                    <td className="numero">{dias(fila.dias_trabajados)}</td>
+                {filasVisibles.map((fila) => (
+                  <tr key={fila.zonaId}>
+                    <th scope="row">{fila.nombre}</th>
+                    <td className="numero">{dias(fila.calendario?.dias_habiles ?? null)}</td>
+                    <td className="numero">{dias(fila.calendario?.dias_trabajados ?? null)}</td>
                     <td className="numero numero--destacado">
-                      {porcentaje(fila.ideal)}
+                      {porcentaje(fila.calendario?.ideal ?? null)}
                     </td>
-                    <td>{fecha(fila.fecha_corte)}</td>
+                    <td>{fecha(fila.calendario?.fecha_corte ?? null)}</td>
                     {puedeParametrizar ? (
                       <td>
                         <button
                           type="button"
                           className="boton boton--pequeno"
-                          onClick={() => abrir(fila)}
-                          disabled={resolverId(fila) === null}
-                          title={
-                            resolverId(fila) === null
-                              ? "No se pudo resolver el identificador de la zona."
-                              : undefined
+                          onClick={() =>
+                            fila.calendario ? abrir(fila.calendario) : abrirNueva(fila)
                           }
                         >
-                          Editar
+                          {fila.calendario ? "Editar" : "Parametrizar"}
                         </button>
                       </td>
                     ) : null}
