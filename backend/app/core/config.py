@@ -221,7 +221,9 @@ class Settings(BaseSettings):
         lugar de dejar que alguien entre a una pantalla sin datos detras.
         """
         if self.unidad == "todas":
-            unidades = [unidad for unidad in UNIDADES_CON_MODULO if unidad != "carnes-frias"]
+            unidades: list[str] = [
+                unidad for unidad in UNIDADES_CON_MODULO if unidad != "carnes-frias"
+            ]
             if self.db_url_carnes_frias:
                 unidades.append("carnes-frias")
             return unidades
