@@ -298,7 +298,7 @@ class InsumosIndicadores:
 
     @property
     def base_crecimiento(self) -> Decimal:
-        """Venta contra la que se mide el crecimiento del año anterior."""
+        """Venta comparable que se proyecta para medir el crecimiento anual."""
         return self.venta if self.venta_comparable is None else self.venta_comparable
 
 
@@ -367,6 +367,10 @@ def calcular_indicadores(
     )
     promedio_diario = venta_diaria_promedio(insumos.venta, insumos.dias_trabajados)
     valor_proyeccion = proyeccion(promedio_diario, insumos.dias_habiles)
+    proyeccion_comparable = proyeccion(
+        venta_diaria_promedio(insumos.base_crecimiento, insumos.dias_trabajados),
+        insumos.dias_habiles,
+    )
 
     return ResultadoIndicadores(
         presupuesto=redondear(insumos.presupuesto, decimales_medida),
@@ -390,10 +394,11 @@ def calcular_indicadores(
             decimales_medida,
         ),
         venta_anio_anterior=redondear(insumos.venta_anio_anterior, decimales_medida),
-        # Contra la venta **comparable**, no contra la venta total: los dos
-        # lados del crecimiento tienen que hablar del mismo universo de puntos.
+        # Contra la proyección de la venta **comparable**, no contra la venta
+        # parcial ni contra la venta total: los dos lados hablan del mismo
+        # universo de puntos y del mes completo.
         crecimiento=redondear_porcentaje(
-            crecimiento(insumos.base_crecimiento, insumos.venta_anio_anterior)
+            crecimiento(proyeccion_comparable, insumos.venta_anio_anterior)
         ),
         # El margen siempre es dinero: 2 decimales, y ponderado sobre la venta
         # en pesos aunque el reporte se esté mirando en kilos. Si al agregado le

@@ -211,7 +211,7 @@ def test_la_fila_pierde_el_margen_pero_no_el_resto_de_indicadores() -> None:
     assert resultado.cumplimiento == D("0.5000")
     assert resultado.ideal == D("0.2727")
     assert resultado.proyeccion == D("1833333.33")
-    assert resultado.crecimiento == D("0.2500")
+    assert resultado.crecimiento == D("3.5833")
     assert resultado.semaforo is Semaforo.VERDE
 
 

@@ -114,9 +114,9 @@ _FORMULAS: dict[str, str] = {
     "cumplimiento_proyectado": "proyeccion / P",
     "venta_diaria_requerida": "(P - V) / (H - T); 0 si V >= P; indefinido si H = T",
     # Solo entran en el cociente los puntos de venta con historia del año
-    # anterior. Comparar la venta de todos contra la de unos pocos publicaría un
-    # crecimiento inventado. `V` y `V_anio_anterior` se publican completos.
-    "crecimiento": "V_comparable / V_anio_anterior - 1 (solo puntos con historia)",
+    # anterior. La venta comparable se proyecta al cierre: comparar venta
+    # parcial con un mes cerrado publicaría un decrecimiento ficticio.
+    "crecimiento": "proyeccion(V_comparable) / V_anio_anterior - 1 (solo puntos con historia)",
     # El margen de un conjunto al que le falta el costo de alguna línea es
     # **indefinido**, y no el margen de las líneas que sí lo traen: ese
     # porcentaje parecería completo sin serlo. Hoy le ocurre a 409 PEREIRA —el
