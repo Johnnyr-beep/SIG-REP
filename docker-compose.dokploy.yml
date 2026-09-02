@@ -73,6 +73,7 @@ services:
       # se perdio esta la primera vez: puesta correctamente en Dokploy, ausente
       # de esta lista, y el contenedor arrancando sin ella sin decir nada.
       SIGREP_DB_URL_AGRO: ${SIGREP_DB_URL_AGRO:-}
+      SIGREP_DB_URL_CARNES_FRIAS: ${SIGREP_DB_URL_CARNES_FRIAS:-}
       SIGREP_CORS_ORIGENES: ${SIGREP_CORS_ORIGENES}
       # Si el `Host` público no coincide con lo declarado aquí, la API responde
       # 400 «Invalid host header» a TODO el tráfico, sonda de salud incluida, y
@@ -101,6 +102,7 @@ services:
       SIGREP_SIESA_URL_BASE: ${SIGREP_SIESA_URL_BASE:-https://apiconsulta.grupo-santacruz.com}
       SIGREP_SIESA_TOKEN: ${SIGREP_SIESA_TOKEN:-}
       SIGREP_SIESA_COMPANIAS: ${SIGREP_SIESA_COMPANIAS:-4,6,7}
+      SIGREP_SIESA_CARNES_FRIAS_COMPANIAS: ${SIGREP_SIESA_CARNES_FRIAS_COMPANIAS:-8}
       SIGREP_SIESA_TIMEOUT_CONEXION_SEG: ${SIGREP_SIESA_TIMEOUT_CONEXION_SEG:-15}
       SIGREP_SIESA_TIMEOUT_LECTURA_SEG: ${SIGREP_SIESA_TIMEOUT_LECTURA_SEG:-600}
       SIGREP_SIESA_REINTENTOS: ${SIGREP_SIESA_REINTENTOS:-3}

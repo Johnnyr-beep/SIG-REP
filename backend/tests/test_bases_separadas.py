@@ -59,17 +59,20 @@ def dos_bases(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestC
     """
     carnes = tmp_path / "carnes.db"
     agro = tmp_path / "agro.db"
+    carnes_frias = tmp_path / "carnes_frias.db"
 
     monkeypatch.setenv("SIGREP_DB_URL_OVERRIDE", f"sqlite:///{carnes}")
     monkeypatch.setenv("SIGREP_DB_URL_AGRO", f"sqlite:///{agro}")
+    monkeypatch.setenv("SIGREP_DB_URL_CARNES_FRIAS", f"sqlite:///{carnes_frias}")
     obtener_settings.cache_clear()
     reiniciar_motores()
 
-    for unidad in ("carnes", "agropecuaria"):
+    for unidad in ("carnes", "agropecuaria", "carnes-frias"):
         Base.metadata.create_all(motor_de(unidad))  # type: ignore[arg-type]
 
     _crear_usuario("carnes", "jefe_carnes")
     _crear_usuario("agropecuaria", "jefe_agro")
+    _crear_usuario("carnes-frias", "jefe_carnes_frias")
 
     with TestClient(app) as cliente:
         yield cliente
@@ -94,6 +97,8 @@ def test_cada_unidad_apunta_a_una_direccion_distinta(dos_bases: TestClient) -> N
     urls = urls_por_unidad()
 
     assert urls["carnes"] != urls["agropecuaria"]
+    assert urls["carnes"] != urls["carnes-frias"]
+    assert urls["agropecuaria"] != urls["carnes-frias"]
     assert obtener_settings().bases_separadas is True
 
 
@@ -123,6 +128,8 @@ def test_cada_usuario_entra_solo_por_su_unidad(dos_bases: TestClient) -> None:
 
     assert _entrar(dos_bases, "jefe_carnes", "agropecuaria")[0] == 401
     assert _entrar(dos_bases, "jefe_agro", "carnes")[0] == 401
+    assert _entrar(dos_bases, "jefe_carnes_frias", "carnes-frias")[0] == 200
+    assert _entrar(dos_bases, "jefe_carnes", "carnes-frias")[0] == 401
 
 
 def test_el_token_nace_sellado_con_su_unidad(dos_bases: TestClient) -> None:

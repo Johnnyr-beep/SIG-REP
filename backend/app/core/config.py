@@ -66,7 +66,7 @@ UnidadNegocio = Literal["todas", "carnes", "agropecuaria", "carnes-frias"]
 #: backend: aparece en el selector desactivada y con su motivo, que es mas
 #: honesto que llevar a quien la elija a las pantallas de carnes con datos que
 #: no son los suyos.
-UNIDADES_CON_MODULO: tuple[UnidadNegocio, ...] = ("carnes", "agropecuaria")
+UNIDADES_CON_MODULO: tuple[UnidadNegocio, ...] = ("carnes", "agropecuaria", "carnes-frias")
 
 #: Esquemas heredados que los proveedores gestionados siguen entregando y que
 #: SQLAlchemy 2 ya no reconoce.
@@ -179,6 +179,9 @@ class Settings(BaseSettings):
     #: ahí un token de carnes no puede leer agropecuaria aunque alguien escriba
     #: la ruta a mano: no está conectado a esa base.
     db_url_agro: str | None = None
+    #: Base exclusiva de Carnes Frías. No puede caer a la base de Carnes: una
+    #: omisión debe fallar antes de que una carga de la compañía 8 se mezcle.
+    db_url_carnes_frias: str | None = None
 
     def url_de_unidad(self, unidad: str) -> str:
         """La cadena de conexión que le toca a una unidad.
@@ -189,6 +192,13 @@ class Settings(BaseSettings):
         """
         if unidad == "agropecuaria" and self.db_url_agro:
             return _normalizar_url(self.db_url_agro)
+        if unidad == "carnes-frias":
+            if not self.db_url_carnes_frias:
+                raise ValueError(
+                    "Carnes Frías requiere SIGREP_DB_URL_CARNES_FRIAS; "
+                    "no puede usar la base de Carnes."
+                )
+            return _normalizar_url(self.db_url_carnes_frias)
         return self.database_url
 
     @property
@@ -200,7 +210,7 @@ class Settings(BaseSettings):
         porque el código está bien escrito» y «no se mezclan porque no hay
         conexión por la que puedan pasar».
         """
-        return bool(self.db_url_agro)
+        return bool(self.db_url_agro and self.db_url_carnes_frias)
 
     @property
     def unidades_disponibles(self) -> list[str]:
@@ -211,7 +221,10 @@ class Settings(BaseSettings):
         lugar de dejar que alguien entre a una pantalla sin datos detras.
         """
         if self.unidad == "todas":
-            return list(UNIDADES_CON_MODULO)
+            unidades = [unidad for unidad in UNIDADES_CON_MODULO if unidad != "carnes-frias"]
+            if self.db_url_carnes_frias:
+                unidades.append("carnes-frias")
+            return unidades
         return [self.unidad]
 
     #: Ruta del libro que lee `FuenteVentaExcel` en `POST /ingesta/ejecutar`.
@@ -245,6 +258,15 @@ class Settings(BaseSettings):
     #: en otra instancia. Dejar la lista vacía es un error de configuración y la
     #: fuente se niega a arrancar diciéndolo.
     siesa_companias: list[int] = Field(default_factory=lambda: [4, 6, 7])
+    #: Compañía exclusiva de Carnes Frías. Nunca comparte el grupo 4, 6 y 7 de
+    #: Carnes Santacruz: esa separación empieza desde la consulta al origen.
+    siesa_carnes_frias_companias: list[int] = Field(default_factory=lambda: [8])
+
+    def companias_siesa_de(self, unidad: str) -> tuple[int, ...]:
+        """Las compañías SIESA que pertenecen a la unidad indicada."""
+        if unidad == "carnes-frias":
+            return tuple(self.siesa_carnes_frias_companias)
+        return tuple(self.siesa_companias)
 
     siesa_timeout_conexion_seg: float = Field(default=15.0, gt=0, le=120)
     #: Un mes son cientos de miles de filas en streaming. Diez minutos no es

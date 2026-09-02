@@ -49,6 +49,7 @@ from sqlalchemy.orm import Session
 
 from app.application.services import ingesta_service
 from app.application.services.ingesta_service import IngestaService
+from app.core.config import Settings
 from app.domain.enums import EstadoCorrida, FuenteIngesta
 from app.infrastructure.fuentes.siesa import (
     COMPANIAS_CARNES,
@@ -225,6 +226,15 @@ def leer(
 ) -> tuple[FuenteVentaSiesa, list[object]]:
     fuente = montar(api, **extra)
     return fuente, list(fuente.obtener_ventas(desde, hasta))
+
+
+def test_carnes_frias_pide_solo_la_compania_ocho() -> None:
+    """La compañía 8 no puede mezclarse con las compañías 4, 6 y 7 de Carnes."""
+    settings = Settings(secret_key="c" * 40, siesa_token=TOKEN_PELADO)
+
+    configuracion_frias = ConfiguracionSiesa.desde_settings(settings, unidad="carnes-frias")
+
+    assert configuracion_frias.companias == (8,)
 
 
 # ── `Origen`: los dos se suman, y solo uno carece de costo ────────────────────

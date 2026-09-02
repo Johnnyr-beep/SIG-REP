@@ -70,6 +70,7 @@ from app.infrastructure.fuentes import (
     FuenteVentaSiesa,
     RechazoFuente,
 )
+from app.infrastructure.fuentes.siesa import ConfiguracionSiesa
 from app.infrastructure.models.catalogo import MapeoCategoria
 from app.infrastructure.models.ingesta import CorridaIngesta, RechazoIngesta
 from app.infrastructure.models.organizacion import PuntoVenta
@@ -96,7 +97,9 @@ MENSAJE_RUTA_PENDIENTE = (
 
 
 def obtener_fuente(
-    fuente: FuenteIngesta | None = None, sesion: Session | None = None
+    fuente: FuenteIngesta | None = None,
+    sesion: Session | None = None,
+    unidad: str = "carnes",
 ) -> FuenteVenta:
     """Devuelve la implementación configurada del puerto `FuenteVenta`.
 
@@ -114,7 +117,8 @@ def obtener_fuente(
     elegida = fuente.value if fuente is not None else settings.fuente_venta
 
     if elegida == FuenteIngesta.SIESA.value:
-        return FuenteVentaSiesa(_descripciones_siesa(sesion))
+        configuracion = ConfiguracionSiesa.desde_settings(settings, unidad=unidad)
+        return FuenteVentaSiesa(_descripciones_siesa(sesion), configuracion=configuracion)
 
     ruta = normalizar_texto(settings.ruta_archivo_venta)
     if ruta is None:
@@ -216,9 +220,10 @@ class _Catalogo:
 class IngestaService:
     """Carga de venta y lectura de la bitácora de ingesta."""
 
-    def __init__(self, sesion: Session) -> None:
+    def __init__(self, sesion: Session, unidad: str = "carnes") -> None:
         self._sesion = sesion
         self._settings = obtener_settings()
+        self._unidad = unidad
 
     # ── Ejecución ─────────────────────────────────────────────────────────────
 
@@ -236,7 +241,7 @@ class IngestaService:
         qué configurar, y si la API falla, la corrida queda `FALLIDA` con su
         motivo en la bitácora.
         """
-        implementacion = obtener_fuente(fuente, self._sesion)
+        implementacion = obtener_fuente(fuente, self._sesion, self._unidad)
         origen = getattr(implementacion, "nombre", type(implementacion).__name__)
         return self._correr(
             implementacion,

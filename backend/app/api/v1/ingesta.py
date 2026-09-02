@@ -14,7 +14,7 @@ from fastapi import APIRouter, File, Query, UploadFile
 
 from app.api.v1 import AnalistaDep, LecturaDep
 from app.application.services.ingesta_service import IngestaService
-from app.core.deps import SesionDep, leer_subida
+from app.core.deps import SesionDep, UnidadDep, leer_subida
 from app.schemas.ingesta import CorridaSalida, RechazoSalida, SolicitudIngesta
 
 router = APIRouter(prefix="/ingesta", tags=["Ingesta"])
@@ -32,9 +32,11 @@ EXTENSIONES_ARCHIVO = (".xlsx", ".xlsm")
 
 
 @router.post("/ejecutar", response_model=CorridaSalida, summary="Ejecutar una carga de venta")
-def ejecutar(datos: SolicitudIngesta, usuario: AnalistaDep, sesion: SesionDep) -> CorridaSalida:
+def ejecutar(
+    datos: SolicitudIngesta, usuario: AnalistaDep, sesion: SesionDep, unidad: UnidadDep
+) -> CorridaSalida:
     """RBAC: ANALISTA (y GERENTE). Pendiente de implementación (501)."""
-    return IngestaService(sesion).ejecutar(datos.desde, datos.hasta, datos.fuente, usuario)
+    return IngestaService(sesion, unidad).ejecutar(datos.desde, datos.hasta, datos.fuente, usuario)
 
 
 @router.post("/archivo", response_model=CorridaSalida, summary="Cargar venta desde archivo")

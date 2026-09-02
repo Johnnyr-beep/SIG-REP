@@ -15,21 +15,19 @@ from fastapi.testclient import TestClient
 from app.core.config import Settings
 
 
-def _settings(unidad: str) -> Settings:
-    return Settings(secret_key="c" * 40, unidad=unidad)  # type: ignore[arg-type]
+def _settings(unidad: str, **extra: object) -> Settings:
+    return Settings(secret_key="c" * 40, unidad=unidad, **extra)  # type: ignore[arg-type]
 
 
-def test_por_omision_sirve_las_dos_unidades_con_modulo() -> None:
-    """Carnes y agropecuaria comparten base: hoy la instancia sirve las dos."""
+def test_carnes_frias_solo_se_ofrece_con_su_base_configurada() -> None:
+    """No se anuncia una unidad cuya base propia todavía no existe."""
     assert _settings("todas").unidades_disponibles == ["carnes", "agropecuaria"]
+    assert _settings(
+        "todas", db_url_carnes_frias="sqlite:///carnes_frias.db"
+    ).unidades_disponibles == ["carnes", "agropecuaria", "carnes-frias"]
 
 
-def test_carnes_frias_no_se_ofrece_porque_no_tiene_modulo() -> None:
-    """Es una marca sin backend. Ofrecerla llevaría a las pantallas de carnes."""
-    assert "carnes-frias" not in _settings("todas").unidades_disponibles
-
-
-@pytest.mark.parametrize("unidad", ["carnes", "agropecuaria"])
+@pytest.mark.parametrize("unidad", ["carnes", "agropecuaria", "carnes-frias"])
 def test_fijada_a_una_unidad_no_ofrece_las_demas(unidad: str) -> None:
     """El día que una unidad se lleve a su propio despliegue, con su propia base.
 

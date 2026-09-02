@@ -340,7 +340,7 @@ class ConfiguracionSiesa:
             raise ErrorValidacion(MENSAJE_SIN_COMPANIAS)
 
     @classmethod
-    def desde_settings(cls, settings: Settings) -> ConfiguracionSiesa:
+    def desde_settings(cls, settings: Settings, *, unidad: str = "carnes") -> ConfiguracionSiesa:
         """Lee `SIGREP_SIESA_*`. Falla con instrucciones si falta el token."""
         crudo = settings.siesa_token.get_secret_value().strip()
         if not crudo:
@@ -351,7 +351,7 @@ class ConfiguracionSiesa:
         return cls(
             url_base=url_base,
             token=SecretStr(crudo),
-            companias=tuple(settings.siesa_companias),
+            companias=settings.companias_siesa_de(unidad),
             timeout_conexion_seg=settings.siesa_timeout_conexion_seg,
             timeout_lectura_seg=settings.siesa_timeout_lectura_seg,
             reintentos=settings.siesa_reintentos,

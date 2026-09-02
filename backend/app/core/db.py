@@ -35,9 +35,9 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.config import obtener_settings
 
-#: Las unidades que tienen datos propios. `carnes-frias` no está: es una marca
-#: sin módulo, y darle un motor sería prometer una base que nadie ha creado.
-UnidadDatos = Literal["carnes", "agropecuaria"]
+#: Cada unidad que se puede autenticar tiene un motor propio. Carnes Frías no
+#: cae nunca a Carnes Santacruz: sin URL propia el arranque de su sesión falla.
+UnidadDatos = Literal["carnes", "agropecuaria", "carnes-frias"]
 
 UNIDAD_POR_DEFECTO: UnidadDatos = "carnes"
 
@@ -120,10 +120,13 @@ def fabrica_de(unidad: UnidadDatos = UNIDAD_POR_DEFECTO) -> sessionmaker[Session
 def urls_por_unidad() -> dict[str, str]:
     """Qué dirección le toca a cada unidad. Para migrar y para diagnosticar."""
     settings = obtener_settings()
-    return {
+    urls = {
         "carnes": settings.url_de_unidad("carnes"),
         "agropecuaria": settings.url_de_unidad("agropecuaria"),
     }
+    if settings.db_url_carnes_frias:
+        urls["carnes-frias"] = settings.url_de_unidad("carnes-frias")
+    return urls
 
 
 def _es_sqlite_en_memoria(url: str) -> bool:
