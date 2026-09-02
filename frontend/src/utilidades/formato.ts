@@ -437,7 +437,7 @@ export function dineroCorto(valor: string | null | undefined): string {
 
   const digitos = partes.entero.replace(/^0+(?=\d)/, "");
   const escalas: [number, string][] = [
-    [10, "MM"], // billones (millones de millones)
+    [10, "MM"], // miles de millones
     [7, "M"], // millones
     [4, "K"], // miles
   ];
@@ -445,7 +445,7 @@ export function dineroCorto(valor: string | null | undefined): string {
   for (const escala of escalas) {
     const [minimo, sufijo] = escala;
     if (digitos.length >= minimo) {
-      const posiciones = sufijo === "MM" ? 12 : sufijo === "M" ? 6 : 3;
+      const posiciones = sufijo === "MM" ? 9 : sufijo === "M" ? 6 : 3;
       const recorte = digitos.length - posiciones;
       const entero = recorte > 0 ? digitos.slice(0, recorte) : "0";
       const resto =
