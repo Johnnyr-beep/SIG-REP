@@ -974,6 +974,27 @@ textarea {
   font-size: 0.84rem;
 }
 
+.tabla--costos {
+  min-width: 920px;
+  table-layout: fixed;
+}
+
+.tabla--costos__nombre {
+  width: 18%;
+}
+
+.tabla--costos__importe {
+  width: 16%;
+}
+
+.tabla--costos__porcentaje {
+  width: 10%;
+}
+
+.tabla--costos__lineas {
+  width: 14%;
+}
+
 .tabla th {
   padding: var(--espacio-3) var(--espacio-4);
   color: var(--texto-tenue);
