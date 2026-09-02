@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -48,6 +48,7 @@ from app.domain.indicadores import (
     calcular_indicadores,
     dividir,
     margen_porcentaje,
+    margen_valor,
     redondear,
     redondear_no_nulo,
     redondear_porcentaje,
@@ -62,6 +63,10 @@ from app.infrastructure.models.venta import Cliente, VentaLinea
 from app.schemas.reportes import (
     FilaCategoria,
     FilaClientes,
+    FilaCostoCategoria,
+    FilaCostoGrupo,
+    FilaCostoPuntoVenta,
+    FilaCostos,
     FilaGrupo,
     FilaIndicadores,
     FilaPuntoVenta,
@@ -69,6 +74,7 @@ from app.schemas.reportes import (
     ParametrosCalculo,
     PuntoVentaSinPresupuesto,
     RespuestaClientes,
+    RespuestaCostos,
     RespuestaCumplimiento,
     RespuestaTablero,
     RespuestaVentaDiaria,
@@ -146,6 +152,8 @@ class Totales:
     valor: Decimal = CERO
     kilos: Decimal = CERO
     costo: Decimal = CERO
+    lineas: int = 0
+    lineas_con_costo: int = 0
     #: ¿Traen costo **todas** las líneas que se sumaron aquí?
     #:
     #: `SUM(costo_promedio)` ignora los nulos en silencio, así que la suma sola
@@ -160,6 +168,8 @@ class Totales:
         self.valor += otro.valor
         self.kilos += otro.kilos
         self.costo += otro.costo
+        self.lineas += otro.lineas
+        self.lineas_con_costo += otro.lineas_con_costo
         self.costo_completo = self.costo_completo and otro.costo_completo
 
     def medida(self, medida: Medida) -> Decimal:
@@ -196,6 +206,8 @@ def _totales_de(
         valor=Decimal(valor or 0),
         kilos=Decimal(kilos or 0),
         costo=Decimal(costo or 0),
+        lineas=lineas or 0,
+        lineas_con_costo=lineas_con_costo or 0,
         costo_completo=(lineas or 0) == (lineas_con_costo or 0),
     )
 
@@ -372,6 +384,82 @@ class ReportesService:
             filas=filas,
             sin_presupuesto=self._filas_sin_presupuesto(ctx),
             parametros_calculo=self._parametros(ctx, consolidado),
+        )
+
+    # ── Costos y margen ─────────────────────────────────────────────────────
+
+    def costos(self, filtros: FiltrosReporte) -> RespuestaCostos:
+        """Costo y margen por grupo, punto y categoría, en pesos."""
+        ctx = self._construir_contexto(
+            replace(filtros, medida=Medida.VALOR),
+            cargar_anio_anterior=False,
+        )
+        por_punto = self._totales_por_punto_venta(ctx)
+        por_grupo: dict[int, Totales] = defaultdict(Totales)
+        por_categoria: dict[int, Totales] = defaultdict(Totales)
+        for (punto_id, categoria_id), totales in ctx.venta.items():
+            punto = ctx.puntos.get(punto_id)
+            if punto is None:
+                continue
+            if punto.grupo_id is not None:
+                por_grupo[punto.grupo_id].sumar(totales)
+            por_categoria[categoria_id].sumar(totales)
+
+        consolidado = Totales()
+        for totales in por_punto.values():
+            consolidado.sumar(totales)
+
+        return RespuestaCostos(
+            periodo=ctx.periodo.codigo,
+            fecha_corte=ctx.fecha_corte,
+            consolidado=self._fila_costos(consolidado),
+            grupos=[
+                FilaCostoGrupo(
+                    codigo=grupo.codigo,
+                    nombre=grupo.nombre,
+                    **self._fila_costos(por_grupo[grupo.id]).model_dump(),
+                )
+                for grupo in self._grupos_ordenados()
+                if grupo.id in por_grupo
+            ],
+            puntos_venta=[
+                FilaCostoPuntoVenta(
+                    punto_venta=punto.codigo_co,
+                    nombre=punto.nombre,
+                    **self._fila_costos(por_punto[punto.id]).model_dump(),
+                )
+                for punto in sorted(ctx.puntos.values(), key=lambda fila: fila.codigo_co)
+            ],
+            categorias=[
+                FilaCostoCategoria(
+                    codigo=categoria.codigo,
+                    nombre=categoria.nombre,
+                    **self._fila_costos(totales).model_dump(),
+                )
+                for categoria_id, totales in sorted(
+                    por_categoria.items(), key=lambda fila: ctx.categorias[fila[0]].orden
+                )
+                for categoria in [ctx.categorias[categoria_id]]
+            ],
+            parametros_calculo=self._parametros(ctx, None),
+        )
+
+    @staticmethod
+    def _fila_costos(totales: Totales) -> FilaCostos:
+        cobertura = dividir(Decimal(totales.lineas_con_costo), Decimal(totales.lineas))
+        costo = totales.costo if totales.costo_completo else None
+        return FilaCostos(
+            venta=redondear_no_nulo(totales.valor, 2),
+            costo=redondear(costo, 2),
+            margen_valor=redondear(
+                margen_valor(totales.valor, costo, costo_completo=totales.costo_completo), 2
+            ),
+            margen_porcentaje=redondear_porcentaje(
+                margen_porcentaje(totales.valor, costo, costo_completo=totales.costo_completo)
+            ),
+            cobertura_costo=redondear_porcentaje(cobertura),
+            lineas=totales.lineas,
+            lineas_con_costo=totales.lineas_con_costo,
         )
 
     # ── Venta diaria ──────────────────────────────────────────────────────────

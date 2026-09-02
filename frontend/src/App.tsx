@@ -23,6 +23,7 @@ import { VentaDiariaAgro } from "@/paginas/VentaDiariaAgro";
 import { CambioClaveObligatorio } from "@/paginas/CambioClave";
 import { Clientes } from "@/paginas/Clientes";
 import { Cumplimiento } from "@/paginas/Cumplimiento";
+import { Costos } from "@/paginas/Costos";
 import { Ingesta } from "@/paginas/Ingesta";
 import { HistoriaVenta } from "@/paginas/HistoriaVenta";
 import { Presupuesto } from "@/paginas/Presupuesto";
@@ -125,6 +126,7 @@ export function App() {
           <>
             <Route index element={<Tablero />} />
             <Route path="cumplimiento" element={<Cumplimiento />} />
+            <Route path="costos" element={<Costos />} />
             <Route path="venta-diaria" element={<VentaDiaria />} />
             <Route path="clientes" element={<Clientes />} />
             <Route

@@ -37,6 +37,7 @@ import type {
   RechazoIngesta,
   RespuestaClientes,
   RespuestaCumplimiento,
+  RespuestaCostos,
   RespuestaTablero,
   RespuestaVentaDiaria,
   ResultadoCargaMasiva,
@@ -132,6 +133,7 @@ export const claves = {
     ["reporte", "tablero", filtros] as const,
   cumplimiento: (filtros: FiltrosReporte) =>
     ["reporte", "cumplimiento", filtros] as const,
+  costos: (filtros: FiltrosReporte) => ["reporte", "costos", filtros] as const,
   ventaDiaria: (filtros: FiltrosReporte) =>
     ["reporte", "venta-diaria", filtros] as const,
   clientes: (filtros: FiltrosReporte, por: CorteClientes) =>
@@ -257,6 +259,19 @@ export function useCumplimiento(
     queryKey: claves.cumplimiento(filtros),
     queryFn: () =>
       peticion<RespuestaCumplimiento>("/reportes/cumplimiento", {
+        parametros: comoParametros(filtros),
+      }),
+    staleTime: 60_000,
+  });
+}
+
+export function useCostos(
+  filtros: FiltrosReporte,
+): UseQueryResult<RespuestaCostos> {
+  return useQuery({
+    queryKey: claves.costos(filtros),
+    queryFn: () =>
+      peticion<RespuestaCostos>("/reportes/costos", {
         parametros: comoParametros(filtros),
       }),
     staleTime: 60_000,

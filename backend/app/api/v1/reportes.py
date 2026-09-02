@@ -22,6 +22,7 @@ from app.core.deps import SesionDep, alcance_puntos_venta
 from app.domain.enums import AgrupacionClientes, Medida
 from app.schemas.reportes import (
     RespuestaClientes,
+    RespuestaCostos,
     RespuestaCumplimiento,
     RespuestaTablero,
     RespuestaVentaDiaria,
@@ -133,6 +134,22 @@ def cumplimiento(
     """RBAC: cualquier rol autenticado; JEFE_PDV solo ve sus puntos."""
     return ReportesService(sesion).cumplimiento(
         _filtros(usuario, periodo, hasta, grupo, punto_venta, categoria, medida)
+    )
+
+
+@router.get("/costos", response_model=RespuestaCostos, summary="Costos y margen")
+def costos(
+    usuario: LecturaDep,
+    sesion: SesionDep,
+    periodo: str = PeriodoQuery,
+    hasta: date | None = None,
+    grupo: str | None = None,
+    punto_venta: str | None = PuntoVentaQuery,
+    categoria: str | None = None,
+) -> RespuestaCostos:
+    """RBAC: cualquier rol autenticado; JEFE_PDV solo ve sus puntos."""
+    return ReportesService(sesion).costos(
+        _filtros(usuario, periodo, hasta, grupo, punto_venta, categoria, Medida.VALOR)
     )
 
 

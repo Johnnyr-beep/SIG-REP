@@ -296,6 +296,41 @@ export interface RespuestaCumplimiento {
   parametros_calculo?: ParametrosCalculo | null;
 }
 
+export interface FilaCostos {
+  venta: string;
+  costo: string | null;
+  margen_valor: string | null;
+  margen_porcentaje: string | null;
+  cobertura_costo: string | null;
+  lineas: number;
+  lineas_con_costo: number;
+}
+
+export interface FilaCostoGrupo extends FilaCostos {
+  codigo: string;
+  nombre: string;
+}
+
+export interface FilaCostoPuntoVenta extends FilaCostos {
+  punto_venta: string;
+  nombre: string;
+}
+
+export interface FilaCostoCategoria extends FilaCostos {
+  codigo: string;
+  nombre: string;
+}
+
+export interface RespuestaCostos {
+  periodo: string;
+  fecha_corte: string;
+  consolidado: FilaCostos;
+  grupos: FilaCostoGrupo[];
+  puntos_venta: FilaCostoPuntoVenta[];
+  categorias: FilaCostoCategoria[];
+  parametros_calculo: ParametrosCalculo;
+}
+
 export interface FilaVentaDiaria {
   /** Código C.O. de SIESA. Es la llave de `presupuesto_diario_por_pdv`. */
   punto_venta: string;

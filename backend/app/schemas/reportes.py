@@ -65,6 +65,33 @@ class FilaGrupo(FilaIndicadores):
     nombre: str
 
 
+class FilaCostos(EsquemaBase):
+    """Venta, costo y margen de un corte monetario."""
+
+    venta: DecimalStr
+    costo: DecimalStr | None = None
+    margen_valor: DecimalStr | None = None
+    margen_porcentaje: DecimalStr | None = None
+    cobertura_costo: DecimalStr | None = None
+    lineas: int
+    lineas_con_costo: int
+
+
+class FilaCostoGrupo(FilaCostos):
+    codigo: str
+    nombre: str
+
+
+class FilaCostoPuntoVenta(FilaCostos):
+    punto_venta: str
+    nombre: str
+
+
+class FilaCostoCategoria(FilaCostos):
+    codigo: str
+    nombre: str
+
+
 class PuntoVentaSinPresupuesto(BaseModel):
     """Venta de un punto no presupuestado (432 EVENTOS BUCARAMANGA).
 
@@ -157,6 +184,16 @@ class RespuestaCumplimiento(BaseModel):
     consolidado: FilaIndicadores
     filas: list[FilaPuntoVenta]
     sin_presupuesto: list[PuntoVentaSinPresupuesto]
+    parametros_calculo: ParametrosCalculo
+
+
+class RespuestaCostos(BaseModel):
+    periodo: str
+    fecha_corte: date
+    consolidado: FilaCostos
+    grupos: list[FilaCostoGrupo]
+    puntos_venta: list[FilaCostoPuntoVenta]
+    categorias: list[FilaCostoCategoria]
     parametros_calculo: ParametrosCalculo
 
 

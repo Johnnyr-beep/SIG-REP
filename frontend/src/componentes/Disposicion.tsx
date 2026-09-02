@@ -47,6 +47,7 @@ const MENU_CARNES: GrupoNav[] = [
     items: [
       { ruta: "/", etiqueta: "Tablero", icono: "◱" },
       { ruta: "/cumplimiento", etiqueta: "Cumplimiento por PDV", icono: "▤" },
+      { ruta: "/costos", etiqueta: "Costos y margen", icono: "◒" },
       { ruta: "/venta-diaria", etiqueta: "Venta diaria", icono: "▦" },
       { ruta: "/clientes", etiqueta: "Clientes y vendedores", icono: "◇" },
     ],
@@ -142,6 +143,7 @@ const TITULOS: Record<string, string> = {
   "/agro/ingesta": "Ingesta de agropecuaria",
   "/": "Tablero gerencial",
   "/cumplimiento": "Cumplimiento por punto de venta",
+  "/costos": "Costos y margen",
   "/venta-diaria": "Venta diaria",
   "/clientes": "Clientes y vendedores",
   "/presupuesto": "Parametrización de presupuesto",
