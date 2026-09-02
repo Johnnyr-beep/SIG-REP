@@ -434,11 +434,11 @@ def main() -> None:  # pragma: no cover - utilidad de línea de comandos
     parser.add_argument("--periodo", help="siembra el calendario de un período YYYY-MM")
     parser.add_argument(
         "--unidad",
-        choices=["carnes", "agropecuaria"],
+        choices=["carnes", "agropecuaria", "carnes-frias"],
         default="carnes",
         help=(
-            "unidad cuya base se siembra. Desde que agropecuaria tiene base "
-            "propia, sus cuentas son suyas: el 'admin' de carnes no existe alli"
+            "unidad cuya base se inicializa. Cada unidad tiene cuentas propias: "
+            "el 'admin' de Carnes no existe en Agropecuaria ni Carnes Frias"
         ),
     )
     argumentos = parser.parse_args()
@@ -448,12 +448,9 @@ def main() -> None:  # pragma: no cover - utilidad de línea de comandos
     print(f"Sembrando la base de {unidad}.")
 
     with sesion_ambito(unidad) as sesion:
-        # La estructura —zonas, puntos de venta, categorias— es de carnes y solo
-        # de carnes. Agropecuaria no tiene puntos de venta: sus dimensiones
-        # —centros, especies, tipos comerciales, vendedores— nacen de la propia
-        # ingesta, con los codigos que entrega la API de la compania 3. Sembrar
-        # aqui el catalogo de la otra compania llenaria su base de filas que no
-        # le corresponden y que ningun reporte suyo mira.
+        # La estructura actual es exclusiva de Carnes Santacruz. Agropecuaria y
+        # Carnes Frías tienen fuentes y catálogos propios, así que esta utilidad
+        # solo crea allí las cuentas iniciales hasta que se cargue su catálogo.
         if unidad == "carnes":
             sembrar_estructura(sesion)
             if argumentos.periodo:
