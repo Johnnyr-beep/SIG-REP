@@ -151,7 +151,7 @@ def test_el_resto_de_indicadores_de_pereira_se_siguen_calculando(
     assert fila.proyeccion == D("1833333.33"), "el promedio diario exacto x 27.5"
     assert fila.cumplimiento_proyectado == D("1.8333")
     assert fila.venta_diaria_requerida == D("25000.00"), "(1 000 000 - 500 000) / 20 días"
-    assert fila.crecimiento == D("0.2500"), "500 000 contra 400 000 del año anterior"
+    assert fila.crecimiento == D("3.5833"), "proyección 1 833 333,33 contra 400 000 de 2025"
     assert fila.venta == D("500000.00"), "la venta se carga entera; no se descarta nada"
 
 

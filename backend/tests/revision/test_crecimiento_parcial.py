@@ -30,16 +30,14 @@ def _venta_2025(sesion: Session, codigo_co: str, dia: int, valor: str) -> None:
     sesion.commit()
 
 
-def test_crecimiento_consolidado_con_historia_parcial(sesion: Session, estructura: None) -> None:
-    """Con 2025 cargado solo para parte de los puntos, el crecimiento sale inflado.
+def test_crecimiento_consolidado_proyecta_solo_la_venta_con_historia(
+    sesion: Session, estructura: None
+) -> None:
+    """Con historia parcial, solo se proyecta el universo comparable.
 
     Escenario: MALAMBO y LAGRANJA venden 1 000 M cada uno en agosto de 2026. De
-    2025 solo se alcanzó a cargar MALAMBO (1 000 M). El consolidado compara
-    2 000 M de 2026 contra 1 000 M de 2025 y publica **+100 % de crecimiento**,
-    cuando la venta real por punto no creció nada.
-
-    §4.3: «sin 2025 cargado, el indicador se muestra vacío, nunca en cero». El
-    caso de historia *parcial* no está contemplado y es el que va a ocurrir.
+    2025 solo se alcanzó a cargar MALAMBO (1 000 M). El crecimiento usa la
+    proyección de MALAMBO, no la venta de los dos puntos contra un solo histórico.
     """
     dar_presupuesto(sesion, "402", "RES", "1000000000")
     dar_presupuesto(sesion, "403", "RES", "1000000000")
@@ -68,8 +66,8 @@ def test_crecimiento_consolidado_con_historia_parcial(sesion: Session, estructur
     print(f"  venta 2026            : {consolidado.venta}")
     print(f"  venta año anterior    : {consolidado.venta_anio_anterior}")
     print(f"  crecimiento publicado : {consolidado.crecimiento}")
-    print("  crecimiento real de los puntos con historia: 0.0000")
+    print("  crecimiento proyectado de los puntos con historia: 1.0696")
 
-    assert consolidado.crecimiento == Decimal("0.0000"), (
-        "el consolidado compara 2 puntos de 2026 contra 1 punto de 2025"
+    assert consolidado.crecimiento == Decimal("1.0696"), (
+        "el consolidado proyecta solo el punto cuya venta tiene historia de 2025"
     )
