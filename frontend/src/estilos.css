@@ -1185,6 +1185,83 @@ textarea {
   text-transform: uppercase;
 }
 
+.margen-visual {
+  margin: var(--espacio-5);
+  padding-top: var(--espacio-5);
+  border-top: 1px solid var(--borde);
+}
+
+.margen-visual__cabecera {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--espacio-5);
+  margin-bottom: var(--espacio-4);
+}
+
+.margen-visual h3 {
+  font-size: 1rem;
+}
+
+.margen-visual__cabecera p {
+  margin-top: var(--espacio-1);
+}
+
+.margen-visual__total {
+  display: grid;
+  justify-items: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.margen-visual__total span,
+.margen-visual__total small {
+  color: var(--texto-tenue);
+  font-size: 0.75rem;
+}
+
+.margen-visual__total strong {
+  font-size: 1.25rem;
+}
+
+.margen-visual__filas {
+  display: grid;
+  gap: var(--espacio-2);
+}
+
+.margen-visual__fila {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.65fr) minmax(110px, 2fr) 62px;
+  align-items: center;
+  gap: var(--espacio-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.margen-visual__pista {
+  height: 0.55rem;
+  overflow: hidden;
+  background: var(--superficie-hover);
+  border-radius: var(--radio-sm);
+}
+
+.margen-visual__barra {
+  display: block;
+  height: 100%;
+}
+
+.margen-visual__barra--positivo {
+  background: var(--exito);
+}
+
+.margen-visual__barra--negativo {
+  background: var(--peligro);
+}
+
+.margen-visual__sin-dato {
+  color: var(--texto-tenue);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
 /* El domingo se sigue distinguiendo en el pie, pero mezclado sobre un fondo
    opaco: la versión translúcida de `.columna-domingo` dejaría ver las filas
    pasando por debajo de la fila fijada. */

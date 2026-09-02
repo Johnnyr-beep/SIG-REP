@@ -601,6 +601,7 @@ function cumplimiento(opciones: Opciones): RespuestaCumplimiento {
     periodo: PERIODO,
     fecha_corte: FECHA_CORTE,
     medida,
+    consolidado: agregar(seleccion, medida, 1),
     filas,
     parametros_calculo: parametrosDe(medida),
   };

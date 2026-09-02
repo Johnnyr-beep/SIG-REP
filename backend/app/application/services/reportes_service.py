@@ -343,6 +343,7 @@ class ReportesService:
     def cumplimiento(self, filtros: FiltrosReporte) -> RespuestaCumplimiento:
         """La tabla del Excel, viva: un punto por fila, expandible a categorías."""
         ctx = self._construir_contexto(filtros)
+        consolidado = self._fila_agregada(ctx, list(ctx.puntos))
 
         filas: list[FilaPuntoVenta] = []
         for punto in sorted(ctx.puntos.values(), key=lambda p: p.codigo_co):
@@ -367,9 +368,10 @@ class ReportesService:
             periodo=ctx.periodo.codigo,
             fecha_corte=ctx.fecha_corte,
             medida=ctx.medida,
+            consolidado=consolidado,
             filas=filas,
             sin_presupuesto=self._filas_sin_presupuesto(ctx),
-            parametros_calculo=self._parametros(ctx, self._fila_agregada(ctx, list(ctx.puntos))),
+            parametros_calculo=self._parametros(ctx, consolidado),
         )
 
     # ── Venta diaria ──────────────────────────────────────────────────────────

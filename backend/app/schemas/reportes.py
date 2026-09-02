@@ -154,6 +154,7 @@ class RespuestaCumplimiento(BaseModel):
     periodo: str
     fecha_corte: date
     medida: Medida
+    consolidado: FilaIndicadores
     filas: list[FilaPuntoVenta]
     sin_presupuesto: list[PuntoVentaSinPresupuesto]
     parametros_calculo: ParametrosCalculo

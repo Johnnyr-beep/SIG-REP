@@ -121,6 +121,7 @@ def test_cumplimiento_devuelve_una_fila_por_punto_pedido(sesion: Session, estruc
         FiltrosReporte(periodo=PERIODO, hasta=CORTE, puntos_venta=TRES)
     )
     assert [f.punto_venta for f in respuesta.filas] == ["402", "405", "603"]
+    assert respuesta.consolidado.venta == D("700000.00")
 
 
 def test_venta_diaria_devuelve_una_fila_por_punto_pedido(sesion: Session, estructura: None) -> None:

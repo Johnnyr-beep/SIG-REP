@@ -21,6 +21,7 @@ import {
   PieCalculo,
 } from "@/componentes/indicadores";
 import { claveDe, etiquetaDe } from "@/utilidades/dominio";
+import { dinero, porcentaje } from "@/utilidades/formato";
 
 export function Cumplimiento() {
   const control = useFiltros();
@@ -136,12 +137,77 @@ export function Cumplimiento() {
                     />
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr>
+                    <th scope="row" className="columna-ancla">
+                      <span className="fila-totales__nombre">Total</span>
+                    </th>
+                    <CeldasIndicadores fila={data.consolidado} medida={medida} />
+                  </tr>
+                </tfoot>
               </table>
             </div>
           )}
+
+          <VisualMargen filas={filas} total={data.consolidado} />
         </Tarjeta>
       ) : null}
     </div>
+  );
+}
+
+function VisualMargen({
+  filas,
+  total,
+}: {
+  filas: FilaPuntoVentaReporte[];
+  total: { margen_valor: string | null; margen_porcentaje: string | null };
+}) {
+  const conMargen = filas.filter((fila) => fila.margen_porcentaje !== null);
+
+  return (
+    <section className="margen-visual" aria-labelledby="margen-visual-titulo">
+      <div className="margen-visual__cabecera">
+        <div>
+          <h3 id="margen-visual-titulo">Margen por punto de venta</h3>
+          <p className="tenue">
+            {conMargen.length === filas.length
+              ? "Calculado sobre venta y costo acumulados."
+              : "Los puntos sin costo completo se muestran sin margen para no publicar una cifra parcial."}
+          </p>
+        </div>
+        <p className="margen-visual__total">
+          <span>Margen total</span>
+          <strong>{porcentaje(total.margen_porcentaje)}</strong>
+          <small>{dinero(total.margen_valor)}</small>
+        </p>
+      </div>
+
+      <div className="margen-visual__filas">
+        {filas.map((fila) => {
+          const valor = Number(fila.margen_porcentaje ?? 0);
+          const ancho = Math.min(Math.abs(valor) * 100, 100);
+          const tono = valor < 0 ? "negativo" : "positivo";
+
+          return (
+            <div className="margen-visual__fila" key={fila.punto_venta}>
+              <span>{fila.nombre}</span>
+              {fila.margen_porcentaje === null ? (
+                <span className="margen-visual__sin-dato">Sin costo</span>
+              ) : (
+                <span className="margen-visual__pista" aria-hidden="true">
+                  <span
+                    className={`margen-visual__barra margen-visual__barra--${tono}`}
+                    style={{ width: `${ancho}%` }}
+                  />
+                </span>
+              )}
+              <strong>{porcentaje(fila.margen_porcentaje)}</strong>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

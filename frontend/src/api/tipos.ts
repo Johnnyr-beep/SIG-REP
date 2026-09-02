@@ -290,6 +290,7 @@ export interface RespuestaCumplimiento {
   periodo: string;
   fecha_corte: string;
   medida: Medida;
+  consolidado: FilaIndicadores;
   filas: FilaPuntoVentaReporte[];
   sin_presupuesto?: VentaSinPresupuesto[];
   parametros_calculo?: ParametrosCalculo | null;
