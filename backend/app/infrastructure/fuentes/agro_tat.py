@@ -15,6 +15,7 @@ from app.domain.normalizacion import a_decimal, a_fecha, normalizar_texto
 
 RUTA_VENTAS_TAT = "/ventas/facturas-agropecuaria-tat"
 COMPANIA_AGROPECUARIA = 3
+LIMITE_TAT = 5000
 COLUMNAS_TAT = (
     "fecha_documento",
     "nro_documento",
@@ -85,52 +86,66 @@ class FuenteVentasTat:
         self._propio = cliente is None
 
     def obtener_ventas(self, desde: date, hasta: date) -> Iterator[LineaTat]:
-        respuesta = self._cliente.get(
-            f"{self.configuracion.url_base}{RUTA_VENTAS_TAT}",
-            headers={
-                "Authorization": self.configuracion.token.get_secret_value().removeprefix("1-")
-            },
-            params={
-                "fecha_inicio": desde.isoformat(),
-                "fecha_fin": hasta.isoformat(),
-                "cia": self.configuracion.cia,
-                "limit": 0,
-                "offset": 0,
-                "format": "csv",
-            },
-        )
-        if respuesta.is_error:
-            raise ErrorFuenteTat(f"SIESA TAT respondió HTTP {respuesta.status_code}.")
-        try:
-            registros = csv.DictReader(StringIO(respuesta.text))
-            encabezados = tuple(
-                (campo or "").strip().lower() for campo in registros.fieldnames or ()
+        offset = 0
+        while True:
+            respuesta = self._cliente.get(
+                f"{self.configuracion.url_base}{RUTA_VENTAS_TAT}",
+                headers={
+                    "Authorization": self.configuracion.token.get_secret_value().removeprefix("1-")
+                },
+                params={
+                    "fecha_inicio": desde.isoformat(),
+                    "fecha_fin": hasta.isoformat(),
+                    "cia": self.configuracion.cia,
+                    "limit": LIMITE_TAT,
+                    "offset": offset,
+                    "format": "csv",
+                },
             )
-            if encabezados != COLUMNAS_TAT:
-                raise ErrorFuenteTat("El CSV TAT no coincide con las columnas esperadas.")
-            for numero, fila in enumerate(registros, start=2):
-                try:
-                    fecha_documento = a_fecha(fila["fecha_documento"])
-                    cantidad_inv = a_decimal(fila["cantidad_inv"])
-                    valor_subtotal = a_decimal(fila["valor_subtotal"])
-                    if fecha_documento is None or cantidad_inv is None or valor_subtotal is None:
-                        raise ValueError("faltan fecha_documento, cantidad_inv o valor_subtotal")
-                    yield LineaTat(
-                        fecha_documento=fecha_documento,
-                        nro_documento=normalizar_texto(fila["nro_documento"]) or "",
-                        tipo_comercial=normalizar_texto(fila["tipo_comercial"]),
-                        cliente_factura=normalizar_texto(fila["cliente_factura"]),
-                        razon_social_cliente=normalizar_texto(fila["razon_social_cliente"]),
-                        codigo_sucursal=normalizar_texto(fila["codigo_sucursal"]),
-                        descripcion_sucursal=normalizar_texto(fila["descripcion_sucursal"]),
-                        direccion_sucursal=normalizar_texto(fila["direccion_sucursal"]),
-                        cantidad_inv=cantidad_inv,
-                        valor_subtotal=valor_subtotal,
-                    )
-                except (KeyError, ValueError, TypeError) as exc:
-                    raise ErrorFuenteTat(f"Fila TAT {numero} inválida: {exc}.") from exc
-        except UnicodeDecodeError as exc:
-            raise ErrorFuenteTat("La respuesta TAT no está codificada como texto válido.") from exc
+            if respuesta.is_error:
+                raise ErrorFuenteTat(f"SIESA TAT respondió HTTP {respuesta.status_code}.")
+            try:
+                registros = csv.DictReader(StringIO(respuesta.text))
+                encabezados = tuple(
+                    (campo or "").strip().lower() for campo in registros.fieldnames or ()
+                )
+                if encabezados != COLUMNAS_TAT:
+                    raise ErrorFuenteTat("El CSV TAT no coincide con las columnas esperadas.")
+                pagina = list(registros)
+                for numero, fila in enumerate(pagina, start=2):
+                    try:
+                        fecha_documento = a_fecha(fila["fecha_documento"])
+                        cantidad_inv = a_decimal(fila["cantidad_inv"])
+                        valor_subtotal = a_decimal(fila["valor_subtotal"])
+                        if (
+                            fecha_documento is None
+                            or cantidad_inv is None
+                            or valor_subtotal is None
+                        ):
+                            raise ValueError(
+                                "faltan fecha_documento, cantidad_inv o valor_subtotal"
+                            )
+                        yield LineaTat(
+                            fecha_documento=fecha_documento,
+                            nro_documento=normalizar_texto(fila["nro_documento"]) or "",
+                            tipo_comercial=normalizar_texto(fila["tipo_comercial"]),
+                            cliente_factura=normalizar_texto(fila["cliente_factura"]),
+                            razon_social_cliente=normalizar_texto(fila["razon_social_cliente"]),
+                            codigo_sucursal=normalizar_texto(fila["codigo_sucursal"]),
+                            descripcion_sucursal=normalizar_texto(fila["descripcion_sucursal"]),
+                            direccion_sucursal=normalizar_texto(fila["direccion_sucursal"]),
+                            cantidad_inv=cantidad_inv,
+                            valor_subtotal=valor_subtotal,
+                        )
+                    except (KeyError, ValueError, TypeError) as exc:
+                        raise ErrorFuenteTat(f"Fila TAT {numero} inválida: {exc}.") from exc
+            except UnicodeDecodeError as exc:
+                raise ErrorFuenteTat(
+                    "La respuesta TAT no está codificada como texto válido."
+                ) from exc
+            if len(pagina) < LIMITE_TAT:
+                return
+            offset += LIMITE_TAT
 
     def cerrar(self) -> None:
         if self._propio:
