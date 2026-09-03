@@ -20,6 +20,7 @@ import { PresupuestoAgro } from "@/paginas/PresupuestoAgro";
 import { ReportesVentasAgro } from "@/paginas/ReportesVentasAgro";
 import { ResumenAgro } from "@/paginas/ResumenAgro";
 import { VentaDiariaAgro } from "@/paginas/VentaDiariaAgro";
+import { VentasTat } from "@/paginas/VentasTat";
 import { CambioClaveObligatorio } from "@/paginas/CambioClave";
 import { Clientes } from "@/paginas/Clientes";
 import { Cumplimiento } from "@/paginas/Cumplimiento";
@@ -124,6 +125,7 @@ export function App() {
               <Route path="calendario" element={<CalendarioAgro />} />
               <Route path="ingesta" element={<IngestaAgro />} />
               <Route path="inteligencia" element={<InteligenciaAgro />} />
+              {esAgro ? <Route path="tat" element={<VentasTat />} /> : null}
             </Route>
           </>
         ) : (

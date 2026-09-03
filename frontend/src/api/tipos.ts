@@ -106,6 +106,31 @@ export interface Zona {
   puntos_venta: ReferenciaSimple[];
 }
 
+export interface AgroTatVenta {
+  fecha_documento: string;
+  nro_documento: string;
+  tipo_comercial: string | null;
+  cliente_factura: string | null;
+  razon_social_cliente: string | null;
+  codigo_sucursal: string | null;
+  descripcion_sucursal: string | null;
+  direccion_sucursal: string | null;
+  cantidad_inv: string;
+  valor_subtotal: string;
+}
+
+export interface AgroTatResumen {
+  filas: AgroTatVenta[];
+  total_cantidad: string;
+  total_subtotal: string;
+}
+
+export interface AgroTatIngesta {
+  corrida_id: number;
+  filas_leidas: number;
+  filas_insertadas: number;
+}
+
 export interface MapeoCategoria {
   texto_siesa: string;
   categoria: ReferenciaSimple;

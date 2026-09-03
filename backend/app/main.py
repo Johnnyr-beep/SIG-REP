@@ -14,6 +14,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.v1 import agro as agro_api
+from app.api.v1 import agro_tat as agro_tat_api
 from app.api.v1 import auth as auth_api
 from app.api.v1 import calendario as calendario_api
 from app.api.v1 import catalogos as catalogos_api
@@ -147,6 +148,7 @@ api.include_router(reportes_api.router)
 # La unidad agropecuaria vive bajo su propio prefijo: es otro negocio, con
 # sus dimensiones y su presupuesto por descomposicion, no una variante.
 api.include_router(agro_api.router)
+api.include_router(agro_tat_api.router)
 api.include_router(ingesta_api.router)
 api.include_router(usuarios_api.router)
 api.include_router(salud_api.router)

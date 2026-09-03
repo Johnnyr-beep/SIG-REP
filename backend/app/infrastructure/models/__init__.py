@@ -25,6 +25,7 @@ from app.infrastructure.models.agro_presupuesto_mensual import (
     AgroPptoMensualMapeo,
     AgroPptoMensualServicio,
 )
+from app.infrastructure.models.agro_tat import AgroTatCorrida, AgroTatVenta
 from app.infrastructure.models.agro_venta import AgroVentaLinea
 from app.infrastructure.models.catalogo import Categoria, MapeoCategoria
 from app.infrastructure.models.historia_venta import HistoriaVentaManual
@@ -51,6 +52,8 @@ __all__ = [
     "AgroPresupuesto",
     "AgroPresupuestoHistorial",
     "AgroRechazoIngesta",
+    "AgroTatCorrida",
+    "AgroTatVenta",
     "AgroVentaLinea",
     "CalendarioZona",
     "Categoria",
