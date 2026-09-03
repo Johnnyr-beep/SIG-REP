@@ -210,6 +210,7 @@ export function useVentasComercialesAgro(
 export function useCruceAgro(
   filtros: FiltrosAgro,
   por: EjeCruceAgro,
+  habilitado = true,
 ): UseQueryResult<RespuestaCruceAgro> {
   return useQuery({
     queryKey: clavesAgro.cruce(filtros, por),
@@ -217,6 +218,7 @@ export function useCruceAgro(
       peticion<RespuestaCruceAgro>("/agro/cruce", {
         parametros: { ...comoParametros(filtros), por },
       }),
+    enabled: habilitado,
     staleTime: 60_000,
   });
 }

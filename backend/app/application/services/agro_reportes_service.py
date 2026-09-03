@@ -74,6 +74,7 @@ from app.domain.indicadores import (
 )
 from app.domain.semaforo import UmbralesSemaforo
 from app.infrastructure.models.agro_dimensiones import AgroDimension
+from app.infrastructure.models.agro_presupuesto_mensual import AgroPptoMensualDetalle
 from app.infrastructure.models.agro_venta import AgroVentaLinea
 from app.infrastructure.models.agro_vocabulario import (
     DimensionPresupuesto,
@@ -886,8 +887,39 @@ class AgroReportesService:
         truncado = len(ordenadas) > limite
 
         filas: list[FilaCruceAgro] = []
+        presupuesto_clientes: dict[tuple[str, str], Decimal] = {}
+        if por is EjeCruce.VENDEDOR_CLIENTE:
+            presupuesto_clientes = {
+                (vendedor, cliente): Decimal(monto)
+                for vendedor, cliente, monto in self._sesion.execute(
+                    select(
+                        AgroPptoMensualDetalle.vendedor_clave,
+                        AgroPptoMensualDetalle.cliente_clave,
+                        func.sum(
+                            AgroPptoMensualDetalle.kilos
+                            if ctx.medida is Medida.KILOS
+                            else AgroPptoMensualDetalle.monto
+                        ),
+                    )
+                    .where(
+                        AgroPptoMensualDetalle.periodo_id == ctx.periodo.id,
+                        AgroPptoMensualDetalle.bloque == "commercial",
+                    )
+                    .group_by(
+                        AgroPptoMensualDetalle.vendedor_clave,
+                        AgroPptoMensualDetalle.cliente_clave,
+                    )
+                )
+                if vendedor is not None and cliente is not None and monto is not None
+            }
         for llaves, totales in ordenadas[:limite]:
             miembros = [ctx.catalogo.get(identificador) for identificador in llaves]
+            meta = None
+            if por is EjeCruce.VENDEDOR_CLIENTE and len(miembros) == 2:
+                vendedor = miembros[0].clave if miembros[0] is not None else None
+                cliente = miembros[1].clave if miembros[1] is not None else None
+                if vendedor is not None and cliente is not None:
+                    meta = presupuesto_clientes.get((vendedor, cliente))
             filas.append(
                 FilaCruceAgro(
                     claves=[
@@ -902,7 +934,7 @@ class AgroReportesService:
                         ctx,
                         totales,
                         base,
-                        presupuesto=None,
+                        presupuesto=meta,
                         dias_habiles=habiles,
                         dias_trabajados=trabajados,
                         ideal_agregado=ideal_cia,

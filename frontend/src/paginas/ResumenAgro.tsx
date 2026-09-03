@@ -20,6 +20,7 @@ import { useSearchParams } from "react-router-dom";
 
 import {
   useExportarAgro,
+  useCruceAgro,
   useResumenAgro,
   useSerieMensualAgro,
   useVentaDiariaAgro,
@@ -100,6 +101,11 @@ export function ResumenAgro() {
   );
   const { data: otra } = useResumenAgro(filtrosOtraMedida, eje);
   const vendedores = useResumenAgro(filtrosAgro, "vendedor");
+  const cruceVendedorCliente = useCruceAgro(
+    filtrosAgro,
+    "vendedor-cliente",
+    eje === "vendedor",
+  );
   const comerciales = useVentasComercialesAgro(filtrosAgro);
   const serieMensual = useSerieMensualAgro(
     Number(filtros.periodo.slice(0, 4)),
@@ -273,6 +279,9 @@ export function ResumenAgro() {
 
       {data ? (
         <>
+          {eje === "vendedor" ? (
+            <AlertaClientesSinPresupuesto datos={cruceVendedorCliente.data} />
+          ) : null}
           <AvisoCuadre cuadre={data.parametros_calculo.cuadre} />
           {/* Dos avisos distintos para dos hechos distintos, que el backend
               no separa: en los dos manda `presupuesto` vacio. Si el eje es una
@@ -440,6 +449,41 @@ export function ResumenAgro() {
           </Tarjeta>
         </>
       ) : null}
+    </div>
+  );
+}
+
+function AlertaClientesSinPresupuesto({
+  datos,
+}: {
+  datos: ReturnType<typeof useCruceAgro>["data"];
+}) {
+  const alertas = (datos?.filas ?? []).filter(
+    (fila) => fila.presupuesto === null && fila.venta_valor !== "0",
+  );
+  if (!alertas.length) return null;
+
+  return (
+    <div className="aviso aviso--advertencia" role="alert">
+      <div>
+        <strong>Clientes con venta sin presupuesto asignado</strong>
+        <ul className="lista-simple">
+          {alertas.map((fila) => (
+            <li key={fila.claves.join("|")}>
+              <span>
+                <strong>{fila.nombres[0] ?? "Vendedor sin nombre"}</strong>
+                {" · "}
+                {fila.nombres[1] ?? "Cliente sin nombre"}
+              </span>
+              <span className="empujar">{dinero(fila.venta_valor)}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="tenue">
+          Asigne el cliente a su vendedor en Presupuesto mensual para habilitar
+          el seguimiento de cumplimiento.
+        </p>
+      </div>
     </div>
   );
 }
