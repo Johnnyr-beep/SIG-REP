@@ -10,11 +10,11 @@ export interface FiltrosTat {
   offset?: number;
 }
 
-export function useVentasTat(filtros: FiltrosTat) {
+export function useVentasTat(filtros: FiltrosTat, habilitado = true) {
   return useQuery({
     queryKey: ["agro", "tat", filtros],
     queryFn: () => peticion<AgroTatResumen>("/agro/tat", { parametros: { ...filtros } }),
-    enabled: Boolean(filtros.fecha_inicio && filtros.fecha_fin),
+    enabled: habilitado && Boolean(filtros.fecha_inicio && filtros.fecha_fin),
   });
 }
 

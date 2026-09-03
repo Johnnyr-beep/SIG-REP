@@ -1,11 +1,14 @@
 import { useMemo } from "react";
 
 import { useResumenAgro, useVentasComercialesAgro } from "@/api/consultasAgro";
+import { useVentasTat } from "@/api/consultasTat";
+import type { AgroTatVenta } from "@/api/tipos";
 import type { FilaVentaComercialAgro } from "@/api/tiposAgro";
+import { useMarcaElegida } from "@/marca/ContextoMarca";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import { BarraFiltrosAgro, filtrosAgroDe, useFiltros } from "@/componentes/filtros";
 import { Indicador } from "@/componentes/indicadores";
-import { dinero, kilos, sumar } from "@/utilidades/formato";
+import { dinero, finDeMes, kilos, numero, sumar } from "@/utilidades/formato";
 
 const CATEGORIAS = [
   ["CORT", "Cortes"],
@@ -16,17 +19,25 @@ const CATEGORIAS = [
 ] as const;
 
 export function ReportesVentasAgro() {
+  const marca = useMarcaElegida();
+  const esAgropecuaria = marca.clave === "agropecuaria";
   const control = useFiltros();
   const filtros = useMemo(() => filtrosAgroDe(control.filtros), [control.filtros]);
   const comerciales = useVentasComercialesAgro(filtros);
   const tipoItem = useResumenAgro(filtros, "tipo_item");
   const especie = useResumenAgro(filtros, "especie");
+  const tat = useVentasTat({
+    fecha_inicio: `${filtros.periodo}-01`,
+    fecha_fin: filtros.hasta ?? finDeMes(filtros.periodo) ?? `${filtros.periodo}-01`,
+    limit: 100,
+    offset: 0,
+  }, esAgropecuaria);
 
   return (
     <div className="pila">
       <BarraFiltrosAgro control={control} mostrar={{ rango: true }} />
-      <AvisoError error={comerciales.error ?? tipoItem.error ?? especie.error} />
-      {comerciales.isLoading || tipoItem.isLoading || especie.isLoading ? (
+      <AvisoError error={comerciales.error ?? tipoItem.error ?? especie.error ?? tat.error} />
+      {comerciales.isLoading || tipoItem.isLoading || especie.isLoading || tat.isLoading ? (
         <Cargando texto="Preparando reportes de ventas…" />
       ) : null}
       {comerciales.data && tipoItem.data && especie.data ? (
@@ -79,12 +90,18 @@ export function ReportesVentasAgro() {
             >
               <MatrizCategorias filas={comerciales.data.filas} />
             </Tarjeta>
-            <Tarjeta
-              titulo="Ventas TAT"
-              descripcion="Tipo comercial TAT, separado para lectura rápida."
-            >
-              <DesgloseTAT filas={filtrar(comerciales.data.filas, "TAT")} />
-            </Tarjeta>
+            {esAgropecuaria && tat.data ? (
+              <Tarjeta
+                titulo="Ventas TAT"
+                descripcion="Facturación TAT separada para lectura rápida."
+              >
+                <DesgloseTAT
+                  filas={tat.data.filas}
+                  totalCantidad={tat.data.total_cantidad}
+                  totalSubtotal={tat.data.total_subtotal}
+                />
+              </Tarjeta>
+            ) : null}
           </div>
         </>
       ) : null}
@@ -146,20 +163,33 @@ function MatrizCategorias({ filas }: { filas: FilaVentaComercialAgro[] }) {
   );
 }
 
-function DesgloseTAT({ filas }: { filas: FilaVentaComercialAgro[] }) {
+function DesgloseTAT({
+  filas,
+  totalCantidad,
+  totalSubtotal,
+}: {
+  filas: AgroTatVenta[];
+  totalCantidad: string;
+  totalSubtotal: string;
+}) {
   if (!filas.length) return <Vacio titulo="Sin ventas TAT en este corte" />;
   return (
-    <ul className="reportes-comerciales__lista">
-      {filas.map((fila) => (
-        <li key={`${fila.especie}-${fila.tipo_comercial}`}>
-          <span>
-            <strong>{fila.especie}</strong>
-            <small>{kilos(fila.kilos)}</small>
-          </span>
-          <strong>{dinero(fila.venta_valor)}</strong>
-        </li>
-      ))}
-    </ul>
+    <div className="rejilla rejilla--indicadores">
+      <div className="indicador">
+        <span className="indicador__etiqueta">Cantidad total</span>
+        <strong className="indicador__valor indicador__valor--mediano">
+          {numero(totalCantidad, 2)}
+        </strong>
+        <span className="indicador__nota">Registros visibles: {numero(filas.length)}</span>
+      </div>
+      <div className="indicador">
+        <span className="indicador__etiqueta">Venta subtotal</span>
+        <strong className="indicador__valor indicador__valor--mediano">
+          {dinero(totalSubtotal)}
+        </strong>
+        <span className="indicador__nota">Total del rango consultado</span>
+      </div>
+    </div>
   );
 }
 
