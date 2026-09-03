@@ -93,17 +93,21 @@ export function App() {
   // las cifras de la otra compania. Un menu que no enlaza no es una puerta
   // cerrada.
   const esAgro = marca.clave === "agropecuaria";
+  const esCarnesFrias = marca.clave === "carnes-frias";
 
   return (
     <Routes>
       <Route element={<Disposicion />}>
-        {esAgro ? (
+        {esAgro || esCarnesFrias ? (
           <>
             {/* Las pantallas conservan el prefijo `/agro` en vez de subir a la
                 raiz: un enlace pegado en un correo dice a que unidad pertenece,
                 y sigue abriendo lo mismo manana. */}
-            <Route index element={<Navigate to="/agro" replace />} />
-            <Route path="agro">
+            <Route
+              index
+              element={<Navigate to={esCarnesFrias ? "/frias" : "/agro"} replace />}
+            />
+            <Route path={esCarnesFrias ? "frias" : "agro"}>
               <Route index element={<ResumenAgro />} />
               <Route path="cruce" element={<CruceAgro />} />
               <Route path="cubo-comercial" element={<CuboComercialAgro />} />
@@ -169,7 +173,12 @@ export function App() {
             haberlo pedido. */}
         <Route
           path="*"
-          element={<Navigate to={esAgro ? "/agro" : "/"} replace />}
+          element={
+            <Navigate
+              to={esAgro ? "/agro" : esCarnesFrias ? "/frias" : "/"}
+              replace
+            />
+          }
         />
       </Route>
     </Routes>

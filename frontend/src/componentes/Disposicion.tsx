@@ -119,6 +119,36 @@ const MENU_AGRO: GrupoNav[] = [
   },
 ];
 
+const MENU_CARNES_FRIAS: GrupoNav[] = [
+  {
+    titulo: "Gerencia",
+    items: [
+      { ruta: "/frias", etiqueta: "Resumen de ventas", icono: "◱" },
+      { ruta: "/frias/reportes-ventas", etiqueta: "Reportes de ventas", icono: "▤" },
+      { ruta: "/frias/cubo-comercial", etiqueta: "Cubo comercial", icono: "▥" },
+      { ruta: "/frias/cruce", etiqueta: "Vendedor, cliente y producto", icono: "◇" },
+      { ruta: "/frias/venta-diaria", etiqueta: "Venta diaria", icono: "▦" },
+    ],
+  },
+  {
+    titulo: "Parametrización",
+    items: [
+      {
+        ruta: "/frias/presupuesto",
+        etiqueta: "Presupuesto",
+        icono: "≡",
+        roles: ["ADMIN", "GERENTE", "ANALISTA"],
+      },
+      { ruta: "/frias/calendario", etiqueta: "Días hábiles", icono: "◷" },
+      { ruta: "/frias/ingesta", etiqueta: "Ingesta desde SIESA", icono: "⇄" },
+    ],
+  },
+  {
+    titulo: "Administración",
+    items: [{ ruta: "/usuarios", etiqueta: "Usuarios", icono: "◉", roles: ["ADMIN"] }],
+  },
+];
+
 /**
  * El menú que corresponde a la marca elegida.
  *
@@ -126,7 +156,9 @@ const MENU_AGRO: GrupoNav[] = [
  * unidad firmada en sesión y por su base de datos exclusiva.
  */
 function menuDe(marca: ClaveMarca): GrupoNav[] {
-  return marca === "agropecuaria" ? MENU_AGRO : MENU_CARNES;
+  if (marca === "agropecuaria") return MENU_AGRO;
+  if (marca === "carnes-frias") return MENU_CARNES_FRIAS;
+  return MENU_CARNES;
 }
 
 const TITULOS: Record<string, string> = {
@@ -139,6 +171,14 @@ const TITULOS: Record<string, string> = {
   "/agro/presupuesto": "Presupuesto de agropecuaria",
   "/agro/calendario": "Días hábiles por centro de operación",
   "/agro/ingesta": "Ingesta de agropecuaria",
+  "/frias": "Resumen de ventas de Carnes Frías",
+  "/frias/reportes-ventas": "Reportes de ventas de Carnes Frías",
+  "/frias/cubo-comercial": "Cubo comercial de Carnes Frías",
+  "/frias/cruce": "Vendedor, cliente y producto de Carnes Frías",
+  "/frias/venta-diaria": "Venta diaria de Carnes Frías",
+  "/frias/presupuesto": "Presupuesto de Carnes Frías",
+  "/frias/calendario": "Días hábiles de Carnes Frías",
+  "/frias/ingesta": "Ingesta de Carnes Frías",
   "/": "Tablero gerencial",
   "/cumplimiento": "Cumplimiento por punto de venta",
   "/costos": "Costos y margen",
