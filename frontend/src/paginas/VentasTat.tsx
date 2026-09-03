@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useIngestarTat, useVentasTat } from "@/api/consultasTat";
 import { useAuth } from "@/auth/ContextoAuth";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
-import { fechaHoy, numero } from "@/utilidades/formato";
+import { dinero, fechaHoy, numero } from "@/utilidades/formato";
 
 export function VentasTat() {
   const hoy = fechaHoy();
@@ -21,6 +21,22 @@ export function VentasTat() {
       <Tarjeta
         titulo="Ventas TAT"
         descripcion="Facturación de Agropecuaria por sucursal y cliente."
+        acciones={
+          <div className="ventas-tat__resumen" aria-live="polite">
+            <div className="indicador">
+              <span className="indicador__etiqueta">Cantidad total</span>
+              <strong className="indicador__valor indicador__valor--mediano">
+                {consulta.data ? numero(consulta.data.total_cantidad, 2) : "—"}
+              </strong>
+            </div>
+            <div className="indicador">
+              <span className="indicador__etiqueta">Venta subtotal</span>
+              <strong className="indicador__valor indicador__valor--mediano">
+                {consulta.data ? dinero(consulta.data.total_subtotal) : "—"}
+              </strong>
+            </div>
+          </div>
+        }
       >
         <form
           className="formulario formulario--linea"

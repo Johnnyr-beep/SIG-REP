@@ -586,6 +586,22 @@ textarea {
   padding: var(--espacio-3) var(--espacio-4);
 }
 
+.ventas-tat__resumen {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(132px, 1fr));
+  gap: var(--espacio-2);
+  min-width: min(100%, 300px);
+}
+
+.ventas-tat__resumen .indicador {
+  min-width: 0;
+  padding: var(--espacio-2) var(--espacio-3);
+}
+
+.ventas-tat__resumen .indicador__valor {
+  overflow-wrap: anywhere;
+}
+
 .rejilla {
   display: grid;
   gap: var(--espacio-4);
