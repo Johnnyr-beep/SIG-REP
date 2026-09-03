@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict
+from app.schemas.common import DecimalStr, EsquemaBase
 
 
-class AgroTatVentaSalida(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+class AgroTatVentaSalida(EsquemaBase):
     fecha_documento: date
     nro_documento: str
     tipo_comercial: str | None
@@ -15,17 +14,17 @@ class AgroTatVentaSalida(BaseModel):
     codigo_sucursal: str | None
     descripcion_sucursal: str | None
     direccion_sucursal: str | None
-    cantidad_inv: str
-    valor_subtotal: str
+    cantidad_inv: DecimalStr
+    valor_subtotal: DecimalStr
 
 
-class AgroTatResumen(BaseModel):
+class AgroTatResumen(EsquemaBase):
     filas: list[AgroTatVentaSalida]
-    total_cantidad: str
-    total_subtotal: str
+    total_cantidad: DecimalStr
+    total_subtotal: DecimalStr
 
 
-class AgroTatIngestaSalida(BaseModel):
+class AgroTatIngestaSalida(EsquemaBase):
     corrida_id: int
     filas_leidas: int
     filas_insertadas: int
