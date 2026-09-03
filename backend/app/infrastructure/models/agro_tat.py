@@ -28,9 +28,7 @@ class AgroTatVenta(Base):
     id: Mapped[int] = mapped_column(
         BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True
     )
-    corrida_id: Mapped[int] = mapped_column(
-        ForeignKey("agro_tat_corridas.id"), nullable=False
-    )
+    corrida_id: Mapped[int] = mapped_column(ForeignKey("agro_tat_corridas.id"), nullable=False)
     fecha_documento: Mapped[date] = mapped_column(Date, nullable=False)
     nro_documento: Mapped[str] = mapped_column(String(80), nullable=False)
     tipo_comercial: Mapped[str | None] = mapped_column(String(120))
