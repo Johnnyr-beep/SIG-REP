@@ -82,18 +82,9 @@ export function App() {
   // de envolverla.
   if (debeCambiarClave) return <CambioClaveObligatorio />;
 
-  if (marca.clave === "carnes-frias") {
-    return (
-      <Vacio
-        titulo="Carnes Frías todavía no está disponible"
-        detalle="La unidad está preparada, pero sus reportes e ingesta aún no han sido habilitados."
-      />
-    );
-  }
-
   // Cada unidad monta **solo sus rutas**. No es cosmetica: agropecuaria es otra
   // compania, con su propia API de origen (`id_cia=3`) y sus propias cifras, y
-  // las dos no se mezclan.
+  // las unidades no se mezclan.
   //
   // Antes las rutas de carnes estaban montadas siempre y solo cambiaba el menu,
   // con tres consecuencias que nadie veia hasta teclear una direccion: `/` era

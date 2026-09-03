@@ -34,7 +34,7 @@ interface GrupoNav {
 /**
  * Las pantallas de carnes: §6 de la especificación.
  *
- * Hay un menú por unidad y no uno solo con todo dentro, porque las dos unidades
+ * Hay un menú por unidad y no uno solo con todo dentro, porque cada unidad
  * no miden lo mismo. Carnes agrupa por punto de venta y categoría; agropecuaria
  * por centro de operación, especie, tipo comercial y vendedor. Un menú mezclado
  * ofrecería a un gerente de carnes una pantalla de especies que su base no tiene
@@ -122,10 +122,8 @@ const MENU_AGRO: GrupoNav[] = [
 /**
  * El menú que corresponde a la marca elegida.
  *
- * `carnes-frias` todavía no tiene módulo; si alguien llegara con esa marca
- * guardada en `localStorage`, ve el de carnes en vez de una barra vacía. El
- * selector ya no deja elegirla —se lo impide `unidades` de la sonda—, así que
- * esto es el cinturón, no la vía normal.
+ * Carnes Frías usa el conjunto general de reportes y queda separado por la
+ * unidad firmada en sesión y por su base de datos exclusiva.
  */
 function menuDe(marca: ClaveMarca): GrupoNav[] {
   return marca === "agropecuaria" ? MENU_AGRO : MENU_CARNES;

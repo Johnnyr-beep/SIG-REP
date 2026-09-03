@@ -74,8 +74,8 @@ export const MARCAS: readonly Marca[] = [
     logo: logoCarnesFrias,
     logoAncho: 160,
     logoAlto: 116,
-    estado: "proximamente",
-    descripcion: "Línea de derivados cárnicos. Pendiente de despliegue.",
+    estado: "activa",
+    descripcion: "Línea de derivados cárnicos. Venta desde SIESA compañía 8.",
   },
 ];
 
