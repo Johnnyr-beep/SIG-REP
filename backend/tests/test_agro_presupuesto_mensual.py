@@ -295,6 +295,51 @@ def test_detalle_duplicado_se_actualiza_no_se_duplica(
     assert Decimal(filas[0].monto) == Decimal("200000")
 
 
+def test_cliente_comercial_no_puede_cambiar_de_vendedor(
+    estructura: None,
+    sesion: Session,
+) -> None:
+    """Un cliente conserva su vendedor, pero la categoría puede repetirse."""
+    svc = _servicio(sesion)
+    svc.guardar_detalle(
+        PERIODO,
+        DetalleMensualEntrada(
+            bloque="commercial",
+            vendedor_clave="LEON",
+            cliente_clave="CLIENTE-X",
+            categoria="A",
+            monto=Decimal("300000"),
+            kilos=Decimal("100"),
+        ),
+    )
+
+    with pytest.raises(ErrorValidacion, match="ya está asignado"):
+        svc.guardar_detalle(
+            PERIODO,
+            DetalleMensualEntrada(
+                bloque="commercial",
+                vendedor_clave="OTRO-VENDEDOR",
+                cliente_clave="CLIENTE-X",
+                categoria="A",
+                monto=Decimal("300000"),
+                kilos=Decimal("100"),
+            ),
+        )
+
+    salida = svc.guardar_detalle(
+        PERIODO,
+        DetalleMensualEntrada(
+            bloque="commercial",
+            vendedor_clave="LEON",
+            cliente_clave="CLIENTE-X",
+            categoria="B",
+            monto=Decimal("300000"),
+            kilos=Decimal("100"),
+        ),
+    )
+    assert salida.vendedor_clave == "LEON"
+
+
 # ── Período cerrado ───────────────────────────────────────────────────────────
 
 

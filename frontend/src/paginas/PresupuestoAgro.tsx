@@ -815,8 +815,8 @@ function FormularioDetalleMensual({
   const [vendedorClave, setVendedorClave] = useState(
     filaExistente?.vendedor_clave ?? "",
   );
-  const [clienteClave, setClienteClave] = useState(
-    filaExistente?.cliente_clave ?? "",
+  const [clientesClave, setClientesClave] = useState<string[]>(
+    filaExistente?.cliente_clave ? [filaExistente.cliente_clave] : [],
   );
   const [categoria, setCategoria] = useState(filaExistente?.categoria ?? "");
   const [monto, setMonto] = useState(filaExistente?.monto ?? "0");
@@ -834,29 +834,29 @@ function FormularioDetalleMensual({
     const vendedorSeleccionado = (vendedores ?? []).find(
       (m) => m.clave === vendedorClave,
     );
-    const clienteSeleccionado = (clientes ?? []).find(
-      (m) => m.clave === clienteClave,
-    );
-
-    const datos: EntradaDetalleMensual = {
-      bloque,
-      monto,
-      kilos: kilosValor,
+    const clientesParaGuardar = clientesClave.length ? clientesClave : [null];
+    const guardarTodos = async () => {
+      for (const clienteClave of clientesParaGuardar) {
+        const clienteSeleccionado = (clientes ?? []).find(
+          (m) => m.clave === clienteClave,
+        );
+        const datos: EntradaDetalleMensual = {
+          bloque,
+          monto,
+          kilos: kilosValor,
+          cliente_clave: clienteClave,
+          cliente_etiqueta: clienteSeleccionado?.nombre ?? null,
+        };
+        if (esComercial) {
+          datos.vendedor_clave = vendedorClave || null;
+          datos.vendedor_etiqueta = vendedorSeleccionado?.nombre ?? null;
+          datos.categoria = categoria || null;
+        }
+        await guardar.mutateAsync(datos);
+      }
+      onCerrar();
     };
-
-    // El bloque comercial envía vendedor y categoría; los otros dos no los
-    // envían porque el backend los fija (AGROPECUARIA / JUAN SIERRA).
-    if (esComercial) {
-      datos.vendedor_clave = vendedorClave || null;
-      datos.vendedor_etiqueta = vendedorSeleccionado?.nombre ?? null;
-      datos.categoria = categoria || null;
-    }
-
-    // El cliente es siempre libre: todos los bloques de detalle lo usan.
-    datos.cliente_clave = clienteClave || null;
-    datos.cliente_etiqueta = clienteSeleccionado?.nombre ?? null;
-
-    guardar.mutate(datos, { onSuccess: onCerrar });
+    void guardarTodos();
   }
 
   return (
@@ -926,16 +926,20 @@ function FormularioDetalleMensual({
         )}
 
         <Campo
-          etiqueta="Cliente"
-          ayuda="Sale del catálogo que dejó la ingesta, no se escribe a mano."
+          etiqueta="Clientes"
+          ayuda="Puede escoger varios. Cada cliente queda asignado a un solo vendedor."
         >
           <select
             className="campo__control"
-            value={clienteClave}
-            onChange={(evento) => setClienteClave(evento.target.value)}
+            multiple
+            value={clientesClave}
+            onChange={(evento) =>
+              setClientesClave(
+                Array.from(evento.target.selectedOptions, (opcion) => opcion.value),
+              )
+            }
             required
           >
-            <option value="">Elija uno…</option>
             {(clientes ?? []).map((m) => (
               <option key={m.clave} value={m.clave}>
                 {m.nombre} · {m.clave}

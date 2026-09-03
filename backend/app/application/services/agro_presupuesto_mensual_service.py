@@ -259,6 +259,20 @@ class AgroPresupuestoMensualService:
 
         self._validar_categoria_bloque(datos.bloque, categoria)
 
+        if datos.bloque == "commercial" and cliente_clave is not None:
+            otro_vendedor = self._sesion.execute(
+                select(AgroPptoMensualDetalle.vendedor_clave).where(
+                    AgroPptoMensualDetalle.periodo_id == periodo.id,
+                    AgroPptoMensualDetalle.bloque == datos.bloque,
+                    AgroPptoMensualDetalle.cliente_clave == cliente_clave,
+                    AgroPptoMensualDetalle.vendedor_clave != vendedor_clave,
+                )
+            ).scalar_one_or_none()
+            if otro_vendedor is not None:
+                raise ErrorValidacion(
+                    f"El cliente {cliente_clave!r} ya está asignado a otro vendedor."
+                )
+
         fila = self._sesion.execute(
             select(AgroPptoMensualDetalle).where(
                 AgroPptoMensualDetalle.periodo_id == periodo.id,
