@@ -1562,6 +1562,29 @@ textarea {
   font-size: 0.75rem;
 }
 
+.seleccion-multiple {
+  display: grid;
+  gap: var(--espacio-1);
+  max-height: 220px;
+  overflow-y: auto;
+  padding: var(--espacio-2);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-sm);
+}
+
+.seleccion-multiple__opcion {
+  display: flex;
+  gap: var(--espacio-2);
+  align-items: flex-start;
+  padding: var(--espacio-1);
+  cursor: pointer;
+}
+
+.seleccion-multiple__opcion:hover {
+  background: var(--superficie-hover);
+}
+
 .campo__error {
   color: var(--peligro);
   font-size: 0.78rem;

@@ -929,23 +929,25 @@ function FormularioDetalleMensual({
           etiqueta="Clientes"
           ayuda="Puede escoger varios. Cada cliente queda asignado a un solo vendedor."
         >
-          <select
-            className="campo__control"
-            multiple
-            value={clientesClave}
-            onChange={(evento) =>
-              setClientesClave(
-                Array.from(evento.target.selectedOptions, (opcion) => opcion.value),
-              )
-            }
-            required
-          >
+          <div className="seleccion-multiple" role="group" aria-label="Clientes">
             {(clientes ?? []).map((m) => (
-              <option key={m.clave} value={m.clave}>
-                {m.nombre} · {m.clave}
-              </option>
+              <label key={m.clave} className="seleccion-multiple__opcion">
+                <input
+                  type="checkbox"
+                  value={m.clave}
+                  checked={clientesClave.includes(m.clave)}
+                  onChange={(evento) =>
+                    setClientesClave((anteriores) =>
+                      evento.target.checked
+                        ? [...anteriores, m.clave]
+                        : anteriores.filter((clave) => clave !== m.clave),
+                    )
+                  }
+                />
+                <span>{m.nombre} · {m.clave}</span>
+              </label>
             ))}
-          </select>
+          </div>
         </Campo>
 
         {esComercial ? (
