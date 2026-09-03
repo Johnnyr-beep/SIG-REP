@@ -725,8 +725,8 @@ function BloqueDetalle({
                 {esComercial ? <th scope="col">Vendedor</th> : null}
                 <th scope="col">Cliente</th>
                 {esComercial ? <th scope="col">Categoría</th> : null}
-                <th scope="col">Meta ($)</th>
-                <th scope="col">Meta (kg)</th>
+                <th scope="col">Ppto Kilos</th>
+                <th scope="col">Presupuesto ($)</th>
                 <th scope="col">
                   <span className="solo-lectores">Acciones</span>
                 </th>
@@ -751,8 +751,8 @@ function BloqueDetalle({
                   {esComercial ? (
                     <td className="mono">{fila.categoria ?? "—"}</td>
                   ) : null}
-                  <td className="numero">{dinero(fila.monto)}</td>
                   <td className="numero">{kilos(fila.kilos)}</td>
+                  <td className="numero">{dinero(fila.monto)}</td>
                   <td>
                     <button
                       type="button"
@@ -771,8 +771,8 @@ function BloqueDetalle({
                 <th scope="row" colSpan={esComercial ? 3 : 1}>
                   TOTAL · {filas.length} fila{filas.length === 1 ? "" : "s"}
                 </th>
-                <td className="numero">{dinero(totalMonto)}</td>
                 <td className="numero">{kilos(totalKilos)}</td>
+                <td className="numero">{dinero(totalMonto)}</td>
                 <td />
               </tr>
             </tbody>
