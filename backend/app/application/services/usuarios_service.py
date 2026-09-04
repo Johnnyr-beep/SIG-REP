@@ -20,6 +20,7 @@ from __future__ import annotations
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.deps import PERMISOS_CONSULTA
 from app.core.errors import (
     ErrorAutorizacion,
     ErrorConflicto,
@@ -208,6 +209,8 @@ class UsuariosService:
         return self._salida(objetivo)
 
     def asignar_permiso(self, usuario_id: int, codigo: str) -> UsuarioSalida:
+        if codigo not in PERMISOS_CONSULTA:
+            raise ErrorNoEncontrado(f"No existe el permiso {codigo!r}.")
         objetivo = self._obtener(usuario_id)
         self._rechazar_autoadministracion(objetivo)
         if not objetivo.tiene_permiso(codigo):

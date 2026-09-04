@@ -28,7 +28,22 @@ from app.core.security import TipoToken, decodificar_token
 from app.domain.enums import Rol
 from app.infrastructure.models.usuario import Usuario
 
+PERMISO_CONSULTAR_PDV = "PERMISO_CONSULTAR_PDV"
 PERMISO_VENTA_DIARIA_ASADERO = "PERMISO_VENTA_DIARIA_ASADERO"
+
+PERMISOS_CONSULTA: dict[str, str] = {
+    PERMISO_CONSULTAR_PDV: "Consultar puntos de venta",
+    PERMISO_VENTA_DIARIA_ASADERO: "Consultar venta diaria de Asadero",
+    "PERMISO_CONSULTAR_TABLERO": "Consultar tablero",
+    "PERMISO_CONSULTAR_CUMPLIMIENTO": "Consultar cumplimiento",
+    "PERMISO_CONSULTAR_COSTOS": "Consultar costos y margen",
+    "PERMISO_CONSULTAR_VENTA_DIARIA": "Consultar venta diaria",
+    "PERMISO_CONSULTAR_CLIENTES": "Consultar clientes y vendedores",
+    "PERMISO_CONSULTAR_PRESUPUESTO": "Consultar presupuesto",
+    "PERMISO_CONSULTAR_CALENDARIO": "Consultar calendario",
+    "PERMISO_CONSULTAR_INGESTA": "Consultar ingesta",
+    "PERMISO_CONSULTAR_HISTORIA": "Consultar venta del año anterior",
+}
 
 # `auto_error=False` para devolver nuestro formato de error uniforme en lugar
 # del que impone Starlette.

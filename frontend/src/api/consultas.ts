@@ -709,18 +709,16 @@ export function useCambiarEstadoUsuario(): UseMutationResult<
 export function useCambiarPermisoUsuario(): UseMutationResult<
   UsuarioAdministrado,
   Error,
-  { id: number; asignar: boolean }
+  { id: number; codigo: string; asignar: boolean }
 > {
   const invalidar = useInvalidarUsuarios();
   return useMutation({
-    mutationFn: ({ id, asignar }) =>
+    mutationFn: ({ id, codigo, asignar }) =>
       peticion<UsuarioAdministrado>(
-        `/usuarios/${id}/permisos${asignar ? "" : "/PERMISO_VENTA_DIARIA_ASADERO"}`,
+        `/usuarios/${id}/permisos${asignar ? "" : `/${codigo}`}`,
         {
           metodo: asignar ? "POST" : "DELETE",
-          ...(asignar
-            ? { cuerpo: { codigo: "PERMISO_VENTA_DIARIA_ASADERO" } }
-            : {}),
+          ...(asignar ? { cuerpo: { codigo } } : {}),
         },
       ),
     onSuccess: invalidar,

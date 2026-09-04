@@ -1523,6 +1523,18 @@ textarea {
   gap: var(--espacio-2);
 }
 
+.permisos-usuario {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-1);
+  min-width: 280px;
+  max-width: 430px;
+}
+
+.permisos-usuario .boton {
+  text-align: left;
+}
+
 /* ── Formularios y filtros ───────────────────────────────────────────────── */
 
 .campo {

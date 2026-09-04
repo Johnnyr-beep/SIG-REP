@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 
 from app.api.v1 import AdministracionDep
 from app.application.services.usuarios_service import UsuariosService
-from app.core.deps import SesionDep, obtener_ip
+from app.core.deps import PERMISOS_CONSULTA, SesionDep, obtener_ip
 from app.domain.enums import Rol
 from app.schemas.usuarios import (
     AlcanceEntrada,
@@ -35,6 +35,13 @@ class PermisoEntrada(BaseModel):
 
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
+
+
+@router.get("/permisos-disponibles", summary="Catálogo de permisos")
+def permisos_disponibles(
+    _: AdministracionDep,
+) -> list[dict[str, str]]:
+    return [{"codigo": codigo, "nombre": nombre} for codigo, nombre in PERMISOS_CONSULTA.items()]
 
 
 def _servicio(sesion: SesionDep, actor: AdministracionDep, request: Request) -> UsuariosService:

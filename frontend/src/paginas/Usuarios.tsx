@@ -110,6 +110,20 @@ function etiquetaRol(rol: Rol): string {
  */
 const ROLES_CON_ALCANCE: Rol[] = ["JEFE_PDV", "ANALISTA"];
 
+const PERMISOS_CONSULTA = [
+  ["PERMISO_CONSULTAR_PDV", "Consultar puntos de venta"],
+  ["PERMISO_VENTA_DIARIA_ASADERO", "Consultar venta diaria de Asadero"],
+  ["PERMISO_CONSULTAR_TABLERO", "Consultar tablero"],
+  ["PERMISO_CONSULTAR_CUMPLIMIENTO", "Consultar cumplimiento"],
+  ["PERMISO_CONSULTAR_COSTOS", "Consultar costos y margen"],
+  ["PERMISO_CONSULTAR_VENTA_DIARIA", "Consultar venta diaria"],
+  ["PERMISO_CONSULTAR_CLIENTES", "Consultar clientes y vendedores"],
+  ["PERMISO_CONSULTAR_PRESUPUESTO", "Consultar presupuesto"],
+  ["PERMISO_CONSULTAR_CALENDARIO", "Consultar calendario"],
+  ["PERMISO_CONSULTAR_INGESTA", "Consultar ingesta"],
+  ["PERMISO_CONSULTAR_HISTORIA", "Consultar venta del año anterior"],
+] as const;
+
 function alcanceAplica(rol: Rol): boolean {
   return ROLES_CON_ALCANCE.includes(rol);
 }
@@ -1063,7 +1077,7 @@ export function Usuarios() {
                   <th scope="col">Clave</th>
                   <th scope="col">Último acceso</th>
                   <th scope="col">Puntos de venta</th>
-                  <th scope="col">Permiso</th>
+                  <th scope="col">Permisos de consulta</th>
                   <th scope="col">
                     <span className="solo-lectores">Acciones</span>
                   </th>
@@ -1139,9 +1153,29 @@ export function Usuarios() {
                         )}
                       </td>
                       <td>
-                        <Distintivo tono={cuenta.permisos.includes("PERMISO_VENTA_DIARIA_ASADERO") ? "exito" : "neutro"}>
-                          {cuenta.permisos.includes("PERMISO_VENTA_DIARIA_ASADERO") ? "Asadero" : "Sin permiso"}
-                        </Distintivo>
+                        <div className="permisos-usuario">
+                          {PERMISOS_CONSULTA.map(([codigo, nombre]) => {
+                            const asignado = cuenta.permisos.includes(codigo);
+                            return (
+                              <button
+                                key={codigo}
+                                type="button"
+                                className="boton boton--pequeno boton--sutil"
+                                onClick={() =>
+                                  cambiarPermiso.mutate({
+                                    id: cuenta.id,
+                                    codigo,
+                                    asignar: !asignado,
+                                  })
+                                }
+                                disabled={propia || cambiarPermiso.isPending}
+                                title={nombre}
+                              >
+                                {asignado ? "✓ " : "＋ "}{nombre}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </td>
                       <td>
                         <div className="grupo-botones">
@@ -1190,22 +1224,6 @@ export function Usuarios() {
                             title={motivoPropia}
                           >
                             Restablecer clave
-                          </button>
-                          <button
-                            type="button"
-                            className="boton boton--pequeno"
-                            onClick={() =>
-                              cambiarPermiso.mutate({
-                                id: cuenta.id,
-                                asignar: !cuenta.permisos.includes("PERMISO_VENTA_DIARIA_ASADERO"),
-                              })
-                            }
-                            disabled={propia || cambiarPermiso.isPending}
-                            title={motivoPropia}
-                          >
-                            {cuenta.permisos.includes("PERMISO_VENTA_DIARIA_ASADERO")
-                              ? "Quitar Asadero"
-                              : "Dar Asadero"}
                           </button>
                         </div>
                       </td>
