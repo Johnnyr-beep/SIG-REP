@@ -30,19 +30,28 @@ from app.infrastructure.models.usuario import Usuario
 
 PERMISO_CONSULTAR_PDV = "PERMISO_CONSULTAR_PDV"
 PERMISO_VENTA_DIARIA_ASADERO = "PERMISO_VENTA_DIARIA_ASADERO"
+PERMISO_CONSULTAR_TABLERO = "PERMISO_CONSULTAR_TABLERO"
+PERMISO_CONSULTAR_CUMPLIMIENTO = "PERMISO_CONSULTAR_CUMPLIMIENTO"
+PERMISO_CONSULTAR_COSTOS = "PERMISO_CONSULTAR_COSTOS"
+PERMISO_CONSULTAR_VENTA_DIARIA = "PERMISO_CONSULTAR_VENTA_DIARIA"
+PERMISO_CONSULTAR_CLIENTES = "PERMISO_CONSULTAR_CLIENTES"
+PERMISO_CONSULTAR_PRESUPUESTO = "PERMISO_CONSULTAR_PRESUPUESTO"
+PERMISO_CONSULTAR_CALENDARIO = "PERMISO_CONSULTAR_CALENDARIO"
+PERMISO_CONSULTAR_INGESTA = "PERMISO_CONSULTAR_INGESTA"
+PERMISO_CONSULTAR_HISTORIA = "PERMISO_CONSULTAR_HISTORIA"
 
 PERMISOS_CONSULTA: dict[str, str] = {
     PERMISO_CONSULTAR_PDV: "Consultar puntos de venta",
     PERMISO_VENTA_DIARIA_ASADERO: "Consultar venta diaria de Asadero",
-    "PERMISO_CONSULTAR_TABLERO": "Consultar tablero",
-    "PERMISO_CONSULTAR_CUMPLIMIENTO": "Consultar cumplimiento",
-    "PERMISO_CONSULTAR_COSTOS": "Consultar costos y margen",
-    "PERMISO_CONSULTAR_VENTA_DIARIA": "Consultar venta diaria",
-    "PERMISO_CONSULTAR_CLIENTES": "Consultar clientes y vendedores",
-    "PERMISO_CONSULTAR_PRESUPUESTO": "Consultar presupuesto",
-    "PERMISO_CONSULTAR_CALENDARIO": "Consultar calendario",
-    "PERMISO_CONSULTAR_INGESTA": "Consultar ingesta",
-    "PERMISO_CONSULTAR_HISTORIA": "Consultar venta del año anterior",
+    PERMISO_CONSULTAR_TABLERO: "Consultar tablero",
+    PERMISO_CONSULTAR_CUMPLIMIENTO: "Consultar cumplimiento",
+    PERMISO_CONSULTAR_COSTOS: "Consultar costos y margen",
+    PERMISO_CONSULTAR_VENTA_DIARIA: "Consultar venta diaria",
+    PERMISO_CONSULTAR_CLIENTES: "Consultar clientes y vendedores",
+    PERMISO_CONSULTAR_PRESUPUESTO: "Consultar presupuesto",
+    PERMISO_CONSULTAR_CALENDARIO: "Consultar calendario",
+    PERMISO_CONSULTAR_INGESTA: "Consultar ingesta",
+    PERMISO_CONSULTAR_HISTORIA: "Consultar venta del año anterior",
 }
 
 # `auto_error=False` para devolver nuestro formato de error uniforme en lugar
@@ -230,6 +239,23 @@ def exigir_lectura_general(usuario: UsuarioDep) -> Usuario:
     if usuario.rol == Rol.CONSULTA.value and usuario.tiene_permiso(PERMISO_VENTA_DIARIA_ASADERO):
         raise ErrorAutorizacion("Esta cuenta solo tiene acceso a Venta Diaria Asadero.")
     return usuario
+
+
+def exigir_permiso_consulta(codigo: str) -> Callable[[Usuario], Usuario]:
+    """Exige una capacidad concreta solo a cuentas con permisos granulares."""
+
+    def _verificar(usuario: UsuarioDep) -> Usuario:
+        tiene_permisos_granulares = usuario.rol == Rol.CONSULTA.value and bool(usuario.permisos)
+        if tiene_permisos_granulares and not usuario.tiene_permiso(codigo):
+            raise ErrorAutorizacion("No tiene permiso para consultar este módulo.")
+        if usuario.debe_cambiar_password:
+            raise ErrorClavePendiente(
+                "Debe cambiar la clave provisional antes de usar el sistema.",
+                detalles={"debe_cambiar_password": True},
+            )
+        return usuario
+
+    return _verificar
 
 
 def alcance_puntos_venta(usuario: Usuario) -> list[int] | None:

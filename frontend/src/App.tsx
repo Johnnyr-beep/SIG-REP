@@ -1,6 +1,6 @@
 /** Composición de la aplicación: rutas y guardias de acceso. */
 
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import type { ReactNode } from "react";
 
 import type { Rol } from "@/api/tipos";
@@ -62,20 +62,27 @@ function Restringido({
   return <>{children}</>;
 }
 
-function SoloVentaAsadero({ children }: { children: ReactNode }) {
+const RUTAS_POR_PERMISO: Record<string, string> = {
+  PERMISO_CONSULTAR_TABLERO: "/",
+  PERMISO_CONSULTAR_CUMPLIMIENTO: "/cumplimiento",
+  PERMISO_CONSULTAR_COSTOS: "/costos",
+  PERMISO_CONSULTAR_VENTA_DIARIA: "/venta-diaria",
+  PERMISO_VENTA_DIARIA_ASADERO: "/venta-diaria-asadero",
+  PERMISO_CONSULTAR_CLIENTES: "/clientes",
+  PERMISO_CONSULTAR_PRESUPUESTO: "/presupuesto",
+  PERMISO_CONSULTAR_CALENDARIO: "/calendario",
+  PERMISO_CONSULTAR_INGESTA: "/ingesta",
+  PERMISO_CONSULTAR_HISTORIA: "/historia-venta",
+};
+
+function AccesoModulo({ permiso, children }: { permiso: string; children: ReactNode }) {
   const { tienePermiso, esAdmin, usuario } = useAuth();
-  const location = useLocation();
-  if (esAdmin || usuario?.rol !== "CONSULTA") {
-    return <>{children}</>;
-  }
-  const tieneAsadero = tienePermiso("PERMISO_VENTA_DIARIA_ASADERO");
-  if (location.pathname === "/venta-diaria-asadero") {
-    return tieneAsadero ? <>{children}</> : <Navigate to="/" replace />;
-  }
-  if (tieneAsadero) {
-    return <Navigate to="/venta-diaria-asadero" replace />;
-  }
-  return <>{children}</>;
+  const rutaInicial =
+    usuario?.permisos.map((codigo) => RUTAS_POR_PERMISO[codigo]).find(Boolean) ?? "/";
+  const tienePermisosGranulares = usuario?.rol === "CONSULTA" && usuario.permisos.length > 0;
+
+  if (esAdmin || !tienePermisosGranulares || tienePermiso(permiso)) return <>{children}</>;
+  return <Navigate to={rutaInicial} replace />;
 }
 
 export function App() {
@@ -112,9 +119,9 @@ export function App() {
   // cerrada.
   const esAgro = marca.clave === "agropecuaria";
   const esCarnesFrias = marca.clave === "carnes-frias";
-  const soloVentaAsadero =
-    usuario?.rol === "CONSULTA" &&
-    usuario.permisos.includes("PERMISO_VENTA_DIARIA_ASADERO");
+  const permisosGranulares = usuario?.rol === "CONSULTA" && usuario.permisos.length > 0;
+  const rutaInicialPermisos =
+    usuario?.permisos.map((codigo) => RUTAS_POR_PERMISO[codigo]).find(Boolean) ?? "/";
 
   return (
     <Routes>
@@ -153,8 +160,8 @@ export function App() {
             <Route
               index
               element={
-                soloVentaAsadero ? (
-                  <Navigate to="/venta-diaria-asadero" replace />
+                permisosGranulares ? (
+                  <Navigate to={rutaInicialPermisos} replace />
                 ) : (
                   <Tablero />
                 )
@@ -163,48 +170,48 @@ export function App() {
             <Route
               path="venta-diaria-asadero"
               element={
-                <SoloVentaAsadero>
+                <AccesoModulo permiso="PERMISO_VENTA_DIARIA_ASADERO">
                   <VentaDiaria asadero />
-                </SoloVentaAsadero>
+                </AccesoModulo>
               }
             />
             <Route
               path="cumplimiento"
-              element={<SoloVentaAsadero><Cumplimiento /></SoloVentaAsadero>}
+              element={<AccesoModulo permiso="PERMISO_CONSULTAR_CUMPLIMIENTO"><Cumplimiento /></AccesoModulo>}
             />
-            <Route path="costos" element={<SoloVentaAsadero><Costos /></SoloVentaAsadero>} />
-            <Route path="venta-diaria" element={<SoloVentaAsadero><VentaDiaria /></SoloVentaAsadero>} />
-            <Route path="clientes" element={<SoloVentaAsadero><Clientes /></SoloVentaAsadero>} />
+            <Route path="costos" element={<AccesoModulo permiso="PERMISO_CONSULTAR_COSTOS"><Costos /></AccesoModulo>} />
+            <Route path="venta-diaria" element={<AccesoModulo permiso="PERMISO_CONSULTAR_VENTA_DIARIA"><VentaDiaria /></AccesoModulo>} />
+            <Route path="clientes" element={<AccesoModulo permiso="PERMISO_CONSULTAR_CLIENTES"><Clientes /></AccesoModulo>} />
             <Route
               path="presupuesto"
               element={
-                <Restringido roles={["ADMIN", "GERENTE", "ANALISTA"]}>
+                <AccesoModulo permiso="PERMISO_CONSULTAR_PRESUPUESTO">
                   <Presupuesto />
-                </Restringido>
+                </AccesoModulo>
               }
             />
             <Route
               path="calendario"
               element={
-                <SoloVentaAsadero>
+                <AccesoModulo permiso="PERMISO_CONSULTAR_CALENDARIO">
                   <Calendario />
-                </SoloVentaAsadero>
+                </AccesoModulo>
               }
             />
             <Route
               path="ingesta"
               element={
-                <SoloVentaAsadero>
+                <AccesoModulo permiso="PERMISO_CONSULTAR_INGESTA">
                   <Ingesta />
-                </SoloVentaAsadero>
+                </AccesoModulo>
               }
             />
             <Route
               path="historia-venta"
               element={
-                <Restringido roles={["ADMIN", "GERENTE", "ANALISTA"]}>
+                <AccesoModulo permiso="PERMISO_CONSULTAR_HISTORIA">
                   <HistoriaVenta />
-                </Restringido>
+                </AccesoModulo>
               }
             />
           </>

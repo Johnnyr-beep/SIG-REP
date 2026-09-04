@@ -18,7 +18,17 @@ from fastapi.responses import Response
 from app.api.v1 import LecturaDep
 from app.application.services import exportacion_service
 from app.application.services.reportes_service import FiltrosReporte, ReportesService
-from app.core.deps import SesionDep, alcance_puntos_venta, exigir_venta_diaria_asadero
+from app.core.deps import (
+    PERMISO_CONSULTAR_CLIENTES,
+    PERMISO_CONSULTAR_COSTOS,
+    PERMISO_CONSULTAR_CUMPLIMIENTO,
+    PERMISO_CONSULTAR_TABLERO,
+    PERMISO_CONSULTAR_VENTA_DIARIA,
+    SesionDep,
+    alcance_puntos_venta,
+    exigir_permiso_consulta,
+    exigir_venta_diaria_asadero,
+)
 from app.domain.enums import AgrupacionClientes, Medida
 from app.infrastructure.models.usuario import Usuario
 from app.schemas.reportes import (
@@ -81,7 +91,7 @@ def _puntos_venta(valor: str | None) -> tuple[str, ...] | None:
 
 
 def _filtros(
-    usuario: LecturaDep,
+    usuario: Annotated[Usuario, Depends(exigir_permiso_consulta(PERMISO_CONSULTAR_TABLERO))],
     periodo: str,
     hasta: date | None,
     grupo: str | None,
@@ -104,7 +114,7 @@ def _filtros(
 
 @router.get("/tablero", response_model=RespuestaTablero, summary="Tablero gerencial")
 def tablero(
-    usuario: LecturaDep,
+    usuario: Annotated[Usuario, Depends(exigir_permiso_consulta(PERMISO_CONSULTAR_TABLERO))],
     sesion: SesionDep,
     periodo: str = PeriodoQuery,
     hasta: date | None = None,
@@ -123,7 +133,7 @@ def tablero(
     "/cumplimiento", response_model=RespuestaCumplimiento, summary="Cumplimiento por punto de venta"
 )
 def cumplimiento(
-    usuario: LecturaDep,
+    usuario: Annotated[Usuario, Depends(exigir_permiso_consulta(PERMISO_CONSULTAR_CUMPLIMIENTO))],
     sesion: SesionDep,
     periodo: str = PeriodoQuery,
     hasta: date | None = None,
@@ -140,7 +150,7 @@ def cumplimiento(
 
 @router.get("/costos", response_model=RespuestaCostos, summary="Costos y margen")
 def costos(
-    usuario: LecturaDep,
+    usuario: Annotated[Usuario, Depends(exigir_permiso_consulta(PERMISO_CONSULTAR_COSTOS))],
     sesion: SesionDep,
     periodo: str = PeriodoQuery,
     hasta: date | None = None,
@@ -156,7 +166,7 @@ def costos(
 
 @router.get("/venta-diaria", response_model=RespuestaVentaDiaria, summary="Venta día por día")
 def venta_diaria(
-    usuario: LecturaDep,
+    usuario: Annotated[Usuario, Depends(exigir_permiso_consulta(PERMISO_CONSULTAR_VENTA_DIARIA))],
     sesion: SesionDep,
     periodo: str = PeriodoQuery,
     hasta: date | None = None,
@@ -201,7 +211,7 @@ def venta_diaria_asadero(
 
 @router.get("/clientes", response_model=RespuestaClientes, summary="Clientes y vendedores")
 def clientes(
-    usuario: LecturaDep,
+    usuario: Annotated[Usuario, Depends(exigir_permiso_consulta(PERMISO_CONSULTAR_CLIENTES))],
     sesion: SesionDep,
     periodo: str = PeriodoQuery,
     hasta: date | None = None,

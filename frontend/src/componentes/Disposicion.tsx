@@ -46,17 +46,17 @@ const MENU_CARNES: GrupoNav[] = [
   {
     titulo: "Gerencia",
     items: [
-      { ruta: "/", etiqueta: "Tablero", icono: "◱" },
-      { ruta: "/cumplimiento", etiqueta: "Cumplimiento por PDV", icono: "▤" },
-      { ruta: "/costos", etiqueta: "Costos y margen", icono: "◒" },
-      { ruta: "/venta-diaria", etiqueta: "Venta diaria", icono: "▦" },
+      { ruta: "/", etiqueta: "Tablero", icono: "◱", permiso: "PERMISO_CONSULTAR_TABLERO" },
+      { ruta: "/cumplimiento", etiqueta: "Cumplimiento por PDV", icono: "▤", permiso: "PERMISO_CONSULTAR_CUMPLIMIENTO" },
+      { ruta: "/costos", etiqueta: "Costos y margen", icono: "◒", permiso: "PERMISO_CONSULTAR_COSTOS" },
+      { ruta: "/venta-diaria", etiqueta: "Venta diaria", icono: "▦", permiso: "PERMISO_CONSULTAR_VENTA_DIARIA" },
       {
         ruta: "/venta-diaria-asadero",
         etiqueta: "Venta diaria Asadero",
         icono: "▦",
         permiso: "PERMISO_VENTA_DIARIA_ASADERO",
       },
-      { ruta: "/clientes", etiqueta: "Clientes y vendedores", icono: "◇" },
+      { ruta: "/clientes", etiqueta: "Clientes y vendedores", icono: "◇", permiso: "PERMISO_CONSULTAR_CLIENTES" },
     ],
   },
   {
@@ -71,15 +71,17 @@ const MENU_CARNES: GrupoNav[] = [
         etiqueta: "Presupuesto",
         icono: "≡",
         roles: ["ADMIN", "GERENTE", "ANALISTA"],
+        permiso: "PERMISO_CONSULTAR_PRESUPUESTO",
       },
       {
         ruta: "/historia-venta",
         etiqueta: "Venta año anterior",
         icono: "↶",
         roles: ["ADMIN", "GERENTE", "ANALISTA"],
+        permiso: "PERMISO_CONSULTAR_HISTORIA",
       },
-      { ruta: "/calendario", etiqueta: "Días hábiles", icono: "◷" },
-      { ruta: "/ingesta", etiqueta: "Ingesta", icono: "⇄" },
+      { ruta: "/calendario", etiqueta: "Días hábiles", icono: "◷", permiso: "PERMISO_CONSULTAR_CALENDARIO" },
+      { ruta: "/ingesta", etiqueta: "Ingesta", icono: "⇄", permiso: "PERMISO_CONSULTAR_INGESTA" },
     ],
   },
   {
@@ -342,9 +344,8 @@ function MenuUsuario() {
 function BarraLateral() {
   const { tieneRol, tienePermiso, usuario } = useAuth();
   const marca = useMarcaElegida();
-  const soloVentaAsadero =
-    usuario?.rol === "CONSULTA" &&
-    tienePermiso("PERMISO_VENTA_DIARIA_ASADERO");
+  const permisosGranulares =
+    usuario?.rol === "CONSULTA" && usuario.permisos.length > 0;
 
   return (
     <aside className="barra-lateral">
@@ -369,10 +370,12 @@ function BarraLateral() {
       <nav className="navegacion" aria-label="Navegación principal">
         {menuDe(marca.clave).map((grupo) => {
           const visibles = grupo.items.filter(
-            (item) =>
-              (!item.roles || tieneRol(...item.roles)) &&
-              (!item.permiso || tienePermiso(item.permiso)) &&
-              (!soloVentaAsadero || item.ruta === "/venta-diaria-asadero"),
+            (item) => {
+              if (permisosGranulares) {
+                return Boolean(item.permiso && tienePermiso(item.permiso));
+              }
+              return !item.roles || tieneRol(...item.roles);
+            },
           );
           if (visibles.length === 0) return null;
 

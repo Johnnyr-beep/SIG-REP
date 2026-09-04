@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.deps import PERMISO_VENTA_DIARIA_ASADERO
+from app.core.deps import PERMISO_CONSULTAR_TABLERO, PERMISO_VENTA_DIARIA_ASADERO
 from app.infrastructure.models.organizacion import PuntoVenta
 from app.infrastructure.models.periodo import CalendarioZona
 from app.infrastructure.models.usuario import Usuario, UsuarioPermiso
@@ -56,6 +56,27 @@ def test_sin_permiso_asadero_no_puede_consultar_endpoint_especializado(
         headers=consulta,
     )
     assert respuesta.status_code == 403
+
+
+def test_permiso_de_tablero_no_habilita_otros_reportes(
+    sesion: Session, cliente_http: TestClient, consulta: dict[str, str]
+) -> None:
+    usuario = sesion.scalars(select(Usuario).where(Usuario.usuario == "consulta")).one()
+    sesion.add(UsuarioPermiso(usuario_id=usuario.id, codigo=PERMISO_CONSULTAR_TABLERO))
+    sesion.commit()
+
+    assert (
+        cliente_http.get(
+            "/api/v1/reportes/tablero", params={"periodo": PERIODO}, headers=consulta
+        ).status_code
+        == 200
+    )
+    assert (
+        cliente_http.get(
+            "/api/v1/reportes/costos", params={"periodo": PERIODO}, headers=consulta
+        ).status_code
+        == 403
+    )
 
 
 def _fijar_calendario(sesion: Session, dias_habiles: str, dias_trabajados: str) -> None:
