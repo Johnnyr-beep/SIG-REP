@@ -11,6 +11,7 @@ import { Link } from "react-router-dom";
 
 import { useExportar, useTablero } from "@/api/consultas";
 import type { FilaGrupo } from "@/api/tipos";
+import { useAuth } from "@/auth/ContextoAuth";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import { BarraFiltros, useFiltros } from "@/componentes/filtros";
 import { BarraContraIdeal } from "@/componentes/graficos";
@@ -34,6 +35,7 @@ export function Tablero() {
   const { filtros } = control;
   const { data, isLoading, error } = useTablero(filtros);
   const exportar = useExportar();
+  const { tienePermiso } = useAuth();
 
   const medida = data?.medida ?? filtros.medida;
   const grande = (valor: string | null) =>
@@ -44,7 +46,7 @@ export function Tablero() {
       <BarraFiltros
         control={control}
         mostrar={{ grupo: false, puntoVenta: false }}
-        acciones={
+        acciones={tienePermiso("PERMISO_DESCARGAR_TABLERO") ? (
           <button
             type="button"
             className="boton boton--pequeno"
@@ -53,7 +55,7 @@ export function Tablero() {
           >
             {exportar.isPending ? "Generando…" : "Exportar a Excel"}
           </button>
-        }
+        ) : undefined}
       />
 
       <AvisoError error={error} />

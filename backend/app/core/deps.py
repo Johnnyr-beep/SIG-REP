@@ -39,6 +39,15 @@ PERMISO_CONSULTAR_PRESUPUESTO = "PERMISO_CONSULTAR_PRESUPUESTO"
 PERMISO_CONSULTAR_CALENDARIO = "PERMISO_CONSULTAR_CALENDARIO"
 PERMISO_CONSULTAR_INGESTA = "PERMISO_CONSULTAR_INGESTA"
 PERMISO_CONSULTAR_HISTORIA = "PERMISO_CONSULTAR_HISTORIA"
+PERMISO_FILTRAR_PDV = "PERMISO_FILTRAR_PDV"
+PERMISO_FILTRAR_GRUPO = "PERMISO_FILTRAR_GRUPO"
+PERMISO_FILTRAR_CATEGORIA = "PERMISO_FILTRAR_CATEGORIA"
+PERMISO_FILTRAR_PERIODO = "PERMISO_FILTRAR_PERIODO"
+PERMISO_FILTRAR_MEDIDA = "PERMISO_FILTRAR_MEDIDA"
+PERMISO_DESCARGAR_TABLERO = "PERMISO_DESCARGAR_TABLERO"
+PERMISO_DESCARGAR_CUMPLIMIENTO = "PERMISO_DESCARGAR_CUMPLIMIENTO"
+PERMISO_DESCARGAR_VENTA_DIARIA = "PERMISO_DESCARGAR_VENTA_DIARIA"
+PERMISO_DESCARGAR_CLIENTES = "PERMISO_DESCARGAR_CLIENTES"
 
 PERMISOS_CONSULTA: dict[str, str] = {
     PERMISO_CONSULTAR_PDV: "Consultar puntos de venta",
@@ -52,6 +61,15 @@ PERMISOS_CONSULTA: dict[str, str] = {
     PERMISO_CONSULTAR_CALENDARIO: "Consultar calendario",
     PERMISO_CONSULTAR_INGESTA: "Consultar ingesta",
     PERMISO_CONSULTAR_HISTORIA: "Consultar venta del año anterior",
+    PERMISO_FILTRAR_PDV: "Filtrar por punto de venta",
+    PERMISO_FILTRAR_GRUPO: "Filtrar por grupo",
+    PERMISO_FILTRAR_CATEGORIA: "Filtrar por categoría",
+    PERMISO_FILTRAR_PERIODO: "Filtrar por período y corte",
+    PERMISO_FILTRAR_MEDIDA: "Cambiar entre pesos y kilos",
+    PERMISO_DESCARGAR_TABLERO: "Descargar tablero a Excel",
+    PERMISO_DESCARGAR_CUMPLIMIENTO: "Descargar cumplimiento a Excel",
+    PERMISO_DESCARGAR_VENTA_DIARIA: "Descargar venta diaria a Excel",
+    PERMISO_DESCARGAR_CLIENTES: "Descargar clientes y vendedores a Excel",
 }
 
 # `auto_error=False` para devolver nuestro formato de error uniforme en lugar
@@ -253,6 +271,18 @@ def exigir_permiso_consulta(codigo: str) -> Callable[[Usuario], Usuario]:
                 "Debe cambiar la clave provisional antes de usar el sistema.",
                 detalles={"debe_cambiar_password": True},
             )
+        return usuario
+
+    return _verificar
+
+
+def exigir_permiso_descarga(codigo: str) -> Callable[[Usuario], Usuario]:
+    """Exige la capacidad de descarga solo a cuentas con permisos granulares."""
+
+    def _verificar(usuario: UsuarioDep) -> Usuario:
+        tiene_permisos_granulares = usuario.rol == Rol.CONSULTA.value and bool(usuario.permisos)
+        if tiene_permisos_granulares and not usuario.tiene_permiso(codigo):
+            raise ErrorAutorizacion("No tiene permiso para descargar este reporte.")
         return usuario
 
     return _verificar

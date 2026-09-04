@@ -24,11 +24,22 @@ from app.core.deps import (
     PERMISO_CONSULTAR_CUMPLIMIENTO,
     PERMISO_CONSULTAR_TABLERO,
     PERMISO_CONSULTAR_VENTA_DIARIA,
+    PERMISO_DESCARGAR_CLIENTES,
+    PERMISO_DESCARGAR_CUMPLIMIENTO,
+    PERMISO_DESCARGAR_TABLERO,
+    PERMISO_DESCARGAR_VENTA_DIARIA,
+    PERMISO_FILTRAR_CATEGORIA,
+    PERMISO_FILTRAR_GRUPO,
+    PERMISO_FILTRAR_MEDIDA,
+    PERMISO_FILTRAR_PDV,
+    PERMISO_FILTRAR_PERIODO,
     SesionDep,
     alcance_puntos_venta,
     exigir_permiso_consulta,
+    exigir_permiso_descarga,
     exigir_venta_diaria_asadero,
 )
+from app.core.errors import ErrorAutorizacion
 from app.domain.enums import AgrupacionClientes, Medida
 from app.infrastructure.models.usuario import Usuario
 from app.schemas.reportes import (
@@ -99,7 +110,24 @@ def _filtros(
     categoria: str | None,
     medida: Medida,
     desde: date | None = None,
+    categoria_forzada: bool = False,
 ) -> FiltrosReporte:
+    permisos_granulares = usuario.rol == "CONSULTA" and bool(usuario.permisos)
+    permisos_filtros = (
+        (grupo, PERMISO_FILTRAR_GRUPO, "grupo"),
+        (punto_venta, PERMISO_FILTRAR_PDV, "punto de venta"),
+        (
+            None if categoria_forzada else categoria,
+            PERMISO_FILTRAR_CATEGORIA,
+            "categoría",
+        ),
+        (hasta or desde, PERMISO_FILTRAR_PERIODO, "período o fecha de corte"),
+        (medida is Medida.KILOS, PERMISO_FILTRAR_MEDIDA, "medida"),
+    )
+    if permisos_granulares:
+        for valor, permiso, etiqueta in permisos_filtros:
+            if valor and not usuario.tiene_permiso(permiso):
+                raise ErrorAutorizacion(f"No tiene permiso para filtrar por {etiqueta}.")
     return FiltrosReporte(
         periodo=periodo,
         hasta=hasta,
@@ -205,7 +233,17 @@ def venta_diaria_asadero(
     medida: Medida = Medida.VALOR,
 ) -> RespuestaVentaDiaria:
     return ReportesService(sesion).venta_diaria(
-        _filtros(usuario, periodo, hasta, grupo, punto_venta, "ASADERO", medida, desde)
+        _filtros(
+            usuario,
+            periodo,
+            hasta,
+            grupo,
+            punto_venta,
+            "ASADERO",
+            medida,
+            desde,
+            categoria_forzada=True,
+        )
     )
 
 
@@ -253,6 +291,14 @@ def exportar(
     verdades.
     """
     from app.core.errors import ErrorNoEncontrado
+
+    permisos_descarga = {
+        "tablero": PERMISO_DESCARGAR_TABLERO,
+        "cumplimiento": PERMISO_DESCARGAR_CUMPLIMIENTO,
+        "venta-diaria": PERMISO_DESCARGAR_VENTA_DIARIA,
+        "clientes": PERMISO_DESCARGAR_CLIENTES,
+    }
+    exigir_permiso_descarga(permisos_descarga[reporte])(usuario)
 
     filtros = _filtros(usuario, periodo, hasta, grupo, punto_venta, categoria, medida, desde)
     servicio = ReportesService(sesion)

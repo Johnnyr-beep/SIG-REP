@@ -79,6 +79,31 @@ def test_permiso_de_tablero_no_habilita_otros_reportes(
     )
 
 
+def test_permiso_de_tablero_no_habilita_filtro_ni_descarga(
+    sesion: Session, cliente_http: TestClient, consulta: dict[str, str]
+) -> None:
+    usuario = sesion.scalars(select(Usuario).where(Usuario.usuario == "consulta")).one()
+    sesion.add(UsuarioPermiso(usuario_id=usuario.id, codigo=PERMISO_CONSULTAR_TABLERO))
+    sesion.commit()
+
+    assert (
+        cliente_http.get(
+            "/api/v1/reportes/tablero",
+            params={"periodo": PERIODO, "grupo": "001"},
+            headers=consulta,
+        ).status_code
+        == 403
+    )
+    assert (
+        cliente_http.get(
+            "/api/v1/reportes/tablero/exportar",
+            params={"periodo": PERIODO},
+            headers=consulta,
+        ).status_code
+        == 403
+    )
+
+
 def _fijar_calendario(sesion: Session, dias_habiles: str, dias_trabajados: str) -> None:
     """Fija el mismo calendario en todas las zonas: hace predecible el ideal."""
     for calendario in sesion.scalars(select(CalendarioZona)).all():

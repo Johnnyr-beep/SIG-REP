@@ -35,6 +35,7 @@ import { useState } from "react";
 import { useExportar, useVentaDiaria, useVentaDiariaAsadero } from "@/api/consultas";
 import type { FilaVentaDiaria, RespuestaVentaDiaria } from "@/api/tipos";
 import { MAXIMO_DIAS_VENTA_DIARIA } from "@/api/tipos";
+import { useAuth } from "@/auth/ContextoAuth";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import {
   BarraFiltros,
@@ -163,6 +164,7 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
     ? useVentaDiariaAsadero(filtros, rangoValido)
     : useVentaDiaria(filtros, rangoValido);
   const exportar = useExportar();
+  const { tienePermiso } = useAuth();
 
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
 
@@ -252,7 +254,7 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
       <BarraFiltros
         control={control}
         mostrar={{ rango: true, categoria: !asadero }}
-        acciones={asadero ? undefined : (
+        acciones={asadero || !tienePermiso("PERMISO_DESCARGAR_VENTA_DIARIA") ? undefined : (
           <button
             type="button"
             className="boton boton--pequeno"

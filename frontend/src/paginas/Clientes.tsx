@@ -9,6 +9,7 @@
 import { useSearchParams } from "react-router-dom";
 
 import { useClientes, useExportar } from "@/api/consultas";
+import { useAuth } from "@/auth/ContextoAuth";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import { BarraFiltros, useFiltros } from "@/componentes/filtros";
 import { BarraParticipacion } from "@/componentes/graficos";
@@ -26,6 +27,7 @@ export function Clientes() {
 
   const { data, isLoading, error } = useClientes(filtros, por);
   const exportar = useExportar();
+  const { tienePermiso } = useAuth();
 
   function cambiarCorte(valor: string) {
     setParametros(
@@ -43,7 +45,7 @@ export function Clientes() {
       <BarraFiltros
         control={control}
         mostrar={{ categoria: true }}
-        acciones={
+        acciones={tienePermiso("PERMISO_DESCARGAR_CLIENTES") ? (
           <button
             type="button"
             className="boton boton--pequeno"
@@ -54,7 +56,7 @@ export function Clientes() {
           >
             {exportar.isPending ? "Generando…" : "Exportar a Excel"}
           </button>
-        }
+        ) : undefined}
       />
 
       <section className="filtros" aria-label="Corte del reporte">

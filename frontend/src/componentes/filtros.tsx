@@ -19,6 +19,7 @@ import { useSearchParams } from "react-router-dom";
 
 import type { FiltrosReporte } from "@/api/consultas";
 import { useCategorias, useGrupos, usePuntosVenta } from "@/api/consultas";
+import { useAuth } from "@/auth/ContextoAuth";
 import type { FiltrosAgro } from "@/api/consultasAgro";
 import { useCalendarioAgro } from "@/api/consultasAgro";
 import type { Medida, PuntoVenta } from "@/api/tipos";
@@ -752,6 +753,7 @@ export function BarraFiltros({
   acciones?: React.ReactNode;
 }) {
   const { filtros, fijar, fijarVarios, puntosSeleccionados } = control;
+  const { tienePermiso, usuario } = useAuth();
   const visible = {
     corte: true,
     rango: false,
@@ -766,12 +768,17 @@ export function BarraFiltros({
   const { data: puntos } = usePuntosVenta();
   const { data: categorias } = useCategorias();
 
+  const permisosGranulares =
+    usuario?.rol === "CONSULTA" && usuario.permisos.length > 0;
+  const puedeFiltrar = (permiso: string) =>
+    !permisosGranulares || tienePermiso(permiso);
+
   /** Con rango activo el período es una consecuencia de `hasta`, no una elección. */
   const periodoDerivado = visible.rango && Boolean(filtros.desde);
 
   return (
     <section className="filtros" aria-label="Filtros del reporte">
-      {periodoDerivado ? (
+      {puedeFiltrar("PERMISO_FILTRAR_PERIODO") && periodoDerivado ? (
         <div className="filtros__campo">
           <span>Período de referencia</span>
           <p
@@ -781,7 +788,7 @@ export function BarraFiltros({
             {periodoLargo(filtros.periodo)}
           </p>
         </div>
-      ) : (
+      ) : puedeFiltrar("PERMISO_FILTRAR_PERIODO") ? (
         <label className="filtros__campo">
           <span>Período</span>
           <input
@@ -792,16 +799,16 @@ export function BarraFiltros({
             required
           />
         </label>
-      )}
+      ) : null}
 
-      {visible.rango ? (
+      {visible.rango && puedeFiltrar("PERMISO_FILTRAR_PERIODO") ? (
         <FiltroRango
           periodo={filtros.periodo}
           desde={filtros.desde}
           hasta={filtros.hasta}
           onCambiar={fijarVarios}
         />
-      ) : visible.corte ? (
+      ) : visible.corte && puedeFiltrar("PERMISO_FILTRAR_PERIODO") ? (
         <label className="filtros__campo">
           <span>Corte</span>
           <input
@@ -815,7 +822,7 @@ export function BarraFiltros({
         </label>
       ) : null}
 
-      {visible.grupo ? (
+      {visible.grupo && puedeFiltrar("PERMISO_FILTRAR_GRUPO") ? (
         <label className="filtros__campo">
           <span>Grupo</span>
           <select
@@ -833,7 +840,7 @@ export function BarraFiltros({
         </label>
       ) : null}
 
-      {visible.puntoVenta ? (
+      {visible.puntoVenta && puedeFiltrar("PERMISO_FILTRAR_PDV") ? (
         <FiltroPuntosVenta
           puntos={puntos ?? []}
           seleccion={puntosSeleccionados}
@@ -841,7 +848,7 @@ export function BarraFiltros({
         />
       ) : null}
 
-      {visible.categoria ? (
+      {visible.categoria && puedeFiltrar("PERMISO_FILTRAR_CATEGORIA") ? (
         <label className="filtros__campo">
           <span>Categoría</span>
           <select
@@ -859,7 +866,7 @@ export function BarraFiltros({
         </label>
       ) : null}
 
-      {visible.medida ? (
+      {visible.medida && puedeFiltrar("PERMISO_FILTRAR_MEDIDA") ? (
         <div className="filtros__campo">
           <span>Medida</span>
           <ConmutadorMedida

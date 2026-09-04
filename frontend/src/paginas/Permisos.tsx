@@ -20,6 +20,15 @@ const PERMISOS = [
   ["PERMISO_CONSULTAR_CALENDARIO", "Consultar calendario"],
   ["PERMISO_CONSULTAR_INGESTA", "Consultar ingesta"],
   ["PERMISO_CONSULTAR_HISTORIA", "Consultar venta del año anterior"],
+  ["PERMISO_FILTRAR_PDV", "Filtrar por punto de venta"],
+  ["PERMISO_FILTRAR_GRUPO", "Filtrar por grupo"],
+  ["PERMISO_FILTRAR_CATEGORIA", "Filtrar por categoría"],
+  ["PERMISO_FILTRAR_PERIODO", "Filtrar por período y corte"],
+  ["PERMISO_FILTRAR_MEDIDA", "Cambiar entre pesos y kilos"],
+  ["PERMISO_DESCARGAR_TABLERO", "Descargar tablero a Excel"],
+  ["PERMISO_DESCARGAR_CUMPLIMIENTO", "Descargar cumplimiento a Excel"],
+  ["PERMISO_DESCARGAR_VENTA_DIARIA", "Descargar venta diaria a Excel"],
+  ["PERMISO_DESCARGAR_CLIENTES", "Descargar clientes y vendedores a Excel"],
 ] as const;
 
 export function Permisos() {

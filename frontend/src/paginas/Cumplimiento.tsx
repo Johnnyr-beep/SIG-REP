@@ -12,6 +12,7 @@ import { Fragment, useMemo, useState } from "react";
 
 import { useCumplimiento, useExportar } from "@/api/consultas";
 import type { FilaPuntoVentaReporte } from "@/api/tipos";
+import { useAuth } from "@/auth/ContextoAuth";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import { BarraFiltros, useFiltros } from "@/componentes/filtros";
 import {
@@ -28,6 +29,7 @@ export function Cumplimiento() {
   const { filtros } = control;
   const { data, isLoading, error } = useCumplimiento(filtros);
   const exportar = useExportar();
+  const { tienePermiso } = useAuth();
 
   const [desplegadas, setDesplegadas] = useState<ReadonlySet<string>>(
     new Set(),
@@ -66,6 +68,7 @@ export function Cumplimiento() {
         mostrar={{ categoria: true }}
         acciones={
           <>
+            {tienePermiso("PERMISO_DESCARGAR_CUMPLIMIENTO") ? (
             <button
               type="button"
               className="boton boton--pequeno"
@@ -74,6 +77,7 @@ export function Cumplimiento() {
             >
               {todasDesplegadas ? "Contraer todo" : "Desplegar categorías"}
             </button>
+            ) : null}
             <button
               type="button"
               className="boton boton--pequeno"
