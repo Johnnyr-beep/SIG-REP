@@ -31,6 +31,7 @@ from app.core.deps import (
     PERMISO_DESCARGAR_CUMPLIMIENTO,
     PERMISO_DESCARGAR_TABLERO,
     PERMISO_DESCARGAR_VENTA_DIARIA,
+    PERMISO_DESCARGAR_VENTA_DIARIA_ASADERO,
     PERMISO_FILTRAR_CATEGORIA,
     PERMISO_FILTRAR_GRUPO,
     PERMISO_FILTRAR_MEDIDA,
@@ -255,6 +256,48 @@ def venta_diaria_asadero(
             desde,
             categoria_forzada=True,
         )
+    )
+
+
+@router.get(
+    "/venta-diaria-asadero/exportar",
+    summary="Exportar venta diaria de Asadero a Excel",
+    response_class=Response,
+    responses={200: {"content": {TIPO_XLSX: {}}, "description": "Libro .xlsx"}},
+)
+def exportar_venta_diaria_asadero(
+    usuario: Annotated[Usuario, Depends(exigir_venta_diaria_asadero)],
+    sesion: SesionDep,
+    periodo: str = PeriodoQuery,
+    hasta: date | None = None,
+    desde: date | None = DesdeQuery,
+    grupo: str | None = None,
+    punto_venta: str | None = PuntoVentaQuery,
+    medida: Medida = Medida.VALOR,
+) -> Response:
+    exigir_permiso_descarga(PERMISO_DESCARGAR_VENTA_DIARIA_ASADERO)(usuario)
+    filtros = _filtros(
+        usuario,
+        periodo,
+        hasta,
+        grupo,
+        punto_venta,
+        "ASADERO",
+        medida,
+        desde,
+        categoria_forzada=True,
+    )
+    contenido = exportacion_service.exportar_venta_diaria(
+        ReportesService(sesion).venta_diaria(filtros)
+    )
+    return Response(
+        content=contenido,
+        media_type=TIPO_XLSX,
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="sigrep-venta-diaria-asadero-{periodo}.xlsx"'
+            )
+        },
     )
 
 

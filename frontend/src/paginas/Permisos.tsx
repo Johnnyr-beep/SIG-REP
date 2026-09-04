@@ -31,6 +31,7 @@ const PERMISOS = [
   ["PERMISO_DESCARGAR_TABLERO", "Descargar tablero a Excel"],
   ["PERMISO_DESCARGAR_CUMPLIMIENTO", "Descargar cumplimiento a Excel"],
   ["PERMISO_DESCARGAR_VENTA_DIARIA", "Descargar venta diaria a Excel"],
+  ["PERMISO_DESCARGAR_VENTA_DIARIA_ASADERO", "Descargar venta diaria de Asadero a Excel"],
   ["PERMISO_DESCARGAR_CLIENTES", "Descargar clientes y vendedores a Excel"],
 ] as const;
 

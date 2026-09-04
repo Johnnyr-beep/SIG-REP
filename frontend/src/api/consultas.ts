@@ -316,6 +316,21 @@ export function useVentaDiariaAsadero(
   });
 }
 
+export function useExportarVentaDiariaAsadero(): UseMutationResult<
+  void,
+  Error,
+  FiltrosReporte
+> {
+  return useMutation({
+    mutationFn: (filtros) =>
+      descargar(
+        "/reportes/venta-diaria-asadero/exportar",
+        comoParametrosDiarios(filtros),
+        `sigrep-venta-diaria-asadero-${filtros.periodo}.xlsx`,
+      ),
+  });
+}
+
 
 export function useClientes(
   filtros: FiltrosReporte,

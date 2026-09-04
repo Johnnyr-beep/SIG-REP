@@ -32,7 +32,12 @@
 
 import { useState } from "react";
 
-import { useExportar, useVentaDiaria, useVentaDiariaAsadero } from "@/api/consultas";
+import {
+  useExportar,
+  useExportarVentaDiariaAsadero,
+  useVentaDiaria,
+  useVentaDiariaAsadero,
+} from "@/api/consultas";
 import type { FilaVentaDiaria, RespuestaVentaDiaria } from "@/api/tipos";
 import { MAXIMO_DIAS_VENTA_DIARIA } from "@/api/tipos";
 import { useAuth } from "@/auth/ContextoAuth";
@@ -164,6 +169,7 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
     ? useVentaDiariaAsadero(filtros, rangoValido)
     : useVentaDiaria(filtros, rangoValido);
   const exportar = useExportar();
+  const exportarAsadero = useExportarVentaDiariaAsadero();
   const { tienePermiso } = useAuth();
 
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
@@ -254,7 +260,18 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
       <BarraFiltros
         control={control}
         mostrar={{ rango: true, categoria: !asadero }}
-        acciones={asadero || !tienePermiso("PERMISO_DESCARGAR_VENTA_DIARIA") ? undefined : (
+        acciones={asadero ? (
+          tienePermiso("PERMISO_DESCARGAR_VENTA_DIARIA_ASADERO") ? (
+            <button
+              type="button"
+              className="boton boton--pequeno"
+              onClick={() => exportarAsadero.mutate(filtros)}
+              disabled={exportarAsadero.isPending || !rangoValido}
+            >
+              {exportarAsadero.isPending ? "Generando…" : "Exportar a Excel"}
+            </button>
+          ) : undefined
+        ) : !tienePermiso("PERMISO_DESCARGAR_VENTA_DIARIA") ? undefined : (
           <button
             type="button"
             className="boton boton--pequeno"
@@ -301,6 +318,7 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
 
       <AvisoError error={error} />
       <AvisoError error={exportar.error} />
+      <AvisoError error={exportarAsadero.error} />
 
       {isLoading && rangoValido ? (
         <Cargando texto="Armando la matriz de venta diaria…" />

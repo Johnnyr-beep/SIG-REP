@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import (
     PERMISO_CONSULTAR_COSTOS,
     PERMISO_CONSULTAR_TABLERO,
+    PERMISO_DESCARGAR_VENTA_DIARIA_ASADERO,
     PERMISO_VENTA_DIARIA_ASADERO,
 )
 from app.infrastructure.models.organizacion import PuntoVenta
@@ -60,6 +61,35 @@ def test_sin_permiso_asadero_no_puede_consultar_endpoint_especializado(
         headers=consulta,
     )
     assert respuesta.status_code == 403
+
+
+def test_descarga_asadero_requiere_permiso_y_fuerza_categoria(
+    sesion: Session, cliente_http: TestClient, consulta: dict[str, str]
+) -> None:
+    usuario = sesion.scalars(select(Usuario).where(Usuario.usuario == "consulta")).one()
+    sesion.add_all(
+        [
+            UsuarioPermiso(usuario_id=usuario.id, codigo=PERMISO_VENTA_DIARIA_ASADERO),
+            UsuarioPermiso(
+                usuario_id=usuario.id,
+                codigo=PERMISO_DESCARGAR_VENTA_DIARIA_ASADERO,
+            ),
+        ]
+    )
+    sesion.commit()
+    dar_venta(sesion, "402", "ASADERO", 1, "10")
+    dar_venta(sesion, "402", "RES", 1, "90")
+
+    respuesta = cliente_http.get(
+        "/api/v1/reportes/venta-diaria-asadero/exportar",
+        params={"periodo": PERIODO},
+        headers=consulta,
+    )
+
+    assert respuesta.status_code == 200
+    assert respuesta.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 
 def test_permiso_de_tablero_no_habilita_otros_reportes(
