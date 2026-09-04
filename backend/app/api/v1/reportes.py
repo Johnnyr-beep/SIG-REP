@@ -298,7 +298,10 @@ def exportar(
         "venta-diaria": PERMISO_DESCARGAR_VENTA_DIARIA,
         "clientes": PERMISO_DESCARGAR_CLIENTES,
     }
-    exigir_permiso_descarga(permisos_descarga[reporte])(usuario)
+    permiso_descarga = permisos_descarga.get(reporte)
+    if permiso_descarga is None:
+        raise ErrorNoEncontrado(f"No existe el reporte {reporte!r}.")
+    exigir_permiso_descarga(permiso_descarga)(usuario)
 
     filtros = _filtros(usuario, periodo, hasta, grupo, punto_venta, categoria, medida, desde)
     servicio = ReportesService(sesion)
@@ -311,9 +314,6 @@ def exportar(
         contenido = exportacion_service.exportar_venta_diaria(servicio.venta_diaria(filtros))
     elif reporte == "clientes":
         contenido = exportacion_service.exportar_clientes(servicio.clientes(filtros, por))
-    else:
-        raise ErrorNoEncontrado(f"No existe el reporte {reporte!r}.")
-
     nombre = f"sigrep-{reporte}-{periodo}.xlsx"
     return Response(
         content=contenido,
