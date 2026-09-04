@@ -13,7 +13,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.deps import PERMISO_CONSULTAR_TABLERO, PERMISO_VENTA_DIARIA_ASADERO
+from app.core.deps import (
+    PERMISO_CONSULTAR_COSTOS,
+    PERMISO_CONSULTAR_TABLERO,
+    PERMISO_VENTA_DIARIA_ASADERO,
+)
 from app.infrastructure.models.organizacion import PuntoVenta
 from app.infrastructure.models.periodo import CalendarioZona
 from app.infrastructure.models.usuario import Usuario, UsuarioPermiso
@@ -102,6 +106,25 @@ def test_permiso_de_tablero_no_habilita_filtro_ni_descarga(
         ).status_code
         == 403
     )
+
+
+def test_permiso_costos_no_entrega_desgloses_sin_permisos_especificos(
+    sesion: Session, cliente_http: TestClient, consulta: dict[str, str]
+) -> None:
+    usuario = sesion.scalars(select(Usuario).where(Usuario.usuario == "consulta")).one()
+    sesion.add(UsuarioPermiso(usuario_id=usuario.id, codigo=PERMISO_CONSULTAR_COSTOS))
+    sesion.commit()
+    dar_venta(sesion, "402", "RES", 1, "100", costo="60")
+
+    respuesta = cliente_http.get(
+        "/api/v1/reportes/costos", params={"periodo": PERIODO}, headers=consulta
+    )
+
+    assert respuesta.status_code == 200
+    assert respuesta.json()["consolidado"]["venta"] == "100.00"
+    assert respuesta.json()["grupos"] == []
+    assert respuesta.json()["puntos_venta"] == []
+    assert respuesta.json()["categorias"] == []
 
 
 def _fijar_calendario(sesion: Session, dias_habiles: str, dias_trabajados: str) -> None:

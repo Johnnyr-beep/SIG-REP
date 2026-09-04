@@ -2,6 +2,7 @@
 
 import { useCostos } from "@/api/consultas";
 import type { FilaCostos } from "@/api/tipos";
+import { useAuth } from "@/auth/ContextoAuth";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import { BarraFiltros, useFiltros } from "@/componentes/filtros";
 import { Indicador, PieCalculo } from "@/componentes/indicadores";
@@ -11,6 +12,7 @@ export function Costos() {
   const control = useFiltros();
   const { filtros } = control;
   const { data, isLoading, error } = useCostos(filtros);
+  const { tienePermiso } = useAuth();
 
   return (
     <div className="pila">
@@ -31,9 +33,15 @@ export function Costos() {
               <Indicador etiqueta="Cobertura de costo" valor={porcentaje(data.consolidado.cobertura_costo)} nota={`${numero(data.consolidado.lineas_con_costo)} de ${numero(data.consolidado.lineas)} líneas con costo`} />
             </div>
           </Tarjeta>
-          <TablaCostos titulo="Costo por grupo" etiqueta="Grupo" filas={data.grupos} />
-          <TablaCostos titulo="Costo por punto de venta" etiqueta="Punto de venta" filas={data.puntos_venta} />
-          <TablaCostos titulo="Costo por categoría" etiqueta="Categoría" filas={data.categorias} />
+          {tienePermiso("PERMISO_COSTO_POR_GRUPO") ? (
+            <TablaCostos titulo="Costo por grupo" etiqueta="Grupo" filas={data.grupos} />
+          ) : null}
+          {tienePermiso("PERMISO_COSTO_POR_PDV") ? (
+            <TablaCostos titulo="Costo por punto de venta" etiqueta="Punto de venta" filas={data.puntos_venta} />
+          ) : null}
+          {tienePermiso("PERMISO_COSTO_POR_CATEGORIA") ? (
+            <TablaCostos titulo="Costo por categoría" etiqueta="Categoría" filas={data.categorias} />
+          ) : null}
         </>
       ) : null}
     </div>

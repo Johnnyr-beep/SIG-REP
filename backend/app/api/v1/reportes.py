@@ -24,6 +24,9 @@ from app.core.deps import (
     PERMISO_CONSULTAR_CUMPLIMIENTO,
     PERMISO_CONSULTAR_TABLERO,
     PERMISO_CONSULTAR_VENTA_DIARIA,
+    PERMISO_COSTO_POR_CATEGORIA,
+    PERMISO_COSTO_POR_GRUPO,
+    PERMISO_COSTO_POR_PDV,
     PERMISO_DESCARGAR_CLIENTES,
     PERMISO_DESCARGAR_CUMPLIMIENTO,
     PERMISO_DESCARGAR_TABLERO,
@@ -187,9 +190,17 @@ def costos(
     categoria: str | None = None,
 ) -> RespuestaCostos:
     """RBAC: cualquier rol autenticado; JEFE_PDV solo ve sus puntos."""
-    return ReportesService(sesion).costos(
+    respuesta = ReportesService(sesion).costos(
         _filtros(usuario, periodo, hasta, grupo, punto_venta, categoria, Medida.VALOR)
     )
+    permisos_granulares = usuario.rol == "CONSULTA" and bool(usuario.permisos)
+    if permisos_granulares and not usuario.tiene_permiso(PERMISO_COSTO_POR_GRUPO):
+        respuesta.grupos = []
+    if permisos_granulares and not usuario.tiene_permiso(PERMISO_COSTO_POR_PDV):
+        respuesta.puntos_venta = []
+    if permisos_granulares and not usuario.tiene_permiso(PERMISO_COSTO_POR_CATEGORIA):
+        respuesta.categorias = []
+    return respuesta
 
 
 @router.get("/venta-diaria", response_model=RespuestaVentaDiaria, summary="Venta día por día")
