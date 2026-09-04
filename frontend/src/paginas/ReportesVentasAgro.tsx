@@ -27,7 +27,7 @@ export function ReportesVentasAgro() {
   const tipoItem = useResumenAgro(filtros, "tipo_item");
   const especie = useResumenAgro(filtros, "especie");
   const tat = useVentasTat({
-    fecha_inicio: `${filtros.periodo}-01`,
+    fecha_inicio: filtros.desde ?? `${filtros.periodo}-01`,
     fecha_fin: filtros.hasta ?? finDeMes(filtros.periodo) ?? `${filtros.periodo}-01`,
     limit: 100,
     offset: 0,
