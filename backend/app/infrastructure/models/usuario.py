@@ -101,9 +101,7 @@ class UsuarioPermiso(Base):
     """Permiso granular asignado a una cuenta, independiente de su rol."""
 
     __tablename__ = "usuario_permisos"
-    __table_args__ = (
-        UniqueConstraint("usuario_id", "codigo", name="uq_usuario_permiso"),
-    )
+    __table_args__ = (UniqueConstraint("usuario_id", "codigo", name="uq_usuario_permiso"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     usuario_id: Mapped[int] = mapped_column(

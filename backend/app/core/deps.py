@@ -200,9 +200,7 @@ def exigir_roles(*roles: Rol) -> Callable[[Usuario], Usuario]:
 
 def exigir_venta_diaria_asadero(usuario: UsuarioDep) -> Usuario:
     """Permite ADMIN o la capacidad de lectura estrictamente especializada."""
-    if usuario.rol != Rol.ADMIN.value and not usuario.tiene_permiso(
-        PERMISO_VENTA_DIARIA_ASADERO
-    ):
+    if usuario.rol != Rol.ADMIN.value and not usuario.tiene_permiso(PERMISO_VENTA_DIARIA_ASADERO):
         raise ErrorAutorizacion("No tiene permiso para Venta Diaria Asadero.")
     if usuario.debe_cambiar_password:
         raise ErrorClavePendiente(
@@ -214,9 +212,7 @@ def exigir_venta_diaria_asadero(usuario: UsuarioDep) -> Usuario:
 
 def exigir_lectura_general(usuario: UsuarioDep) -> Usuario:
     """Lectura RBAC general; una cuenta granular queda fuera de este ámbito."""
-    if usuario.rol == Rol.CONSULTA.value and usuario.tiene_permiso(
-        PERMISO_VENTA_DIARIA_ASADERO
-    ):
+    if usuario.rol == Rol.CONSULTA.value and usuario.tiene_permiso(PERMISO_VENTA_DIARIA_ASADERO):
         raise ErrorAutorizacion("Esta cuenta solo tiene acceso a Venta Diaria Asadero.")
     return usuario
 

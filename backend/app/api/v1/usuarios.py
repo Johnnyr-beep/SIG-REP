@@ -33,6 +33,7 @@ from app.schemas.usuarios import (
 class PermisoEntrada(BaseModel):
     codigo: str = Field(min_length=1, max_length=80)
 
+
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
 
