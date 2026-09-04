@@ -88,6 +88,7 @@ const MENU_CARNES: GrupoNav[] = [
       // El contrato es explícito: los otros cuatro roles reciben 403 en todo el
       // bloque `/usuarios`, `GERENTE` incluido. La entrada no se les muestra.
       { ruta: "/usuarios", etiqueta: "Usuarios", icono: "◉", roles: ["ADMIN"] },
+      { ruta: "/permisos", etiqueta: "Permisos", icono: "◈", roles: ["ADMIN"] },
     ],
   },
 ];
@@ -123,6 +124,7 @@ const MENU_AGRO: GrupoNav[] = [
     titulo: "Administración",
     items: [
       { ruta: "/usuarios", etiqueta: "Usuarios", icono: "◉", roles: ["ADMIN"] },
+      { ruta: "/permisos", etiqueta: "Permisos", icono: "◈", roles: ["ADMIN"] },
     ],
   },
 ];
@@ -200,6 +202,7 @@ const TITULOS: Record<string, string> = {
   "/calendario": "Calendario de días hábiles",
   "/ingesta": "Ingesta desde SIESA",
   "/usuarios": "Administración de usuarios",
+  "/permisos": "Permisos de consulta",
 };
 
 type Tema = "sistema" | "claro" | "oscuro";

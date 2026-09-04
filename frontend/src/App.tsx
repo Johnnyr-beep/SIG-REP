@@ -28,6 +28,7 @@ import { Costos } from "@/paginas/Costos";
 import { Ingesta } from "@/paginas/Ingesta";
 import { HistoriaVenta } from "@/paginas/HistoriaVenta";
 import { Presupuesto } from "@/paginas/Presupuesto";
+import { Permisos } from "@/paginas/Permisos";
 import { SelectorMarca } from "@/paginas/SelectorMarca";
 import { Tablero } from "@/paginas/Tablero";
 import { Usuarios } from "@/paginas/Usuarios";
@@ -219,6 +220,14 @@ export function App() {
           element={
             <Restringido roles={["ADMIN"]}>
               <Usuarios />
+            </Restringido>
+          }
+        />
+        <Route
+          path="permisos"
+          element={
+            <Restringido roles={["ADMIN"]}>
+              <Permisos />
             </Restringido>
           }
         />
