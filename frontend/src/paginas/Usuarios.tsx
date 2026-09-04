@@ -1063,6 +1063,7 @@ export function Usuarios() {
                   <th scope="col">Clave</th>
                   <th scope="col">Último acceso</th>
                   <th scope="col">Puntos de venta</th>
+                  <th scope="col">Permiso</th>
                   <th scope="col">
                     <span className="solo-lectores">Acciones</span>
                   </th>
