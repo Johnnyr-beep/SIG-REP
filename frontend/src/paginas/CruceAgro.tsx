@@ -18,6 +18,7 @@ import { useSearchParams } from "react-router-dom";
 
 import { useCruceAgro, useExportarAgro } from "@/api/consultasAgro";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
+import { useAuth } from "@/auth/ContextoAuth";
 import {
   BarraFiltrosAgro,
   filtrosAgroDe,
@@ -37,6 +38,8 @@ import {
 import { numero } from "@/utilidades/formato";
 
 export function CruceAgro() {
+  const { tienePermiso, usuario } = useAuth();
+  const granular = usuario?.rol === "CONSULTA" && usuario.permisos.some((codigo) => codigo.startsWith("PERMISO_AGRO_"));
   const control = useFiltros();
   const { filtros } = control;
 
@@ -65,7 +68,7 @@ export function CruceAgro() {
         control={control}
         acciones={
           <>
-            <label className="filtros__campo">
+            {!granular || tienePermiso("PERMISO_AGRO_CONFIGURAR_EJE_CRUCE") ? <label className="filtros__campo">
               <span>Cruce</span>
               <select
                 className="campo__control"
@@ -79,8 +82,8 @@ export function CruceAgro() {
                   </option>
                 ))}
               </select>
-            </label>
-            <button
+            </label> : null}
+            {!granular || tienePermiso("PERMISO_AGRO_DESCARGAR_CRUCE") ? <button
               type="button"
               className="boton boton--pequeno"
               onClick={() =>
@@ -93,7 +96,7 @@ export function CruceAgro() {
               disabled={exportar.isPending || !data}
             >
               {exportar.isPending ? "Generando…" : "Exportar a Excel"}
-            </button>
+            </button> : null}
           </>
         }
       />

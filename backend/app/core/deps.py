@@ -16,6 +16,7 @@ from __future__ import annotations
 import io
 import zipfile
 from collections.abc import Callable, Generator
+from datetime import date
 from typing import Annotated
 
 from fastapi import Depends, Request, UploadFile
@@ -52,6 +53,25 @@ PERMISO_DESCARGAR_CLIENTES = "PERMISO_DESCARGAR_CLIENTES"
 PERMISO_COSTO_POR_GRUPO = "PERMISO_COSTO_POR_GRUPO"
 PERMISO_COSTO_POR_PDV = "PERMISO_COSTO_POR_PDV"
 PERMISO_COSTO_POR_CATEGORIA = "PERMISO_COSTO_POR_CATEGORIA"
+PERMISO_AGRO_CONSULTAR_RESUMEN = "PERMISO_AGRO_CONSULTAR_RESUMEN"
+PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS = "PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS"
+PERMISO_AGRO_CONSULTAR_CUBO_COMERCIAL = "PERMISO_AGRO_CONSULTAR_CUBO_COMERCIAL"
+PERMISO_AGRO_CONSULTAR_CRUCE_COMERCIAL = "PERMISO_AGRO_CONSULTAR_CRUCE_COMERCIAL"
+PERMISO_AGRO_CONSULTAR_VENTA_DIARIA = "PERMISO_AGRO_CONSULTAR_VENTA_DIARIA"
+PERMISO_AGRO_CONSULTAR_INTELIGENCIA_COMERCIAL = "PERMISO_AGRO_CONSULTAR_INTELIGENCIA_COMERCIAL"
+PERMISO_AGRO_CONSULTAR_TAT = "PERMISO_AGRO_CONSULTAR_TAT"
+PERMISO_AGRO_CONSULTAR_PRESUPUESTO = "PERMISO_AGRO_CONSULTAR_PRESUPUESTO"
+PERMISO_AGRO_CONSULTAR_CALENDARIO = "PERMISO_AGRO_CONSULTAR_CALENDARIO"
+PERMISO_AGRO_CONSULTAR_INGESTA = "PERMISO_AGRO_CONSULTAR_INGESTA"
+PERMISO_AGRO_FILTRAR_PERIODO = "PERMISO_AGRO_FILTRAR_PERIODO"
+PERMISO_AGRO_FILTRAR_CENTRO = "PERMISO_AGRO_FILTRAR_CENTRO"
+PERMISO_AGRO_FILTRAR_MEDIDA = "PERMISO_AGRO_FILTRAR_MEDIDA"
+PERMISO_AGRO_CONFIGURAR_EJE_RESUMEN = "PERMISO_AGRO_CONFIGURAR_EJE_RESUMEN"
+PERMISO_AGRO_CONFIGURAR_EJE_CRUCE = "PERMISO_AGRO_CONFIGURAR_EJE_CRUCE"
+PERMISO_AGRO_CONFIGURAR_DIMENSIONES_CUBO = "PERMISO_AGRO_CONFIGURAR_DIMENSIONES_CUBO"
+PERMISO_AGRO_DESCARGAR_RESUMEN = "PERMISO_AGRO_DESCARGAR_RESUMEN"
+PERMISO_AGRO_DESCARGAR_CRUCE = "PERMISO_AGRO_DESCARGAR_CRUCE"
+PERMISO_AGRO_DESCARGAR_VENTA_DIARIA = "PERMISO_AGRO_DESCARGAR_VENTA_DIARIA"
 
 PERMISOS_CONSULTA: dict[str, str] = {
     PERMISO_CONSULTAR_PDV: "Consultar puntos de venta",
@@ -78,6 +98,25 @@ PERMISOS_CONSULTA: dict[str, str] = {
     PERMISO_COSTO_POR_GRUPO: "Consultar costo por grupo",
     PERMISO_COSTO_POR_PDV: "Consultar costo por punto de venta",
     PERMISO_COSTO_POR_CATEGORIA: "Consultar costo por categoría",
+    PERMISO_AGRO_CONSULTAR_RESUMEN: "Agro: consultar resumen de ventas",
+    PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS: "Agro: consultar reportes de ventas",
+    PERMISO_AGRO_CONSULTAR_CUBO_COMERCIAL: "Agro: consultar cubo comercial",
+    PERMISO_AGRO_CONSULTAR_CRUCE_COMERCIAL: "Agro: consultar cruce comercial",
+    PERMISO_AGRO_CONSULTAR_VENTA_DIARIA: "Agro: consultar venta diaria",
+    PERMISO_AGRO_CONSULTAR_INTELIGENCIA_COMERCIAL: "Agro: consultar inteligencia comercial",
+    PERMISO_AGRO_CONSULTAR_TAT: "Agro: consultar ventas TAT",
+    PERMISO_AGRO_CONSULTAR_PRESUPUESTO: "Agro: consultar presupuesto",
+    PERMISO_AGRO_CONSULTAR_CALENDARIO: "Agro: consultar calendario",
+    PERMISO_AGRO_CONSULTAR_INGESTA: "Agro: consultar ingesta",
+    PERMISO_AGRO_FILTRAR_PERIODO: "Agro: filtrar por período y rango",
+    PERMISO_AGRO_FILTRAR_CENTRO: "Agro: filtrar por centro de operación",
+    PERMISO_AGRO_FILTRAR_MEDIDA: "Agro: cambiar entre valor y kilos",
+    PERMISO_AGRO_CONFIGURAR_EJE_RESUMEN: "Agro: configurar eje del resumen",
+    PERMISO_AGRO_CONFIGURAR_EJE_CRUCE: "Agro: configurar eje del cruce",
+    PERMISO_AGRO_CONFIGURAR_DIMENSIONES_CUBO: "Agro: configurar dimensiones del cubo",
+    PERMISO_AGRO_DESCARGAR_RESUMEN: "Agro: descargar resumen a Excel",
+    PERMISO_AGRO_DESCARGAR_CRUCE: "Agro: descargar cruce a Excel",
+    PERMISO_AGRO_DESCARGAR_VENTA_DIARIA: "Agro: descargar venta diaria a Excel",
 }
 
 # `auto_error=False` para devolver nuestro formato de error uniforme en lugar
@@ -294,6 +333,61 @@ def exigir_permiso_descarga(codigo: str) -> Callable[[Usuario], Usuario]:
         return usuario
 
     return _verificar
+
+
+def _tiene_permisos_agro(usuario: Usuario) -> bool:
+    return usuario.rol == Rol.CONSULTA.value and any(
+        permiso.codigo.startswith("PERMISO_AGRO_") for permiso in usuario.permisos
+    )
+
+
+def exigir_permiso_consulta_agro(codigo: str) -> Callable[[Usuario], Usuario]:
+    """Exige una capacidad Agro solo al carril granular de Agropecuaria."""
+
+    def _verificar(usuario: UsuarioDep) -> Usuario:
+        if _tiene_permisos_agro(usuario) and not usuario.tiene_permiso(codigo):
+            raise ErrorAutorizacion("No tiene permiso para consultar este módulo de Agropecuaria.")
+        if usuario.debe_cambiar_password:
+            raise ErrorClavePendiente(
+                "Debe cambiar la clave provisional antes de usar el sistema.",
+                detalles={"debe_cambiar_password": True},
+            )
+        return usuario
+
+    return _verificar
+
+
+def exigir_permiso_descarga_agro(codigo: str) -> Callable[[Usuario], Usuario]:
+    """Exige una descarga Agro solo al carril granular de Agropecuaria."""
+
+    def _verificar(usuario: UsuarioDep) -> Usuario:
+        if _tiene_permisos_agro(usuario) and not usuario.tiene_permiso(codigo):
+            raise ErrorAutorizacion("No tiene permiso para descargar este reporte de Agropecuaria.")
+        return usuario
+
+    return _verificar
+
+
+def validar_filtros_agro(usuario: Usuario, peticion: Request) -> None:
+    """Rechaza parámetros Agro explícitos sin la capacidad granular correspondiente."""
+    if not _tiene_permisos_agro(usuario):
+        return
+    parametros = peticion.query_params
+    periodo_actual = date.today().strftime("%Y-%m")
+    if (
+        "desde" in parametros
+        or "hasta" in parametros
+        or parametros.get("periodo", periodo_actual) != periodo_actual
+    ) and not usuario.tiene_permiso(PERMISO_AGRO_FILTRAR_PERIODO):
+        raise ErrorAutorizacion(
+            "No tiene permiso para filtrar por período o rango en Agropecuaria."
+        )
+    if "centro" in parametros and not usuario.tiene_permiso(PERMISO_AGRO_FILTRAR_CENTRO):
+        raise ErrorAutorizacion("No tiene permiso para filtrar por centro en Agropecuaria.")
+    if parametros.get("medida") == "kilos" and not usuario.tiene_permiso(
+        PERMISO_AGRO_FILTRAR_MEDIDA
+    ):
+        raise ErrorAutorizacion("No tiene permiso para consultar Agropecuaria en kilos.")
 
 
 def alcance_puntos_venta(usuario: Usuario) -> list[int] | None:

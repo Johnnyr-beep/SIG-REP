@@ -7,6 +7,7 @@ import {
 } from "@/api/consultas";
 import type { UsuarioAdministrado } from "@/api/tipos";
 import { AvisoError, Cargando, Distintivo, Tarjeta, Vacio } from "@/componentes/comunes";
+import { useMarcaElegida } from "@/marca/ContextoMarca";
 
 const PERMISOS = [
   ["PERMISO_CONSULTAR_PDV", "Consultar puntos de venta"],
@@ -35,7 +36,30 @@ const PERMISOS = [
   ["PERMISO_DESCARGAR_CLIENTES", "Descargar clientes y vendedores a Excel"],
 ] as const;
 
+const PERMISOS_AGRO = [
+  ["PERMISO_AGRO_CONSULTAR_RESUMEN", "Consulta: resumen de ventas"],
+  ["PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS", "Consulta: reportes de ventas"],
+  ["PERMISO_AGRO_CONSULTAR_CUBO_COMERCIAL", "Consulta: cubo comercial"],
+  ["PERMISO_AGRO_CONSULTAR_CRUCE_COMERCIAL", "Consulta: cruce comercial"],
+  ["PERMISO_AGRO_CONSULTAR_VENTA_DIARIA", "Consulta: venta diaria"],
+  ["PERMISO_AGRO_CONSULTAR_INTELIGENCIA_COMERCIAL", "Consulta: inteligencia comercial"],
+  ["PERMISO_AGRO_CONSULTAR_TAT", "Consulta: ventas TAT"],
+  ["PERMISO_AGRO_CONSULTAR_PRESUPUESTO", "Consulta: presupuesto"],
+  ["PERMISO_AGRO_CONSULTAR_CALENDARIO", "Consulta: calendario"],
+  ["PERMISO_AGRO_CONSULTAR_INGESTA", "Consulta: ingesta"],
+  ["PERMISO_AGRO_FILTRAR_PERIODO", "Filtros y vistas: período y rango"],
+  ["PERMISO_AGRO_FILTRAR_CENTRO", "Filtros y vistas: centro"],
+  ["PERMISO_AGRO_FILTRAR_MEDIDA", "Filtros y vistas: medida kilos"],
+  ["PERMISO_AGRO_CONFIGURAR_EJE_RESUMEN", "Filtros y vistas: eje del resumen"],
+  ["PERMISO_AGRO_CONFIGURAR_EJE_CRUCE", "Filtros y vistas: eje del cruce"],
+  ["PERMISO_AGRO_CONFIGURAR_DIMENSIONES_CUBO", "Filtros y vistas: dimensiones del cubo"],
+  ["PERMISO_AGRO_DESCARGAR_RESUMEN", "Descargas: resumen"],
+  ["PERMISO_AGRO_DESCARGAR_CRUCE", "Descargas: cruce"],
+  ["PERMISO_AGRO_DESCARGAR_VENTA_DIARIA", "Descargas: venta diaria"],
+] as const;
+
 export function Permisos() {
+  const marca = useMarcaElegida();
   const [filtros] = useState<FiltrosUsuarios>({ rol: "", activo: "" });
   const { data: usuarios, isLoading, error } = useUsuarios(filtros, true);
   const cambiar = useCambiarPermisoUsuario();
@@ -69,6 +93,7 @@ export function Permisos() {
                     key={cuenta.id}
                     cuenta={cuenta}
                     cambiando={cambiar.isPending}
+                    permisos={marca.clave === "agropecuaria" ? PERMISOS_AGRO : PERMISOS}
                     onCambiar={(codigo, asignar) =>
                       cambiar.mutate({ id: cuenta.id, codigo, asignar })
                     }
@@ -86,10 +111,12 @@ export function Permisos() {
 function FilaPermisos({
   cuenta,
   cambiando,
+  permisos,
   onCambiar,
 }: {
   cuenta: UsuarioAdministrado;
   cambiando: boolean;
+  permisos: readonly (readonly [string, string])[];
   onCambiar: (codigo: string, asignar: boolean) => void;
 }) {
   return (
@@ -102,7 +129,7 @@ function FilaPermisos({
       <td><Distintivo tono={cuenta.activo ? "exito" : "neutro"}>{cuenta.activo ? "Activa" : "Inactiva"}</Distintivo></td>
       <td>
         <div className="permisos-usuario">
-          {PERMISOS.map(([codigo, nombre]) => {
+          {permisos.map(([codigo, nombre]) => {
             const asignado = cuenta.permisos.includes(codigo);
             return (
               <button

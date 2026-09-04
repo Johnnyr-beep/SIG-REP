@@ -29,6 +29,7 @@ import {
 import type { FilaResumenAgro, IndicadoresAgro } from "@/api/tiposAgro";
 import type { Medida } from "@/api/tipos";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
+import { useAuth } from "@/auth/ContextoAuth";
 import { Indicador } from "@/componentes/indicadores";
 import {
   AnilloCumplimiento,
@@ -69,6 +70,8 @@ import {
 } from "@/utilidades/dominioAgro";
 
 export function ResumenAgro() {
+  const { tienePermiso, usuario } = useAuth();
+  const granular = usuario?.rol === "CONSULTA" && usuario.permisos.some((codigo) => codigo.startsWith("PERMISO_AGRO_"));
   const control = useFiltros();
   const { filtros } = control;
 
@@ -231,7 +234,7 @@ export function ResumenAgro() {
         control={control}
         acciones={
           <>
-            <label className="filtros__campo">
+            {!granular || tienePermiso("PERMISO_AGRO_CONFIGURAR_EJE_RESUMEN") ? <label className="filtros__campo">
               <span>Ver por</span>
               <select
                 className="campo__control"
@@ -249,8 +252,8 @@ export function ResumenAgro() {
                   </option>
                 ))}
               </select>
-            </label>
-            <button
+            </label> : null}
+            {!granular || tienePermiso("PERMISO_AGRO_DESCARGAR_RESUMEN") ? <button
               type="button"
               className="boton boton--pequeno"
               onClick={() =>
@@ -263,7 +266,7 @@ export function ResumenAgro() {
               disabled={exportar.isPending || !data}
             >
               {exportar.isPending ? "Generando…" : "Exportar a Excel"}
-            </button>
+            </button> : null}
           </>
         }
       />

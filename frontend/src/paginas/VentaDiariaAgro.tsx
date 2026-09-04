@@ -21,6 +21,7 @@ import { useMemo } from "react";
 
 import { useExportarAgro, useVentaDiariaAgro } from "@/api/consultasAgro";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
+import { useAuth } from "@/auth/ContextoAuth";
 import {
   BarraFiltrosAgro,
   filtrosAgroDe,
@@ -39,6 +40,8 @@ import {
 } from "@/utilidades/formato";
 
 export function VentaDiariaAgro() {
+  const { tienePermiso, usuario } = useAuth();
+  const granular = usuario?.rol === "CONSULTA" && usuario.permisos.some((codigo) => codigo.startsWith("PERMISO_AGRO_"));
   const control = useFiltros();
   const { filtros } = control;
 
@@ -56,16 +59,18 @@ export function VentaDiariaAgro() {
         control={control}
         mostrar={{ rango: true }}
         acciones={
-          <button
-            type="button"
-            className="boton boton--pequeno"
-            onClick={() =>
-              exportar.mutate({ reporte: "venta-diaria", filtros: filtrosAgro })
-            }
-            disabled={exportar.isPending || !data}
-          >
-            {exportar.isPending ? "Generando…" : "Exportar a Excel"}
-          </button>
+          !granular || tienePermiso("PERMISO_AGRO_DESCARGAR_VENTA_DIARIA") ? (
+            <button
+              type="button"
+              className="boton boton--pequeno"
+              onClick={() =>
+                exportar.mutate({ reporte: "venta-diaria", filtros: filtrosAgro })
+              }
+              disabled={exportar.isPending || !data}
+            >
+              {exportar.isPending ? "Generando…" : "Exportar a Excel"}
+            </button>
+          ) : null
         }
       />
 

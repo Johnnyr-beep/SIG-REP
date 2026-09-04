@@ -909,6 +909,9 @@ export function BarraFiltrosAgro({
   acciones?: React.ReactNode;
 }) {
   const { filtros, fijar, fijarVarios, centrosSeleccionados } = control;
+  const { tienePermiso, usuario } = useAuth();
+  const permisosGranulares = usuario?.rol === "CONSULTA" && usuario.permisos.some((codigo) => codigo.startsWith("PERMISO_AGRO_"));
+  const puedeFiltrar = (permiso: string) => !permisosGranulares || tienePermiso(permiso);
   const visible = {
     corte: true,
     rango: false,
@@ -925,7 +928,7 @@ export function BarraFiltrosAgro({
 
   return (
     <section className="filtros" aria-label="Filtros del reporte">
-      {periodoDerivado ? (
+      {puedeFiltrar("PERMISO_AGRO_FILTRAR_PERIODO") && periodoDerivado ? (
         <div className="filtros__campo">
           <span>Período de referencia</span>
           <p
@@ -935,7 +938,7 @@ export function BarraFiltrosAgro({
             {periodoLargo(filtros.periodo)}
           </p>
         </div>
-      ) : (
+      ) : puedeFiltrar("PERMISO_AGRO_FILTRAR_PERIODO") ? (
         <label className="filtros__campo">
           <span>Período</span>
           <input
@@ -946,16 +949,16 @@ export function BarraFiltrosAgro({
             required
           />
         </label>
-      )}
+      ) : null}
 
-      {visible.rango ? (
+      {visible.rango && puedeFiltrar("PERMISO_AGRO_FILTRAR_PERIODO") ? (
         <FiltroRango
           periodo={filtros.periodo}
           desde={filtros.desde}
           hasta={filtros.hasta}
           onCambiar={fijarVarios}
         />
-      ) : visible.corte ? (
+      ) : visible.corte && puedeFiltrar("PERMISO_AGRO_FILTRAR_PERIODO") ? (
         <label className="filtros__campo">
           <span>Corte</span>
           <input
@@ -968,7 +971,7 @@ export function BarraFiltrosAgro({
         </label>
       ) : null}
 
-      {visible.centro ? (
+      {visible.centro && puedeFiltrar("PERMISO_AGRO_FILTRAR_CENTRO") ? (
         <FiltroCentros
           centros={centros ?? []}
           seleccion={centrosSeleccionados}
@@ -976,7 +979,7 @@ export function BarraFiltrosAgro({
         />
       ) : null}
 
-      {visible.medida ? (
+      {visible.medida && puedeFiltrar("PERMISO_AGRO_FILTRAR_MEDIDA") ? (
         <div className="filtros__campo">
           <span>Medida</span>
           <ConmutadorMedida

@@ -22,9 +22,9 @@ from datetime import date
 from enum import StrEnum
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, Query, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, Request, Response, UploadFile
 
-from app.api.v1 import AnalistaDep, GerenteDep, LecturaDep
+from app.api.v1 import AnalistaDep, GerenteDep
 from app.application.services import agro_exportacion_service
 from app.application.services.agro_calendario_service import AgroCalendarioService
 from app.application.services.agro_ingesta_service import AgroIngestaService
@@ -34,7 +34,29 @@ from app.application.services.agro_presupuesto_mensual_service import (
 from app.application.services.agro_presupuesto_service import AgroPresupuestoService
 from app.application.services.agro_reportes_service import AgroReportesService, FiltrosAgro
 from app.application.services.inteligencia_comercial_service import InteligenciaComercialService
-from app.core.deps import SesionDep, leer_subida
+from app.core.deps import (
+    PERMISO_AGRO_CONFIGURAR_DIMENSIONES_CUBO,
+    PERMISO_AGRO_CONFIGURAR_EJE_CRUCE,
+    PERMISO_AGRO_CONFIGURAR_EJE_RESUMEN,
+    PERMISO_AGRO_CONSULTAR_CALENDARIO,
+    PERMISO_AGRO_CONSULTAR_CRUCE_COMERCIAL,
+    PERMISO_AGRO_CONSULTAR_CUBO_COMERCIAL,
+    PERMISO_AGRO_CONSULTAR_INGESTA,
+    PERMISO_AGRO_CONSULTAR_INTELIGENCIA_COMERCIAL,
+    PERMISO_AGRO_CONSULTAR_PRESUPUESTO,
+    PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS,
+    PERMISO_AGRO_CONSULTAR_RESUMEN,
+    PERMISO_AGRO_CONSULTAR_VENTA_DIARIA,
+    PERMISO_AGRO_DESCARGAR_CRUCE,
+    PERMISO_AGRO_DESCARGAR_RESUMEN,
+    PERMISO_AGRO_DESCARGAR_VENTA_DIARIA,
+    SesionDep,
+    UsuarioDep,
+    exigir_permiso_consulta_agro,
+    exigir_permiso_descarga_agro,
+    leer_subida,
+    validar_filtros_agro,
+)
 from app.core.errors import ErrorValidacion
 from app.domain.enums import Medida
 from app.infrastructure.models.agro_vocabulario import (
@@ -43,6 +65,7 @@ from app.infrastructure.models.agro_vocabulario import (
     EjeResumen,
     TipoDimension,
 )
+from app.infrastructure.models.usuario import Usuario
 from app.schemas.agro import (
     CalendarioAgroEntrada,
     CalendarioAgroSalida,
@@ -166,13 +189,35 @@ def _filtros(
     )
 
 
+def _configuracion_agro(
+    usuario: Usuario, peticion: Request, permiso: str, parametro: str, predeterminado: str
+) -> None:
+    if peticion.query_params.get(parametro, predeterminado) == predeterminado:
+        return
+
+    if (
+        usuario.rol == "CONSULTA"
+        and any(
+            permiso_usuario.codigo.startswith("PERMISO_AGRO_")
+            for permiso_usuario in usuario.permisos
+        )
+        and not usuario.tiene_permiso(permiso)
+    ):
+        from app.core.errors import ErrorAutorizacion
+
+        raise ErrorAutorizacion("No tiene permiso para configurar esta vista de Agropecuaria.")
+
+
 # ── Reportes ──────────────────────────────────────────────────────────────────
 
 
 @router.get("/resumen", response_model=RespuestaResumenAgro, summary="Venta por un eje")
 def resumen(
-    _: LecturaDep,
+    usuario: Annotated[
+        Usuario, Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_RESUMEN))
+    ],
     sesion: SesionDep,
+    peticion: Request,
     por: EjeResumen,
     periodo: str = PeriodoQuery,
     hasta: date | None = None,
@@ -185,6 +230,14 @@ def resumen(
     Cuando el eje coincide con una dimension presupuestada, la respuesta trae
     ademas cumplimiento, ideal, proyeccion y semaforo.
     """
+    validar_filtros_agro(usuario, peticion)
+    _configuracion_agro(
+        usuario,
+        peticion,
+        PERMISO_AGRO_CONFIGURAR_EJE_RESUMEN,
+        "por",
+        EjeResumen.CENTRO_OPERACION.value,
+    )
     return AgroReportesService(sesion).resumen(_filtros(periodo, hasta, desde, centro, medida), por)
 
 
@@ -194,14 +247,18 @@ def resumen(
     summary="Ventas por categoría comercial y especie",
 )
 def ventas_comerciales(
-    _: LecturaDep,
+    usuario: Annotated[
+        Usuario, Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS))
+    ],
     sesion: SesionDep,
+    peticion: Request,
     periodo: str = PeriodoQuery,
     hasta: date | None = None,
     desde: date | None = None,
     centro: str | None = None,
     medida: Medida = Medida.VALOR,
 ) -> RespuestaVentasComercialesAgro:
+    validar_filtros_agro(usuario, peticion)
     return AgroReportesService(sesion).ventas_comerciales(
         _filtros(periodo, hasta, desde, centro, medida)
     )
@@ -213,8 +270,11 @@ def ventas_comerciales(
     summary="El año mes a mes por un eje, en pesos y kilos",
 )
 def serie_mensual(
-    _: LecturaDep,
+    usuario: Annotated[
+        Usuario, Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS))
+    ],
     sesion: SesionDep,
+    peticion: Request,
     anio: Annotated[int, Query(ge=2000, le=2100, examples=[2026])],
     por: EjeResumen = EjeResumen.CENTRO_OPERACION,
     centro: str | None = None,
@@ -231,6 +291,14 @@ def serie_mensual(
     al lado de otra, y pedirlo dos veces obligaría a casar dos listas de doce
     meses por índice para volver a juntar lo que nunca debió separarse.
     """
+    validar_filtros_agro(usuario, peticion)
+    _configuracion_agro(
+        usuario,
+        peticion,
+        PERMISO_AGRO_CONFIGURAR_EJE_RESUMEN,
+        "por",
+        EjeResumen.CENTRO_OPERACION.value,
+    )
     return AgroReportesService(sesion).serie_mensual(
         anio, por, centros=_centros(centro), hasta=hasta
     )
@@ -242,8 +310,11 @@ def serie_mensual(
     summary="Cubo de ventas: N dimensiones, todas las medidas",
 )
 def cubo(
-    _: LecturaDep,
+    usuario: Annotated[
+        Usuario, Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_CUBO_COMERCIAL))
+    ],
     sesion: SesionDep,
+    peticion: Request,
     dimensiones: str = Query(
         ...,
         description=(
@@ -268,14 +339,25 @@ def cubo(
     subtotal, valor neto, costo y utilidad). El total refleja el corte entero,
     sin truncar.
     """
+    validar_filtros_agro(usuario, peticion)
+    _configuracion_agro(
+        usuario,
+        peticion,
+        PERMISO_AGRO_CONFIGURAR_DIMENSIONES_CUBO,
+        "dimensiones",
+        "tipo_comercial,grupo,tipo_item",
+    )
     dims = _dimensiones(dimensiones)
     return AgroReportesService(sesion).cubo(_filtros(periodo, hasta, desde, centro, medida), dims)
 
 
 @router.get("/cruce", response_model=RespuestaCruceAgro, summary="Vendedor x cliente [x producto]")
 def cruce(
-    _: LecturaDep,
+    usuario: Annotated[
+        Usuario, Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_CRUCE_COMERCIAL))
+    ],
     sesion: SesionDep,
+    peticion: Request,
     por: EjeCruce,
     periodo: str = PeriodoQuery,
     hasta: date | None = None,
@@ -283,19 +365,27 @@ def cruce(
     centro: str | None = None,
     medida: Medida = Medida.VALOR,
 ) -> RespuestaCruceAgro:
+    validar_filtros_agro(usuario, peticion)
+    _configuracion_agro(
+        usuario, peticion, PERMISO_AGRO_CONFIGURAR_EJE_CRUCE, "por", EjeCruce.VENDEDOR_CLIENTE.value
+    )
     return AgroReportesService(sesion).cruce(_filtros(periodo, hasta, desde, centro, medida), por)
 
 
 @router.get("/venta-diaria", response_model=RespuestaVentaDiariaAgro, summary="Venta dia por dia")
 def venta_diaria(
-    _: LecturaDep,
+    usuario: Annotated[
+        Usuario, Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_VENTA_DIARIA))
+    ],
     sesion: SesionDep,
+    peticion: Request,
     periodo: str = PeriodoQuery,
     hasta: date | None = None,
     desde: date | None = None,
     centro: str | None = None,
     medida: Medida = Medida.VALOR,
 ) -> RespuestaVentaDiariaAgro:
+    validar_filtros_agro(usuario, peticion)
     return AgroReportesService(sesion).venta_diaria(_filtros(periodo, hasta, desde, centro, medida))
 
 
@@ -307,8 +397,9 @@ def venta_diaria(
 )
 def exportar(
     reporte: Annotated[str, "resumen | cruce | venta-diaria"],
-    _: LecturaDep,
+    usuario: UsuarioDep,
     sesion: SesionDep,
+    peticion: Request,
     periodo: str = PeriodoQuery,
     hasta: date | None = None,
     desde: date | None = None,
@@ -330,6 +421,14 @@ def exportar(
     motivo y no un 500.
     """
     from app.core.errors import ErrorNoEncontrado
+
+    validar_filtros_agro(usuario, peticion)
+    permisos_descarga = {
+        "resumen": PERMISO_AGRO_DESCARGAR_RESUMEN,
+        "cruce": PERMISO_AGRO_DESCARGAR_CRUCE,
+        "venta-diaria": PERMISO_AGRO_DESCARGAR_VENTA_DIARIA,
+    }
+    exigir_permiso_descarga_agro(permisos_descarga.get(reporte, ""))(usuario)
 
     filtros = _filtros(periodo, hasta, desde, centro, medida)
     servicio = AgroReportesService(sesion)
@@ -365,7 +464,9 @@ def exportar(
     summary="Presupuesto agrupado por dimension",
 )
 def presupuesto(
-    _: LecturaDep,
+    _: Annotated[
+        Usuario, Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_PRESUPUESTO))
+    ],
     sesion: SesionDep,
     periodo: str = PeriodoQuery,
     dimension: DimensionPresupuesto | None = None,
@@ -386,7 +487,11 @@ def presupuesto(
     summary="Cuadran las cuatro dimensiones entre si?",
 )
 def cuadre(
-    _: LecturaDep, sesion: SesionDep, periodo: str = PeriodoQuery
+    _: Annotated[
+        Usuario, Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_PRESUPUESTO))
+    ],
+    sesion: SesionDep,
+    periodo: str = PeriodoQuery,
 ) -> CuadrePresupuestoSalida:
     """Compara los cuatro totales y publica la diferencia. No la corrige."""
     return AgroPresupuestoService(sesion).cuadre_salida(periodo)
@@ -459,7 +564,9 @@ async def carga_masiva(
     summary="Historial de cambios",
 )
 def historial(
-    _: LecturaDep,
+    _: Annotated[
+        Usuario, Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_PRESUPUESTO))
+    ],
     sesion: SesionDep,
     periodo: str | None = None,
     dimension: DimensionPresupuesto | None = None,
@@ -476,7 +583,11 @@ def historial(
     summary="Miembros de una dimension",
 )
 def dimensiones(
-    _: LecturaDep, sesion: SesionDep, tipo: TipoDimension
+    _: Annotated[
+        Usuario, Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_PRESUPUESTO))
+    ],
+    sesion: SesionDep,
+    tipo: TipoDimension,
 ) -> list[MiembroDimensionSalida]:
     """Los miembros que existen en una dimension, para poder elegir uno.
 
@@ -496,7 +607,10 @@ def dimensiones(
 
 @router.get("/calendario", response_model=list[CalendarioAgroSalida], summary="Dias por centro")
 def calendario(
-    _: LecturaDep, sesion: SesionDep, periodo: str = PeriodoQuery, hasta: date | None = None
+    _: Annotated[Usuario, Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_CALENDARIO))],
+    sesion: SesionDep,
+    periodo: str = PeriodoQuery,
+    hasta: date | None = None,
 ) -> list[CalendarioAgroSalida]:
     return AgroCalendarioService(sesion).listar(periodo, hasta)
 
@@ -507,7 +621,12 @@ def calendario(
     summary="Alertas y oportunidades comerciales",
 )
 def inteligencia(
-    _: LecturaDep, sesion: SesionDep, periodo: str = PeriodoQuery
+    _: Annotated[
+        Usuario,
+        Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_INTELIGENCIA_COMERCIAL)),
+    ],
+    sesion: SesionDep,
+    periodo: str = PeriodoQuery,
 ) -> RespuestaInteligencia:
     return InteligenciaComercialService(sesion).analizar(periodo)
 
@@ -541,7 +660,11 @@ def ingerir(usuario: AnalistaDep, sesion: SesionDep, desde: date, hasta: date) -
 
 
 @router.get("/ingesta/corridas", response_model=list[CorridaAgroSalida], summary="Corridas")
-def corridas(_: LecturaDep, sesion: SesionDep, limite: int = 50) -> list[CorridaAgroSalida]:
+def corridas(
+    _: Annotated[Usuario, Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_INGESTA))],
+    sesion: SesionDep,
+    limite: int = 50,
+) -> list[CorridaAgroSalida]:
     return AgroIngestaService(sesion).listar_corridas(limite)
 
 
@@ -570,7 +693,9 @@ def rechazos(usuario: GerenteDep, sesion: SesionDep, corrida_id: int) -> list[Re
     summary="Presupuesto mensual: los cuatro bloques y el total",
 )
 def presupuesto_mensual_resumen(
-    _: LecturaDep,
+    _: Annotated[
+        Usuario, Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_PRESUPUESTO))
+    ],
     sesion: SesionDep,
     periodo: str = PeriodoQuery,
 ) -> ResumenPresupuestoMensualSalida:
@@ -588,7 +713,9 @@ def presupuesto_mensual_resumen(
     summary="Asignaciones configurables por bloque",
 )
 def presupuesto_mensual_mapeos(
-    _: LecturaDep,
+    _: Annotated[
+        Usuario, Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_PRESUPUESTO))
+    ],
     sesion: SesionDep,
     bloque: str | None = None,
 ) -> list[MapeoMensualSalida]:
@@ -636,7 +763,9 @@ def presupuesto_mensual_guardar_detalle(
     summary="Presupuesto mensual del bloque de servicio",
 )
 def presupuesto_mensual_servicio(
-    _: LecturaDep,
+    _: Annotated[
+        Usuario, Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_PRESUPUESTO))
+    ],
     sesion: SesionDep,
     periodo: str = PeriodoQuery,
 ) -> ServicioMensualSalida:
@@ -676,7 +805,10 @@ def presupuesto_mensual_guardar_servicio(
     summary="Mapeos de canal del Excel comercial",
 )
 def presupuesto_mensual_canales_mapeos(
-    _: LecturaDep, sesion: SesionDep
+    _: Annotated[
+        Usuario, Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_PRESUPUESTO))
+    ],
+    sesion: SesionDep,
 ) -> list[CanalMapeoMensualSalida]:
     """Lista los mapeos de canal del Excel → vendedor / cliente / categoría A–F."""
     return AgroPresupuestoMensualService(sesion).listar_canales_mapeos()

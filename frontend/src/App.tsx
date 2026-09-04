@@ -63,6 +63,16 @@ function Restringido({
 }
 
 const RUTAS_POR_PERMISO: Record<string, string> = {
+  PERMISO_AGRO_CONSULTAR_RESUMEN: "/agro",
+  PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS: "/agro/reportes-ventas",
+  PERMISO_AGRO_CONSULTAR_CUBO_COMERCIAL: "/agro/cubo-comercial",
+  PERMISO_AGRO_CONSULTAR_CRUCE_COMERCIAL: "/agro/cruce",
+  PERMISO_AGRO_CONSULTAR_VENTA_DIARIA: "/agro/venta-diaria",
+  PERMISO_AGRO_CONSULTAR_INTELIGENCIA_COMERCIAL: "/agro/inteligencia",
+  PERMISO_AGRO_CONSULTAR_TAT: "/agro/tat",
+  PERMISO_AGRO_CONSULTAR_PRESUPUESTO: "/agro/presupuesto",
+  PERMISO_AGRO_CONSULTAR_CALENDARIO: "/agro/calendario",
+  PERMISO_AGRO_CONSULTAR_INGESTA: "/agro/ingesta",
   PERMISO_CONSULTAR_TABLERO: "/",
   PERMISO_CONSULTAR_CUMPLIMIENTO: "/cumplimiento",
   PERMISO_CONSULTAR_COSTOS: "/costos",
@@ -79,7 +89,13 @@ function AccesoModulo({ permiso, children }: { permiso: string; children: ReactN
   const { tienePermiso, esAdmin, usuario } = useAuth();
   const rutaInicial =
     usuario?.permisos.map((codigo) => RUTAS_POR_PERMISO[codigo]).find(Boolean) ?? "/";
-  const tienePermisosGranulares = usuario?.rol === "CONSULTA" && usuario.permisos.length > 0;
+  const tienePermisosGranulares =
+    usuario?.rol === "CONSULTA" &&
+    usuario.permisos.some((codigo) =>
+      permiso.startsWith("PERMISO_AGRO_")
+        ? codigo.startsWith("PERMISO_AGRO_")
+        : !codigo.startsWith("PERMISO_AGRO_"),
+    );
 
   if (esAdmin || !tienePermisosGranulares || tienePermiso(permiso)) return <>{children}</>;
   return <Navigate to={rutaInicial} replace />;
@@ -119,9 +135,16 @@ export function App() {
   // cerrada.
   const esAgro = marca.clave === "agropecuaria";
   const esCarnesFrias = marca.clave === "carnes-frias";
-  const permisosGranulares = usuario?.rol === "CONSULTA" && usuario.permisos.length > 0;
+  const permisosGranulares =
+    usuario?.rol === "CONSULTA" &&
+    usuario.permisos.some((codigo) => !codigo.startsWith("PERMISO_AGRO_"));
   const rutaInicialPermisos =
     usuario?.permisos.map((codigo) => RUTAS_POR_PERMISO[codigo]).find(Boolean) ?? "/";
+  const rutaInicialAgro =
+    usuario?.permisos
+      .filter((codigo) => codigo.startsWith("PERMISO_AGRO_"))
+      .map((codigo) => RUTAS_POR_PERMISO[codigo])
+      .find(Boolean) ?? "/agro";
 
   return (
     <Routes>
@@ -133,26 +156,26 @@ export function App() {
                 y sigue abriendo lo mismo manana. */}
             <Route
               index
-              element={<Navigate to={esCarnesFrias ? "/frias" : "/agro"} replace />}
+              element={<Navigate to={esCarnesFrias ? "/frias" : rutaInicialAgro} replace />}
             />
             <Route path={esCarnesFrias ? "frias" : "agro"}>
-              <Route index element={<ResumenAgro />} />
-              <Route path="cruce" element={<CruceAgro />} />
-              <Route path="cubo-comercial" element={<CuboComercialAgro />} />
-              <Route path="venta-diaria" element={<VentaDiariaAgro />} />
-              <Route path="reportes-ventas" element={<ReportesVentasAgro />} />
+              <Route index element={<AccesoModulo permiso="PERMISO_AGRO_CONSULTAR_RESUMEN"><ResumenAgro /></AccesoModulo>} />
+              <Route path="cruce" element={<AccesoModulo permiso="PERMISO_AGRO_CONSULTAR_CRUCE_COMERCIAL"><CruceAgro /></AccesoModulo>} />
+              <Route path="cubo-comercial" element={<AccesoModulo permiso="PERMISO_AGRO_CONSULTAR_CUBO_COMERCIAL"><CuboComercialAgro /></AccesoModulo>} />
+              <Route path="venta-diaria" element={<AccesoModulo permiso="PERMISO_AGRO_CONSULTAR_VENTA_DIARIA"><VentaDiariaAgro /></AccesoModulo>} />
+              <Route path="reportes-ventas" element={<AccesoModulo permiso="PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS"><ReportesVentasAgro /></AccesoModulo>} />
               <Route
                 path="presupuesto"
                 element={
-                  <Restringido roles={["ADMIN", "GERENTE", "ANALISTA"]}>
+                  <AccesoModulo permiso="PERMISO_AGRO_CONSULTAR_PRESUPUESTO">
                     <PresupuestoAgro />
-                  </Restringido>
+                  </AccesoModulo>
                 }
               />
-              <Route path="calendario" element={<CalendarioAgro />} />
-              <Route path="ingesta" element={<IngestaAgro />} />
-              <Route path="inteligencia" element={<InteligenciaAgro />} />
-              {esAgro ? <Route path="tat" element={<VentasTat />} /> : null}
+              <Route path="calendario" element={<AccesoModulo permiso="PERMISO_AGRO_CONSULTAR_CALENDARIO"><CalendarioAgro /></AccesoModulo>} />
+              <Route path="ingesta" element={<AccesoModulo permiso="PERMISO_AGRO_CONSULTAR_INGESTA"><IngestaAgro /></AccesoModulo>} />
+              <Route path="inteligencia" element={<AccesoModulo permiso="PERMISO_AGRO_CONSULTAR_INTELIGENCIA_COMERCIAL"><InteligenciaAgro /></AccesoModulo>} />
+              {esAgro ? <Route path="tat" element={<AccesoModulo permiso="PERMISO_AGRO_CONSULTAR_TAT"><VentasTat /></AccesoModulo>} /> : null}
             </Route>
           </>
         ) : (

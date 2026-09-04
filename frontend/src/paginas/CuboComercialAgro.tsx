@@ -12,6 +12,7 @@ import { useSearchParams } from "react-router-dom";
 import { useCuboAgro } from "@/api/consultasAgro";
 import type { DimensionCuboAgro, FilaCuboAgro } from "@/api/tiposAgro";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
+import { useAuth } from "@/auth/ContextoAuth";
 import { BarraFiltrosAgro, filtrosAgroDe, useFiltros } from "@/componentes/filtros";
 import {
   DIMENSIONES_CUBO,
@@ -28,6 +29,8 @@ const DIMENSIONES_POR_DEFECTO: DimensionCuboAgro[] = [
 const MAXIMO_DIMENSIONES = 3;
 
 export function CuboComercialAgro() {
+  const { tienePermiso, usuario } = useAuth();
+  const granular = usuario?.rol === "CONSULTA" && usuario.permisos.some((codigo) => codigo.startsWith("PERMISO_AGRO_"));
   const control = useFiltros();
   const [parametros, setParametros] = useSearchParams();
   const dimensiones = dimensionesDe(parametros.get("dimensiones"));
@@ -71,7 +74,7 @@ export function CuboComercialAgro() {
     <div className="pila">
       <BarraFiltrosAgro control={control} mostrar={{ rango: true, medida: false }} />
 
-      <section className="cubo__configuracion" aria-labelledby="cubo-titulo">
+      {!granular || tienePermiso("PERMISO_AGRO_CONFIGURAR_DIMENSIONES_CUBO") ? <section className="cubo__configuracion" aria-labelledby="cubo-titulo">
         <div className="cubo__introduccion">
           <p className="inteligencia__eyebrow">Cubo comercial</p>
           <h2 id="cubo-titulo">Explore la venta desde cualquier jerarquía</h2>
@@ -134,7 +137,7 @@ export function CuboComercialAgro() {
             </li>
           ))}
         </ol>
-      </section>
+      </section> : null}
 
       <AvisoError error={consulta.error} />
       {consulta.isLoading ? <Cargando texto="Construyendo el cubo comercial…" /> : null}

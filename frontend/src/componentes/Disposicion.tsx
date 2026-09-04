@@ -100,13 +100,13 @@ const MENU_AGRO: GrupoNav[] = [
   {
     titulo: "Gerencia",
     items: [
-      { ruta: "/agro", etiqueta: "Resumen de ventas", icono: "◱" },
-      { ruta: "/agro/reportes-ventas", etiqueta: "Reportes de ventas", icono: "▤" },
-      { ruta: "/agro/cubo-comercial", etiqueta: "Cubo comercial", icono: "▥" },
-      { ruta: "/agro/cruce", etiqueta: "Vendedor, cliente y producto", icono: "◇" },
-      { ruta: "/agro/venta-diaria", etiqueta: "Venta diaria", icono: "▦" },
-      { ruta: "/agro/inteligencia", etiqueta: "Inteligencia comercial", icono: "◇" },
-      { ruta: "/agro/tat", etiqueta: "Ventas TAT", icono: "▥" },
+      { ruta: "/agro", etiqueta: "Resumen de ventas", icono: "◱", permiso: "PERMISO_AGRO_CONSULTAR_RESUMEN" },
+      { ruta: "/agro/reportes-ventas", etiqueta: "Reportes de ventas", icono: "▤", permiso: "PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS" },
+      { ruta: "/agro/cubo-comercial", etiqueta: "Cubo comercial", icono: "▥", permiso: "PERMISO_AGRO_CONSULTAR_CUBO_COMERCIAL" },
+      { ruta: "/agro/cruce", etiqueta: "Vendedor, cliente y producto", icono: "◇", permiso: "PERMISO_AGRO_CONSULTAR_CRUCE_COMERCIAL" },
+      { ruta: "/agro/venta-diaria", etiqueta: "Venta diaria", icono: "▦", permiso: "PERMISO_AGRO_CONSULTAR_VENTA_DIARIA" },
+      { ruta: "/agro/inteligencia", etiqueta: "Inteligencia comercial", icono: "◇", permiso: "PERMISO_AGRO_CONSULTAR_INTELIGENCIA_COMERCIAL" },
+      { ruta: "/agro/tat", etiqueta: "Ventas TAT", icono: "▥", permiso: "PERMISO_AGRO_CONSULTAR_TAT" },
     ],
   },
   {
@@ -117,9 +117,10 @@ const MENU_AGRO: GrupoNav[] = [
         etiqueta: "Presupuesto",
         icono: "≡",
         roles: ["ADMIN", "GERENTE", "ANALISTA"],
+        permiso: "PERMISO_AGRO_CONSULTAR_PRESUPUESTO",
       },
-      { ruta: "/agro/calendario", etiqueta: "Días hábiles", icono: "◷" },
-      { ruta: "/agro/ingesta", etiqueta: "Ingesta", icono: "⇄" },
+      { ruta: "/agro/calendario", etiqueta: "Días hábiles", icono: "◷", permiso: "PERMISO_AGRO_CONSULTAR_CALENDARIO" },
+      { ruta: "/agro/ingesta", etiqueta: "Ingesta", icono: "⇄", permiso: "PERMISO_AGRO_CONSULTAR_INGESTA" },
     ],
   },
   {
@@ -345,7 +346,12 @@ function BarraLateral() {
   const { tieneRol, tienePermiso, usuario } = useAuth();
   const marca = useMarcaElegida();
   const permisosGranulares =
-    usuario?.rol === "CONSULTA" && usuario.permisos.length > 0;
+    usuario?.rol === "CONSULTA" &&
+    usuario.permisos.some((codigo) =>
+      marca.clave === "agropecuaria"
+        ? codigo.startsWith("PERMISO_AGRO_")
+        : !codigo.startsWith("PERMISO_AGRO_"),
+    );
 
   return (
     <aside className="barra-lateral">
