@@ -12,6 +12,7 @@ las cuentas se desactivan (§3.3). Ver `UsuariosService.desactivar`.
 from __future__ import annotations
 
 from fastapi import APIRouter, Query, Request, status
+from pydantic import BaseModel, Field
 
 from app.api.v1 import AdministracionDep
 from app.application.services.usuarios_service import UsuariosService
@@ -21,11 +22,16 @@ from app.schemas.usuarios import (
     AlcanceEntrada,
     AuditoriaSalida,
     ClaveProvisional,
+    PermisoSalida,
     UsuarioCreado,
     UsuarioModificacion,
     UsuarioNuevo,
     UsuarioSalida,
 )
+
+
+class PermisoEntrada(BaseModel):
+    codigo: str = Field(min_length=1, max_length=80)
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
@@ -132,6 +138,42 @@ def fijar_alcance(
     menos; y `{"puntos_venta": []}` deja al usuario sin ninguno.
     """
     return _servicio(sesion, actor, request).fijar_alcance(usuario_id, datos)
+
+
+@router.post("/{usuario_id}/permisos", response_model=UsuarioSalida, summary="Asignar permiso")
+def asignar_permiso(
+    usuario_id: int,
+    datos: PermisoEntrada,
+    actor: AdministracionDep,
+    sesion: SesionDep,
+    request: Request,
+) -> UsuarioSalida:
+    return _servicio(sesion, actor, request).asignar_permiso(usuario_id, datos.codigo)
+
+
+@router.get("/{usuario_id}/permisos", response_model=list[PermisoSalida], summary="Listar permisos")
+def listar_permisos(
+    usuario_id: int,
+    actor: AdministracionDep,
+    sesion: SesionDep,
+    request: Request,
+) -> list[PermisoSalida]:
+    return _servicio(sesion, actor, request).listar_permisos(usuario_id)
+
+
+@router.delete(
+    "/{usuario_id}/permisos/{codigo}",
+    response_model=UsuarioSalida,
+    summary="Retirar permiso",
+)
+def retirar_permiso(
+    usuario_id: int,
+    codigo: str,
+    actor: AdministracionDep,
+    sesion: SesionDep,
+    request: Request,
+) -> UsuarioSalida:
+    return _servicio(sesion, actor, request).retirar_permiso(usuario_id, codigo)
 
 
 @router.post("/{usuario_id}/activar", response_model=UsuarioSalida, summary="Activar usuario")

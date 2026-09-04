@@ -45,6 +45,7 @@ class PerfilUsuario(EsquemaBase):
     nombre: str
     rol: Rol
     puntos_venta: list[str] = Field(default_factory=list)
+    permisos: list[str] = Field(default_factory=list)
 
     #: La cuenta arrastra una clave provisional y debe cambiarla.
     #:

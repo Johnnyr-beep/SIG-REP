@@ -48,6 +48,12 @@ class UsuarioSalida(EsquemaBase):
         default_factory=list,
         description="Códigos C.O. del alcance del usuario. Vacío = sin restricción de PDV.",
     )
+    permisos: list[str] = Field(default_factory=list)
+
+
+class PermisoSalida(EsquemaBase):
+    usuario_id: int
+    codigo: str
 
 
 class UsuarioCreado(EsquemaBase):

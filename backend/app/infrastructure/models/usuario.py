@@ -46,6 +46,11 @@ class Usuario(Base, TimestampMixin):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    permisos: Mapped[list[UsuarioPermiso]] = relationship(
+        back_populates="usuario",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
     @property
     def esta_bloqueado(self) -> bool:
@@ -64,6 +69,9 @@ class Usuario(Base, TimestampMixin):
 
     def tiene_rol(self, *roles: Rol) -> bool:
         return any(self.rol == rol.value for rol in roles)
+
+    def tiene_permiso(self, codigo: str) -> bool:
+        return any(permiso.codigo == codigo for permiso in self.permisos)
 
     def __repr__(self) -> str:  # pragma: no cover - ayuda de depuración
         return f"<Usuario {self.usuario} ({self.rol})>"
@@ -87,6 +95,23 @@ class UsuarioPuntoVenta(Base):
 
     usuario: Mapped[Usuario] = relationship(back_populates="alcances")
     punto_venta: Mapped[PuntoVenta] = relationship(lazy="joined")
+
+
+class UsuarioPermiso(Base):
+    """Permiso granular asignado a una cuenta, independiente de su rol."""
+
+    __tablename__ = "usuario_permisos"
+    __table_args__ = (
+        UniqueConstraint("usuario_id", "codigo", name="uq_usuario_permiso"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    codigo: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+
+    usuario: Mapped[Usuario] = relationship(back_populates="permisos")
 
 
 class UsuarioAuditoria(Base):

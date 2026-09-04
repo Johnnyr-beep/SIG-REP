@@ -34,11 +34,13 @@ from app.infrastructure.models.organizacion import PuntoVenta
 from app.infrastructure.models.usuario import (
     Usuario,
     UsuarioAuditoria,
+    UsuarioPermiso,
     UsuarioPuntoVenta,
 )
 from app.schemas.usuarios import (
     AlcanceEntrada,
     AuditoriaSalida,
+    PermisoSalida,
     UsuarioModificacion,
     UsuarioNuevo,
     UsuarioSalida,
@@ -203,6 +205,35 @@ class UsuariosService:
         self._rechazar_autoadministracion(objetivo)
         self._fijar_alcance(objetivo, datos.puntos_venta)
         self._sesion.flush()
+        return self._salida(objetivo)
+
+    def asignar_permiso(self, usuario_id: int, codigo: str) -> UsuarioSalida:
+        objetivo = self._obtener(usuario_id)
+        self._rechazar_autoadministracion(objetivo)
+        if not objetivo.tiene_permiso(codigo):
+            objetivo.permisos.append(UsuarioPermiso(codigo=codigo))
+            self._registrar(objetivo, AccionUsuario.ASIGNAR_PERMISO, campo="permiso", nuevo=codigo)
+            self._sesion.flush()
+        return self._salida(objetivo)
+
+    def listar_permisos(self, usuario_id: int) -> list[PermisoSalida]:
+        objetivo = self._obtener(usuario_id)
+        return [
+            PermisoSalida(usuario_id=objetivo.id, codigo=permiso.codigo)
+            for permiso in sorted(objetivo.permisos, key=lambda permiso: permiso.codigo)
+        ]
+
+    def retirar_permiso(self, usuario_id: int, codigo: str) -> UsuarioSalida:
+        objetivo = self._obtener(usuario_id)
+        self._rechazar_autoadministracion(objetivo)
+        for permiso in list(objetivo.permisos):
+            if permiso.codigo == codigo:
+                objetivo.permisos.remove(permiso)
+                self._registrar(
+                    objetivo, AccionUsuario.RETIRAR_PERMISO, campo="permiso", anterior=codigo
+                )
+                self._sesion.flush()
+                break
         return self._salida(objetivo)
 
     # ── Estado de la cuenta ───────────────────────────────────────────────────
@@ -439,4 +470,5 @@ class UsuariosService:
             ultimo_acceso=usuario.ultimo_acceso,
             creado_en=usuario.creado_en,
             puntos_venta=sorted(a.punto_venta.codigo_co for a in usuario.alcances),
+            permisos=sorted(permiso.codigo for permiso in usuario.permisos),
         )

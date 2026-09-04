@@ -28,6 +28,7 @@ export interface Usuario {
   debe_cambiar_password: boolean;
   /** Puntos de venta visibles para el usuario; vacío en los roles globales. */
   puntos_venta: ReferenciaSimple[];
+  permisos: string[];
 }
 
 /** Cuerpo de `POST /auth/cambiar-clave`. */

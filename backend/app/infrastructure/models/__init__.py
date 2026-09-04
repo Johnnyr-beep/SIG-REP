@@ -37,6 +37,7 @@ from app.infrastructure.models.usuario import (
     IntentoAcceso,
     Usuario,
     UsuarioAuditoria,
+    UsuarioPermiso,
     UsuarioPuntoVenta,
 )
 from app.infrastructure.models.venta import Cliente, VentaLinea
@@ -70,6 +71,7 @@ __all__ = [
     "RechazoIngesta",
     "Usuario",
     "UsuarioAuditoria",
+    "UsuarioPermiso",
     "UsuarioPuntoVenta",
     "VentaLinea",
     "Zona",

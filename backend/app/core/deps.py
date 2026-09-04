@@ -28,6 +28,8 @@ from app.core.security import TipoToken, decodificar_token
 from app.domain.enums import Rol
 from app.infrastructure.models.usuario import Usuario
 
+PERMISO_VENTA_DIARIA_ASADERO = "PERMISO_VENTA_DIARIA_ASADERO"
+
 # `auto_error=False` para devolver nuestro formato de error uniforme en lugar
 # del que impone Starlette.
 _esquema_bearer = HTTPBearer(auto_error=False, description="Token JWT de acceso")
@@ -194,6 +196,29 @@ def exigir_roles(*roles: Rol) -> Callable[[Usuario], Usuario]:
         return usuario
 
     return _verificar
+
+
+def exigir_venta_diaria_asadero(usuario: UsuarioDep) -> Usuario:
+    """Permite ADMIN o la capacidad de lectura estrictamente especializada."""
+    if usuario.rol != Rol.ADMIN.value and not usuario.tiene_permiso(
+        PERMISO_VENTA_DIARIA_ASADERO
+    ):
+        raise ErrorAutorizacion("No tiene permiso para Venta Diaria Asadero.")
+    if usuario.debe_cambiar_password:
+        raise ErrorClavePendiente(
+            "Debe cambiar la clave provisional antes de usar el sistema.",
+            detalles={"debe_cambiar_password": True},
+        )
+    return usuario
+
+
+def exigir_lectura_general(usuario: UsuarioDep) -> Usuario:
+    """Lectura RBAC general; una cuenta granular queda fuera de este ámbito."""
+    if usuario.rol == Rol.CONSULTA.value and usuario.tiene_permiso(
+        PERMISO_VENTA_DIARIA_ASADERO
+    ):
+        raise ErrorAutorizacion("Esta cuenta solo tiene acceso a Venta Diaria Asadero.")
+    return usuario
 
 
 def alcance_puntos_venta(usuario: Usuario) -> list[int] | None:

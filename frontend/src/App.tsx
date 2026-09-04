@@ -1,6 +1,6 @@
 /** Composición de la aplicación: rutas y guardias de acceso. */
 
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 
 import type { Rol } from "@/api/tipos";
@@ -61,9 +61,25 @@ function Restringido({
   return <>{children}</>;
 }
 
+function SoloVentaAsadero({ children }: { children: ReactNode }) {
+  const { tienePermiso, esAdmin, usuario } = useAuth();
+  const location = useLocation();
+  if (esAdmin || usuario?.rol !== "CONSULTA") {
+    return <>{children}</>;
+  }
+  const tieneAsadero = tienePermiso("PERMISO_VENTA_DIARIA_ASADERO");
+  if (location.pathname === "/venta-diaria-asadero") {
+    return tieneAsadero ? <>{children}</> : <Navigate to="/" replace />;
+  }
+  if (tieneAsadero) {
+    return <Navigate to="/venta-diaria-asadero" replace />;
+  }
+  return <>{children}</>;
+}
+
 export function App() {
   const { marca } = useMarca();
-  const { autenticado, cargando, debeCambiarClave } = useAuth();
+  const { autenticado, cargando, debeCambiarClave, usuario } = useAuth();
 
   // Primer corte, antes que ninguno: sin unidad de negocio elegida no hay logo
   // que enseñar ni paleta que aplicar, y el acceso pediría credenciales sin
@@ -95,6 +111,9 @@ export function App() {
   // cerrada.
   const esAgro = marca.clave === "agropecuaria";
   const esCarnesFrias = marca.clave === "carnes-frias";
+  const soloVentaAsadero =
+    usuario?.rol === "CONSULTA" &&
+    usuario.permisos.includes("PERMISO_VENTA_DIARIA_ASADERO");
 
   return (
     <Routes>
@@ -130,11 +149,31 @@ export function App() {
           </>
         ) : (
           <>
-            <Route index element={<Tablero />} />
-            <Route path="cumplimiento" element={<Cumplimiento />} />
-            <Route path="costos" element={<Costos />} />
-            <Route path="venta-diaria" element={<VentaDiaria />} />
-            <Route path="clientes" element={<Clientes />} />
+            <Route
+              index
+              element={
+                soloVentaAsadero ? (
+                  <Navigate to="/venta-diaria-asadero" replace />
+                ) : (
+                  <Tablero />
+                )
+              }
+            />
+            <Route
+              path="venta-diaria-asadero"
+              element={
+                <SoloVentaAsadero>
+                  <VentaDiaria asadero />
+                </SoloVentaAsadero>
+              }
+            />
+            <Route
+              path="cumplimiento"
+              element={<SoloVentaAsadero><Cumplimiento /></SoloVentaAsadero>}
+            />
+            <Route path="costos" element={<SoloVentaAsadero><Costos /></SoloVentaAsadero>} />
+            <Route path="venta-diaria" element={<SoloVentaAsadero><VentaDiaria /></SoloVentaAsadero>} />
+            <Route path="clientes" element={<SoloVentaAsadero><Clientes /></SoloVentaAsadero>} />
             <Route
               path="presupuesto"
               element={
@@ -143,8 +182,22 @@ export function App() {
                 </Restringido>
               }
             />
-            <Route path="calendario" element={<Calendario />} />
-            <Route path="ingesta" element={<Ingesta />} />
+            <Route
+              path="calendario"
+              element={
+                <SoloVentaAsadero>
+                  <Calendario />
+                </SoloVentaAsadero>
+              }
+            />
+            <Route
+              path="ingesta"
+              element={
+                <SoloVentaAsadero>
+                  <Ingesta />
+                </SoloVentaAsadero>
+              }
+            />
             <Route
               path="historia-venta"
               element={

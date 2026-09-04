@@ -24,6 +24,7 @@ interface ItemNav {
   icono: string;
   /** Roles que ven la entrada; ausente significa «todos los autenticados». */
   roles?: Rol[];
+  permiso?: string;
 }
 
 interface GrupoNav {
@@ -49,6 +50,12 @@ const MENU_CARNES: GrupoNav[] = [
       { ruta: "/cumplimiento", etiqueta: "Cumplimiento por PDV", icono: "▤" },
       { ruta: "/costos", etiqueta: "Costos y margen", icono: "◒" },
       { ruta: "/venta-diaria", etiqueta: "Venta diaria", icono: "▦" },
+      {
+        ruta: "/venta-diaria-asadero",
+        etiqueta: "Venta diaria Asadero",
+        icono: "▦",
+        permiso: "PERMISO_VENTA_DIARIA_ASADERO",
+      },
       { ruta: "/clientes", etiqueta: "Clientes y vendedores", icono: "◇" },
     ],
   },
@@ -185,6 +192,7 @@ const TITULOS: Record<string, string> = {
   "/cumplimiento": "Cumplimiento por punto de venta",
   "/costos": "Costos y margen",
   "/venta-diaria": "Venta diaria",
+  "/venta-diaria-asadero": "Venta diaria Asadero",
   "/clientes": "Clientes y vendedores",
   "/presupuesto": "Parametrización de presupuesto",
   "/historia-venta": "Venta del año anterior",
@@ -329,8 +337,11 @@ function MenuUsuario() {
 }
 
 function BarraLateral() {
-  const { tieneRol } = useAuth();
+  const { tieneRol, tienePermiso, usuario } = useAuth();
   const marca = useMarcaElegida();
+  const soloVentaAsadero =
+    usuario?.rol === "CONSULTA" &&
+    tienePermiso("PERMISO_VENTA_DIARIA_ASADERO");
 
   return (
     <aside className="barra-lateral">
@@ -355,7 +366,10 @@ function BarraLateral() {
       <nav className="navegacion" aria-label="Navegación principal">
         {menuDe(marca.clave).map((grupo) => {
           const visibles = grupo.items.filter(
-            (item) => !item.roles || tieneRol(...item.roles),
+            (item) =>
+              (!item.roles || tieneRol(...item.roles)) &&
+              (!item.permiso || tienePermiso(item.permiso)) &&
+              (!soloVentaAsadero || item.ruta === "/venta-diaria-asadero"),
           );
           if (visibles.length === 0) return null;
 

@@ -28,6 +28,7 @@ import {
   useActualizarUsuario,
   useAuditoriaUsuarios,
   useCambiarEstadoUsuario,
+  useCambiarPermisoUsuario,
   useCrearUsuario,
   useFijarPuntosVenta,
   usePuntosVenta,
@@ -934,6 +935,7 @@ export function Usuarios() {
   const [secreto, setSecreto] = useState<Secreto | null>(null);
 
   const cambiarEstado = useCambiarEstadoUsuario();
+  const cambiarPermiso = useCambiarPermisoUsuario();
   const restablecer = useRestablecerClave();
 
   const catalogo = useMemo(
@@ -1136,6 +1138,11 @@ export function Usuarios() {
                         )}
                       </td>
                       <td>
+                        <Distintivo tono={cuenta.permisos.includes("PERMISO_VENTA_DIARIA_ASADERO") ? "exito" : "neutro"}>
+                          {cuenta.permisos.includes("PERMISO_VENTA_DIARIA_ASADERO") ? "Asadero" : "Sin permiso"}
+                        </Distintivo>
+                      </td>
+                      <td>
                         <div className="grupo-botones">
                           <button
                             type="button"
@@ -1182,6 +1189,22 @@ export function Usuarios() {
                             title={motivoPropia}
                           >
                             Restablecer clave
+                          </button>
+                          <button
+                            type="button"
+                            className="boton boton--pequeno"
+                            onClick={() =>
+                              cambiarPermiso.mutate({
+                                id: cuenta.id,
+                                asignar: !cuenta.permisos.includes("PERMISO_VENTA_DIARIA_ASADERO"),
+                              })
+                            }
+                            disabled={propia || cambiarPermiso.isPending}
+                            title={motivoPropia}
+                          >
+                            {cuenta.permisos.includes("PERMISO_VENTA_DIARIA_ASADERO")
+                              ? "Quitar Asadero"
+                              : "Dar Asadero"}
                           </button>
                         </div>
                       </td>

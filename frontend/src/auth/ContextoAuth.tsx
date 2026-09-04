@@ -40,6 +40,7 @@ interface ValorAuth {
   debeCambiarClave: boolean;
   /** Único rol que administra cuentas. Los otros cuatro reciben 403. */
   esAdmin: boolean;
+  tienePermiso: (codigo: string) => boolean;
 }
 
 const ContextoAuth = createContext<ValorAuth | null>(null);
@@ -103,6 +104,8 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
         : false,
       debeCambiarClave: usuario?.debe_cambiar_password === true,
       esAdmin: usuario?.rol === "ADMIN",
+      tienePermiso: (codigo) =>
+        usuario?.rol === "ADMIN" || usuario?.permisos.includes(codigo) === true,
     }),
     [usuario, hayToken, isLoading, entrar, salir, tieneRol],
   );

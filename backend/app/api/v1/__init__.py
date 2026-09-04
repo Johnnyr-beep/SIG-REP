@@ -14,7 +14,7 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from app.core.deps import exigir_roles
+from app.core.deps import exigir_lectura_general, exigir_roles
 from app.domain.enums import Rol
 from app.infrastructure.models.usuario import Usuario
 
@@ -22,7 +22,7 @@ from app.infrastructure.models.usuario import Usuario
 #: restringido a sus puntos por `alcance_puntos_venta`, no por el rol.
 LecturaDep = Annotated[
     Usuario,
-    Depends(exigir_roles(Rol.ADMIN, Rol.GERENTE, Rol.ANALISTA, Rol.JEFE_PDV, Rol.CONSULTA)),
+    Depends(exigir_lectura_general),
 ]
 #: Parametriza: presupuesto, calendario, mapeo de categorías, ingesta.
 AnalistaDep = Annotated[Usuario, Depends(exigir_roles(Rol.ADMIN, Rol.ANALISTA, Rol.GERENTE))]

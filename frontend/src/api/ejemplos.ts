@@ -1150,6 +1150,7 @@ const USUARIO: Usuario = {
   // reportes, y arrancar siempre en la pantalla de cambio de clave lo impediría.
   debe_cambiar_password: false,
   puntos_venta: [],
+  permisos: [],
 };
 
 const SALUD: Salud = {

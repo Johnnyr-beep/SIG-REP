@@ -59,6 +59,8 @@ class AccionUsuario(StrEnum):
     CREAR = "CREAR"
     MODIFICAR = "MODIFICAR"
     ASIGNAR_ALCANCE = "ASIGNAR_ALCANCE"
+    ASIGNAR_PERMISO = "ASIGNAR_PERMISO"
+    RETIRAR_PERMISO = "RETIRAR_PERMISO"
     ACTIVAR = "ACTIVAR"
     DESACTIVAR = "DESACTIVAR"
     RESTABLECER_CLAVE = "RESTABLECER_CLAVE"
@@ -72,6 +74,8 @@ _ETIQUETAS_ACCION: dict[AccionUsuario, str] = {
     AccionUsuario.CREAR: "Alta de usuario",
     AccionUsuario.MODIFICAR: "Modificación de datos",
     AccionUsuario.ASIGNAR_ALCANCE: "Cambio de alcance",
+    AccionUsuario.ASIGNAR_PERMISO: "Asignacion de permiso",
+    AccionUsuario.RETIRAR_PERMISO: "Retirada de permiso",
     AccionUsuario.ACTIVAR: "Activación",
     AccionUsuario.DESACTIVAR: "Desactivación",
     AccionUsuario.RESTABLECER_CLAVE: "Restablecimiento de clave",

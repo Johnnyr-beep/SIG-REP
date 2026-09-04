@@ -12,14 +12,15 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 
 from app.api.v1 import LecturaDep
 from app.application.services import exportacion_service
 from app.application.services.reportes_service import FiltrosReporte, ReportesService
-from app.core.deps import SesionDep, alcance_puntos_venta
+from app.core.deps import SesionDep, alcance_puntos_venta, exigir_venta_diaria_asadero
 from app.domain.enums import AgrupacionClientes, Medida
+from app.infrastructure.models.usuario import Usuario
 from app.schemas.reportes import (
     RespuestaClientes,
     RespuestaCostos,
@@ -175,6 +176,26 @@ def venta_diaria(
     """
     return ReportesService(sesion).venta_diaria(
         _filtros(usuario, periodo, hasta, grupo, punto_venta, categoria, medida, desde)
+    )
+
+
+@router.get(
+    "/venta-diaria-asadero",
+    response_model=RespuestaVentaDiaria,
+    summary="Venta diaria de Asadero",
+)
+def venta_diaria_asadero(
+    usuario: Annotated[Usuario, Depends(exigir_venta_diaria_asadero)],
+    sesion: SesionDep,
+    periodo: str = PeriodoQuery,
+    hasta: date | None = None,
+    desde: date | None = DesdeQuery,
+    grupo: str | None = None,
+    punto_venta: str | None = PuntoVentaQuery,
+    medida: Medida = Medida.VALOR,
+) -> RespuestaVentaDiaria:
+    return ReportesService(sesion).venta_diaria(
+        _filtros(usuario, periodo, hasta, grupo, punto_venta, "ASADERO", medida, desde)
     )
 
 

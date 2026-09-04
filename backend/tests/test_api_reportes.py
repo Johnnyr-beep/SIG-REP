@@ -13,8 +13,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.deps import PERMISO_VENTA_DIARIA_ASADERO
 from app.infrastructure.models.organizacion import PuntoVenta
 from app.infrastructure.models.periodo import CalendarioZona
+from app.infrastructure.models.usuario import Usuario, UsuarioPermiso
 from tests.conftest import (
     PERIODO,
     dar_presupuesto,
@@ -24,6 +26,36 @@ from tests.conftest import (
 )
 
 D = Decimal
+
+
+def test_permiso_asadero_consulta_solo_endpoint_forzado(
+    sesion: Session, cliente_http: TestClient, consulta: dict[str, str]
+) -> None:
+    usuario = sesion.scalars(select(Usuario).where(Usuario.usuario == "consulta")).one()
+    sesion.add(UsuarioPermiso(usuario_id=usuario.id, codigo=PERMISO_VENTA_DIARIA_ASADERO))
+    sesion.commit()
+    dar_venta(sesion, "402", "ASADERO", 1, "10")
+    dar_venta(sesion, "402", "RES", 1, "90")
+
+    respuesta = cliente_http.get(
+        "/api/v1/reportes/venta-diaria-asadero",
+        params={"periodo": PERIODO, "categoria": "OTRA"},
+        headers=consulta,
+    )
+
+    assert respuesta.status_code == 200
+    assert respuesta.json()["totales"]["total"] == "10.00"
+
+
+def test_sin_permiso_asadero_no_puede_consultar_endpoint_especializado(
+    consulta: dict[str, str], cliente_http: TestClient
+) -> None:
+    respuesta = cliente_http.get(
+        "/api/v1/reportes/venta-diaria-asadero",
+        params={"periodo": PERIODO},
+        headers=consulta,
+    )
+    assert respuesta.status_code == 403
 
 
 def _fijar_calendario(sesion: Session, dias_habiles: str, dias_trabajados: str) -> None:

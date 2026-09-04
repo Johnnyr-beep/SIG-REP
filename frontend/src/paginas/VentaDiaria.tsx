@@ -32,7 +32,7 @@
 
 import { useState } from "react";
 
-import { useExportar, useVentaDiaria } from "@/api/consultas";
+import { useExportar, useVentaDiaria, useVentaDiariaAsadero } from "@/api/consultas";
 import type { FilaVentaDiaria, RespuestaVentaDiaria } from "@/api/tipos";
 import { MAXIMO_DIAS_VENTA_DIARIA } from "@/api/tipos";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
@@ -142,7 +142,7 @@ function CeldaDia({
   );
 }
 
-export function VentaDiaria() {
+export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
   const control = useFiltros();
   const { filtros } = control;
 
@@ -159,7 +159,9 @@ export function VentaDiaria() {
   const rangoExcesivo = dias !== null && dias > MAXIMO_DIAS_VENTA_DIARIA;
   const rangoValido = !rangoInvertido && !rangoExcesivo;
 
-  const { data, isLoading, error } = useVentaDiaria(filtros, rangoValido);
+  const { data, isLoading, error } = asadero
+    ? useVentaDiariaAsadero(filtros, rangoValido)
+    : useVentaDiaria(filtros, rangoValido);
   const exportar = useExportar();
 
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
@@ -249,8 +251,8 @@ export function VentaDiaria() {
     <div className="pila">
       <BarraFiltros
         control={control}
-        mostrar={{ rango: true, categoria: true }}
-        acciones={
+        mostrar={{ rango: true, categoria: !asadero }}
+        acciones={asadero ? undefined : (
           <button
             type="button"
             className="boton boton--pequeno"
@@ -261,7 +263,7 @@ export function VentaDiaria() {
           >
             {exportar.isPending ? "Generando…" : "Exportar a Excel"}
           </button>
-        }
+        )}
       />
 
       {rangoInvertido ? (

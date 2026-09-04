@@ -90,6 +90,7 @@ def perfil(usuario: UsuarioDep, sesion: SesionDep) -> PerfilUsuario:
         nombre=usuario.nombre,
         rol=Rol(usuario.rol),
         puntos_venta=codigos,
+        permisos=sorted(permiso.codigo for permiso in usuario.permisos),
         debe_cambiar_password=usuario.debe_cambiar_password,
     )
 

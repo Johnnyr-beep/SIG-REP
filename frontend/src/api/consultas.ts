@@ -301,6 +301,22 @@ export function useVentaDiaria(
   });
 }
 
+export function useVentaDiariaAsadero(
+  filtros: FiltrosReporte,
+  habilitado = true,
+): UseQueryResult<RespuestaVentaDiaria> {
+  return useQuery({
+    queryKey: ["reporte", "venta-diaria-asadero", filtros],
+    queryFn: () =>
+      peticion<RespuestaVentaDiaria>("/reportes/venta-diaria-asadero", {
+        parametros: comoParametrosDiarios(filtros),
+      }),
+    enabled: habilitado,
+    staleTime: 60_000,
+  });
+}
+
+
 export function useClientes(
   filtros: FiltrosReporte,
   por: CorteClientes,
@@ -684,6 +700,27 @@ export function useCambiarEstadoUsuario(): UseMutationResult<
         `/usuarios/${id}/${activar ? "activar" : "desactivar"}`,
         {
           metodo: "POST",
+        },
+      ),
+    onSuccess: invalidar,
+  });
+}
+
+export function useCambiarPermisoUsuario(): UseMutationResult<
+  UsuarioAdministrado,
+  Error,
+  { id: number; asignar: boolean }
+> {
+  const invalidar = useInvalidarUsuarios();
+  return useMutation({
+    mutationFn: ({ id, asignar }) =>
+      peticion<UsuarioAdministrado>(
+        `/usuarios/${id}/permisos${asignar ? "" : "/PERMISO_VENTA_DIARIA_ASADERO"}`,
+        {
+          metodo: asignar ? "POST" : "DELETE",
+          ...(asignar
+            ? { cuerpo: { codigo: "PERMISO_VENTA_DIARIA_ASADERO" } }
+            : {}),
         },
       ),
     onSuccess: invalidar,
