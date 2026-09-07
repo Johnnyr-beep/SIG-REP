@@ -74,6 +74,9 @@ services:
       # de esta lista, y el contenedor arrancando sin ella sin decir nada.
       SIGREP_DB_URL_AGRO: ${SIGREP_DB_URL_AGRO:-}
       SIGREP_DB_URL_CARNES_FRIAS: ${SIGREP_DB_URL_CARNES_FRIAS:-}
+      # Instancia corporativa: conexión exclusiva, obligatoria al declarar
+      # SIGREP_UNIDAD=grupo-santacruz.
+      SIGREP_DB_URL_GRUPO_SANTACRUZ: ${SIGREP_DB_URL_GRUPO_SANTACRUZ:-}
       SIGREP_CORS_ORIGENES: ${SIGREP_CORS_ORIGENES}
       # Si el `Host` público no coincide con lo declarado aquí, la API responde
       # 400 «Invalid host header» a TODO el tráfico, sonda de salud incluida, y

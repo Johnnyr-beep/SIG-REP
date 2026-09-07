@@ -22,6 +22,7 @@ from sqlalchemy import create_engine, pool
 # autogenerate produciría una migración vacía.
 import app.infrastructure.models  # noqa: F401
 from alembic import context
+from app.core.config import obtener_settings
 from app.core.db import Base, urls_por_unidad
 
 config = context.config
@@ -98,10 +99,11 @@ def ejecutar_online() -> None:
     """
     destinos = _destinos()
 
-    principal = destinos.pop("carnes", None)
+    unidad_principal = obtener_settings().unidad
+    principal = destinos.pop(unidad_principal if unidad_principal != "todas" else "carnes", None)
     if principal is not None:
-        print("[alembic] Migrando la base de carnes…")
-        _migrar("carnes", principal)
+        print(f"[alembic] Migrando la base de {unidad_principal}…")
+        _migrar(unidad_principal, principal)
 
     for unidad, url in destinos.items():
         print(f"[alembic] Migrando la base de {unidad}…")
@@ -110,8 +112,8 @@ def ejecutar_online() -> None:
         except Exception as error:
             print(f"[alembic] ERROR: no se pudo migrar la base de {unidad}: {error}")
             print(f"[alembic] La aplicacion arranca igual y {unidad} no va a responder.")
-            print("[alembic] Revise SIGREP_DB_URL_AGRO: usuario, servidor y nombre de base.")
-            print("[alembic] Carnes no esta afectada.")
+            print("[alembic] Revise la URL de base configurada para esa unidad.")
+            print(f"[alembic] {unidad_principal} no esta afectada.")
 
 
 if context.is_offline_mode():

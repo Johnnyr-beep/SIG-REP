@@ -37,7 +37,7 @@ from app.core.config import obtener_settings
 
 #: Cada unidad que se puede autenticar tiene un motor propio. Carnes Frías no
 #: cae nunca a Carnes Santacruz: sin URL propia el arranque de su sesión falla.
-UnidadDatos = Literal["carnes", "agropecuaria", "carnes-frias"]
+UnidadDatos = Literal["carnes", "agropecuaria", "carnes-frias", "grupo-santacruz"]
 
 UNIDAD_POR_DEFECTO: UnidadDatos = "carnes"
 
@@ -120,12 +120,17 @@ def fabrica_de(unidad: UnidadDatos = UNIDAD_POR_DEFECTO) -> sessionmaker[Session
 def urls_por_unidad() -> dict[str, str]:
     """Qué dirección le toca a cada unidad. Para migrar y para diagnosticar."""
     settings = obtener_settings()
+    if settings.unidad == "grupo-santacruz":
+        return {"grupo-santacruz": settings.url_de_unidad("grupo-santacruz")}
+
     urls = {
         "carnes": settings.url_de_unidad("carnes"),
         "agropecuaria": settings.url_de_unidad("agropecuaria"),
     }
     if settings.db_url_carnes_frias:
         urls["carnes-frias"] = settings.url_de_unidad("carnes-frias")
+    if settings.db_url_grupo_santacruz:
+        urls["grupo-santacruz"] = settings.url_de_unidad("grupo-santacruz")
     return urls
 
 

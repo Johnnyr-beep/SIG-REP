@@ -75,6 +75,7 @@ services:
       # Base propia de Agropecuaria. Vacio = las dos unidades comparten base.
       SIGREP_DB_URL_AGRO: ${SIGREP_DB_URL_AGRO:-}
       SIGREP_DB_URL_CARNES_FRIAS: ${SIGREP_DB_URL_CARNES_FRIAS:-}
+      SIGREP_DB_URL_GRUPO_SANTACRUZ: ${SIGREP_DB_URL_GRUPO_SANTACRUZ:-}
       SIGREP_DB_USUARIO: ${SIGREP_DB_USUARIO:-sigrep_app}
       SIGREP_DB_PASSWORD: ${SIGREP_DB_PASSWORD}
       # Tráfico interno de la red Docker: TLS si está disponible, sin exigirlo.

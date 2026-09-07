@@ -60,7 +60,13 @@ FuenteVentaConfigurada = Literal["excel", "siesa"]
 #: elige cual se mira. El valor existe para el dia que una unidad se lleve a su
 #: propio despliegue: puesto en `agropecuaria`, la interfaz deja de ofrecer
 #: carnes en vez de llevar a alguien a unas tablas vacias.
-UnidadNegocio = Literal["todas", "carnes", "agropecuaria", "carnes-frias"]
+UnidadNegocio = Literal[
+    "todas",
+    "carnes",
+    "agropecuaria",
+    "carnes-frias",
+    "grupo-santacruz",
+]
 
 #: Que unidades tienen modulo construido. `carnes-frias` es hoy una marca sin
 #: backend: aparece en el selector desactivada y con su motivo, que es mas
@@ -182,6 +188,10 @@ class Settings(BaseSettings):
     #: Base exclusiva de Carnes Frías. No puede caer a la base de Carnes: una
     #: omisión debe fallar antes de que una carga de la compañía 8 se mezcle.
     db_url_carnes_frias: str | None = None
+    #: Base exclusiva de la instancia corporativa. El consolidado financiero
+    #: debe partir de fuentes homologadas y nunca de una conexión reutilizada
+    #: de un negocio operativo.
+    db_url_grupo_santacruz: str | None = None
 
     def url_de_unidad(self, unidad: str) -> str:
         """La cadena de conexión que le toca a una unidad.
@@ -199,6 +209,13 @@ class Settings(BaseSettings):
                     "no puede usar la base de Carnes."
                 )
             return _normalizar_url(self.db_url_carnes_frias)
+        if unidad == "grupo-santacruz":
+            if not self.db_url_grupo_santacruz:
+                raise ValueError(
+                    "Grupo Santacruz requiere SIGREP_DB_URL_GRUPO_SANTACRUZ; "
+                    "no puede usar la base de una unidad operativa."
+                )
+            return _normalizar_url(self.db_url_grupo_santacruz)
         return self.database_url
 
     @property
