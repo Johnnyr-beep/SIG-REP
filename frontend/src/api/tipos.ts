@@ -577,7 +577,7 @@ export interface EventoAuditoria {
 
 /** Unidad de negocio que sirve una instancia. `todas` es el caso de hoy. */
 export type UnidadNegocio =
-  "todas" | "carnes" | "agropecuaria" | "carnes-frias";
+  "todas" | "carnes" | "agropecuaria" | "carnes-frias" | "grupo-santacruz";
 
 export interface Salud {
   estado: string;
@@ -605,6 +605,8 @@ export interface Salud {
    * `marca/marcas.ts` en vez de dejar las tres marcas apagadas.
    */
   unidades?: string[];
+  /** Acceso externo al Stack corporativo, sin consultar su base desde aquí. */
+  url_grupo_santacruz?: string | null;
   version: string;
   base_datos: string;
   ultima_ingesta: string | null;

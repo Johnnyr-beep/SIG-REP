@@ -192,6 +192,10 @@ class Settings(BaseSettings):
     #: debe partir de fuentes homologadas y nunca de una conexión reutilizada
     #: de un negocio operativo.
     db_url_grupo_santacruz: str | None = None
+    #: Dirección pública de la instancia corporativa. La instancia operativa
+    #: solo publica este enlace en su selector; nunca usa esta URL para abrir
+    #: una conexión de base de datos.
+    url_instancia_grupo_santacruz: str | None = None
 
     def url_de_unidad(self, unidad: str) -> str:
         """La cadena de conexión que le toca a una unidad.

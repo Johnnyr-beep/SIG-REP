@@ -31,6 +31,9 @@ class EstadoSalud(BaseModel):
     #: mezclan porque no hay conexion por la que puedan pasar», y se publica
     #: para poder comprobarlo desde fuera sin entrar al servidor.
     bases_separadas: bool = False
+    #: URL pública de la instancia corporativa, si el portal principal debe
+    #: ofrecerla como acceso externo.
+    url_grupo_santacruz: str | None = None
     version: str
     base_datos: str
     ultima_ingesta: datetime | None = None
@@ -54,6 +57,7 @@ def salud(sesion: SesionDep) -> EstadoSalud:
             unidad=settings.unidad,
             unidades=settings.unidades_disponibles,
             bases_separadas=settings.bases_separadas,
+            url_grupo_santacruz=settings.url_instancia_grupo_santacruz,
             version=settings.version,
             base_datos="no disponible",
         )
@@ -64,6 +68,7 @@ def salud(sesion: SesionDep) -> EstadoSalud:
         unidad=settings.unidad,
         unidades=settings.unidades_disponibles,
         bases_separadas=settings.bases_separadas,
+        url_grupo_santacruz=settings.url_instancia_grupo_santacruz,
         version=settings.version,
         base_datos=estado_bd,
         ultima_ingesta=corrida.cuando if corrida else None,

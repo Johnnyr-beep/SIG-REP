@@ -44,6 +44,9 @@ export function SelectorMarca() {
    * la pantalla arrancaría con las tres marcas apagadas y parpadearía.
    */
   function disponible(marca: Marca): boolean {
+    if (marca.clave === "grupo-santacruz") {
+      return Boolean(salud?.url_grupo_santacruz);
+    }
     if (salud?.unidades) return salud.unidades.includes(marca.clave);
     return marca.estado === "activa";
   }
@@ -87,6 +90,10 @@ export function SelectorMarca() {
                         `Esta instancia no sirve ${marca.nombre}: no hay datos suyos detrás. ` +
                           `Por ahora solo se puede entrar a ${desplegadas}.`,
                       );
+                      return;
+                    }
+                    if (marca.clave === "grupo-santacruz") {
+                      window.location.assign(salud!.url_grupo_santacruz!);
                       return;
                     }
                     setAviso("");
