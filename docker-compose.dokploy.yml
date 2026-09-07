@@ -61,6 +61,9 @@ services:
       # no sirve para averiguar qué está corriendo —que es exactamente lo que
       # costó cuatro horas averiguar.
       SIGREP_SECRET_KEY: ${SIGREP_SECRET_KEY}
+      # Instancia lógica que sirve este Stack. La corporativa usa
+      # `grupo-santacruz`; sin reenviarla la aplicación usaría `todas`.
+      SIGREP_UNIDAD: ${SIGREP_UNIDAD:-todas}
       # `SIGREP_DB_URL_OVERRIDE` admite la cadena tal cual la entrega el panel
       # de Dokploy, incluido el esquema `postgres://` heredado: la aplicación lo
       # normaliza al driver correcto.
