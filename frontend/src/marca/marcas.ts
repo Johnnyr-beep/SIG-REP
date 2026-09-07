@@ -15,8 +15,13 @@
 import logoCarnes from "@/recursos/carnes-santacruz.png";
 import logoCarnesFrias from "@/recursos/carnes-frias.png";
 import logoAgropecuaria from "@/recursos/frigorifico-agropecuaria.png";
+import logoGrupoSantacruz from "@/recursos/grupo-santacruz.png";
 
-export type ClaveMarca = "carnes" | "agropecuaria" | "carnes-frias";
+export type ClaveMarca =
+  | "carnes"
+  | "agropecuaria"
+  | "carnes-frias"
+  | "grupo-santacruz";
 
 /**
  * `activa` es la instancia desplegada; `proximamente` es una unidad que existe
@@ -49,6 +54,16 @@ export interface Marca {
 }
 
 export const MARCAS: readonly Marca[] = [
+  {
+    clave: "grupo-santacruz",
+    nombre: "Grupo Santacruz",
+    logo: logoGrupoSantacruz,
+    logoAncho: 480,
+    logoAlto: 455,
+    estado: "activa",
+    descripcion:
+      "Instancia corporativa para el tablero financiero consolidado del grupo.",
+  },
   {
     clave: "carnes",
     nombre: "Carnes Santacruz",

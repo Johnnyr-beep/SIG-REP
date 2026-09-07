@@ -186,6 +186,21 @@
   --marca-suave-oscuro: color-mix(in srgb, var(--marca-500) 28%, #000000);
 }
 
+/* Grupo Santacruz — identidad corporativa neutra, separada de las paletas
+   operativas para que el consolidado no parezca pertenecer a un negocio. */
+:root[data-marca="grupo-santacruz"],
+[data-marca-tarjeta="grupo-santacruz"] {
+  --marca-400: #91a4ba;
+  --marca-500: #71879f;
+  --marca-600: #344b63;
+  --marca-700: #24384d;
+  --marca-realce: #cc9a4b;
+  --marca-contraste-600: #ffffff;
+  --marca-contraste-500: #07131f;
+  --marca-suave-claro: color-mix(in srgb, var(--marca-600) 7%, #ffffff);
+  --marca-suave-oscuro: color-mix(in srgb, var(--marca-500) 28%, #000000);
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema="claro"]) {
     --fondo: var(--gris-950);
