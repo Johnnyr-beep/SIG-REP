@@ -27,6 +27,7 @@ from app.core.deps import (
     PERMISO_COSTO_POR_CATEGORIA,
     PERMISO_COSTO_POR_GRUPO,
     PERMISO_COSTO_POR_PDV,
+    PERMISO_COSTO_POR_PRODUCTO,
     PERMISO_DESCARGAR_CLIENTES,
     PERMISO_DESCARGAR_CUMPLIMIENTO,
     PERMISO_DESCARGAR_TABLERO,
@@ -201,6 +202,8 @@ def costos(
         respuesta.puntos_venta = []
     if permisos_granulares and not usuario.tiene_permiso(PERMISO_COSTO_POR_CATEGORIA):
         respuesta.categorias = []
+    if permisos_granulares and not usuario.tiene_permiso(PERMISO_COSTO_POR_PRODUCTO):
+        respuesta.productos = []
     return respuesta
 
 

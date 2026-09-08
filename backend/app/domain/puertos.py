@@ -70,6 +70,14 @@ class LineaVenta:
     #: del POS, donde la venta es anónima y no hay cliente al que colgarla.
     codigo_vendedor: str | None = None
     nombre_vendedor: str | None = None
+    #: El ítem vendido: `Referencia` y `DescItem` del endpoint
+    #: `costos-razon-social`. El libro de Excel no trae ítem, así que las líneas
+    #: que entran por ahí —y las cargadas antes de que existiera la columna—
+    #: viajan con ambos en `None` y el reporte de costos por producto las agrupa
+    #: en «SIN PRODUCTO», a la vista. Es el mismo criterio del vendedor: el dato
+    #: que la fuente no da no se inventa.
+    referencia: str | None = None
+    desc_item: str | None = None
     #: Número de fila en el origen. Es lo que hace útil un rechazo: sin él, el
     #: usuario sabe que algo falló pero no dónde mirar.
     fila_origen: int | None = None

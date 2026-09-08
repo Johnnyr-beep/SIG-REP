@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import (
     PERMISO_CONSULTAR_COSTOS,
     PERMISO_CONSULTAR_TABLERO,
+    PERMISO_COSTO_POR_PRODUCTO,
     PERMISO_DESCARGAR_VENTA_DIARIA_ASADERO,
     PERMISO_VENTA_DIARIA_ASADERO,
 )
@@ -155,6 +156,38 @@ def test_permiso_costos_no_entrega_desgloses_sin_permisos_especificos(
     assert respuesta.json()["grupos"] == []
     assert respuesta.json()["puntos_venta"] == []
     assert respuesta.json()["categorias"] == []
+    assert respuesta.json()["productos"] == []
+
+
+def test_permiso_costo_por_producto_habilita_solo_ese_desglose(
+    sesion: Session, cliente_http: TestClient, consulta: dict[str, str]
+) -> None:
+    """CONSULTA con el permiso granular del ítem ve `productos`, y solo eso."""
+    usuario = sesion.scalars(select(Usuario).where(Usuario.usuario == "consulta")).one()
+    sesion.add(UsuarioPermiso(usuario_id=usuario.id, codigo=PERMISO_CONSULTAR_COSTOS))
+    sesion.add(UsuarioPermiso(usuario_id=usuario.id, codigo=PERMISO_COSTO_POR_PRODUCTO))
+    sesion.commit()
+    dar_venta(
+        sesion,
+        "402",
+        "RES",
+        1,
+        "100",
+        costo="60",
+        referencia="1039",
+        producto="HUESO SUSTANCIA CARNUDO",
+    )
+
+    respuesta = cliente_http.get(
+        "/api/v1/reportes/costos", params={"periodo": PERIODO}, headers=consulta
+    )
+
+    assert respuesta.status_code == 200
+    cuerpo = respuesta.json()
+    assert [fila["referencia"] for fila in cuerpo["productos"]] == ["1039"]
+    assert cuerpo["grupos"] == []
+    assert cuerpo["puntos_venta"] == []
+    assert cuerpo["categorias"] == []
 
 
 def _fijar_calendario(sesion: Session, dias_habiles: str, dias_trabajados: str) -> None:

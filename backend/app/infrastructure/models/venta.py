@@ -158,6 +158,15 @@ class VentaLinea(Base):
     #: Texto crudo de la categoría de SIESA, conservado junto a la clasificación
     #: ya resuelta. Sin él no se puede auditar un mapeo mal hecho.
     categoria_siesa: Mapped[str | None] = mapped_column(String(120))
+    #: `Referencia` de SIESA: el código del ítem vendido. Llega solo por la API
+    #: (`costos-razon-social`); el libro de Excel no trae ítem y las líneas
+    #: cargadas antes de que la columna existiera quedan en `NULL`, que el
+    #: reporte de costos por producto publica como un grupo «SIN PRODUCTO» a la
+    #: vista —la venta existe y no se descarta, pero nadie afirmó de qué
+    #: producto es—. Se recuperan reingiriendo el rango (§5).
+    referencia: Mapped[str | None] = mapped_column(String(60))
+    #: `DescItem` de SIESA: el nombre del ítem, tal como lo escribe el origen.
+    producto: Mapped[str | None] = mapped_column(String(200))
     #: NIT tal como venía en la fila, incluso si no existe en el catálogo de
     #: clientes: la venta nunca se descarta por un cliente desconocido.
     nit_cliente: Mapped[str | None] = mapped_column(String(30))

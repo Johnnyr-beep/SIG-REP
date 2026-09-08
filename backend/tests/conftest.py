@@ -216,6 +216,8 @@ def dar_venta(
     valor: str,
     costo: str | None = "0",
     kilos: str = "0",
+    referencia: str | None = None,
+    producto: str | None = None,
 ) -> None:
     """Una línea de venta del período de pruebas.
 
@@ -223,6 +225,10 @@ def dar_venta(
     línea se persiste con `costo_promedio` nulo. No es lo mismo que `costo="0"`
     —eso afirma que vender no costó nada— y §4.4 los trata distinto: el conjunto
     que contiene una línea sin costo no tiene margen calculable.
+
+    `referencia`/`producto` son el ítem de SIESA. Su omisión —no su valor—
+    reproduce las líneas cargadas por Excel o antes de que existiera la
+    columna: el reporte de costos por producto las agrupa en «SIN PRODUCTO».
     """
     sesion.add(
         VentaLinea(
@@ -233,6 +239,8 @@ def dar_venta(
             valor_subtotal=Decimal(valor),
             costo_promedio=Decimal(costo) if costo is not None else None,
             cantidad_inv=Decimal(kilos),
+            referencia=referencia,
+            producto=producto,
         )
     )
     sesion.commit()

@@ -968,3 +968,49 @@ def test_recargar_el_mismo_dia_desde_la_api_reemplaza_y_no_duplica(
     lineas = sesion.scalars(select(VentaLinea)).all()
     assert len(lineas) == 1
     assert lineas[0].valor_subtotal == D("999.00")
+
+
+# ── El ítem: `Referencia` y `DescItem` ────────────────────────────────────────
+
+
+def test_la_linea_transporta_el_item_del_origen() -> None:
+    """`Referencia` y `DescItem` viajan en la línea: son el insumo del reporte
+    de costos por producto, que antes de la revisión `0013` no tenía de dónde
+    salir —la línea decía dónde se vendió y de qué categoría, no **qué**—."""
+    _, lineas = leer(
+        ApiFalsa().ventas(fila("PDV MALAMBO", referencia="2050", desc_item="PUNTA DE ANCA"))
+    )
+
+    assert len(lineas) == 1
+    assert lineas[0].referencia == "2050"  # type: ignore[attr-defined]
+    assert lineas[0].desc_item == "PUNTA DE ANCA"  # type: ignore[attr-defined]
+
+
+def test_una_fila_sin_item_entra_sin_producto_y_no_se_rechaza() -> None:
+    """La venta sin ítem es venta real: entra con el ítem en `None` y el
+    reporte por producto la agrupa en «SIN PRODUCTO», a la vista."""
+    _, lineas = leer(ApiFalsa().ventas(fila("PDV MALAMBO", referencia="", desc_item="")))
+
+    assert len(lineas) == 1
+    assert lineas[0].referencia is None  # type: ignore[attr-defined]
+    assert lineas[0].desc_item is None  # type: ignore[attr-defined]
+
+
+def test_la_ingesta_persiste_el_item_en_venta_lineas(
+    sesion: Session,
+    estructura: None,
+    ingesta_desde,  # type: ignore[no-untyped-def]
+) -> None:
+    """De extremo a extremo: el ítem del CSV llega a `venta_lineas`."""
+    api = ApiFalsa().ventas(
+        fila("PDV MALAMBO", referencia="1039", desc_item="HUESO SUSTANCIA CARNUDO")
+    )
+    ingesta_desde(api)
+
+    _corrida(sesion)
+    sesion.commit()
+
+    lineas = sesion.scalars(select(VentaLinea)).all()
+    assert len(lineas) == 1
+    assert lineas[0].referencia == "1039"
+    assert lineas[0].producto == "HUESO SUSTANCIA CARNUDO"

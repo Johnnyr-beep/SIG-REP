@@ -18,6 +18,7 @@ const PERMISOS = [
   ["PERMISO_COSTO_POR_GRUPO", "Consultar costo por grupo"],
   ["PERMISO_COSTO_POR_PDV", "Consultar costo por punto de venta"],
   ["PERMISO_COSTO_POR_CATEGORIA", "Consultar costo por categoría"],
+  ["PERMISO_COSTO_POR_PRODUCTO", "Consultar costo por producto"],
   ["PERMISO_CONSULTAR_VENTA_DIARIA", "Consultar venta diaria"],
   ["PERMISO_CONSULTAR_CLIENTES", "Consultar clientes y vendedores"],
   ["PERMISO_CONSULTAR_PRESUPUESTO", "Consultar presupuesto"],

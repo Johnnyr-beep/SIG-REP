@@ -485,6 +485,12 @@ class IngestaService:
                 "cantidad_inv": linea.cantidad_inv,
                 "margen_siesa": linea.margen_siesa,
                 "categoria_siesa": categoria_cruda,
+                # El ítem ya viene normalizado de la fuente. `NULL` cuando el
+                # origen no lo trae —el Excel no tiene ítem— o cuando la línea
+                # se cargó antes de que existiera la columna; el reporte por
+                # producto agrupa esas líneas en «SIN PRODUCTO», a la vista.
+                "referencia": linea.referencia,
+                "producto": linea.desc_item,
                 "nit_cliente": nit,
                 "domicilio": domicilio,
                 "clase_cliente": clase,

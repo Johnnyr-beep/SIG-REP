@@ -65,6 +65,7 @@ from app.schemas.reportes import (
     FilaClientes,
     FilaCostoCategoria,
     FilaCostoGrupo,
+    FilaCostoProducto,
     FilaCostoPuntoVenta,
     FilaCostos,
     FilaGrupo,
@@ -389,7 +390,7 @@ class ReportesService:
     # ── Costos y margen ─────────────────────────────────────────────────────
 
     def costos(self, filtros: FiltrosReporte) -> RespuestaCostos:
-        """Costo y margen por grupo, punto y categoría, en pesos."""
+        """Costo y margen por grupo, punto, categoría y producto, en pesos."""
         ctx = self._construir_contexto(
             replace(filtros, medida=Medida.VALOR),
             cargar_anio_anterior=False,
@@ -413,6 +414,7 @@ class ReportesService:
             periodo=ctx.periodo.codigo,
             fecha_corte=ctx.fecha_corte,
             consolidado=self._fila_costos(consolidado),
+            productos=self._filas_costo_producto(ctx),
             grupos=[
                 FilaCostoGrupo(
                     codigo=grupo.codigo,
@@ -461,6 +463,57 @@ class ReportesService:
             lineas=totales.lineas,
             lineas_con_costo=totales.lineas_con_costo,
         )
+
+    def _filas_costo_producto(self, ctx: _Contexto) -> list[FilaCostoProducto]:
+        """Costo y margen por ítem, ordenados de mayor a menor venta.
+
+        `ctx.venta` llega agrupada por `(punto, categoría)` y no sirve aquí: el
+        producto cruza las dos dimensiones, así que este corte tiene su propia
+        consulta con los mismos filtros del perímetro. El nombre de cada
+        referencia es `MAX(producto)`: una grafía cualquiera del origen,
+        determinista, sin inventar un catálogo que nadie administra.
+
+        Las líneas sin ítem —cargadas por Excel, que no lo trae, o antes de que
+        existiera la columna— se agrupan en «SIN PRODUCTO» con `referencia`
+        nula. Es la misma regla de siempre: la venta existe y cuadra con el
+        consolidado; lo que nadie afirmó es de qué producto es, y eso se dice.
+        """
+        por_referencia = self._agregar_venta_por_producto(ctx)
+        return [
+            FilaCostoProducto(
+                referencia=referencia,
+                nombre=nombre or "SIN PRODUCTO",
+                **self._fila_costos(totales).model_dump(),
+            )
+            for referencia, (nombre, totales) in sorted(
+                por_referencia.items(), key=lambda fila: fila[1][1].valor, reverse=True
+            )
+        ]
+
+    def _agregar_venta_por_producto(
+        self, ctx: _Contexto
+    ) -> dict[str | None, tuple[str | None, Totales]]:
+        """La consulta del corte por ítem: `GROUP BY referencia`.
+
+        Mismo `WHERE` que la consulta caliente —período, corte y el perímetro
+        de puntos visibles—, de modo que la suma de los grupos cuadra con el
+        consolidado peso a peso.
+        """
+        consulta = (
+            select(VentaLinea.referencia, func.max(VentaLinea.producto), *COLUMNAS_TOTALES)
+            .where(VentaLinea.periodo_id == ctx.periodo.id, VentaLinea.fecha <= ctx.fecha_corte)
+            .group_by(VentaLinea.referencia)
+        )
+        consulta = self._aplicar_filtro_puntos(consulta, ctx)
+        if ctx.categoria_id is not None:
+            consulta = consulta.where(VentaLinea.categoria_id == ctx.categoria_id)
+
+        return {
+            referencia: (nombre, _totales_de(valor, kilos, costo, lineas, con_costo))
+            for referencia, nombre, valor, kilos, costo, lineas, con_costo in self._sesion.execute(
+                consulta
+            )
+        }
 
     # ── Venta diaria ──────────────────────────────────────────────────────────
 

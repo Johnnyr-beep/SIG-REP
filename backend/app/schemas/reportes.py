@@ -92,6 +92,19 @@ class FilaCostoCategoria(FilaCostos):
     nombre: str
 
 
+class FilaCostoProducto(FilaCostos):
+    """Costo y margen de un ítem, por su `Referencia` de SIESA.
+
+    `referencia` es `None` en el grupo «SIN PRODUCTO»: las líneas cargadas por
+    Excel —que no trae ítem— o antes de que existiera la columna. Su venta es
+    real y cuadra con el consolidado; lo que no se sabe es de qué producto es,
+    y el grupo lo dice en lugar de repartirla entre los demás.
+    """
+
+    referencia: str | None = None
+    nombre: str
+
+
 class PuntoVentaSinPresupuesto(BaseModel):
     """Venta de un punto no presupuestado (432 EVENTOS BUCARAMANGA).
 
@@ -194,6 +207,7 @@ class RespuestaCostos(BaseModel):
     grupos: list[FilaCostoGrupo]
     puntos_venta: list[FilaCostoPuntoVenta]
     categorias: list[FilaCostoCategoria]
+    productos: list[FilaCostoProducto]
     parametros_calculo: ParametrosCalculo
 
 

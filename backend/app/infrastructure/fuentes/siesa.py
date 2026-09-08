@@ -134,7 +134,10 @@ Mapeo a `LineaVenta`: `ValorSubtotal` → la venta contra presupuesto;
 `Categoria` → llega **en el formato exacto del Excel** (`'0001 - RES'`),
 incluidas las dos variantes ortográficas de `0006`, así que la tabla
 `mapeo_categorias` ya sembrada la resuelve tal cual y aquí no hay —ni debe
-haber— un mapeo paralelo; `PorcRentabilidad` → `margen_siesa`, que existe **solo
+haber— un mapeo paralelo; `Referencia` y `DescItem` → el ítem vendido, que
+viaja a `venta_lineas.referencia`/`producto` y alimenta el reporte de costos
+por producto (el Excel no lo trae: esa vía deja el ítem en `NULL` y el reporte
+lo agrupa en «SIN PRODUCTO»); `PorcRentabilidad` → `margen_siesa`, que existe **solo
 para conciliación** (§4.4) y nunca alimenta el margen del reporte, que se
 recalcula ponderado sobre totales; `FechaDocto` → `2026-08-01T00:00:00`.
 
@@ -202,6 +205,11 @@ COL_COSTO = "costopromedio"
 COL_CANTIDAD = "cantidadinv"
 COL_CATEGORIA = "categoria"
 COL_RENTABILIDAD = "porcrentabilidad"
+#: El ítem vendido. No son obligatorias —una fila sin ítem sigue siendo venta
+#: real y entra con producto `NULL`—, pero si la API deja de enviarlas el
+#: reporte por producto queda entero en «SIN PRODUCTO» y se nota.
+COL_REFERENCIA = "referencia"
+COL_DESC_ITEM = "descitem"
 
 #: Prefijo identificador de la clave. **No forma parte del secreto y no se
 #: envía**: mandarlo completo devuelve `401 {"detail":"Token invalido."}`.
@@ -576,6 +584,11 @@ class FuenteVentaSiesa:
             costo_promedio=medidas.costo_promedio,
             cantidad_inv=medidas.cantidad,
             categoria_siesa=normalizar_texto(registro.get(COL_CATEGORIA), limite=120),
+            # El ítem, tal como lo entrega el endpoint. Habilita el reporte de
+            # costos por producto; la línea sin ítem no se rechaza —la venta es
+            # real—, entra con producto `NULL` y se agrupa en «SIN PRODUCTO».
+            referencia=normalizar_texto(registro.get(COL_REFERENCIA), limite=60),
+            desc_item=normalizar_texto(registro.get(COL_DESC_ITEM), limite=200),
             # Solo para conciliación (§4.4): el margen del reporte se recalcula
             # ponderado sobre totales y nunca sale de esta columna.
             margen_siesa=self._margen(registro, numero),

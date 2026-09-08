@@ -347,6 +347,12 @@ export interface FilaCostoCategoria extends FilaCostos {
   nombre: string;
 }
 
+export interface FilaCostoProducto extends FilaCostos {
+  /** `null` en el grupo «SIN PRODUCTO»: líneas sin ítem (Excel o historia previa). */
+  referencia: string | null;
+  nombre: string;
+}
+
 export interface RespuestaCostos {
   periodo: string;
   fecha_corte: string;
@@ -354,6 +360,7 @@ export interface RespuestaCostos {
   grupos: FilaCostoGrupo[];
   puntos_venta: FilaCostoPuntoVenta[];
   categorias: FilaCostoCategoria[];
+  productos: FilaCostoProducto[];
   parametros_calculo: ParametrosCalculo;
 }
 
