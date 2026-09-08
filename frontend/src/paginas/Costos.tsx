@@ -47,6 +47,7 @@ export function Costos() {
               titulo="Costo por producto"
               etiqueta="Producto"
               alta
+              variante="productos"
               filas={data.productos.map((producto) => ({
                 ...producto,
                 nombre: producto.referencia
@@ -61,11 +62,11 @@ export function Costos() {
   );
 }
 
-function TablaCostos({ titulo, etiqueta, filas, alta = false }: { titulo: string; etiqueta: string; filas: (FilaCostos & { nombre: string })[]; alta?: boolean }) {
+function TablaCostos({ titulo, etiqueta, filas, alta = false, variante }: { titulo: string; etiqueta: string; filas: (FilaCostos & { nombre: string })[]; alta?: boolean; variante?: string }) {
   return (
     <Tarjeta titulo={titulo} sinRelleno>
       {filas.length === 0 ? <Vacio titulo="Sin costo en el corte" detalle="Ninguna línea coincide con los filtros seleccionados." /> : (
-        <div className={alta ? "tabla-envoltorio tabla-envoltorio--alta" : "tabla-envoltorio"}><table className="tabla tabla--costos"><colgroup><col className="tabla--costos__nombre" /><col className="tabla--costos__importe" /><col className="tabla--costos__importe" /><col className="tabla--costos__importe" /><col className="tabla--costos__porcentaje" /><col className="tabla--costos__porcentaje" /><col className="tabla--costos__lineas" /></colgroup><thead><tr><th scope="col">{etiqueta}</th><th scope="col" className="numero">Venta</th><th scope="col" className="numero">Costo</th><th scope="col" className="numero">Margen</th><th scope="col" className="numero">Margen %</th><th scope="col" className="numero">Cobertura</th><th scope="col" className="numero">Líneas</th></tr></thead><tbody>{filas.map((fila) => <tr key={fila.nombre}><th scope="row">{fila.nombre}</th><td className="numero">{dinero(fila.venta)}</td><td className="numero">{dinero(fila.costo)}</td><td className="numero">{dinero(fila.margen_valor)}</td><td className="numero">{porcentaje(fila.margen_porcentaje)}</td><td className="numero">{porcentaje(fila.cobertura_costo)}</td><td className="numero">{numero(fila.lineas_con_costo)} / {numero(fila.lineas)}</td></tr>)}</tbody></table></div>
+        <div className={alta ? "tabla-envoltorio tabla-envoltorio--alta" : "tabla-envoltorio"}><table className={variante ? `tabla tabla--costos tabla--costos--${variante}` : "tabla tabla--costos"}><colgroup><col className="tabla--costos__nombre" /><col className="tabla--costos__importe" /><col className="tabla--costos__importe" /><col className="tabla--costos__importe" /><col className="tabla--costos__porcentaje" /><col className="tabla--costos__porcentaje" /><col className="tabla--costos__lineas" /></colgroup><thead><tr><th scope="col">{etiqueta}</th><th scope="col" className="numero">Venta</th><th scope="col" className="numero">Costo</th><th scope="col" className="numero">Margen</th><th scope="col" className="numero">Margen %</th><th scope="col" className="numero">Cobertura</th><th scope="col" className="numero">Líneas</th></tr></thead><tbody>{filas.map((fila) => <tr key={fila.nombre}><th scope="row" title={fila.nombre}>{fila.nombre}</th><td className="numero">{dinero(fila.venta)}</td><td className="numero">{dinero(fila.costo)}</td><td className="numero">{dinero(fila.margen_valor)}</td><td className="numero">{porcentaje(fila.margen_porcentaje)}</td><td className="numero">{porcentaje(fila.cobertura_costo)}</td><td className="numero">{numero(fila.lineas_con_costo)} / {numero(fila.lineas)}</td></tr>)}</tbody></table></div>
       )}
     </Tarjeta>
   );

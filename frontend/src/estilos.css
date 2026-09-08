@@ -1030,6 +1030,26 @@ textarea {
   width: 14%;
 }
 
+/* La celda del nombre hereda `nowrap` de `.tabla th` y la tabla es de layout
+   fijo: sin elipsis, un nombre largo se desborda encima de la columna de la
+   venta. El `title` conserva el nombre completo al pasar el cursor. */
+.tabla--costos tbody th {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* El nombre de un producto es mucho más largo que el de un punto de venta o
+   una categoría («2035 · PULPA DE PERNIL/PIERNA DE CERDO»): la primera columna
+   crece a costa de las de importes y la tabla admite un poco más de ancho antes
+   de desplazar. */
+.tabla--costos--productos {
+  min-width: 1080px;
+}
+
+.tabla--costos--productos .tabla--costos__nombre {
+  width: 32%;
+}
+
 .tabla th {
   padding: var(--espacio-3) var(--espacio-4);
   color: var(--texto-tenue);
