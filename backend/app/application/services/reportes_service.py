@@ -455,9 +455,7 @@ class ReportesService:
             kilos=redondear_no_nulo(totales.kilos, 2),
             venta_por_kilo=redondear(dividir(totales.valor, totales.kilos), 2),
             costo=redondear(costo, 2),
-            costo_porcentaje=redondear_porcentaje(
-                dividir(costo, totales.valor)
-            ),
+            costo_porcentaje=redondear_porcentaje(dividir(costo, totales.valor)),
             margen_valor=redondear(
                 margen_valor(totales.valor, costo, costo_completo=totales.costo_completo), 2
             ),
