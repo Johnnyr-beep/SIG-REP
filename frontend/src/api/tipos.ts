@@ -324,7 +324,10 @@ export interface RespuestaCumplimiento {
 
 export interface FilaCostos {
   venta: string;
+  kilos: string;
+  venta_por_kilo: string | null;
   costo: string | null;
+  costo_porcentaje: string | null;
   margen_valor: string | null;
   margen_porcentaje: string | null;
   cobertura_costo: string | null;

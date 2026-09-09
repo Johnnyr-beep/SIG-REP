@@ -66,10 +66,20 @@ class FilaGrupo(FilaIndicadores):
 
 
 class FilaCostos(EsquemaBase):
-    """Venta, costo y margen de un corte monetario."""
+    """Venta, costo y margen de un corte monetario.
+
+    `kilos` es la cantidad sumada del corte (`Σ cantidad_inv`), siempre
+    publicable; de ella y de la venta sale `venta_por_kilo`, el precio
+    promedio ponderado del conjunto. `costo_porcentaje` es
+    `costo / venta` y obedece la misma regla del margen: `None` —y la
+    pantalla pinta «—»— si alguna línea del agregado no trae costo.
+    """
 
     venta: DecimalStr
+    kilos: DecimalStr
+    venta_por_kilo: DecimalStr | None = None
     costo: DecimalStr | None = None
+    costo_porcentaje: DecimalStr | None = None
     margen_valor: DecimalStr | None = None
     margen_porcentaje: DecimalStr | None = None
     cobertura_costo: DecimalStr | None = None
