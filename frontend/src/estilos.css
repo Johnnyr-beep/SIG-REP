@@ -272,10 +272,17 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  /* Red de seguridad, no el arreglo principal (ese va en `.disposicion`, ver
+     abajo): ningún hijo, presente o futuro, debe poder forzar scroll
+     horizontal del documento entero. El diseño ya dice que solo
+     `.tabla-envoltorio` se desplaza en horizontal; esto lo hace innegociable
+     en vez de depender de que cada componente nuevo se porte bien. */
+  overflow-x: hidden;
 }
 
 body {
   min-height: 100vh;
+  overflow-x: hidden;
   background: var(--fondo);
   color: var(--texto);
   font-family: var(--fuente);
