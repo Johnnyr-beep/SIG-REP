@@ -374,6 +374,12 @@ export interface FilaVentaDiaria {
   /** Un valor por cada fecha de `fechas`, en el mismo orden. */
   valores: (string | null)[];
   total: string | null;
+  /**
+   * Facturas distintas por día, mismo orden que `fechas` (§4.4). `null`
+   * cuando no hay conteo sincronizado para ese día —no es lo mismo que cero
+   * documentos—.
+   */
+  documentos: (number | null)[];
 }
 
 /** Presupuesto diario derivado de un período, indexado por código de C.O. */
@@ -400,6 +406,8 @@ export interface TotalesVentaDiaria {
   presupuesto_diario: string | null;
   /** Referencia diaria de cada período que el rango toca. */
   presupuesto_diario_por_periodo: Record<string, string | null>;
+  /** Suma de `documentos` por día entre las filas incluidas. */
+  documentos: (number | null)[];
 }
 
 export interface RespuestaVentaDiaria {

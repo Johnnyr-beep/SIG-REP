@@ -55,6 +55,7 @@ from app.domain.indicadores import (
 )
 from app.domain.semaforo import UmbralesSemaforo
 from app.infrastructure.models.catalogo import Categoria
+from app.infrastructure.models.documentos import NumeroDocumentosDiarios
 from app.infrastructure.models.historia_venta import HistoriaVentaManual
 from app.infrastructure.models.organizacion import Grupo, PuntoVenta
 from app.infrastructure.models.periodo import Periodo
@@ -547,13 +548,16 @@ class ReportesService:
 
         fechas = _rango_fechas(rango.desde, rango.hasta)
         por_dia = self._venta_por_dia(ctx, rango)
+        documentos_por_dia = self._documentos_por_dia(ctx, rango)
 
         decimales = ctx.medida.decimales
         filas: list[FilaVentaDiaria] = []
         suma_dia: list[Decimal | None] = [None] * len(fechas)
+        suma_documentos: list[int | None] = [None] * len(fechas)
         suma_total = CERO
         for punto in sorted(ctx.puntos.values(), key=lambda p: p.codigo_co):
             valores = [por_dia.get(punto.id, {}).get(dia) for dia in fechas]
+            documentos = [documentos_por_dia.get(punto.id, {}).get(dia) for dia in fechas]
             total = sum((v for v in valores if v is not None), start=CERO)
             filas.append(
                 FilaVentaDiaria(
@@ -561,6 +565,7 @@ class ReportesService:
                     nombre=punto.nombre,
                     valores=[redondear(v, decimales) for v in valores],
                     total=redondear_no_nulo(total, decimales),
+                    documentos=documentos,
                 )
             )
             # La fila de totales se acumula aquí, sobre los mismos valores que
@@ -570,6 +575,9 @@ class ReportesService:
             for indice, valor in enumerate(valores):
                 if valor is not None:
                     suma_dia[indice] = (suma_dia[indice] or CERO) + valor
+            for indice, cantidad in enumerate(documentos):
+                if cantidad is not None:
+                    suma_documentos[indice] = (suma_documentos[indice] or 0) + cantidad
             suma_total += total
 
         referencias = self._referencias_diarias(ctx, rango)
@@ -597,6 +605,7 @@ class ReportesService:
                     codigo: redondear(referencia.total, decimales)
                     for codigo, referencia in referencias.items()
                 },
+                documentos=suma_documentos,
             ),
             parametros_calculo=self._parametros(ctx, self._fila_agregada(ctx, list(ctx.puntos))),
         )
@@ -634,6 +643,30 @@ class ReportesService:
         por_dia: dict[int, dict[date, Decimal]] = defaultdict(dict)
         for punto_id, dia, total in self._sesion.execute(consulta):
             por_dia[punto_id][dia] = Decimal(total or 0)
+        return por_dia
+
+    def _documentos_por_dia(self, ctx: _Contexto, rango: RangoDiario) -> dict[int, dict[date, int]]:
+        """`GROUP BY punto_venta, fecha` sobre `numero_documentos_diarios` (§4.4).
+
+        No filtra por período ni por categoría —el conteo no tiene categoría, es
+        una cuenta de facturas—; solo por el mismo rango de fechas y el mismo
+        alcance de puntos de venta que `_venta_por_dia`, para que las dos
+        columnas describan exactamente el mismo recorte.
+        """
+        consulta = select(
+            NumeroDocumentosDiarios.punto_venta_id,
+            NumeroDocumentosDiarios.fecha,
+            NumeroDocumentosDiarios.cantidad,
+        ).where(
+            NumeroDocumentosDiarios.fecha >= rango.desde,
+            NumeroDocumentosDiarios.fecha <= rango.hasta,
+        )
+        if ctx.puntos:
+            consulta = consulta.where(NumeroDocumentosDiarios.punto_venta_id.in_(list(ctx.puntos)))
+
+        por_dia: dict[int, dict[date, int]] = defaultdict(dict)
+        for punto_id, dia, cantidad in self._sesion.execute(consulta):
+            por_dia[punto_id][dia] = cantidad
         return por_dia
 
     def _referencias_diarias(

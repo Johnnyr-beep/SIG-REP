@@ -228,6 +228,10 @@ class FilaVentaDiaria(BaseModel):
     #: sin venta registrada, que no es lo mismo que un día con venta cero.
     valores: list[DecimalStr | None]
     total: DecimalStr
+    #: Facturas distintas por día, mismo orden que `fechas`. `null` cuando no
+    #: hay conteo sincronizado para ese día —no es lo mismo que cero
+    #: documentos—. Ver `app.infrastructure.models.documentos` (§4.4).
+    documentos: list[int | None] = Field(default_factory=list)
 
 
 class TotalesVentaDiaria(BaseModel):
@@ -259,6 +263,8 @@ class TotalesVentaDiaria(BaseModel):
     #: El mismo total, uno por período. Las mismas claves que
     #: `RespuestaVentaDiaria.presupuesto_diario_por_periodo`.
     presupuesto_diario_por_periodo: dict[str, DecimalStr | None] = Field(default_factory=dict)
+    #: Suma de `documentos` por día entre las filas incluidas.
+    documentos: list[int | None] = Field(default_factory=list)
 
 
 class RespuestaVentaDiaria(BaseModel):

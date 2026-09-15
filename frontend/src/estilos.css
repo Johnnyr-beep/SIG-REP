@@ -1378,6 +1378,16 @@ textarea {
   font-size: 0.7em;
 }
 
+/* Número de documentos (§4.4): nota de apoyo bajo la cifra, nunca compite con
+   ella en color ni en tamaño. */
+.celda__documentos {
+  display: block;
+  color: var(--texto-tenue);
+  font-weight: 400;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Semáforo ────────────────────────────────────────────────────────────── */
 
 .semaforo {

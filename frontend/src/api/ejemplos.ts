@@ -801,11 +801,18 @@ function ventaDiaria(opciones: Opciones): RespuestaVentaDiaria {
       return cadena(diaria * base * ruido * (0.86 + (pdv.id % 7) / 20), 2);
     });
 
+    // Documentos de ejemplo (§4.4): un ticket promedio aproximado, redondeado.
+    // `null` en los mismos días sin venta registrada, nunca cero.
+    const documentos = valores.map((valor) =>
+      valor === null ? null : Math.max(1, Math.round(Number(valor) / 45_000)),
+    );
+
     return {
       punto_venta: pdv.codigo_co,
       nombre: pdv.nombre,
       valores,
       total: sumaOpcional(valores),
+      documentos,
     };
   });
 
@@ -879,11 +886,20 @@ function totalesDe(
   for (const delPeriodo of periodos)
     porPeriodo[delPeriodo] = referenciaAgregada(delPeriodo);
 
+  const documentos = fechas.map((_, columna) => {
+    const cantidades = filas
+      .map((fila) => fila.documentos?.[columna] ?? null)
+      .filter((valor): valor is number => valor !== null);
+    if (cantidades.length === 0) return null;
+    return cantidades.reduce((suma, valor) => suma + valor, 0);
+  });
+
   return {
     valores,
     total: sumaOpcional(valores),
     presupuesto_diario: porPeriodo[periodo] ?? referenciaAgregada(periodo),
     presupuesto_diario_por_periodo: porPeriodo,
+    documentos,
   };
 }
 

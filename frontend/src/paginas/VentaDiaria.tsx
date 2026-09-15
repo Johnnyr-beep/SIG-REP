@@ -20,14 +20,14 @@
  * del período de la petición y en un rango a caballo daría el número equivocado
  * justo en los días del otro mes.
  *
- * ── Lo que esta pantalla no pinta ───────────────────────────────────────────
+ * ── Número de documentos (§4.4) ─────────────────────────────────────────────
  *
- * No hay columna de número de documentos, y no está pendiente de cargar: la
- * fuente de SIESA no entrega ese dato (`docs/INTEGRACION-SIESA.md` §4.4) y no se
- * puede aproximar contando líneas, porque una venta de ocho productos son ocho
- * líneas y **un** documento. Reservar la columna, aunque fuera con un «—»,
- * sugeriría que el dato existe y está fallando; lo cierto es que todavía no se
- * puede pedir.
+ * Va como nota pequeña bajo la cifra de cada día, no en su propia columna: es
+ * un dato de apoyo, no la medida contra la que se compara el presupuesto, y
+ * una columna propia por día duplicaría el ancho de una tabla que ya se
+ * desplaza en horizontal. `null` es «sin conteo sincronizado ese día», no
+ * «cero documentos», y se pinta «—» exactamente por la misma razón que el
+ * resto de indefinidos de esta pantalla.
  */
 
 import { useState } from "react";
@@ -107,17 +107,20 @@ function NotaReferencia({
   );
 }
 
-/** Celda de un día: la cifra, la marca ▲▼ y su lectura para el lector de pantalla. */
+/** Celda de un día: la cifra, la marca ▲▼, el número de documentos y su
+ * lectura para el lector de pantalla. */
 function CeldaDia({
   valor,
   referencia,
   fecha,
   formatear,
+  documentos,
 }: {
   valor: string | null;
   referencia: string | null;
   fecha: string;
   formatear: (valor: string | null) => string;
+  documentos?: number | null;
 }) {
   const comparacion = comparaParaGrafico(valor, referencia);
   const tono =
@@ -143,6 +146,11 @@ function CeldaDia({
               : " por debajo del presupuesto diario"}
           </span>
         </>
+      )}
+      {documentos === undefined ? null : (
+        <span className="celda__documentos">
+          {documentos === null ? SIN_DATO : documentos} doc.
+        </span>
       )}
     </td>
   );
@@ -452,6 +460,7 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
                                 fecha,
                               )}
                               formatear={formatear}
+                              documentos={fila.documentos?.[columna] ?? null}
                             />
                           ))}
 
@@ -500,6 +509,7 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
                             valor={data.totales.valores?.[columna] ?? null}
                             referencia={referenciaDeTotales(data, fecha)}
                             formatear={formatear}
+                            documentos={data.totales.documentos?.[columna] ?? null}
                           />
                         ))}
 
