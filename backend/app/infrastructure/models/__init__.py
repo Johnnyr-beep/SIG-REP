@@ -28,6 +28,8 @@ from app.infrastructure.models.agro_presupuesto_mensual import (
 from app.infrastructure.models.agro_tat import AgroTatCorrida, AgroTatVenta
 from app.infrastructure.models.agro_venta import AgroVentaLinea
 from app.infrastructure.models.catalogo import Categoria, MapeoCategoria
+from app.infrastructure.models.documentos import NumeroDocumentosDiarios
+from app.infrastructure.models.financiero import MovimientoContable
 from app.infrastructure.models.historia_venta import HistoriaVentaManual
 from app.infrastructure.models.ingesta import CorridaIngesta, RechazoIngesta
 from app.infrastructure.models.organizacion import Grupo, PuntoVenta, Zona
@@ -64,6 +66,8 @@ __all__ = [
     "HistoriaVentaManual",
     "IntentoAcceso",
     "MapeoCategoria",
+    "MovimientoContable",
+    "NumeroDocumentosDiarios",
     "Periodo",
     "Presupuesto",
     "PresupuestoHistorial",
