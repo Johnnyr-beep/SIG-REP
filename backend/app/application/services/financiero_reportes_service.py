@@ -19,10 +19,10 @@ from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
 from app.domain.financiero import (
-    ClaseCuenta,
     GRUPO_CARTERA_CLIENTES,
     GRUPOS_ACTIVO_CORRIENTE,
     GRUPOS_PASIVO_CORRIENTE,
+    ClaseCuenta,
     clasificar,
     es_naturaleza_credito,
     etiqueta_clase,
@@ -47,7 +47,7 @@ class FiltrosFinanciero:
     periodo: int  # AAAAMM
     cia: int | None = None
 
-    def aplicar(self, consulta: Select[tuple]) -> Select[tuple]:
+    def aplicar(self, consulta: Select) -> Select:  # type: ignore[type-arg]
         consulta = consulta.where(MovimientoContable.periodo == self.periodo)
         if self.cia is not None:
             consulta = consulta.where(MovimientoContable.cia == self.cia)
@@ -106,9 +106,6 @@ class IndicadoresFinancieros:
 class FinancieroReportesService:
     def __init__(self, sesion: Session) -> None:
         self._sesion = sesion
-
-    def _consulta_base(self, filtros: FiltrosFinanciero) -> Select[tuple]:
-        return filtros.aplicar(select(MovimientoContable))
 
     def balance_comprobacion(self, filtros: FiltrosFinanciero) -> list[FilaBalanceComprobacion]:
         """Un renglón por cuenta (`mayor_iii`), sumado sobre CO y terceros."""

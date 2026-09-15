@@ -81,12 +81,8 @@ def upgrade() -> None:
     op.create_index(
         "ix_movcont_cia_periodo", "movimientos_contables", ["cia", "periodo"], unique=False
     )
-    op.create_index(
-        "ix_movcont_mayor_iii", "movimientos_contables", ["mayor_iii"], unique=False
-    )
-    op.create_index(
-        "ix_movcont_tercero", "movimientos_contables", ["id_tercero"], unique=False
-    )
+    op.create_index("ix_movcont_mayor_iii", "movimientos_contables", ["mayor_iii"], unique=False)
+    op.create_index("ix_movcont_tercero", "movimientos_contables", ["id_tercero"], unique=False)
     op.create_index("ix_movcont_co", "movimientos_contables", ["co"], unique=False)
 
 
@@ -98,4 +94,3 @@ def downgrade() -> None:
     op.drop_index("ix_movcont_mayor_iii", table_name="movimientos_contables")
     op.drop_index("ix_movcont_cia_periodo", table_name="movimientos_contables")
     op.drop_table("movimientos_contables")
-

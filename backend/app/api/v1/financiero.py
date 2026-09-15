@@ -19,8 +19,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 
 from app.application.services.financiero_reportes_service import (
-    FinancieroReportesService,
     FiltrosFinanciero,
+    FinancieroReportesService,
 )
 from app.core.deps import PERMISO_CONSULTAR_FINANCIERO, SesionDep, exigir_permiso_consulta
 from app.infrastructure.models.usuario import Usuario
@@ -70,14 +70,13 @@ def balance_comprobacion(
     servicio = FinancieroReportesService(sesion)
     filtros = FiltrosFinanciero(periodo=int(periodo), cia=cia)
     filas = [
-        FilaBalanceComprobacion.model_validate(fila) for fila in servicio.balance_comprobacion(filtros)
+        FilaBalanceComprobacion.model_validate(fila)
+        for fila in servicio.balance_comprobacion(filtros)
     ]
     return RespuestaBalanceComprobacion(filas=filas, parametros_calculo=_parametros(periodo, cia))
 
 
-@router.get(
-    "/balance-general", response_model=RespuestaBalanceGeneral, summary="Balance general"
-)
+@router.get("/balance-general", response_model=RespuestaBalanceGeneral, summary="Balance general")
 def balance_general(
     usuario: UsuarioFinancieroDep,
     sesion: SesionDep,

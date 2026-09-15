@@ -51,10 +51,12 @@ def _incluir_objeto_de(unidad: str):
     compartido, pero economicamente no le pertenece a esas bases.
     """
 
-    def _incluir(objeto: object, nombre: str, tipo: str, _reflejado: bool, _comparar_con: object) -> bool:
-        if tipo == "table" and TABLAS_EXCLUSIVAS_POR_UNIDAD.get(nombre) not in (None, unidad):
-            return False
-        return True
+    def _incluir(
+        objeto: object, nombre: str, tipo: str, _reflejado: bool, _comparar_con: object
+    ) -> bool:
+        return not (
+            tipo == "table" and TABLAS_EXCLUSIVAS_POR_UNIDAD.get(nombre) not in (None, unidad)
+        )
 
     return _incluir
 
