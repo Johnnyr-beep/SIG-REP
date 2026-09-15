@@ -38,7 +38,7 @@ def upgrade() -> None:
         sa.Column(
             "actualizado_en",
             app.infrastructure.models.mixins.UtcDateTime(timezone=True),
-            nullable=False
+            nullable=False,
         ),
         sa.CheckConstraint(
             "bloque = 'commercial' OR bloque = 'agro_distribucion' "
@@ -86,7 +86,7 @@ def upgrade() -> None:
         sa.Column(
             "actualizado_en",
             app.infrastructure.models.mixins.UtcDateTime(timezone=True),
-            nullable=False
+            nullable=False,
         ),
         sa.CheckConstraint(
             "bloque = 'commercial' OR bloque = 'agro_distribucion' "
@@ -145,7 +145,7 @@ def upgrade() -> None:
         sa.Column(
             "actualizado_en",
             app.infrastructure.models.mixins.UtcDateTime(timezone=True),
-            nullable=False
+            nullable=False,
         ),
         sa.CheckConstraint("kilos >= 0", name="ck_agro_ppto_mensual_servicio_kilos_no_negativo"),
         sa.CheckConstraint("monto >= 0", name="ck_agro_ppto_mensual_servicio_monto_no_negativo"),

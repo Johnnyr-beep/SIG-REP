@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "0011"
@@ -48,7 +49,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["corrida_id"], ["agro_tat_corridas.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index("ix_agro_tat_fecha_sucursal", "agro_tat_ventas", ["fecha_documento", "codigo_sucursal"])
+    op.create_index(
+        "ix_agro_tat_fecha_sucursal", "agro_tat_ventas", ["fecha_documento", "codigo_sucursal"]
+    )
     op.create_index("ix_agro_tat_documento", "agro_tat_ventas", ["nro_documento"])
 
 
