@@ -341,7 +341,14 @@ textarea {
 
 .disposicion {
   display: grid;
-  grid-template-columns: var(--ancho-barra) 1fr;
+  /* `minmax(0, 1fr)` y no `1fr` a secas: un track `1fr` es `minmax(auto, 1fr)`,
+     así que su mínimo es el min-content de lo que haya dentro. Una tabla con
+     muchas columnas (venta diaria, cumplimiento) tiene un min-content enorme,
+     y sin este `0` ese ancho se filtra hacia arriba: la rejilla entera se
+     ensancha más que la ventana y termina desplazándose toda la página en
+     horizontal —arrastrando la barra lateral fuera de vista—, en lugar de que
+     el scroll quede contenido dentro de `.tabla-envoltorio`. */
+  grid-template-columns: var(--ancho-barra) minmax(0, 1fr);
   min-height: 100vh;
 }
 
