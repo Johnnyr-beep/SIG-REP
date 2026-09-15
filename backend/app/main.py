@@ -18,6 +18,7 @@ from app.api.v1 import agro_tat as agro_tat_api
 from app.api.v1 import auth as auth_api
 from app.api.v1 import calendario as calendario_api
 from app.api.v1 import catalogos as catalogos_api
+from app.api.v1 import financiero as financiero_api
 from app.api.v1 import ingesta as ingesta_api
 from app.api.v1 import presupuesto as presupuesto_api
 from app.api.v1 import reportes as reportes_api
@@ -149,6 +150,9 @@ api.include_router(reportes_api.router)
 # sus dimensiones y su presupuesto por descomposicion, no una variante.
 api.include_router(agro_api.router)
 api.include_router(agro_tat_api.router)
+# Tablero financiero consolidado: exclusivo de la instancia grupo-santacruz,
+# aislado por conexion de base igual que Agropecuaria y Carnes Frias.
+api.include_router(financiero_api.router)
 api.include_router(ingesta_api.router)
 api.include_router(usuarios_api.router)
 api.include_router(salud_api.router)

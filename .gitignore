@@ -29,6 +29,8 @@ datos/
 *.xls
 *.csv
 !docs/**/*.csv
+/*.json
+!frontend/**/*.json
 
 # Editores y sistema
 .vscode/

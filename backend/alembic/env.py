@@ -32,6 +32,32 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+#: Tablas que existen en el esquema compartido pero que **solo** deben crearse
+#: al migrar la base de una unidad concreta. Hoy solo el libro mayor del
+#: tablero financiero, exclusivo de `grupo-santacruz`: las unidades operativas
+#: (Carnes, Agropecuaria, Carnes Frias) no deben ganar ni siquiera una tabla
+#: vacia por el hecho de compartir `Base`.
+TABLAS_EXCLUSIVAS_POR_UNIDAD: dict[str, str] = {
+    "movimientos_contables": "grupo-santacruz",
+}
+
+
+def _incluir_objeto_de(unidad: str):
+    """Filtro de autogenerate: oculta las tablas exclusivas de otra unidad.
+
+    Sin esto, un `alembic revision --autogenerate` corrido contra Carnes o
+    Agropecuaria detectaria «falta movimientos_contables» y propondria
+    recrearla ahi: la tabla esta en `Base.metadata` porque el esquema es
+    compartido, pero economicamente no le pertenece a esas bases.
+    """
+
+    def _incluir(objeto: object, nombre: str, tipo: str, _reflejado: bool, _comparar_con: object) -> bool:
+        if tipo == "table" and TABLAS_EXCLUSIVAS_POR_UNIDAD.get(nombre) not in (None, unidad):
+            return False
+        return True
+
+    return _incluir
+
 
 def _destinos() -> dict[str, str]:
     """Las bases a migrar, sin repetir.
@@ -50,10 +76,14 @@ def _destinos() -> dict[str, str]:
 def ejecutar_offline() -> None:
     """Genera el SQL sin conectarse (útil para revisión previa por el DBA).
 
-    Emite el guion de **una** base: son idénticas, así que un solo volcado
-    describe las dos y duplicarlo solo daría más que leer.
+    Emite el guión de **una** base representativa. Desde que
+    `movimientos_contables` es exclusiva de `grupo-santacruz`, el guión ya no
+    describe por igual a las cuatro unidades: quién revise este volcado para
+    una unidad operativa debe ignorar esa tabla si aparece aquí, y regenerarlo
+    apuntando a `grupo-santacruz` si lo que necesita revisar es esa tabla.
     """
-    url = next(iter(_destinos().values()))
+    unidad, url = next(iter(_destinos().items()))
+    config.attributes["sigrep_unidad"] = unidad
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -61,6 +91,7 @@ def ejecutar_offline() -> None:
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
         compare_server_default=True,
+        include_object=_incluir_objeto_de(unidad),
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -70,11 +101,13 @@ def _migrar(unidad: str, url: str) -> None:
     conectable = create_engine(url, poolclass=pool.NullPool)
     try:
         with conectable.connect() as conexion:
+            config.attributes["sigrep_unidad"] = unidad
             context.configure(
                 connection=conexion,
                 target_metadata=target_metadata,
                 compare_type=True,
                 compare_server_default=True,
+                include_object=_incluir_objeto_de(unidad),
             )
             with context.begin_transaction():
                 context.run_migrations()
