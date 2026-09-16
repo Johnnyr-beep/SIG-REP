@@ -18,9 +18,10 @@ directo a tres cifras.
 factura desde más de una bodega el mismo día, cada bodega es su propia fila;
 `Documentos` se **suma** por `(id_co, fecha)`, nunca se sobrescribe.
 
-**3. `id_cia` acepta una lista separada por comas** (`4,6,7`) en una sola
-petición —medido 16-sep-2026—, así que no hace falta ni omitirlo ni pedir una
-vez por compañía.
+**3. `id_cia` es un entero, una petición por compañía.** Medido (16-sep-2026):
+`id_cia=4,6,7` como lista separada por comas responde **422** ("Input should be
+a valid integer"). Sigue el mismo patrón que `costos-razon-social`: hay que
+pedir una vez por cada compañía de `SIGREP_SIESA_COMPANIAS`.
 """
 
 from __future__ import annotations
@@ -69,20 +70,24 @@ class FuenteFacturasSiesa:
     def contar_documentos(self, desde: date, hasta: date) -> dict[tuple[str, date], int]:
         """`{(codigo_co, fecha): documentos}` del rango, ambos incluidos.
 
-        Una sola petición, con `id_cia` como lista separada por comas: se suma
-        `Documentos` por `(id_co, fecha)` porque una misma fecha puede traer
-        varias filas —una por bodega— para el mismo punto de venta.
+        Una petición por compañía: medido (16-sep-2026) que `id_cia` aquí es un
+        entero, no una lista —a diferencia de lo que parecía en una prueba
+        manual, `id_cia=4,6,7` responde 422—. Se suma `Documentos` por
+        `(id_co, fecha)` porque una misma fecha puede traer varias filas —una
+        por bodega— para el mismo punto de venta.
         """
         conteos: dict[tuple[str, date], int] = {}
-        parametros = {
-            "fecha_inicio": desde.isoformat(),
-            "fecha_fin": hasta.isoformat(),
-            "id_cia": ",".join(str(c) for c in self._configuracion.companias),
-            "format": "csv",
-        }
-        lector = csv.DictReader(self._lineas(parametros))
-        columnas = lector.fieldnames
-        if columnas:
+        for compania in self._configuracion.companias:
+            parametros = {
+                "fecha_inicio": desde.isoformat(),
+                "fecha_fin": hasta.isoformat(),
+                "id_cia": str(compania),
+                "format": "csv",
+            }
+            lector = csv.DictReader(self._lineas(parametros))
+            columnas = lector.fieldnames
+            if not columnas:
+                continue
             presentes = {str(c).strip().lower() for c in columnas if c}
             faltantes = [c for c in COLUMNAS_OBLIGATORIAS if c not in presentes]
             if faltantes:

@@ -103,21 +103,21 @@ def test_id_co_se_normaliza_a_tres_cifras() -> None:
     assert ("006", date(2026, 8, 1)) in conteos
 
 
-def test_una_sola_peticion_con_id_cia_separado_por_comas() -> None:
-    """Medido (16-sep-2026): `id_cia` acepta una lista `4,6,7` en una sola
-    petición, sin tener que pedir una vez por compañía."""
+def test_una_peticion_por_compania() -> None:
+    """Medido (16-sep-2026): `id_cia` es un entero, no una lista —una lista
+    separada por comas responde 422—, así que hay que pedir una vez por
+    compañía."""
     peticiones: list[httpx.Request] = []
 
     def _manejar(peticion: httpx.Request) -> httpx.Response:
         peticiones.append(peticion)
-        return httpx.Response(
-            200,
-            text=_csv(
-                _fila("402", 1, "2026-08-01"),  # compañía 4
-                _fila("605", 1, "2026-08-01"),  # compañía 6
-                _fila("701", 1, "2026-08-01"),  # compañía 7
-            ),
-        )
+        compania = peticion.url.params["id_cia"]
+        filas = {
+            "4": _fila("402", 1, "2026-08-01"),
+            "6": _fila("605", 1, "2026-08-01"),
+            "7": _fila("701", 1, "2026-08-01"),
+        }
+        return httpx.Response(200, text=_csv(filas[compania]))
 
     fuente = FuenteFacturasSiesa(
         configuracion=_configuracion(companias=(4, 6, 7)),
@@ -126,8 +126,7 @@ def test_una_sola_peticion_con_id_cia_separado_por_comas() -> None:
 
     conteos = fuente.contar_documentos(date(2026, 8, 1), date(2026, 8, 1))
 
-    assert len(peticiones) == 1
-    assert peticiones[0].url.params["id_cia"] == "4,6,7"
+    assert [p.url.params["id_cia"] for p in peticiones] == ["4", "6", "7"]
     assert set(conteos) == {
         ("402", date(2026, 8, 1)),
         ("605", date(2026, 8, 1)),
