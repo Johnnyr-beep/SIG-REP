@@ -1,7 +1,7 @@
 """Número de documentos diarios: fuente, sincronización y su columna en el
 reporte de venta diaria (§4.4).
 
-Ninguna prueba toca la red: la API de `facturas-pdv-diario` se simula con
+Ninguna prueba toca la red: la API de `facturas-pdv-resumen` se simula con
 `httpx.MockTransport`, mismo patrón que `test_fuente_siesa.py`.
 """
 
@@ -20,7 +20,7 @@ from app.application.services.documentos_diarios_service import (
 )
 from app.application.services.reportes_service import FiltrosReporte, ReportesService
 from app.infrastructure.fuentes.facturas_siesa import (
-    RUTA_FACTURAS_PDV_DIARIO,
+    RUTA_FACTURAS_PDV_RESUMEN,
     FuenteFacturasSiesa,
 )
 from app.infrastructure.fuentes.siesa import ConfiguracionSiesa
@@ -30,15 +30,11 @@ from tests.conftest import id_categoria, id_periodo, id_punto_venta
 
 D = Decimal
 
-ENCABEZADO = "id_cia,compania,id_co,punto_venta,id_bodega,bodega,guid_factura,fecha,hora,fecha_hora"
+ENCABEZADO = "id_cia,compania,id_co,punto_venta,id_bodega,bodega,fecha,documentos"
 
 
-def _fila(id_co: str, guid: str, fecha: str = "2026-08-01") -> str:
-    hora_completa = f"{fecha} 10:00:00.000000"
-    return (
-        f"4,CARNES SANTACRUZ S.A.S,{id_co},PDV,{id_co}01,BODEGA,"
-        f"{guid},{fecha},10:00:00,{hora_completa}"
-    )
+def _fila(id_co: str, documentos: int, fecha: str = "2026-08-01", bodega: str = "01") -> str:
+    return f"4,CARNES SANTACRUZ S.A.S,{id_co},PDV,{id_co}{bodega},BODEGA,{fecha},{documentos}"
 
 
 def _csv(*filas: str) -> str:
@@ -58,7 +54,7 @@ def _configuracion(**extra: object) -> ConfiguracionSiesa:
 
 def _fuente_con(cuerpo: str) -> FuenteFacturasSiesa:
     def _manejar(peticion: httpx.Request) -> httpx.Response:
-        assert peticion.url.path == RUTA_FACTURAS_PDV_DIARIO
+        assert peticion.url.path == RUTA_FACTURAS_PDV_RESUMEN
         return httpx.Response(200, text=cuerpo)
 
     return FuenteFacturasSiesa(
@@ -70,25 +66,36 @@ def _fuente_con(cuerpo: str) -> FuenteFacturasSiesa:
 # ── FuenteFacturasSiesa ────────────────────────────────────────────────────────
 
 
-def test_cuenta_guid_factura_distintos_por_pdv_y_fecha() -> None:
+def test_lee_documentos_por_pdv_y_fecha() -> None:
     csv = _csv(
-        _fila("402", "guid-1", "2026-08-01"),
-        _fila("402", "guid-2", "2026-08-01"),
-        _fila("402", "guid-1", "2026-08-01"),  # repetida: no debe contar dos veces
-        _fila("406", "guid-3", "2026-08-01"),
-        _fila("402", "guid-4", "2026-08-02"),
+        _fila("402", 5, "2026-08-01"),
+        _fila("406", 3, "2026-08-01"),
+        _fila("402", 2, "2026-08-02"),
     )
     fuente = _fuente_con(csv)
 
     conteos = fuente.contar_documentos(date(2026, 8, 1), date(2026, 8, 2))
 
-    assert conteos[("402", date(2026, 8, 1))] == 2
-    assert conteos[("406", date(2026, 8, 1))] == 1
-    assert conteos[("402", date(2026, 8, 2))] == 1
+    assert conteos[("402", date(2026, 8, 1))] == 5
+    assert conteos[("406", date(2026, 8, 1))] == 3
+    assert conteos[("402", date(2026, 8, 2))] == 2
+
+
+def test_suma_varias_bodegas_del_mismo_pdv_y_fecha() -> None:
+    """Un PDV que factura desde dos bodegas el mismo día trae dos filas; se suman."""
+    csv = _csv(
+        _fila("402", 5, "2026-08-01", bodega="01"),
+        _fila("402", 3, "2026-08-01", bodega="02"),
+    )
+    fuente = _fuente_con(csv)
+
+    conteos = fuente.contar_documentos(date(2026, 8, 1), date(2026, 8, 1))
+
+    assert conteos[("402", date(2026, 8, 1))] == 8
 
 
 def test_id_co_se_normaliza_a_tres_cifras() -> None:
-    csv = _csv(_fila("6", "guid-1", "2026-08-01"))
+    csv = _csv(_fila("6", 1, "2026-08-01"))
     fuente = _fuente_con(csv)
 
     conteos = fuente.contar_documentos(date(2026, 8, 1), date(2026, 8, 1))
@@ -96,9 +103,9 @@ def test_id_co_se_normaliza_a_tres_cifras() -> None:
     assert ("006", date(2026, 8, 1)) in conteos
 
 
-def test_una_sola_peticion_sin_id_cia_trae_varias_companias() -> None:
-    """Medido (16-sep-2026): el endpoint mezcla compañías si se omite `id_cia`,
-    así que basta una petición para C.O. de compañías distintas."""
+def test_una_sola_peticion_con_id_cia_separado_por_comas() -> None:
+    """Medido (16-sep-2026): `id_cia` acepta una lista `4,6,7` en una sola
+    petición, sin tener que pedir una vez por compañía."""
     peticiones: list[httpx.Request] = []
 
     def _manejar(peticion: httpx.Request) -> httpx.Response:
@@ -106,21 +113,21 @@ def test_una_sola_peticion_sin_id_cia_trae_varias_companias() -> None:
         return httpx.Response(
             200,
             text=_csv(
-                _fila("402", "guid-1", "2026-08-01"),  # compañía 4
-                _fila("605", "guid-2", "2026-08-01"),  # compañía 6
-                _fila("701", "guid-3", "2026-08-01"),  # compañía 7
+                _fila("402", 1, "2026-08-01"),  # compañía 4
+                _fila("605", 1, "2026-08-01"),  # compañía 6
+                _fila("701", 1, "2026-08-01"),  # compañía 7
             ),
         )
 
     fuente = FuenteFacturasSiesa(
-        configuracion=_configuracion(),
+        configuracion=_configuracion(companias=(4, 6, 7)),
         sesion_http=httpx.Client(transport=httpx.MockTransport(_manejar)),
     )
 
     conteos = fuente.contar_documentos(date(2026, 8, 1), date(2026, 8, 1))
 
     assert len(peticiones) == 1
-    assert "id_cia" not in peticiones[0].url.params
+    assert peticiones[0].url.params["id_cia"] == "4,6,7"
     assert set(conteos) == {
         ("402", date(2026, 8, 1)),
         ("605", date(2026, 8, 1)),
