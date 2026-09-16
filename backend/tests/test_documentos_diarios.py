@@ -96,6 +96,38 @@ def test_id_co_se_normaliza_a_tres_cifras() -> None:
     assert ("006", date(2026, 8, 1)) in conteos
 
 
+def test_una_sola_peticion_sin_id_cia_trae_varias_companias() -> None:
+    """Medido (16-sep-2026): el endpoint mezcla compañías si se omite `id_cia`,
+    así que basta una petición para C.O. de compañías distintas."""
+    peticiones: list[httpx.Request] = []
+
+    def _manejar(peticion: httpx.Request) -> httpx.Response:
+        peticiones.append(peticion)
+        return httpx.Response(
+            200,
+            text=_csv(
+                _fila("402", "guid-1", "2026-08-01"),  # compañía 4
+                _fila("605", "guid-2", "2026-08-01"),  # compañía 6
+                _fila("701", "guid-3", "2026-08-01"),  # compañía 7
+            ),
+        )
+
+    fuente = FuenteFacturasSiesa(
+        configuracion=_configuracion(),
+        sesion_http=httpx.Client(transport=httpx.MockTransport(_manejar)),
+    )
+
+    conteos = fuente.contar_documentos(date(2026, 8, 1), date(2026, 8, 1))
+
+    assert len(peticiones) == 1
+    assert "id_cia" not in peticiones[0].url.params
+    assert set(conteos) == {
+        ("402", date(2026, 8, 1)),
+        ("605", date(2026, 8, 1)),
+        ("701", date(2026, 8, 1)),
+    }
+
+
 # ── sincronizar_documentos_diarios ────────────────────────────────────────────
 
 

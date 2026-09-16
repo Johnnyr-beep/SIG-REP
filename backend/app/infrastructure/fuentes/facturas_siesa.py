@@ -6,7 +6,7 @@ endpoint entregaba; este lo hace, y esta fuente lo reduce a lo único que hace
 falta persistir: cuántas facturas **distintas** tuvo cada punto de venta cada
 día.
 
-── Dos diferencias con `FuenteVentaSiesa` que conviene tener presentes ────────
+── Tres diferencias con `FuenteVentaSiesa` que conviene tener presentes ───────
 
 **1. El C.O. llega como código, no como descripción.** La columna es `id_co`
 (`406`, `403`…), no `DescCO`. No hace falta el directorio de
@@ -14,9 +14,14 @@ día.
 directo a tres cifras.
 
 **2. `limit`/`offset` no aplican con `format=csv`.** Medido: pedir `limit=10`
-sobre agosto-2026 (compañía 4) devolvió las **132 783** filas completas, igual
-que sin `limit`. El CSV ignora la paginación y siempre trae el rango entero
-por compañía, así que una petición por compañía basta.
+sobre agosto-2026 devolvió las filas completas, igual que sin `limit`. El CSV
+ignora la paginación y siempre trae el rango entero.
+
+**3. `id_cia` es opcional y, si se omite, trae las tres compañías mezcladas.**
+Al revés que `costos-razon-social`, donde omitirlo no sirve. Medido
+(16-sep-2026): sin `id_cia` aparecen puntos de venta `4xx`, `6xx` y `7xx` en la
+misma respuesta, así que una sola petición basta —antes se pedía una vez por
+compañía—.
 
 Un `guid_factura` puede aparecer más de una vez si la fuente decidiera repetir
 la fila (no se ha medido que ocurra, pero tampoco hay garantía de lo
@@ -68,19 +73,23 @@ class FuenteFacturasSiesa:
             self._sesion_http = None
 
     def contar_documentos(self, desde: date, hasta: date) -> dict[tuple[str, date], int]:
-        """`{(codigo_co, fecha): facturas distintas}` del rango, ambos incluidos."""
+        """`{(codigo_co, fecha): facturas distintas}` del rango, ambos incluidos.
+
+        Una sola petición, sin `id_cia`: medido (16-sep-2026) que, a diferencia
+        de `costos-razon-social`, este endpoint sí trae las tres compañías
+        mezcladas —códigos `4xx`, `6xx` y `7xx`— cuando se omite el parámetro.
+        Antes se pedía una vez por compañía; era tres peticiones para el mismo
+        resultado.
+        """
         vistos: dict[tuple[str, date], set[str]] = {}
-        for compania in self._configuracion.companias:
-            parametros = {
-                "fecha_inicio": desde.isoformat(),
-                "fecha_fin": hasta.isoformat(),
-                "id_cia": str(compania),
-                "format": "csv",
-            }
-            lector = csv.DictReader(self._lineas(parametros))
-            columnas = lector.fieldnames
-            if not columnas:
-                continue
+        parametros = {
+            "fecha_inicio": desde.isoformat(),
+            "fecha_fin": hasta.isoformat(),
+            "format": "csv",
+        }
+        lector = csv.DictReader(self._lineas(parametros))
+        columnas = lector.fieldnames
+        if columnas:
             presentes = {str(c).strip().lower() for c in columnas if c}
             faltantes = [c for c in COLUMNAS_OBLIGATORIAS if c not in presentes]
             if faltantes:
