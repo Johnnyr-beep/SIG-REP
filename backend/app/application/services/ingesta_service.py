@@ -47,8 +47,10 @@ from sqlalchemy import delete, insert, select
 from sqlalchemy.orm import Session
 
 from app.application.services.bitacora_ingesta import BitacoraIngesta
+from app.application.services.documentos_diarios_service import sincronizar_documentos_diarios
 from app.application.services.periodos import obtener_o_crear_periodo
 from app.core.config import obtener_settings
+from app.core.db import sesion_ambito
 from app.core.errors import ErrorNoEncontrado, ErrorValidacion
 from app.core.logging import obtener_logger
 from app.domain.enums import EstadoCorrida, FuenteIngesta
@@ -70,6 +72,7 @@ from app.infrastructure.fuentes import (
     FuenteVentaSiesa,
     RechazoFuente,
 )
+from app.infrastructure.fuentes.facturas_siesa import FuenteFacturasSiesa
 from app.infrastructure.fuentes.siesa import ConfiguracionSiesa
 from app.infrastructure.models.catalogo import MapeoCategoria
 from app.infrastructure.models.ingesta import CorridaIngesta, RechazoIngesta
@@ -375,7 +378,36 @@ class IngestaService:
             rechazadas=corrida.rechazadas,
             duracion_ms=corrida.duracion_ms,
         )
+        self._sincronizar_documentos_si_aplica(corrida)
         return self._a_salida(corrida, usuario)
+
+    def _sincronizar_documentos_si_aplica(self, corrida: CorridaIngesta) -> None:
+        """Refresca `numero_documentos_diarios` del rango recién cargado.
+
+        Número de documentos es exclusivo de Carnes (no aplica a Agropecuaria,
+        Carnes Frías ni Grupo Santacruz) y depende de un token propio de SIESA:
+        sin ninguno de los dos no hay nada que hacer. Corre en su **propia**
+        sesión y transacción —nunca la de la ingesta— para que un fallo aquí,
+        con la venta ya cargada y confirmada, no la tumbe ni la deje a medias.
+        """
+        if (
+            self._unidad != "carnes"
+            or corrida.estado == EstadoCorrida.FALLIDA.value
+            or corrida.desde is None
+            or corrida.hasta is None
+            or not self._settings.siesa_token.get_secret_value()
+        ):
+            return
+        fuente = FuenteFacturasSiesa(unidad="carnes")
+        try:
+            with sesion_ambito("carnes") as sesion_documentos:
+                sincronizar_documentos_diarios(
+                    sesion_documentos, fuente, corrida.desde, corrida.hasta
+                )
+        except Exception:
+            logger.exception("documentos_diarios_fallo_tras_ingesta", corrida=corrida.id)
+        finally:
+            fuente.cerrar()
 
     def _cargar(
         self,

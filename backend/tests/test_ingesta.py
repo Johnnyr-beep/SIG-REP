@@ -706,6 +706,77 @@ def test_la_fuente_excel_sin_ruta_configurada_dice_que_configurar(
     assert "SIGREP_RUTA_ARCHIVO_VENTA" in respuesta.json()["detalle"]
 
 
+def test_la_ingesta_de_carnes_sincroniza_documentos_del_mismo_rango(
+    estructura: None, sesion: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Terminada la carga de venta, se refresca el conteo de documentos del
+    mismo rango sin esperar a la corrida nocturna (§4.4)."""
+    from app.application.services import ingesta_service
+    from app.core.config import obtener_settings
+
+    monkeypatch.setenv("SIGREP_SIESA_TOKEN", "token-de-pruebas")
+    obtener_settings.cache_clear()
+
+    llamadas: list[tuple[date, date]] = []
+    monkeypatch.setattr(
+        ingesta_service,
+        "sincronizar_documentos_diarios",
+        lambda _sesion, _fuente, desde, hasta: llamadas.append((desde, hasta)),
+    )
+
+    try:
+        ingerir(sesion, [fila_venta(fecha=datetime(2026, 8, 3))])
+    finally:
+        obtener_settings.cache_clear()
+
+    assert llamadas == [(date(2026, 8, 3), date(2026, 8, 3))]
+
+
+def test_la_ingesta_de_agropecuaria_no_sincroniza_documentos(
+    estructura: None, sesion: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Número de documentos es exclusivo de Carnes: otra unidad ni lo intenta."""
+    from app.application.services import ingesta_service
+    from app.core.config import obtener_settings
+
+    monkeypatch.setenv("SIGREP_SIESA_TOKEN", "token-de-pruebas")
+    obtener_settings.cache_clear()
+
+    llamadas: list[tuple[date, date]] = []
+    monkeypatch.setattr(
+        ingesta_service,
+        "sincronizar_documentos_diarios",
+        lambda _sesion, _fuente, desde, hasta: llamadas.append((desde, hasta)),
+    )
+
+    try:
+        IngestaService(sesion, unidad="agropecuaria").ingerir_archivo(
+            libro_venta([fila_venta(fecha=datetime(2026, 8, 3))]), "venta.xlsx"
+        )
+        sesion.commit()
+    finally:
+        obtener_settings.cache_clear()
+
+    assert llamadas == []
+
+
+def test_la_ingesta_sin_token_siesa_no_intenta_sincronizar_documentos(
+    estructura: None, sesion: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.application.services import ingesta_service
+
+    llamadas: list[tuple[date, date]] = []
+    monkeypatch.setattr(
+        ingesta_service,
+        "sincronizar_documentos_diarios",
+        lambda _sesion, _fuente, desde, hasta: llamadas.append((desde, hasta)),
+    )
+
+    ingerir(sesion, [fila_venta(fecha=datetime(2026, 8, 3))])
+
+    assert llamadas == []  # el entorno de pruebas no trae SIGREP_SIESA_TOKEN
+
+
 def test_salud_publica_la_ultima_ingesta(
     cliente_http: TestClient, analista: dict[str, str]
 ) -> None:
