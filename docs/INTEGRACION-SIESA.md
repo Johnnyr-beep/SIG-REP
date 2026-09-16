@@ -278,6 +278,27 @@ los demás endpoints lo publica y con qué grano; SIGREP lo uniría por
 (centro, fecha) con una segunda consulta, como ya se planteó en su día con
 `vendedor-acumulada`.
 
+> **Actualización (15-sep-2026): resuelto con `GET /ventas/facturas-pdv-diario`.**
+> Un renglón por factura (`id_co`, `fecha`, `guid_factura`), del que SIGREP
+> cuenta `guid_factura` distintos por `(id_co, fecha)` — ver
+> `FuenteFacturasSiesa` en `backend/app/infrastructure/fuentes/facturas_siesa.py`.
+> Se sincroniza solo para la instancia de Carnes: al terminar cada ingesta de
+> venta (mismo rango) y, además, con un job de fondo diario que recorre los
+> últimos 7 días.
+>
+> **Mismo vacío que el costo de PEREIRA (§4.1), en otros puntos.** Verificado el
+> 2026-09-14: de los ~14-16 puntos de venta de Carnes, este endpoint solo trajo
+> documentos para 9. **605 ALAMEDA 1, 606 ALAMEDA 2 y 415 CARTAGENA no
+> aparecieron ni una vez**, aunque sí venden ese día —`costos-razon-social` los
+> trae completos—. SIGREP no inventa un cero: esos puntos simplemente no
+> publican Documentos ni Ticket promedio ese día, igual que PEREIRA no publica
+> margen cuando el costo llega en cero por `SIN ACUMULAR`.
+>
+> **La pregunta:** ¿por qué `facturas-pdv-diario` no publica factura alguna para
+> esos puntos en días donde sí hay venta confirmada por `costos-razon-social`?
+> ¿Facturan por un módulo de SIESA que este endpoint no cubre, igual que
+> `SIN ACUMULAR` en §4.1?
+
 ### 4.5 Petición nueva: el **identificador del cliente** en `/ventas/agropecuaria`
 
 **Qué falta.** `GET /ventas/agropecuaria` entrega el cliente **solo por nombre**.

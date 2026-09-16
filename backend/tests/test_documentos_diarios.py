@@ -186,26 +186,10 @@ def test_venta_diaria_incluye_documentos_por_dia(sesion: Session, estructura: No
 # ── Programador en segundo plano ──────────────────────────────────────────────
 
 
-def test_segundos_hasta_proxima_ejecucion_mismo_dia() -> None:
-    from datetime import datetime
+def test_intervalo_de_dos_horas() -> None:
+    from app.infrastructure.programador_documentos import INTERVALO_HORAS
 
-    from app.infrastructure.programador_documentos import _segundos_hasta_proxima_ejecucion
-
-    ahora = datetime(2026, 8, 1, 6, 0, 0)
-    segundos = _segundos_hasta_proxima_ejecucion(ahora)
-
-    assert segundos == 5400  # 07:30 - 06:00, mismo día
-
-
-def test_segundos_hasta_proxima_ejecucion_ya_paso_hoy() -> None:
-    from datetime import datetime
-
-    from app.infrastructure.programador_documentos import _segundos_hasta_proxima_ejecucion
-
-    ahora = datetime(2026, 8, 1, 8, 0, 0)
-    segundos = _segundos_hasta_proxima_ejecucion(ahora)
-
-    assert segundos == 23 * 3600 + 1800  # 07:30 del día siguiente
+    assert INTERVALO_HORAS == 2
 
 
 def test_tomar_turno_sin_candado_en_sqlite(sesion: Session, estructura: None) -> None:
