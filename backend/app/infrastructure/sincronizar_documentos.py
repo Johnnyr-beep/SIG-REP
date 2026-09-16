@@ -30,8 +30,8 @@ def main() -> None:  # pragma: no cover - utilidad de línea de comandos
     parser.add_argument(
         "--unidad",
         default="carnes",
-        choices=["carnes", "carnes-frias"],
-        help="unidad cuya base se actualiza",
+        choices=["carnes"],
+        help="unidad cuya base se actualiza (solo Carnes tiene esta columna)",
     )
     argumentos = parser.parse_args()
 

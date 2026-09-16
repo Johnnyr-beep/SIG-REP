@@ -34,9 +34,10 @@ from app.infrastructure.fuentes.facturas_siesa import FuenteFacturasSiesa
 
 logger = obtener_logger(__name__)
 
-#: Agropecuaria y Grupo Santacruz no traen facturación de SIESA para esta
-#: fuente; solo estas dos unidades tienen algo que sincronizar.
-UNIDADES: tuple[UnidadDatos, ...] = ("carnes", "carnes-frias")
+#: Número de documentos es un dato exclusivo de la instancia de Carnes: Carnes
+#: Frías usa la pantalla de venta diaria de Agro (`VentaDiariaAgro`), que no
+#: tiene esta columna, y Agropecuaria y Grupo Santacruz no traen esta fuente.
+UNIDADES: tuple[UnidadDatos, ...] = ("carnes",)
 
 #: Hoy y los 6 días anteriores: no solo "ayer", porque una factura corregida
 #: o anulada un día después debe reflejarse sin esperar a que alguien vuelva a
