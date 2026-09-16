@@ -30,11 +30,11 @@ from tests.conftest import id_categoria, id_periodo, id_punto_venta
 
 D = Decimal
 
-ENCABEZADO = "id_cia,compania,id_co,punto_venta,id_bodega,bodega,fecha,documentos"
+ENCABEZADO = "fecha,id_cia,id_co,num_facturas,punto_venta"
 
 
-def _fila(id_co: str, documentos: int, fecha: str = "2026-08-01", bodega: str = "01") -> str:
-    return f"4,CARNES SANTACRUZ S.A.S,{id_co},PDV,{id_co}{bodega},BODEGA,{fecha},{documentos}"
+def _fila(id_co: str, documentos: int, fecha: str = "2026-08-01") -> str:
+    return f"{fecha},4,{id_co},{documentos},PDV"
 
 
 def _csv(*filas: str) -> str:
@@ -81,11 +81,11 @@ def test_lee_documentos_por_pdv_y_fecha() -> None:
     assert conteos[("402", date(2026, 8, 2))] == 2
 
 
-def test_suma_varias_bodegas_del_mismo_pdv_y_fecha() -> None:
-    """Un PDV que factura desde dos bodegas el mismo día trae dos filas; se suman."""
+def test_suma_si_el_mismo_pdv_y_fecha_aparece_en_mas_de_una_fila() -> None:
+    """No medido que ocurra, pero si pasara, se suma en vez de sobrescribir."""
     csv = _csv(
-        _fila("402", 5, "2026-08-01", bodega="01"),
-        _fila("402", 3, "2026-08-01", bodega="02"),
+        _fila("402", 5, "2026-08-01"),
+        _fila("402", 3, "2026-08-01"),
     )
     fuente = _fuente_con(csv)
 

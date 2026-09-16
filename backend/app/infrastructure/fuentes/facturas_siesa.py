@@ -1,11 +1,11 @@
 """Conteo de documentos (facturas) por punto de venta y día.
 
 `GET /ventas/facturas-pdv-resumen` — ya agregado del lado de SIESA: un renglón
-por `(id_co, fecha)` —y bodega— con su propia columna `Documentos`, no uno por
-factura. §4.4 documentaba el número de documentos como un dato que ningún
-endpoint entregaba; primero se resolvió con `facturas-pdv-diario` contando
-`guid_factura` distintos, y este endpoint hace la misma cuenta del lado de la
-API, así que SIGREP ya no tiene que deduplicar nada.
+por `(id_cia, id_co, fecha)` con su propia columna `num_facturas`, no uno por
+factura ni por bodega. §4.4 documentaba el número de documentos como un dato
+que ningún endpoint entregaba; primero se resolvió con `facturas-pdv-diario`
+contando `guid_factura` distintos, y este endpoint hace la misma cuenta del
+lado de la API, así que SIGREP ya no tiene que deduplicar nada.
 
 ── Lo que conviene tener presente ──────────────────────────────────────────
 
@@ -14,9 +14,12 @@ API, así que SIGREP ya no tiene que deduplicar nada.
 `puntos_venta.descripcion_siesa` ni la comparación por texto: se normaliza
 directo a tres cifras.
 
-**2. Puede traer varias filas por `(id_co, fecha)`.** Si un punto de venta
-factura desde más de una bodega el mismo día, cada bodega es su propia fila;
-`Documentos` se **suma** por `(id_co, fecha)`, nunca se sobrescribe.
+**2. La columna del conteo se llama `num_facturas`, no `Documentos`.** Medido
+(16-sep-2026): el encabezado real es `fecha,id_cia,id_co,num_facturas,
+punto_venta` —sin `bodega` ni `id_bodega`—, así que ya viene agregado por
+`(id_cia, id_co, fecha)` y no hace falta sumar nada del lado de SIGREP. Se suma
+de todos modos por `(id_co, fecha)` solo por si el mismo C.O. aparece en más de
+una fila —no se ha medido que ocurra, pero tampoco cuesta nada la suma—.
 
 **3. `id_cia` es un entero, una petición por compañía.** Medido (16-sep-2026):
 `id_cia=4,6,7` como lista separada por comas responde **422** ("Input should be
@@ -40,7 +43,7 @@ RUTA_FACTURAS_PDV_RESUMEN = "/ventas/facturas-pdv-resumen"
 
 COL_ID_CO = "id_co"
 COL_FECHA = "fecha"
-COL_DOCUMENTOS = "documentos"
+COL_DOCUMENTOS = "num_facturas"
 COLUMNAS_OBLIGATORIAS = (COL_ID_CO, COL_FECHA, COL_DOCUMENTOS)
 
 
