@@ -27,6 +27,7 @@ from app.api.v1 import usuarios as usuarios_api
 from app.core.config import obtener_settings
 from app.core.errors import registrar_manejadores
 from app.core.logging import configurar_logging, obtener_logger
+from app.infrastructure.programador_documentos import iniciar_programador_documentos
 from app.schemas.common import DetalleError
 
 settings = obtener_settings()
@@ -38,9 +39,12 @@ logger = obtener_logger(__name__)
 async def ciclo_vida(_: FastAPI) -> AsyncIterator[None]:
     """Arranque y apagado ordenado de la aplicación."""
     logger.info("aplicacion_iniciando", version=settings.version, entorno=settings.entorno)
+    tarea_documentos = iniciar_programador_documentos()
     try:
         yield
     finally:
+        if tarea_documentos is not None:
+            tarea_documentos.cancel()
         logger.info("aplicacion_detenida")
 
 

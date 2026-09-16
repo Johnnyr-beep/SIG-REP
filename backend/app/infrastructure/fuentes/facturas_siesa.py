@@ -50,13 +50,14 @@ class FuenteFacturasSiesa:
     def __init__(
         self,
         *,
+        unidad: str = "carnes",
         configuracion: ConfiguracionSiesa | None = None,
         sesion_http: httpx.Client | None = None,
     ) -> None:
         if configuracion is None:
             from app.core.config import obtener_settings
 
-            configuracion = ConfiguracionSiesa.desde_settings(obtener_settings())
+            configuracion = ConfiguracionSiesa.desde_settings(obtener_settings(), unidad=unidad)
         self._configuracion = configuracion
         self._sesion_http = sesion_http
         self._propia = sesion_http is None

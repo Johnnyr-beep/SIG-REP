@@ -39,7 +39,7 @@ def main() -> None:  # pragma: no cover - utilidad de línea de comandos
     desde = date.fromisoformat(argumentos.desde)
     hasta = date.fromisoformat(argumentos.hasta)
 
-    fuente = FuenteFacturasSiesa()
+    fuente = FuenteFacturasSiesa(unidad=argumentos.unidad)
     try:
         with sesion_ambito(argumentos.unidad) as sesion:
             resumen = sincronizar_documentos_diarios(sesion, fuente, desde, hasta)

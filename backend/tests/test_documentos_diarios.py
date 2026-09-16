@@ -181,3 +181,47 @@ def test_venta_diaria_incluye_documentos_por_dia(sesion: Session, estructura: No
     # Un día sin conteo sincronizado es `None`, no cero.
     indice_dia_2 = respuesta.fechas.index(date(2026, 8, 2))
     assert fila.documentos[indice_dia_2] is None
+
+
+# ── Programador en segundo plano ──────────────────────────────────────────────
+
+
+def test_segundos_hasta_proxima_ejecucion_mismo_dia() -> None:
+    from datetime import datetime
+
+    from app.infrastructure.programador_documentos import _segundos_hasta_proxima_ejecucion
+
+    ahora = datetime(2026, 8, 1, 6, 0, 0)
+    segundos = _segundos_hasta_proxima_ejecucion(ahora)
+
+    assert segundos == 5400  # 07:30 - 06:00, mismo día
+
+
+def test_segundos_hasta_proxima_ejecucion_ya_paso_hoy() -> None:
+    from datetime import datetime
+
+    from app.infrastructure.programador_documentos import _segundos_hasta_proxima_ejecucion
+
+    ahora = datetime(2026, 8, 1, 8, 0, 0)
+    segundos = _segundos_hasta_proxima_ejecucion(ahora)
+
+    assert segundos == 23 * 3600 + 1800  # 07:30 del día siguiente
+
+
+def test_tomar_turno_sin_candado_en_sqlite(sesion: Session, estructura: None) -> None:
+    from app.infrastructure.programador_documentos import _tomar_turno
+
+    assert _tomar_turno(sesion, "carnes") is True
+    assert _tomar_turno(sesion, "carnes") is True  # sin candado, no hay exclusión que probar
+
+
+def test_iniciar_programador_documentos_sin_token(monkeypatch) -> None:
+    from app.core.config import obtener_settings
+    from app.infrastructure.programador_documentos import iniciar_programador_documentos
+
+    monkeypatch.delenv("SIGREP_SIESA_TOKEN", raising=False)
+    obtener_settings.cache_clear()
+    try:
+        assert iniciar_programador_documentos() is None
+    finally:
+        obtener_settings.cache_clear()
