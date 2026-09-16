@@ -218,10 +218,10 @@ def test_venta_diaria_incluye_documentos_por_dia(sesion: Session, estructura: No
 # ── Programador en segundo plano ──────────────────────────────────────────────
 
 
-def test_intervalo_de_dos_horas() -> None:
+def test_intervalo_de_una_hora() -> None:
     from app.infrastructure.programador_documentos import INTERVALO_HORAS
 
-    assert INTERVALO_HORAS == 2
+    assert INTERVALO_HORAS == 1
 
 
 def test_tomar_turno_sin_candado_en_sqlite(sesion: Session, estructura: None) -> None:

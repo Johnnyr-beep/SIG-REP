@@ -49,10 +49,9 @@ UNIDADES: tuple[UnidadDatos, ...] = ("carnes",)
 #: correr el comando a mano.
 DIAS_VENTANA = 7
 
-#: Cada cuántas horas se repite. 2 mantiene el dato razonablemente al día sin
-#: golpear la API de SIESA cada pocos minutos por un dato que no cambia tan
-#: seguido.
-INTERVALO_HORAS = 2
+#: Cada cuántas horas se repite. 1 mantiene el dato al día sin golpear la API
+#: de SIESA cada pocos minutos por un dato que no cambia tan seguido.
+INTERVALO_HORAS = 1
 
 
 def _tomar_turno(sesion: Session, unidad: UnidadDatos) -> bool:
