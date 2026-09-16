@@ -1,30 +1,27 @@
 """Conteo de documentos (facturas) por punto de venta y día.
 
-`GET /ventas/facturas-pdv-resumen` — ya agregado del lado de SIESA: un renglón
-por `(id_cia, id_co, fecha)` con su propia columna `num_facturas`, no uno por
-factura ni por bodega. §4.4 documentaba el número de documentos como un dato
-que ningún endpoint entregaba; primero se resolvió con `facturas-pdv-diario`
-contando `guid_factura` distintos, y este endpoint hace la misma cuenta del
-lado de la API, así que SIGREP ya no tiene que deduplicar nada.
+`GET /ventas/facturas-pdv-diario` — un renglón por factura, no por línea de
+producto. §4.4 documentaba el número de documentos como un dato que ningún
+endpoint entregaba; este lo hace, y esta fuente lo reduce a lo único que hace
+falta persistir: cuántas facturas **distintas** tuvo cada punto de venta cada
+día.
 
-── Lo que conviene tener presente ──────────────────────────────────────────
+── Dos diferencias con `FuenteVentaSiesa` que conviene tener presentes ────────
 
 **1. El C.O. llega como código, no como descripción.** La columna es `id_co`
 (`406`, `403`…), no `DescCO`. No hace falta el directorio de
 `puntos_venta.descripcion_siesa` ni la comparación por texto: se normaliza
 directo a tres cifras.
 
-**2. La columna del conteo se llama `num_facturas`, no `Documentos`.** Medido
-(16-sep-2026): el encabezado real es `fecha,id_cia,id_co,num_facturas,
-punto_venta` —sin `bodega` ni `id_bodega`—, así que ya viene agregado por
-`(id_cia, id_co, fecha)` y no hace falta sumar nada del lado de SIGREP. Se suma
-de todos modos por `(id_co, fecha)` solo por si el mismo C.O. aparece en más de
-una fila —no se ha medido que ocurra, pero tampoco cuesta nada la suma—.
+**2. `limit`/`offset` no aplican con `format=csv`.** Medido: pedir `limit=10`
+sobre agosto-2026 (compañía 4) devolvió las **132 783** filas completas, igual
+que sin `limit`. El CSV ignora la paginación y siempre trae el rango entero
+por compañía, así que una petición por compañía basta.
 
-**3. `id_cia` es un entero, una petición por compañía.** Medido (16-sep-2026):
-`id_cia=4,6,7` como lista separada por comas responde **422** ("Input should be
-a valid integer"). Sigue el mismo patrón que `costos-razon-social`: hay que
-pedir una vez por cada compañía de `SIGREP_SIESA_COMPANIAS`.
+Un `guid_factura` puede aparecer más de una vez si la fuente decidiera repetir
+la fila (no se ha medido que ocurra, pero tampoco hay garantía de lo
+contrario), así que se cuentan **valores distintos de `guid_factura`** por
+`(id_co, fecha)`, nunca filas crudas.
 """
 
 from __future__ import annotations
@@ -39,16 +36,16 @@ import httpx
 from app.domain.normalizacion import a_fecha
 from app.infrastructure.fuentes.siesa import ConfiguracionSiesa, ErrorFuenteSiesa
 
-RUTA_FACTURAS_PDV_RESUMEN = "/ventas/facturas-pdv-resumen"
+RUTA_FACTURAS_PDV_DIARIO = "/ventas/facturas-pdv-diario"
 
 COL_ID_CO = "id_co"
 COL_FECHA = "fecha"
-COL_DOCUMENTOS = "num_facturas"
-COLUMNAS_OBLIGATORIAS = (COL_ID_CO, COL_FECHA, COL_DOCUMENTOS)
+COL_GUID = "guid_factura"
+COLUMNAS_OBLIGATORIAS = (COL_ID_CO, COL_FECHA, COL_GUID)
 
 
 class FuenteFacturasSiesa:
-    """Documentos por `(codigo_co, fecha)` en un rango, ya agregados por SIESA."""
+    """Cuenta facturas distintas por `(codigo_co, fecha)` en un rango."""
 
     def __init__(
         self,
@@ -71,15 +68,8 @@ class FuenteFacturasSiesa:
             self._sesion_http = None
 
     def contar_documentos(self, desde: date, hasta: date) -> dict[tuple[str, date], int]:
-        """`{(codigo_co, fecha): documentos}` del rango, ambos incluidos.
-
-        Una petición por compañía: medido (16-sep-2026) que `id_cia` aquí es un
-        entero, no una lista —a diferencia de lo que parecía en una prueba
-        manual, `id_cia=4,6,7` responde 422—. Se suma `Documentos` por
-        `(id_co, fecha)` porque una misma fecha puede traer varias filas —una
-        por bodega— para el mismo punto de venta.
-        """
-        conteos: dict[tuple[str, date], int] = {}
+        """`{(codigo_co, fecha): facturas distintas}` del rango, ambos incluidos."""
+        vistos: dict[tuple[str, date], set[str]] = {}
         for compania in self._configuracion.companias:
             parametros = {
                 "fecha_inicio": desde.isoformat(),
@@ -95,7 +85,7 @@ class FuenteFacturasSiesa:
             faltantes = [c for c in COLUMNAS_OBLIGATORIAS if c not in presentes]
             if faltantes:
                 raise ErrorFuenteSiesa(
-                    f"El CSV de {RUTA_FACTURAS_PDV_RESUMEN} no trae las columnas obligatorias: "
+                    f"El CSV de {RUTA_FACTURAS_PDV_DIARIO} no trae las columnas obligatorias: "
                     + ", ".join(faltantes)
                     + f". Llegaron: {', '.join(sorted(presentes))}."
                 )
@@ -107,17 +97,13 @@ class FuenteFacturasSiesa:
                 }
                 codigo = str(registro.get(COL_ID_CO, "")).strip()
                 fecha = a_fecha(registro.get(COL_FECHA))
-                crudo_documentos = str(registro.get(COL_DOCUMENTOS, "")).strip()
-                if not codigo or fecha is None or not crudo_documentos:
-                    continue
-                try:
-                    cantidad = int(crudo_documentos)
-                except ValueError:
+                guid = (registro.get(COL_GUID) or "").strip()
+                if not codigo or fecha is None or not guid:
                     continue
                 clave_pdv = codigo.zfill(3)
-                conteos[(clave_pdv, fecha)] = conteos.get((clave_pdv, fecha), 0) + cantidad
+                vistos.setdefault((clave_pdv, fecha), set()).add(guid)
 
-        return conteos
+        return {clave: len(guids) for clave, guids in vistos.items()}
 
     # ── HTTP ──────────────────────────────────────────────────────────────────
 
@@ -141,7 +127,7 @@ class FuenteFacturasSiesa:
         solo se reintenta lo que todavía no entregó ninguna línea.
         """
         configuracion = self._configuracion
-        url = configuracion.url_base + RUTA_FACTURAS_PDV_RESUMEN
+        url = configuracion.url_base + RUTA_FACTURAS_PDV_DIARIO
 
         for intento in range(1, max(configuracion.reintentos, 1) + 1):
             entregadas = 0
@@ -155,7 +141,7 @@ class FuenteFacturasSiesa:
                         detalle = " ".join(respuesta.text.split())[:200]
                         raise ErrorFuenteSiesa(
                             f"La API de SIESA respondió {respuesta.status_code} en "
-                            f"{RUTA_FACTURAS_PDV_RESUMEN}: {detalle}",
+                            f"{RUTA_FACTURAS_PDV_DIARIO}: {detalle}",
                             reintentable=respuesta.status_code in {408, 429, 500, 502, 503, 504},
                         )
                     for linea in respuesta.iter_lines():
@@ -168,7 +154,7 @@ class FuenteFacturasSiesa:
             except httpx.HTTPError as exc:
                 if entregadas or ultimo:
                     raise ErrorFuenteSiesa(
-                        f"No se pudo leer {RUTA_FACTURAS_PDV_RESUMEN} de la API de SIESA "
+                        f"No se pudo leer {RUTA_FACTURAS_PDV_DIARIO} de la API de SIESA "
                         f"({type(exc).__name__})."
                     ) from None
             if configuracion.espera_reintento_seg > 0:

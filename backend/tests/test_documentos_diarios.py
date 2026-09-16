@@ -1,7 +1,7 @@
 """Número de documentos diarios: fuente, sincronización y su columna en el
 reporte de venta diaria (§4.4).
 
-Ninguna prueba toca la red: la API de `facturas-pdv-resumen` se simula con
+Ninguna prueba toca la red: la API de `facturas-pdv-diario` se simula con
 `httpx.MockTransport`, mismo patrón que `test_fuente_siesa.py`.
 """
 
@@ -20,7 +20,7 @@ from app.application.services.documentos_diarios_service import (
 )
 from app.application.services.reportes_service import FiltrosReporte, ReportesService
 from app.infrastructure.fuentes.facturas_siesa import (
-    RUTA_FACTURAS_PDV_RESUMEN,
+    RUTA_FACTURAS_PDV_DIARIO,
     FuenteFacturasSiesa,
 )
 from app.infrastructure.fuentes.siesa import ConfiguracionSiesa
@@ -30,11 +30,15 @@ from tests.conftest import id_categoria, id_periodo, id_punto_venta
 
 D = Decimal
 
-ENCABEZADO = "fecha,id_cia,id_co,num_facturas,punto_venta"
+ENCABEZADO = "id_cia,compania,id_co,punto_venta,id_bodega,bodega,guid_factura,fecha,hora,fecha_hora"
 
 
-def _fila(id_co: str, documentos: int, fecha: str = "2026-08-01") -> str:
-    return f"{fecha},4,{id_co},{documentos},PDV"
+def _fila(id_co: str, guid: str, fecha: str = "2026-08-01") -> str:
+    hora_completa = f"{fecha} 10:00:00.000000"
+    return (
+        f"4,CARNES SANTACRUZ S.A.S,{id_co},PDV,{id_co}01,BODEGA,"
+        f"{guid},{fecha},10:00:00,{hora_completa}"
+    )
 
 
 def _csv(*filas: str) -> str:
@@ -54,7 +58,7 @@ def _configuracion(**extra: object) -> ConfiguracionSiesa:
 
 def _fuente_con(cuerpo: str) -> FuenteFacturasSiesa:
     def _manejar(peticion: httpx.Request) -> httpx.Response:
-        assert peticion.url.path == RUTA_FACTURAS_PDV_RESUMEN
+        assert peticion.url.path == RUTA_FACTURAS_PDV_DIARIO
         return httpx.Response(200, text=cuerpo)
 
     return FuenteFacturasSiesa(
@@ -66,36 +70,25 @@ def _fuente_con(cuerpo: str) -> FuenteFacturasSiesa:
 # ── FuenteFacturasSiesa ────────────────────────────────────────────────────────
 
 
-def test_lee_documentos_por_pdv_y_fecha() -> None:
+def test_cuenta_guid_factura_distintos_por_pdv_y_fecha() -> None:
     csv = _csv(
-        _fila("402", 5, "2026-08-01"),
-        _fila("406", 3, "2026-08-01"),
-        _fila("402", 2, "2026-08-02"),
+        _fila("402", "guid-1", "2026-08-01"),
+        _fila("402", "guid-2", "2026-08-01"),
+        _fila("402", "guid-1", "2026-08-01"),  # repetida: no debe contar dos veces
+        _fila("406", "guid-3", "2026-08-01"),
+        _fila("402", "guid-4", "2026-08-02"),
     )
     fuente = _fuente_con(csv)
 
     conteos = fuente.contar_documentos(date(2026, 8, 1), date(2026, 8, 2))
 
-    assert conteos[("402", date(2026, 8, 1))] == 5
-    assert conteos[("406", date(2026, 8, 1))] == 3
-    assert conteos[("402", date(2026, 8, 2))] == 2
-
-
-def test_suma_si_el_mismo_pdv_y_fecha_aparece_en_mas_de_una_fila() -> None:
-    """No medido que ocurra, pero si pasara, se suma en vez de sobrescribir."""
-    csv = _csv(
-        _fila("402", 5, "2026-08-01"),
-        _fila("402", 3, "2026-08-01"),
-    )
-    fuente = _fuente_con(csv)
-
-    conteos = fuente.contar_documentos(date(2026, 8, 1), date(2026, 8, 1))
-
-    assert conteos[("402", date(2026, 8, 1))] == 8
+    assert conteos[("402", date(2026, 8, 1))] == 2
+    assert conteos[("406", date(2026, 8, 1))] == 1
+    assert conteos[("402", date(2026, 8, 2))] == 1
 
 
 def test_id_co_se_normaliza_a_tres_cifras() -> None:
-    csv = _csv(_fila("6", 1, "2026-08-01"))
+    csv = _csv(_fila("6", "guid-1", "2026-08-01"))
     fuente = _fuente_con(csv)
 
     conteos = fuente.contar_documentos(date(2026, 8, 1), date(2026, 8, 1))
@@ -104,18 +97,16 @@ def test_id_co_se_normaliza_a_tres_cifras() -> None:
 
 
 def test_una_peticion_por_compania() -> None:
-    """Medido (16-sep-2026): `id_cia` es un entero, no una lista —una lista
-    separada por comas responde 422—, así que hay que pedir una vez por
-    compañía."""
+    """`id_cia` es un entero; se pide una vez por cada compañía configurada."""
     peticiones: list[httpx.Request] = []
 
     def _manejar(peticion: httpx.Request) -> httpx.Response:
         peticiones.append(peticion)
         compania = peticion.url.params["id_cia"]
         filas = {
-            "4": _fila("402", 1, "2026-08-01"),
-            "6": _fila("605", 1, "2026-08-01"),
-            "7": _fila("701", 1, "2026-08-01"),
+            "4": _fila("402", "guid-4", "2026-08-01"),
+            "6": _fila("605", "guid-6", "2026-08-01"),
+            "7": _fila("701", "guid-7", "2026-08-01"),
         }
         return httpx.Response(200, text=_csv(filas[compania]))
 
