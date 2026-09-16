@@ -1083,6 +1083,27 @@ textarea {
   z-index: 3;
 }
 
+/* Resumen del corte (Venta diaria): encabezado oscuro, a propósito distinto
+   del resto de tablas de SIGREP — es la identidad visual que pidió el
+   negocio para esta pantalla en concreto, no un cambio general. */
+.tabla--resumen-corte thead th {
+  color: #ffffff;
+  background: var(--gris-900);
+  border-bottom-color: var(--gris-900);
+}
+
+.tabla--resumen-corte tbody tr:nth-child(even) td,
+.tabla--resumen-corte tbody tr:nth-child(even) th {
+  background: var(--superficie-2);
+}
+
+.tabla--resumen-corte tfoot th,
+.tabla--resumen-corte tfoot td {
+  color: #ffffff;
+  background: var(--gris-900);
+  border-top-color: var(--gris-900);
+}
+
 .tabla td {
   padding: var(--espacio-3) var(--espacio-4);
   border-bottom: 1px solid var(--borde);

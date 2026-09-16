@@ -38,7 +38,7 @@ import {
   useVentaDiaria,
   useVentaDiariaAsadero,
 } from "@/api/consultas";
-import type { FilaVentaDiaria, RespuestaVentaDiaria } from "@/api/tipos";
+import type { RespuestaVentaDiaria } from "@/api/tipos";
 import { MAXIMO_DIAS_VENTA_DIARIA } from "@/api/tipos";
 import { useAuth } from "@/auth/ContextoAuth";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
@@ -52,108 +52,48 @@ import { PieCalculo } from "@/componentes/indicadores";
 import { FORMULAS } from "@/utilidades/dominio";
 import {
   SIN_DATO,
-  comparaParaGrafico,
-  diaDelMes,
   esDomingo,
   fecha as formatearFecha,
-  mesCorto,
   periodoDeFecha,
   porMedida,
+  porcentaje,
 } from "@/utilidades/formato";
 
-/** Una referencia diaria por período tocado, tal como se pinta bajo el nombre. */
-type ReferenciasPorPeriodo = [periodo: string, valor: string | null][];
-
-/**
- * La línea de referencia de una fila, bajo su nombre.
- *
- * Con un solo período se escribe la cifra y ya. Cuando el rango cruza de mes y
- * las referencias difieren se escriben **todas**, una por mes: elegir una sería
- * publicar la referencia equivocada para la mitad de las columnas, y resumirlas
- * en un promedio sería inventar un número que no existe en ningún sitio.
- */
-function NotaReferencia({
-  referencias,
-  formatear,
-}: {
-  referencias: ReferenciasPorPeriodo;
-  formatear: (valor: string | null) => string;
-}) {
-  if (referencias.length === 0) {
-    return <span className="columna-ancla__nota">Ppto/día: {SIN_DATO}</span>;
-  }
-
-  const distintas = new Set(referencias.map(([, valor]) => valor ?? ""));
-
-  if (distintas.size <= 1) {
-    const unica = referencias[0]?.[1] ?? null;
-    return (
-      <span className="columna-ancla__nota">
-        Ppto/día: {unica === null ? SIN_DATO : formatear(unica)}
-      </span>
-    );
-  }
-
-  return (
-    <span className="columna-ancla__nota">
-      Ppto/día:{" "}
-      {referencias.map(([periodo, valor], indice) => (
-        <span key={periodo}>
-          {indice === 0 ? "" : " · "}
-          {mesCorto(periodo)} {valor === null ? SIN_DATO : formatear(valor)}
-        </span>
-      ))}
-    </span>
-  );
+/** Una fila del resumen del corte: PDV, presupuesto del día, venta del día,
+ * cumplimiento (fracción, para poder ordenar) y documentos. `cumplimiento`
+ * es `null` sin presupuesto —432 EVENTOS BUCARAMANGA, por ejemplo— y esas
+ * filas se quedan al final, nunca se ordenan como si fueran un 0%. */
+interface FilaResumenCorte {
+  codigo: string | null;
+  nombre: string;
+  pptoDia: string | null;
+  venta: string | null;
+  documentos: number | null;
+  cumplimiento: number | null;
+  ticketPromedio: number | null;
 }
 
-/** Celda de un día: la cifra, la marca ▲▼, el número de documentos y su
- * lectura para el lector de pantalla. */
-function CeldaDia({
-  valor,
-  referencia,
-  fecha,
-  formatear,
-  documentos,
-}: {
-  valor: string | null;
-  referencia: string | null;
-  fecha: string;
-  formatear: (valor: string | null) => string;
-  documentos?: number | null;
-}) {
-  const comparacion = comparaParaGrafico(valor, referencia);
-  const tono =
-    comparacion === null
-      ? ""
-      : comparacion >= 0
-        ? " celda--sobre"
-        : " celda--bajo";
+/** Venta entre número de documentos; `null` sin documentos (evita dividir por 0). */
+function ticketPromedioDe(
+  venta: string | null,
+  documentos: number | null,
+): number | null {
+  return venta !== null && documentos
+    ? Number(venta) / documentos
+    : null;
+}
 
-  return (
-    <td
-      className={`numero${tono}${esDomingo(fecha) ? " columna-domingo" : ""}`}
-    >
-      {formatear(valor)}
-      {comparacion === null ? null : (
-        <>
-          <span className="celda__marca" aria-hidden="true">
-            {comparacion >= 0 ? "▲" : "▼"}
-          </span>
-          <span className="solo-lectores">
-            {comparacion >= 0
-              ? " por encima del presupuesto diario"
-              : " por debajo del presupuesto diario"}
-          </span>
-        </>
-      )}
-      {documentos === undefined ? null : (
-        <span className="celda__documentos">
-          {documentos === null ? SIN_DATO : documentos} doc.
-        </span>
-      )}
-    </td>
-  );
+function filaResumenDe(
+  codigo: string | null,
+  nombre: string,
+  pptoDia: string | null,
+  venta: string | null,
+): Omit<FilaResumenCorte, "documentos" | "ticketPromedio"> {
+  const cumplimiento =
+    pptoDia && venta !== null && Number(pptoDia) !== 0
+      ? Number(venta) / Number(pptoDia)
+      : null;
+  return { codigo, nombre, pptoDia, venta, cumplimiento };
 }
 
 export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
@@ -184,13 +124,6 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
 
   const medida = data?.medida ?? filtros.medida;
   const formatear = (valor: string | null) => porMedida(valor, medida);
-
-  /** Los períodos que toca el rango; uno solo en el modo de siempre. */
-  function periodosDe(respuesta: RespuestaVentaDiaria): string[] {
-    if (respuesta.periodos?.length) return respuesta.periodos;
-    const unico = respuesta.periodo ?? filtros.periodo;
-    return unico ? [unico] : [];
-  }
 
   /**
    * La referencia de un punto de venta en un período concreto.
@@ -235,29 +168,6 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
     if (periodo !== null && porPeriodo && periodo in porPeriodo)
       return porPeriodo[periodo] ?? null;
     return totales.presupuesto_diario ?? null;
-  }
-
-  function referenciasDeFila(
-    respuesta: RespuestaVentaDiaria,
-    fila: FilaVentaDiaria,
-  ): ReferenciasPorPeriodo {
-    return periodosDe(respuesta).map((periodo) => [
-      periodo,
-      referenciaDePeriodo(respuesta, fila.punto_venta, periodo),
-    ]);
-  }
-
-  function referenciasDeTotales(
-    respuesta: RespuestaVentaDiaria,
-  ): ReferenciasPorPeriodo {
-    const totales = respuesta.totales;
-    if (!totales) return [];
-    return periodosDe(respuesta).map((periodo) => [
-      periodo,
-      totales.presupuesto_diario_por_periodo?.[periodo] ??
-        totales.presupuesto_diario ??
-        null,
-    ]);
   }
 
   const filaSeleccionada =
@@ -372,8 +282,8 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
           ) : null}
 
           <Tarjeta
-            titulo="Venta día por día"
-            descripcion="Pulse un punto de venta para ver su serie. ▲ el día superó el presupuesto diario; ▼ quedó por debajo. La fila de totales queda fijada al pie."
+            titulo="Resumen del corte"
+            descripcion={`Venta del ${formatearFecha(data.hasta ?? data.fecha_corte)} por punto de venta, de mayor a menor cumplimiento. Pulse un punto de venta para ver su serie del período.`}
             sinRelleno
             pie={
               <PieCalculo
@@ -393,134 +303,179 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
                 detalle="El rango seleccionado no tiene días con venta ingerida en los puntos de venta elegidos."
               />
             ) : (
-              <div className="tabla-envoltorio tabla-envoltorio--alta">
-                <table className="tabla tabla--anclada tabla--matriz">
-                  <caption className="solo-lectores">
-                    Venta por punto de venta y día, del{" "}
-                    {formatearFecha(data.desde)} al{" "}
-                    {formatearFecha(data.hasta ?? data.fecha_corte)}. La última
-                    fila es el total de los puntos de venta que publica la
-                    respuesta.
-                  </caption>
-                  <thead>
-                    <tr>
-                      <th scope="col" className="columna-ancla">
-                        Punto de venta
-                      </th>
-                      {data.fechas.map((fecha) => (
-                        <th
-                          key={fecha}
-                          scope="col"
-                          className={`numero${esDomingo(fecha) ? " columna-domingo" : ""}`}
-                        >
-                          {diaDelMes(fecha)}
-                        </th>
-                      ))}
-                      <th scope="col" className="numero columna-total">
-                        Total
-                      </th>
-                    </tr>
-                  </thead>
+              (() => {
+                const ultimoIndice = data.fechas.length - 1;
+                const ultimaFecha = data.fechas[ultimoIndice] ?? "";
 
-                  <tbody>
-                    {data.filas.map((fila, indice) => {
-                      const codigo = fila.punto_venta;
-                      const activa = codigo !== null && codigo === seleccionado;
+                const filasResumen: FilaResumenCorte[] = data.filas.map(
+                  (fila) => {
+                    const venta = fila.valores[ultimoIndice] ?? null;
+                    const documentos = fila.documentos?.[ultimoIndice] ?? null;
+                    return {
+                      ...filaResumenDe(
+                        fila.punto_venta,
+                        fila.nombre,
+                        referenciaDeCelda(data, fila.punto_venta, ultimaFecha),
+                        venta,
+                      ),
+                      documentos,
+                      ticketPromedio: ticketPromedioDe(venta, documentos),
+                    };
+                  },
+                );
 
-                      return (
-                        <tr
-                          key={codigo ?? String(indice)}
-                          className={activa ? "fila-activa" : ""}
-                        >
-                          <th scope="row" className="columna-ancla">
-                            <button
-                              type="button"
-                              className="enlace-fila"
-                              onClick={() =>
-                                setSeleccionado(activa ? null : codigo)
-                              }
-                              disabled={codigo === null}
-                            >
-                              {fila.nombre}
-                            </button>
-                            <NotaReferencia
-                              referencias={referenciasDeFila(data, fila)}
-                              formatear={formatear}
-                            />
+                // Sin presupuesto al final, nunca como si fuera 0 %: un punto sin
+                // parametrizar (432 EVENTOS BUCARAMANGA) no es el peor cumplimiento,
+                // es un dato que no aplica.
+                const filasOrdenadas = [...filasResumen].sort((a, b) => {
+                  if (a.cumplimiento === null && b.cumplimiento === null)
+                    return 0;
+                  if (a.cumplimiento === null) return 1;
+                  if (b.cumplimiento === null) return -1;
+                  return b.cumplimiento - a.cumplimiento;
+                });
+
+                const totalResumen = data.totales
+                  ? (() => {
+                      const venta = data.totales.valores?.[ultimoIndice] ?? null;
+                      const documentos =
+                        data.totales.documentos?.[ultimoIndice] ?? null;
+                      return {
+                        ...filaResumenDe(
+                          null,
+                          "Total",
+                          referenciaDeTotales(data, ultimaFecha),
+                          venta,
+                        ),
+                        documentos,
+                        ticketPromedio: ticketPromedioDe(venta, documentos),
+                      };
+                    })()
+                  : null;
+
+                return (
+                  <div className="tabla-envoltorio tabla-envoltorio--alta">
+                    <table className="tabla tabla--anclada tabla--resumen-corte">
+                      <caption className="solo-lectores">
+                        Resumen de venta del {formatearFecha(ultimaFecha)} por
+                        punto de venta, ordenado de mayor a menor
+                        cumplimiento. La última fila es el total de los puntos
+                        de venta que publica la respuesta.
+                      </caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">C.O.</th>
+                          <th scope="col" className="columna-ancla">
+                            PDV
                           </th>
-
-                          {data.fechas.map((fecha, columna) => (
-                            <CeldaDia
-                              key={fecha}
-                              fecha={fecha}
-                              valor={fila.valores[columna] ?? null}
-                              referencia={referenciaDeCelda(
-                                data,
-                                codigo,
-                                fecha,
-                              )}
-                              formatear={formatear}
-                              documentos={fila.documentos?.[columna] ?? null}
-                            />
-                          ))}
-
-                          <td className="numero columna-total">
-                            {formatear(fila.total)}
-                          </td>
+                          <th scope="col" className="numero">
+                            Ppto día
+                          </th>
+                          <th scope="col" className="numero">
+                            Venta
+                          </th>
+                          <th scope="col" className="numero">
+                            % Cumplimiento
+                          </th>
+                          <th scope="col" className="numero">
+                            Documentos
+                          </th>
+                          <th scope="col" className="numero">
+                            Ticket promedio
+                          </th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
+                      </thead>
 
-                  {/*
-                    `totales` llega en un campo propio de la respuesta, no como una
-                    fila más de `filas`: mezclada habría que reconocerla por su
-                    nombre y esa convención se rompe el día que alguien bautice
-                    «TOTAL» un punto de venta. Va en un `<tfoot>`, que es la
-                    semántica correcta y además la mantiene pegada al pie de la
-                    tabla sin sacarla del mismo `<table>`, de modo que sus celdas
-                    siguen alineadas con las columnas al desplazar en horizontal.
-                  */}
-                  {data.totales ? (
-                    <tfoot>
-                      <tr className="fila-totales">
-                        <th scope="row" className="columna-ancla">
-                          {/*
-                            No dice «de la compañía»: el total respeta el alcance
-                            del usuario, así que para un JEFE_PDV es el de sus
-                            puntos y esa etiqueta sería sencillamente falsa.
-                          */}
-                          <span className="fila-totales__nombre">
-                            Total
-                            {control.puntosSeleccionados.length > 0
-                              ? ` · ${control.puntosSeleccionados.length} elegidos`
-                              : ""}
-                          </span>
-                          <NotaReferencia
-                            referencias={referenciasDeTotales(data)}
-                            formatear={formatear}
-                          />
-                        </th>
+                      <tbody>
+                        {filasOrdenadas.map((fila, indice) => {
+                          const activa =
+                            fila.codigo !== null &&
+                            fila.codigo === seleccionado;
 
-                        {data.fechas.map((fecha, columna) => (
-                          <CeldaDia
-                            key={fecha}
-                            fecha={fecha}
-                            valor={data.totales.valores?.[columna] ?? null}
-                            referencia={referenciaDeTotales(data, fecha)}
-                            formatear={formatear}
-                            documentos={data.totales.documentos?.[columna] ?? null}
-                          />
-                        ))}
+                          return (
+                            <tr
+                              key={fila.codigo ?? String(indice)}
+                              className={activa ? "fila-activa" : ""}
+                            >
+                              <td className="mono">{fila.codigo ?? SIN_DATO}</td>
+                              <th scope="row" className="columna-ancla">
+                                <button
+                                  type="button"
+                                  className="enlace-fila"
+                                  onClick={() =>
+                                    setSeleccionado(
+                                      activa ? null : fila.codigo,
+                                    )
+                                  }
+                                  disabled={fila.codigo === null}
+                                >
+                                  {fila.nombre}
+                                </button>
+                              </th>
+                              <td className="numero">
+                                {formatear(fila.pptoDia)}
+                              </td>
+                              <td className="numero">
+                                {formatear(fila.venta)}
+                              </td>
+                              <td className="numero">
+                                {fila.cumplimiento === null
+                                  ? SIN_DATO
+                                  : porcentaje(String(fila.cumplimiento))}
+                              </td>
+                              <td className="numero">
+                                {fila.documentos ?? SIN_DATO}
+                              </td>
+                              <td className="numero">
+                                {fila.ticketPromedio === null
+                                  ? SIN_DATO
+                                  : formatear(String(fila.ticketPromedio))}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
 
-                        <td className="numero columna-total">
-                          {formatear(data.totales.total)}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  ) : null}
-                </table>
-              </div>
+                      {totalResumen ? (
+                        <tfoot>
+                          <tr className="fila-totales">
+                            <td></td>
+                            <th scope="row" className="columna-ancla">
+                              <span className="fila-totales__nombre">
+                                Total
+                                {control.puntosSeleccionados.length > 0
+                                  ? ` · ${control.puntosSeleccionados.length} elegidos`
+                                  : ""}
+                              </span>
+                            </th>
+                            <td className="numero">
+                              {formatear(totalResumen.pptoDia)}
+                            </td>
+                            <td className="numero">
+                              {formatear(totalResumen.venta)}
+                            </td>
+                            <td className="numero">
+                              {totalResumen.cumplimiento === null
+                                ? SIN_DATO
+                                : porcentaje(
+                                    String(totalResumen.cumplimiento),
+                                  )}
+                            </td>
+                            <td className="numero">
+                              {totalResumen.documentos ?? SIN_DATO}
+                            </td>
+                            <td className="numero">
+                              {totalResumen.ticketPromedio === null
+                                ? SIN_DATO
+                                : formatear(String(totalResumen.ticketPromedio))}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      ) : null}
+                    </table>
+                  </div>
+                );
+              })()
             )}
           </Tarjeta>
         </>
