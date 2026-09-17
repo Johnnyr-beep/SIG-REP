@@ -31,7 +31,7 @@ from app.infrastructure.models.financiero import MovimientoContable
 #: registros.
 TAMANO_LOTE = 5000
 
-_CAMPOS_TEXTO_OBLIGATORIOS = ("CO", "AUXILIAR", "MAYOR_III")
+_CAMPOS_TEXTO_OBLIGATORIOS = ("CO", "AUXILIAR")
 _CAMPOS_NUMERICOS = ("SALDOS_INICIAL", "DEBITOS", "CREDITOS", "FINAL")
 
 
@@ -92,6 +92,18 @@ def _fila_a_movimiento(dato: dict[str, Any], origen: str) -> MovimientoContable:
     if not isinstance(periodo, int) or not (200001 <= periodo <= 209912):
         raise ValueError("'PERIODO' no tiene forma AAAAMM")
 
+    # SIESA a veces no exporta la jerarquía intermedia para cuentas puntuales
+    # (medido: retenciones de nómina, grupo 2365) y manda 'MAYOR_III' vacío.
+    # El primer dígito de 'AUXILIAR' es el mismo PUC que 'MAYOR_III' —los
+    # cuatro primeros caracteres son la cuenta— así que se reconstruye de ahí
+    # en vez de perder la fila entera.
+    mayor_iii = _texto(dato.get("MAYOR_III"))
+    if not mayor_iii:
+        auxiliar_bruto = _texto(dato.get("AUXILIAR")) or ""
+        mayor_iii = auxiliar_bruto[:4] or None
+    if not mayor_iii:
+        raise ValueError("falta 'MAYOR_III' y no se pudo derivar de 'AUXILIAR'")
+
     try:
         saldo_inicial = _decimal(dato["SALDOS_INICIAL"])
         debitos = _decimal(dato["DEBITOS"])
@@ -112,7 +124,7 @@ def _fila_a_movimiento(dato: dict[str, Any], origen: str) -> MovimientoContable:
         centro_costo=_texto(dato.get("CENTRO_COSTO")),
         mayor=_texto(dato.get("MAYOR")),
         mayor_iv=_texto(dato.get("MAYOR_IV")),
-        mayor_iii=_texto(dato.get("MAYOR_III")) or "",
+        mayor_iii=mayor_iii,
         saldo_inicial=saldo_inicial,
         debitos=debitos,
         creditos=creditos,
