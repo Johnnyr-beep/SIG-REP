@@ -21,6 +21,7 @@ from app.application.services.documentos_diarios_service import (
 from app.application.services.reportes_service import FiltrosReporte, ReportesService
 from app.infrastructure.fuentes.facturas_siesa import (
     RUTA_FACTURAS_PDV_DIARIO,
+    RUTA_FACTURAS_PDV_RESUMEN,
     FuenteFacturasSiesa,
 )
 from app.infrastructure.fuentes.siesa import ConfiguracionSiesa
@@ -58,6 +59,8 @@ def _configuracion(**extra: object) -> ConfiguracionSiesa:
 
 def _fuente_con(cuerpo: str) -> FuenteFacturasSiesa:
     def _manejar(peticion: httpx.Request) -> httpx.Response:
+        if peticion.url.path == RUTA_FACTURAS_PDV_RESUMEN:
+            return httpx.Response(200, json={"has_more": False, "next_offset": None, "data": []})
         assert peticion.url.path == RUTA_FACTURAS_PDV_DIARIO
         return httpx.Response(200, text=cuerpo)
 
@@ -101,6 +104,8 @@ def test_una_peticion_por_compania() -> None:
     peticiones: list[httpx.Request] = []
 
     def _manejar(peticion: httpx.Request) -> httpx.Response:
+        if peticion.url.path == RUTA_FACTURAS_PDV_RESUMEN:
+            return httpx.Response(200, json={"has_more": False, "next_offset": None, "data": []})
         peticiones.append(peticion)
         compania = peticion.url.params["id_cia"]
         filas = {
@@ -123,6 +128,56 @@ def test_una_peticion_por_compania() -> None:
         ("605", date(2026, 8, 1)),
         ("701", date(2026, 8, 1)),
     }
+
+
+def test_resumen_rellena_lo_que_diario_no_trajo(monkeypatch) -> None:
+    """605/606/415 no aparecen en `facturas-pdv-diario`; se rellenan con
+    `facturas-pdv-resumen`, sin pisar lo que diario sí contó."""
+
+    def _manejar(peticion: httpx.Request) -> httpx.Response:
+        if peticion.url.path == RUTA_FACTURAS_PDV_DIARIO:
+            return httpx.Response(200, text=_csv(_fila("402", "guid-1", "2026-08-01")))
+        assert peticion.url.path == RUTA_FACTURAS_PDV_RESUMEN
+        return httpx.Response(
+            200,
+            json={
+                "has_more": False,
+                "next_offset": None,
+                "data": [
+                    # Ya contado por diario: NO debe pisar el 1.
+                    {"id_cia": 4, "id_co": "402", "fecha": "2026-08-01", "num_facturas": 999},
+                    # Hueco que diario no trae: SÍ debe rellenarlo.
+                    {"id_cia": 6, "id_co": "605", "fecha": "2026-08-01", "num_facturas": 60},
+                ],
+            },
+        )
+
+    fuente = FuenteFacturasSiesa(
+        configuracion=_configuracion(),
+        sesion_http=httpx.Client(transport=httpx.MockTransport(_manejar)),
+    )
+
+    conteos = fuente.contar_documentos(date(2026, 8, 1), date(2026, 8, 1))
+
+    assert conteos[("402", date(2026, 8, 1))] == 1  # sin pisar
+    assert conteos[("605", date(2026, 8, 1))] == 60  # relleno
+
+
+def test_si_resumen_falla_no_tumba_el_conteo_principal() -> None:
+    def _manejar(peticion: httpx.Request) -> httpx.Response:
+        if peticion.url.path == RUTA_FACTURAS_PDV_DIARIO:
+            return httpx.Response(200, text=_csv(_fila("402", "guid-1", "2026-08-01")))
+        assert peticion.url.path == RUTA_FACTURAS_PDV_RESUMEN
+        return httpx.Response(500, text="error interno")
+
+    fuente = FuenteFacturasSiesa(
+        configuracion=_configuracion(),
+        sesion_http=httpx.Client(transport=httpx.MockTransport(_manejar)),
+    )
+
+    conteos = fuente.contar_documentos(date(2026, 8, 1), date(2026, 8, 1))
+
+    assert conteos == {("402", date(2026, 8, 1)): 1}
 
 
 # ── sincronizar_documentos_diarios ────────────────────────────────────────────
