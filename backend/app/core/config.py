@@ -72,7 +72,12 @@ UnidadNegocio = Literal[
 #: backend: aparece en el selector desactivada y con su motivo, que es mas
 #: honesto que llevar a quien la elija a las pantallas de carnes con datos que
 #: no son los suyos.
-UNIDADES_CON_MODULO: tuple[UnidadNegocio, ...] = ("carnes", "agropecuaria", "carnes-frias")
+UNIDADES_CON_MODULO: tuple[UnidadNegocio, ...] = (
+    "carnes",
+    "agropecuaria",
+    "carnes-frias",
+    "grupo-santacruz",
+)
 
 #: Esquemas heredados que los proveedores gestionados siguen entregando y que
 #: SQLAlchemy 2 ya no reconoce.
@@ -243,10 +248,14 @@ class Settings(BaseSettings):
         """
         if self.unidad == "todas":
             unidades: list[str] = [
-                unidad for unidad in UNIDADES_CON_MODULO if unidad != "carnes-frias"
+                unidad
+                for unidad in UNIDADES_CON_MODULO
+                if unidad not in ("carnes-frias", "grupo-santacruz")
             ]
             if self.db_url_carnes_frias:
                 unidades.append("carnes-frias")
+            if self.db_url_grupo_santacruz:
+                unidades.append("grupo-santacruz")
             return unidades
         return [self.unidad]
 

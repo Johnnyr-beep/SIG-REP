@@ -132,6 +132,20 @@ const MENU_AGRO: GrupoNav[] = [
   },
 ];
 
+/** Grupo Santacruz: el tablero financiero consolidado, sobre el libro mayor. */
+const MENU_FINANCIERO: GrupoNav[] = [
+  {
+    titulo: "Gerencia",
+    items: [
+      { ruta: "/", etiqueta: "Resumen financiero", icono: "◱", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
+    ],
+  },
+  {
+    titulo: "Administración",
+    items: [{ ruta: "/usuarios", etiqueta: "Usuarios", icono: "◉", roles: ["ADMIN"] }],
+  },
+];
+
 const MENU_CARNES_FRIAS: GrupoNav[] = [
   {
     titulo: "Gerencia",
@@ -171,6 +185,7 @@ const MENU_CARNES_FRIAS: GrupoNav[] = [
 function menuDe(marca: ClaveMarca): GrupoNav[] {
   if (marca === "agropecuaria") return MENU_AGRO;
   if (marca === "carnes-frias") return MENU_CARNES_FRIAS;
+  if (marca === "grupo-santacruz") return MENU_FINANCIERO;
   return MENU_CARNES;
 }
 
@@ -439,7 +454,14 @@ function Corte() {
 export function Disposicion({ children }: { children?: ReactNode }) {
   const { salir } = useAuth();
   const { pathname } = useLocation();
-  const titulo = TITULOS[pathname] ?? "SIGREP";
+  const marca = useMarcaElegida();
+  // "/" es el índice de tres unidades distintas: el título no puede salir de
+  // un mapa indexado solo por ruta o Grupo Santacruz heredaría "Tablero
+  // gerencial", que es el título de otra compañía.
+  const titulo =
+    pathname === "/" && marca.clave === "grupo-santacruz"
+      ? "Resumen financiero"
+      : (TITULOS[pathname] ?? "SIGREP");
 
   return (
     <div className="disposicion">

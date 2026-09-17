@@ -629,3 +629,59 @@ export interface Salud {
   base_datos: string;
   ultima_ingesta: string | null;
 }
+
+// ── Financiero (Grupo Santacruz) ────────────────────────────────────────────
+
+export interface ParametrosCalculoFinanciero {
+  periodo: string;
+  cia?: number | null;
+}
+
+export interface FilaBalanceComprobacion {
+  mayor_iii: string;
+  descripcion?: string | null;
+  clase: string;
+  saldo_inicial: string;
+  debitos: string;
+  creditos: string;
+  final: string;
+}
+
+export interface RespuestaBalanceComprobacion {
+  filas: FilaBalanceComprobacion[];
+  parametros_calculo: ParametrosCalculoFinanciero;
+}
+
+export interface RespuestaBalanceGeneral {
+  activo: string;
+  pasivo: string;
+  patrimonio: string;
+  descuadre: string;
+  parametros_calculo: ParametrosCalculoFinanciero;
+}
+
+export interface RespuestaEstadoResultados {
+  ingresos: string;
+  costos: string;
+  gastos: string;
+  utilidad_neta: string;
+  parametros_calculo: ParametrosCalculoFinanciero;
+}
+
+export interface FilaCartera {
+  id_tercero: string;
+  razon_social?: string | null;
+  saldo: string;
+}
+
+export interface RespuestaCartera {
+  filas: FilaCartera[];
+  parametros_calculo: ParametrosCalculoFinanciero;
+}
+
+export interface RespuestaIndicadoresFinancieros {
+  liquidez_corriente?: string | null;
+  endeudamiento?: string | null;
+  margen_neto?: string | null;
+  parametros_calculo: ParametrosCalculoFinanciero;
+}

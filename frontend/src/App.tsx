@@ -29,6 +29,7 @@ import { Ingesta } from "@/paginas/Ingesta";
 import { HistoriaVenta } from "@/paginas/HistoriaVenta";
 import { Presupuesto } from "@/paginas/Presupuesto";
 import { Permisos } from "@/paginas/Permisos";
+import { ResumenFinanciero } from "@/paginas/ResumenFinanciero";
 import { SelectorMarca } from "@/paginas/SelectorMarca";
 import { Tablero } from "@/paginas/Tablero";
 import { Usuarios } from "@/paginas/Usuarios";
@@ -135,6 +136,7 @@ export function App() {
   // cerrada.
   const esAgro = marca.clave === "agropecuaria";
   const esCarnesFrias = marca.clave === "carnes-frias";
+  const esGrupoSantacruz = marca.clave === "grupo-santacruz";
   const permisosGranulares =
     usuario?.rol === "CONSULTA" &&
     usuario.permisos.some((codigo) => !codigo.startsWith("PERMISO_AGRO_"));
@@ -149,7 +151,9 @@ export function App() {
   return (
     <Routes>
       <Route element={<Disposicion />}>
-        {esAgro || esCarnesFrias ? (
+        {esGrupoSantacruz ? (
+          <Route index element={<ResumenFinanciero />} />
+        ) : esAgro || esCarnesFrias ? (
           <>
             {/* Las pantallas conservan el prefijo `/agro` en vez de subir a la
                 raiz: un enlace pegado en un correo dice a que unidad pertenece,
