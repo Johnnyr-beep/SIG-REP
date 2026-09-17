@@ -1097,13 +1097,6 @@ textarea {
   background: var(--superficie-2);
 }
 
-.tabla--resumen-corte tfoot th,
-.tabla--resumen-corte tfoot td {
-  color: #ffffff;
-  background: var(--gris-900);
-  border-top-color: var(--gris-900);
-}
-
 .tabla td {
   padding: var(--espacio-3) var(--espacio-4);
   border-bottom: 1px solid var(--borde);
@@ -1287,6 +1280,17 @@ textarea {
 .tabla--anclada tfoot .columna-ancla {
   bottom: 0;
   z-index: 5;
+}
+
+/* Repetida aquí, después de la regla general `.tabla tfoot`: con la misma
+   especificidad gana la que aparece más abajo, y el fondo oscuro no puede
+   quedar pisado por `var(--superficie-2)` o el texto blanco se vuelve
+   ilegible. */
+.tabla--resumen-corte tfoot th,
+.tabla--resumen-corte tfoot td {
+  color: #ffffff;
+  background: var(--gris-900);
+  border-top-color: var(--gris-900);
 }
 
 .fila-totales__nombre {
