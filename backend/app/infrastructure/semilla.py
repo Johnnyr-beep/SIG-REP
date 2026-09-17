@@ -434,11 +434,12 @@ def main() -> None:  # pragma: no cover - utilidad de línea de comandos
     parser.add_argument("--periodo", help="siembra el calendario de un período YYYY-MM")
     parser.add_argument(
         "--unidad",
-        choices=["carnes", "agropecuaria", "carnes-frias"],
+        choices=["carnes", "agropecuaria", "carnes-frias", "grupo-santacruz"],
         default="carnes",
         help=(
             "unidad cuya base se inicializa. Cada unidad tiene cuentas propias: "
-            "el 'admin' de Carnes no existe en Agropecuaria ni Carnes Frias"
+            "el 'admin' de Carnes no existe en Agropecuaria, Carnes Frias ni "
+            "Grupo Santacruz"
         ),
     )
     argumentos = parser.parse_args()
