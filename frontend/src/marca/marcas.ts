@@ -104,7 +104,7 @@ export const MARCAS: readonly Marca[] = [
     logoAncho: 480,
     logoAlto: 455,
     estado: "activa",
-    descripcion: "Instancia financiera propia, mismo tablero de libro mayor que Grupo Santacruz.",
+    descripcion: "Base propia y acceso habilitado. El módulo de esta unidad todavía no está definido.",
   },
   {
     // PROVISIONAL: mismo logo que Agroporcícola hasta recibir el suyo.
@@ -114,7 +114,7 @@ export const MARCAS: readonly Marca[] = [
     logoAncho: 480,
     logoAlto: 455,
     estado: "activa",
-    descripcion: "Instancia financiera propia, mismo tablero de libro mayor que Grupo Santacruz.",
+    descripcion: "Base propia y acceso habilitado. El módulo de esta unidad todavía no está definido.",
   },
 ];
 

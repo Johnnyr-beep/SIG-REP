@@ -147,6 +147,17 @@ const MENU_FINANCIERO: GrupoNav[] = [
   },
 ];
 
+/**
+ * Agroporcicola y Transantacruz: solo acceso mientras no se defina su módulo.
+ * Nada de Gerencia que enlace a pantallas que no existen todavía.
+ */
+const MENU_SOLO_ACCESO: GrupoNav[] = [
+  {
+    titulo: "Administración",
+    items: [{ ruta: "/usuarios", etiqueta: "Usuarios", icono: "◉", roles: ["ADMIN"] }],
+  },
+];
+
 const MENU_CARNES_FRIAS: GrupoNav[] = [
   {
     titulo: "Gerencia",
@@ -186,9 +197,8 @@ const MENU_CARNES_FRIAS: GrupoNav[] = [
 function menuDe(marca: ClaveMarca): GrupoNav[] {
   if (marca === "agropecuaria") return MENU_AGRO;
   if (marca === "carnes-frias") return MENU_CARNES_FRIAS;
-  if (marca === "grupo-santacruz" || marca === "agroporcicola" || marca === "transantacruz") {
-    return MENU_FINANCIERO;
-  }
+  if (marca === "grupo-santacruz") return MENU_FINANCIERO;
+  if (marca === "agroporcicola" || marca === "transantacruz") return MENU_SOLO_ACCESO;
   return MENU_CARNES;
 }
 
@@ -460,14 +470,14 @@ export function Disposicion({ children }: { children?: ReactNode }) {
   const { pathname } = useLocation();
   const marca = useMarcaElegida();
   // "/" es el índice de varias unidades distintas: el título no puede salir de
-  // un mapa indexado solo por ruta o las unidades financieras heredarían
-  // "Tablero gerencial", que es el título de otra compañía.
-  const esFinanciera =
-    marca.clave === "grupo-santacruz" ||
-    marca.clave === "agroporcicola" ||
-    marca.clave === "transantacruz";
+  // un mapa indexado solo por ruta o Grupo Santacruz heredaría "Tablero
+  // gerencial", que es el título de otra compañía.
   const titulo =
-    pathname === "/" && esFinanciera ? "Resumen financiero" : (TITULOS[pathname] ?? "SIGREP");
+    pathname === "/" && marca.clave === "grupo-santacruz"
+      ? "Resumen financiero"
+      : pathname === "/" && (marca.clave === "agroporcicola" || marca.clave === "transantacruz")
+        ? "Instancia en preparación"
+        : (TITULOS[pathname] ?? "SIGREP");
 
   return (
     <div className="disposicion">

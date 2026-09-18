@@ -83,11 +83,12 @@ UNIDADES_CON_MODULO: tuple[UnidadNegocio, ...] = (
     "transantacruz",
 )
 
-#: Unidades que comparten el modulo financiero (libro mayor) de grupo-santacruz
-#: en vez del modulo de venta operativa. Cada una con su propia base —misma
-#: forma que Grupo Santacruz—, aislada por conexion, sin dimensiones de venta
-#: propias.
-UNIDADES_FINANCIERAS: tuple[UnidadNegocio, ...] = (
+#: Unidades sin modulo de venta operativa compartido con carnes/agropecuaria:
+#: cada una con su propia base —misma forma que Grupo Santacruz—, aislada por
+#: conexion. No implica que compartan modulo entre si; solo que quedan fuera
+#: del listado por defecto de `unidades_disponibles` mientras no tengan base
+#: configurada.
+UNIDADES_BASE_PROPIA: tuple[UnidadNegocio, ...] = (
     "grupo-santacruz",
     "agroporcicola",
     "transantacruz",
@@ -283,7 +284,7 @@ class Settings(BaseSettings):
             unidades: list[str] = [
                 unidad
                 for unidad in UNIDADES_CON_MODULO
-                if unidad not in ("carnes-frias", *UNIDADES_FINANCIERAS)
+                if unidad not in ("carnes-frias", *UNIDADES_BASE_PROPIA)
             ]
             if self.db_url_carnes_frias:
                 unidades.append("carnes-frias")

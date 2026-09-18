@@ -144,13 +144,11 @@ export function App() {
   // cerrada.
   const esAgro = marca.clave === "agropecuaria";
   const esCarnesFrias = marca.clave === "carnes-frias";
-  // Grupo Santacruz, Agroporcicola y Transantacruz comparten el mismo modulo
-  // financiero (libro mayor): son la misma pantalla contra bases distintas, no
-  // tres implementaciones.
-  const esFinanciera =
-    marca.clave === "grupo-santacruz" ||
-    marca.clave === "agroporcicola" ||
-    marca.clave === "transantacruz";
+  const esGrupoSantacruz = marca.clave === "grupo-santacruz";
+  // Solo tienen acceso habilitado: el tipo de módulo todavía no está definido,
+  // así que tras iniciar sesión no hay más que un aviso, no pantallas prestadas
+  // de otra unidad.
+  const esSoloAcceso = marca.clave === "agroporcicola" || marca.clave === "transantacruz";
   const permisosGranulares =
     usuario?.rol === "CONSULTA" &&
     usuario.permisos.some((codigo) => !codigo.startsWith("PERMISO_AGRO_"));
@@ -165,7 +163,7 @@ export function App() {
   return (
     <Routes>
       <Route element={<Disposicion />}>
-        {esFinanciera ? (
+        {esGrupoSantacruz ? (
           <>
             <Route
               index
@@ -177,6 +175,16 @@ export function App() {
             />
             <Route path="detalle-cuentas" element={<DetalleCuentas />} />
           </>
+        ) : esSoloAcceso ? (
+          <Route
+            index
+            element={
+              <Vacio
+                titulo="Instancia en preparación"
+                detalle="El acceso ya funciona; el módulo de esta unidad todavía no está definido."
+              />
+            }
+          />
         ) : esAgro || esCarnesFrias ? (
           <>
             {/* Las pantallas conservan el prefijo `/agro` en vez de subir a la
