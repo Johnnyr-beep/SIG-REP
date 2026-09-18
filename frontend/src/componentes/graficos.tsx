@@ -324,12 +324,15 @@ export function ColumnasComparadas({
   formatear,
   etiquetaValor = "Venta",
   etiquetaReferencia = "Presupuesto",
+  notaSinReferencia = "Sin presupuesto capturado en este corte",
 }: {
   columnas: ColumnaComparada[];
   titulo: string;
   formatear: (valor: string | null) => string;
   etiquetaValor?: string;
   etiquetaReferencia?: string;
+  /** Qué decir cuando no hay serie de referencia. Vacío para no decir nada. */
+  notaSinReferencia?: string;
 }) {
   if (columnas.length === 0) {
     return <p className="tenue">Sin categorías que dibujar.</p>;
@@ -454,9 +457,9 @@ export function ColumnasComparadas({
           <span className="comparadas__clave comparadas__clave--referencia">
             {etiquetaReferencia}
           </span>
-        ) : (
-          <span className="tenue">Sin presupuesto capturado en este corte</span>
-        )}
+        ) : notaSinReferencia ? (
+          <span className="tenue">{notaSinReferencia}</span>
+        ) : null}
       </figcaption>
     </figure>
   );
@@ -803,6 +806,260 @@ export function TendenciaAcumulada({
         ) : (
           <span className="tenue">Sin meta: no hay presupuesto capturado</span>
         )}
+      </figcaption>
+    </figure>
+  );
+}
+
+// ── Tendencia mensual (varias series, por período) ──────────────────────────
+
+export interface SerieTendenciaMensual {
+  clave: string;
+  etiqueta: string;
+  tono: "acento" | "exito" | "peligro";
+}
+
+export interface PuntoTendenciaMensual {
+  /** `AAAAMM`, tal como lo pide la API financiera. */
+  periodo: string;
+  /** Un valor por cada `clave` declarada en `series`. */
+  valores: Record<string, string | null>;
+}
+
+/**
+ * Varias series por período —no por día—, a diferencia de `TendenciaAcumulada`.
+ *
+ * Sirve al tablero financiero: unas pocas series (ingresos, utilidad neta…)
+ * a lo largo de los meses cargados, no acumuladas dentro del mes. Admite
+ * valores negativos —una utilidad neta puede serlo— por eso la escala no
+ * arranca en cero: arranca en el menor valor de todas las series, con la línea
+ * de cero marcada si cae dentro del rango.
+ */
+export function TendenciaMultiple({
+  puntos,
+  series,
+  titulo,
+  formatear,
+}: {
+  puntos: PuntoTendenciaMensual[];
+  series: SerieTendenciaMensual[];
+  titulo: string;
+  formatear: (valor: string | null) => string;
+}) {
+  const ANCHO = 720;
+  const ALTO = 220;
+  const MARGEN = { arriba: 12, derecha: 8, abajo: 28, izquierda: 8 };
+
+  if (puntos.length === 0) {
+    return <p className="tenue">Sin períodos que dibujar.</p>;
+  }
+
+  const numeros = puntos.flatMap((punto) =>
+    series.map((serie) => Number(punto.valores[serie.clave] ?? NaN)),
+  ).filter((n) => Number.isFinite(n));
+
+  if (numeros.length === 0) {
+    return (
+      <p className="tenue">
+        Todavía no hay cifras en estos períodos, así que no hay línea que
+        dibujar.
+      </p>
+    );
+  }
+
+  const maximo = Math.max(...numeros, 0);
+  const minimo = Math.min(...numeros, 0);
+  // Un rango de altura cero —todas las series en el mismo valor— dejaría la
+  // división de la escala en 0/0; medio punto arbitrario evita el `NaN` sin
+  // falsear la lectura de un dato que en efecto no varía.
+  const rango = maximo - minimo || 1;
+
+  const util = {
+    ancho: ANCHO - MARGEN.izquierda - MARGEN.derecha,
+    alto: ALTO - MARGEN.arriba - MARGEN.abajo,
+  };
+  const x = (indice: number) =>
+    MARGEN.izquierda +
+    (puntos.length === 1
+      ? util.ancho / 2
+      : (indice / (puntos.length - 1)) * util.ancho);
+  const y = (valor: number) =>
+    MARGEN.arriba + util.alto * (1 - (valor - minimo) / rango);
+
+  const linea = (clave: string) =>
+    puntos
+      .map((punto, indice) => {
+        const valor = punto.valores[clave];
+        if (valor === null || valor === undefined) return null;
+        return `${x(indice)},${y(Number(valor))}`;
+      })
+      .filter((par): par is string => par !== null)
+      .join(" ");
+
+  const hayCero = minimo < 0 && maximo > 0;
+  // `puntos.length === 0` ya se descartó arriba: el índice final siempre existe.
+  const ultimo = puntos[puntos.length - 1]!;
+
+  return (
+    <figure className="tendencia">
+      <svg
+        viewBox={`0 0 ${ANCHO} ${ALTO}`}
+        className="tendencia__figura"
+        role="img"
+        aria-label={
+          `${titulo}. Último período (${ultimo.periodo}): ` +
+          series
+            .map(
+              (serie) =>
+                `${serie.etiqueta} ${formatear(ultimo.valores[serie.clave] ?? null)}`,
+            )
+            .join(", ") +
+          "."
+        }
+      >
+        {[0.25, 0.5, 0.75].map((fraccion) => (
+          <line
+            key={fraccion}
+            x1={MARGEN.izquierda}
+            x2={ANCHO - MARGEN.derecha}
+            y1={MARGEN.arriba + util.alto * fraccion}
+            y2={MARGEN.arriba + util.alto * fraccion}
+            className="tendencia__guia"
+          />
+        ))}
+        {hayCero ? (
+          <line
+            x1={MARGEN.izquierda}
+            x2={ANCHO - MARGEN.derecha}
+            y1={y(0)}
+            y2={y(0)}
+            className="tendencia__cero"
+          />
+        ) : null}
+
+        {series.map((serie) => (
+          <polyline
+            key={serie.clave}
+            points={linea(serie.clave)}
+            className={`tendencia__venta tendencia__venta--${serie.tono}`}
+            fill="none"
+          />
+        ))}
+      </svg>
+
+      <figcaption className="tendencia__leyenda">
+        {series.map((serie) => (
+          <span
+            key={serie.clave}
+            className={`tendencia__clave tendencia__clave--${serie.tono}`}
+          >
+            {serie.etiqueta}
+          </span>
+        ))}
+      </figcaption>
+    </figure>
+  );
+}
+
+// ── Torta de composición ─────────────────────────────────────────────────────
+
+export interface PorcionTorta {
+  clave: string;
+  etiqueta: string;
+  /** Siempre en magnitud absoluta: la torta reparte peso, no signo. */
+  valor: string;
+  tono: "acento" | "exito" | "aviso" | "peligro" | "neutro";
+}
+
+/**
+ * Composición de un total en partes, en dona —no en círculo relleno—, porque
+ * el centro queda libre para escribir el total sin taparlo con las porciones.
+ *
+ * Ninguna porción se calcula aquí a partir de una resta: cada `valor` viene ya
+ * calculado por el backend (§ nunca inventar una cifra en el frontend). La
+ * única aritmética que hace este componente es de geometría —qué arco le toca
+ * a cada porción del total—, igual que `proporcionParaGrafico` en las demás
+ * figuras.
+ */
+export function DonutComposicion({
+  titulo,
+  porciones,
+  formatear,
+  total,
+}: {
+  titulo: string;
+  porciones: PorcionTorta[];
+  formatear: (valor: string | null) => string;
+  /** Etiqueta del centro de la dona; por defecto la suma de las porciones. */
+  total?: string;
+}) {
+  const RADIO = 52;
+  const GROSOR = 16;
+  const PERIMETRO = 2 * Math.PI * RADIO;
+
+  const partes = porciones.map((porcion) => ({
+    porcion,
+    magnitud: Math.abs(Number(porcion.valor) || 0),
+  }));
+  const suma = partes.reduce((total, parte) => total + parte.magnitud, 0);
+
+  if (suma === 0) {
+    return <p className="tenue">Sin cifras que repartir en {titulo.toLowerCase()}.</p>;
+  }
+
+  let acumulado = 0;
+  const arcos = partes.map(({ porcion, magnitud }) => {
+    const fraccion = magnitud / suma;
+    const arco = {
+      porcion,
+      fraccion,
+      porcentajeTexto: porcentaje(String(fraccion)),
+      desplazamiento: -acumulado * PERIMETRO,
+    };
+    acumulado += fraccion;
+    return arco;
+  });
+
+  return (
+    <figure className="donut">
+      <svg
+        viewBox="0 0 140 140"
+        className="donut__figura"
+        role="img"
+        aria-label={
+          `${titulo}: ` +
+          arcos.map(({ porcion, porcentajeTexto }) => `${porcion.etiqueta} ${formatear(porcion.valor)} (${porcentajeTexto})`).join(", ") +
+          "."
+        }
+      >
+        <circle cx="70" cy="70" r={RADIO} className="donut__surco" strokeWidth={GROSOR} fill="none" />
+        {arcos.map(({ porcion, fraccion, desplazamiento }) => (
+          <circle
+            key={porcion.clave}
+            cx="70"
+            cy="70"
+            r={RADIO}
+            className={`donut__porcion donut__porcion--${porcion.tono}`}
+            strokeWidth={GROSOR}
+            fill="none"
+            strokeDasharray={`${PERIMETRO * fraccion} ${PERIMETRO}`}
+            strokeDashoffset={desplazamiento}
+            transform="rotate(-90 70 70)"
+          />
+        ))}
+        <text x="70" y="66" textAnchor="middle" className="donut__cifra">
+          {total ?? formatear(String(suma))}
+        </text>
+        <text x="70" y="82" textAnchor="middle" className="donut__subcifra">
+          Total
+        </text>
+      </svg>
+      <figcaption className="donut__leyenda">
+        {arcos.map(({ porcion, porcentajeTexto }) => (
+          <span key={porcion.clave} className={`donut__clave donut__clave--${porcion.tono}`}>
+            {porcion.etiqueta}: {formatear(porcion.valor)} ({porcentajeTexto})
+          </span>
+        ))}
       </figcaption>
     </figure>
   );

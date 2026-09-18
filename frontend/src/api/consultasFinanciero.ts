@@ -1,6 +1,6 @@
 /** Consultas del tablero financiero consolidado (Grupo Santacruz). */
 
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 
 import { peticion } from "./cliente";
 import type {
@@ -72,5 +72,24 @@ export function useBalanceComprobacion(filtros: FiltrosFinanciero, habilitado = 
         parametros: parametrosDe(filtros),
       }),
     enabled: habilitado && Boolean(filtros.periodo),
+  });
+}
+
+/**
+ * El estado de resultados de varios períodos a la vez, para la tendencia.
+ *
+ * Una petición por período —el backend no tiene un endpoint de serie— en
+ * paralelo con `useQueries`: nueve meses cargados son nueve peticiones
+ * pequeñas, no una sola pesada.
+ */
+export function useSerieEstadoResultados(periodos: string[]) {
+  return useQueries({
+    queries: periodos.map((periodo) => ({
+      queryKey: ["financiero", "estado-resultados", { periodo }],
+      queryFn: () =>
+        peticion<RespuestaEstadoResultados>("/financiero/estado-resultados", {
+          parametros: { periodo },
+        }),
+    })),
   });
 }
