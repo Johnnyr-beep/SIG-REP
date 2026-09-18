@@ -662,6 +662,7 @@ export interface RespuestaBalanceGeneral {
   activo: string;
   pasivo: string;
   patrimonio: string;
+  utilidad_del_ejercicio: string;
   descuadre: string;
   parametros_calculo: ParametrosCalculoFinanciero;
 }

@@ -186,10 +186,17 @@ export function ResumenFinanciero() {
               <Indicador etiqueta="Pasivo" valor={dinero(balance.data.pasivo)} tamano="mediano" />
               <Indicador etiqueta="Patrimonio" valor={dinero(balance.data.patrimonio)} tamano="mediano" />
               <Indicador
+                etiqueta="Utilidad del ejercicio"
+                valor={dinero(balance.data.utilidad_del_ejercicio)}
+                tamano="mediano"
+                nota="Ingresos − costos − gastos acumulados del año, aún sin cerrar contra patrimonio."
+                tono={balance.data.utilidad_del_ejercicio.trim().startsWith("-") ? "peligro" : "exito"}
+              />
+              <Indicador
                 etiqueta="Descuadre"
                 valor={dinero(balance.data.descuadre)}
                 tamano="mediano"
-                nota="Activo − pasivo − patrimonio. Debe ser cero; si no lo es, el descuadre viene del origen."
+                nota="Activo − pasivo − patrimonio − utilidad del ejercicio. Debe ser cero; si no lo es, el descuadre viene del origen."
                 tono={balance.data.descuadre === "0.00" ? undefined : "aviso"}
               />
             </div>

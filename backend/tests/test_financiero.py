@@ -191,7 +191,9 @@ def _sembrar_movimientos(sesion: Session) -> None:
             creditos=Decimal("150.00"),
             final=Decimal("-150.00"),
         ),
-        # Patrimonio 350 (naturaleza credito: FINAL crudo -350.00)
+        # Patrimonio 250 (naturaleza credito: FINAL crudo -250.00). Junto con
+        # pasivo 150 y utilidad del ejercicio 200 (ingreso 500 - costo 200 -
+        # gasto 100), cuadra exacto contra el activo de 600.
         MovimientoContable(
             cia=4,
             co="402",
@@ -201,8 +203,8 @@ def _sembrar_movimientos(sesion: Session) -> None:
             descripcion="UTILIDADES ACUMULADAS",
             saldo_inicial=Decimal("0"),
             debitos=Decimal("0"),
-            creditos=Decimal("350.00"),
-            final=Decimal("-350.00"),
+            creditos=Decimal("250.00"),
+            final=Decimal("-250.00"),
         ),
         # Ingreso 500 (naturaleza credito: FINAL crudo -500.00)
         MovimientoContable(
@@ -256,8 +258,12 @@ def test_balance_general_cuadra_y_no_descuadra(sesion: Session) -> None:
     assert resultado.activo == Decimal("600.00")
     assert resultado.pasivo == Decimal("150.00")
     # Patrimonio propio, sin incluir la utilidad del ejercicio en curso.
-    assert resultado.patrimonio == Decimal("350.00")
-    assert resultado.descuadre == Decimal("100.00")  # utilidad del ejercicio, aún no capitalizada
+    assert resultado.patrimonio == Decimal("250.00")
+    assert resultado.utilidad_del_ejercicio == Decimal("200.00")  # 500 - 200 - 100
+    # Con la utilidad del ejercicio sumada a la ecuación, el balance cuadra:
+    # una base con el P&G aún sin cerrar contra patrimonio no es una base
+    # descuadrada, y la fórmula tiene que reflejarlo.
+    assert resultado.descuadre == Decimal("0.00")
 
 
 def test_estado_resultados_calcula_utilidad_neta(sesion: Session) -> None:

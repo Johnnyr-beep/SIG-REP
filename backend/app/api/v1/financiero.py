@@ -92,6 +92,7 @@ def balance_general(
         activo=resultado.activo,
         pasivo=resultado.pasivo,
         patrimonio=resultado.patrimonio,
+        utilidad_del_ejercicio=resultado.utilidad_del_ejercicio,
         descuadre=resultado.descuadre,
         parametros_calculo=_parametros(periodo, cia),
     )

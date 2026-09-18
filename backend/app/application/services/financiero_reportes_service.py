@@ -76,8 +76,16 @@ class BalanceGeneral:
     activo: Decimal
     pasivo: Decimal
     patrimonio: Decimal
-    #: `activo - pasivo - patrimonio`. Debe dar `0` en una base bien cuadrada;
-    #: se publica para que un descuadre del origen sea visible, no silencioso.
+    #: Ingresos - costos - gastos acumulados del año a la fecha. El libro mayor
+    #: solo cierra el P&G contra patrimonio una vez al año (periodo 13 de
+    #: cierre); mientras tanto, la utilidad del ejercicio vive en las cuentas
+    #: nominales (4, 5, 6, 7) y hay que sumarla aquí para que la ecuación
+    #: contable cierre. Omitirla hace ver como "descuadre" lo que es, en
+    #: realidad, resultado del ejercicio sin capitalizar.
+    utilidad_del_ejercicio: Decimal
+    #: `activo - pasivo - patrimonio - utilidad_del_ejercicio`. Debe ser `0` en
+    #: una base bien cuadrada; se publica para que un descuadre real del origen
+    #: sea visible, no silencioso.
     descuadre: Decimal
 
 
@@ -176,11 +184,18 @@ class FinancieroReportesService:
         activo = saldos.get(ClaseCuenta.ACTIVO, CERO)
         pasivo = saldos.get(ClaseCuenta.PASIVO, CERO)
         patrimonio = saldos.get(ClaseCuenta.PATRIMONIO, CERO)
+        ingresos = saldos.get(ClaseCuenta.INGRESO, CERO)
+        costos = saldos.get(ClaseCuenta.COSTO_VENTA, CERO) + saldos.get(
+            ClaseCuenta.COSTO_PRODUCCION, CERO
+        )
+        gastos = saldos.get(ClaseCuenta.GASTO, CERO)
+        utilidad_del_ejercicio = ingresos - costos - gastos
         return BalanceGeneral(
             activo=activo,
             pasivo=pasivo,
             patrimonio=patrimonio,
-            descuadre=activo - pasivo - patrimonio,
+            utilidad_del_ejercicio=utilidad_del_ejercicio,
+            descuadre=activo - pasivo - patrimonio - utilidad_del_ejercicio,
         )
 
     def estado_resultados(self, filtros: FiltrosFinanciero) -> EstadoResultados:

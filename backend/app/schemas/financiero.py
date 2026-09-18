@@ -37,9 +37,14 @@ class RespuestaBalanceGeneral(EsquemaBase):
     activo: DecimalStr
     pasivo: DecimalStr
     patrimonio: DecimalStr
+    utilidad_del_ejercicio: DecimalStr = Field(
+        description="Ingresos - costos - gastos acumulados del año a la fecha, "
+        "todavía sin capitalizar contra patrimonio: el libro mayor solo cierra "
+        "el P&G una vez al año."
+    )
     descuadre: DecimalStr = Field(
-        description="activo - pasivo - patrimonio. Debe ser 0; un valor distinto "
-        "señala un descuadre en el origen, no un error de SIGREP."
+        description="activo - pasivo - patrimonio - utilidad_del_ejercicio. Debe ser "
+        "0; un valor distinto señala un descuadre real en el origen, no un error de SIGREP."
     )
     parametros_calculo: ParametrosCalculoFinanciero
 
