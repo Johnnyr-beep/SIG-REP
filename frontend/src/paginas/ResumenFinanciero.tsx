@@ -9,6 +9,21 @@
  */
 
 import { useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import {
   useBalanceGeneral,
@@ -17,15 +32,8 @@ import {
   useSerieEstadoResultados,
 } from "@/api/consultasFinanciero";
 import { AvisoError, Cargando, Tarjeta } from "@/componentes/comunes";
-import {
-  DonutComposicion,
-  TendenciaMultiple,
-  type PorcionTorta,
-  type PuntoTendenciaMensual,
-} from "@/componentes/graficos";
-import { ColumnasComparadas, type ColumnaComparada } from "@/componentes/graficos";
 import { Indicador } from "@/componentes/indicadores";
-import { dinero, numero, porcentaje } from "@/utilidades/formato";
+import { dinero, dineroCorto, numero, porcentaje } from "@/utilidades/formato";
 
 /** `"2026-07"` del `<input type="month">` a `"202607"` que pide la API. */
 function aPeriodoApi(mes: string): string {
@@ -75,31 +83,28 @@ export function ResumenFinanciero() {
   const cargando = balance.isLoading || resultados.isLoading || indicadores.isLoading;
   const error = balance.error ?? resultados.error ?? indicadores.error;
 
-  const columnasResultados: ColumnaComparada[] = resultados.data
+  const datosResultados = resultados.data
     ? [
-        { clave: "ingresos", etiqueta: "Ingresos", valor: resultados.data.ingresos },
-        { clave: "costos", etiqueta: "Costos", valor: resultados.data.costos },
-        { clave: "gastos", etiqueta: "Gastos", valor: resultados.data.gastos },
+        { nombre: "Ingresos", valor: Number(resultados.data.ingresos) },
+        { nombre: "Costos", valor: Number(resultados.data.costos) },
+        { nombre: "Gastos", valor: Number(resultados.data.gastos) },
       ]
     : [];
 
   // Estructura de financiación: de qué está hecho el activo, pasivo o
   // patrimonio. En magnitud absoluta a propósito —la torta reparte peso, no
-  // signo— con una nota aparte cuando alguno de los dos viene en contra de su
-  // naturaleza (ver el aviso de descuadre más abajo).
-  const porcionesFinanciamiento: PorcionTorta[] = balance.data
+  // signo— con el descuadre ya avisado aparte, arriba.
+  const datosFinanciamiento = balance.data
     ? [
-        { clave: "pasivo", etiqueta: "Pasivo", valor: balance.data.pasivo, tono: "peligro" },
-        { clave: "patrimonio", etiqueta: "Patrimonio", valor: balance.data.patrimonio, tono: "acento" },
+        { nombre: "Pasivo", valor: Math.abs(Number(balance.data.pasivo)), color: "var(--peligro)" },
+        { nombre: "Patrimonio", valor: Math.abs(Number(balance.data.patrimonio)), color: "var(--acento)" },
       ]
     : [];
 
-  const puntosTendencia: PuntoTendenciaMensual[] = periodosSerie.map((p, indice) => ({
+  const datosTendencia = periodosSerie.map((p, indice) => ({
     periodo: mesCortoDePeriodo(p),
-    valores: {
-      ingresos: serie[indice]?.data?.ingresos ?? null,
-      utilidad_neta: serie[indice]?.data?.utilidad_neta ?? null,
-    },
+    ingresos: serie[indice]?.data ? Number(serie[indice]?.data?.ingresos) : null,
+    utilidad_neta: serie[indice]?.data ? Number(serie[indice]?.data?.utilidad_neta) : null,
   }));
   const serieCargando = serie.some((consulta) => consulta.isLoading);
 
@@ -191,13 +196,15 @@ export function ResumenFinanciero() {
           {resultados.isLoading ? (
             <Cargando texto="Cargando…" />
           ) : (
-            <ColumnasComparadas
-              columnas={columnasResultados}
-              titulo="Ingresos, costos y gastos"
-              formatear={dinero}
-              etiquetaValor="Valor"
-              notaSinReferencia=""
-            />
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={datosResultados}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--borde)" />
+                <XAxis dataKey="nombre" stroke="var(--texto-suave)" fontSize={12} />
+                <YAxis stroke="var(--texto-suave)" fontSize={12} tickFormatter={(v) => dineroCorto(String(v))} width={70} />
+                <Tooltip formatter={(v) => dinero(String(v ?? 0))} contentStyle={{ background: "var(--superficie)", border: "1px solid var(--borde)" }} />
+                <Bar dataKey="valor" fill="var(--acento)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           )}
         </Tarjeta>
 
@@ -208,11 +215,24 @@ export function ResumenFinanciero() {
           {balance.isLoading ? (
             <Cargando texto="Cargando…" />
           ) : (
-            <DonutComposicion
-              titulo="Estructura de financiación"
-              porciones={porcionesFinanciamiento}
-              formatear={dinero}
-            />
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie
+                  data={datosFinanciamiento}
+                  dataKey="valor"
+                  nameKey="nombre"
+                  innerRadius={60}
+                  outerRadius={90}
+                  paddingAngle={2}
+                >
+                  {datosFinanciamiento.map((entrada) => (
+                    <Cell key={entrada.nombre} fill={entrada.color} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v) => dinero(String(v ?? 0))} contentStyle={{ background: "var(--superficie)", border: "1px solid var(--borde)" }} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
           )}
         </Tarjeta>
       </div>
@@ -224,15 +244,17 @@ export function ResumenFinanciero() {
         {serieCargando ? (
           <Cargando texto="Cargando la tendencia…" />
         ) : (
-          <TendenciaMultiple
-            puntos={puntosTendencia}
-            series={[
-              { clave: "ingresos", etiqueta: "Ingresos", tono: "acento" },
-              { clave: "utilidad_neta", etiqueta: "Utilidad neta", tono: "exito" },
-            ]}
-            titulo="Ingresos y utilidad neta"
-            formatear={dinero}
-          />
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={datosTendencia}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--borde)" />
+              <XAxis dataKey="periodo" stroke="var(--texto-suave)" fontSize={12} />
+              <YAxis stroke="var(--texto-suave)" fontSize={12} tickFormatter={(v) => dineroCorto(String(v))} width={70} />
+              <Tooltip formatter={(v) => dinero(String(v ?? 0))} contentStyle={{ background: "var(--superficie)", border: "1px solid var(--borde)" }} />
+              <Legend />
+              <Line type="monotone" dataKey="ingresos" name="Ingresos" stroke="var(--acento)" strokeWidth={2.5} dot connectNulls />
+              <Line type="monotone" dataKey="utilidad_neta" name="Utilidad neta" stroke="var(--exito)" strokeWidth={2.5} dot connectNulls />
+            </LineChart>
+          </ResponsiveContainer>
         )}
       </Tarjeta>
     </div>

@@ -1,6 +1,7 @@
 /** Composición de la aplicación: rutas y guardias de acceso. */
 
 import { Navigate, Route, Routes } from "react-router-dom";
+import { Suspense, lazy } from "react";
 import type { ReactNode } from "react";
 
 import type { Rol } from "@/api/tipos";
@@ -29,11 +30,17 @@ import { Ingesta } from "@/paginas/Ingesta";
 import { HistoriaVenta } from "@/paginas/HistoriaVenta";
 import { Presupuesto } from "@/paginas/Presupuesto";
 import { Permisos } from "@/paginas/Permisos";
-import { ResumenFinanciero } from "@/paginas/ResumenFinanciero";
 import { SelectorMarca } from "@/paginas/SelectorMarca";
 import { Tablero } from "@/paginas/Tablero";
 import { Usuarios } from "@/paginas/Usuarios";
 import { VentaDiaria } from "@/paginas/VentaDiaria";
+
+// Carga diferida a prop\u00f3sito: es la \u00fanica pantalla que usa Recharts, y
+// cargarla est\u00e1tica meter\u00eda esa librer\u00eda entera en el paquete de todas las
+// unidades, incluida Carnes, que nunca la abre.
+const ResumenFinanciero = lazy(() =>
+  import("@/paginas/ResumenFinanciero").then((modulo) => ({ default: modulo.ResumenFinanciero })),
+);
 
 /**
  * Guardia por rol.
@@ -152,7 +159,14 @@ export function App() {
     <Routes>
       <Route element={<Disposicion />}>
         {esGrupoSantacruz ? (
-          <Route index element={<ResumenFinanciero />} />
+          <Route
+            index
+            element={
+              <Suspense fallback={<Cargando texto="Cargando el resumen financiero…" />}>
+                <ResumenFinanciero />
+              </Suspense>
+            }
+          />
         ) : esAgro || esCarnesFrias ? (
           <>
             {/* Las pantallas conservan el prefijo `/agro` en vez de subir a la

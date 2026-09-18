@@ -3009,8 +3009,7 @@ textarea.campo__control {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .anillo__relleno,
-  .donut__porcion {
+  .anillo__relleno {
     transition: none;
   }
 }
@@ -3088,129 +3087,6 @@ textarea.campo__control {
 .tendencia__clave--meta::before {
   border-top-style: dashed;
   border-top-color: var(--aviso);
-}
-
-/* ── Tendencia mensual (varias series) ────────────────────────────────────
-   Mismo lienzo que la tendencia acumulada, con tonos genéricos en vez de
-   «venta/meta»: aquí las series las nombra quien llama al componente. Ver
-   `TendenciaMultiple`. */
-.tendencia__cero {
-  stroke: var(--texto-tenue);
-  stroke-width: 1;
-}
-
-.tendencia__venta--acento {
-  stroke: var(--acento);
-}
-.tendencia__venta--exito {
-  stroke: var(--exito);
-}
-.tendencia__venta--peligro {
-  stroke: var(--peligro);
-}
-
-.tendencia__clave--acento::before {
-  border-top-style: solid;
-  border-top-color: var(--acento);
-}
-.tendencia__clave--exito::before {
-  border-top-style: solid;
-  border-top-color: var(--exito);
-}
-.tendencia__clave--peligro::before {
-  border-top-style: solid;
-  border-top-color: var(--peligro);
-}
-
-/* ── Torta de composición (dona) ───────────────────────────────────────────
-   Centro libre para el total; ver `DonutComposicion`. */
-.donut {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--espacio-2);
-}
-
-.donut__figura {
-  width: 100%;
-  max-width: 11rem;
-  height: auto;
-}
-
-.donut__surco {
-  stroke: var(--borde);
-}
-
-.donut__porcion {
-  transition: stroke-dasharray 400ms ease-out;
-}
-.donut__porcion--acento {
-  stroke: var(--acento);
-}
-.donut__porcion--exito {
-  stroke: var(--exito);
-}
-.donut__porcion--aviso {
-  stroke: var(--aviso);
-}
-.donut__porcion--peligro {
-  stroke: var(--peligro);
-}
-.donut__porcion--neutro {
-  stroke: var(--gris-400);
-}
-
-.donut__cifra {
-  fill: var(--texto);
-  font-size: 1.1rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.donut__subcifra {
-  fill: var(--texto-tenue);
-  font-size: 0.62rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.donut__leyenda {
-  display: flex;
-  flex-direction: column;
-  gap: var(--espacio-1);
-  font-size: 0.78rem;
-  color: var(--texto-suave);
-}
-
-.donut__clave {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--espacio-2);
-}
-
-.donut__clave::before {
-  content: "";
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 999px;
-  flex-shrink: 0;
-}
-.donut__clave--acento::before {
-  background: var(--acento);
-}
-.donut__clave--exito::before {
-  background: var(--exito);
-}
-.donut__clave--aviso::before {
-  background: var(--aviso);
-}
-.donut__clave--peligro::before {
-  background: var(--peligro);
-}
-.donut__clave--neutro::before {
-  background: var(--gris-400);
 }
 
 /* Dos paneles lado a lado: el cumplimiento en anillos y la tendencia. En
