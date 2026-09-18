@@ -94,7 +94,6 @@ export function Cartera() {
               <thead>
                 <tr>
                   <th scope="col" className="columna-ancla">Cliente</th>
-                  <th scope="col">NIT / identificación</th>
                   <th scope="col" className="numero">Saldo</th>
                 </tr>
               </thead>
@@ -103,15 +102,15 @@ export function Cartera() {
                   <tr key={fila.id_tercero}>
                     <th scope="row" className="columna-ancla">
                       {fila.razon_social ?? "—"}
+                      <span className="columna-ancla__nota">{fila.id_tercero}</span>
                     </th>
-                    <td>{fila.id_tercero}</td>
                     <td className="numero">{dinero(fila.saldo)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={2} className="columna-ancla">
+                  <td className="columna-ancla">
                     {filasFiltradas.length} de {filas.length} clientes
                   </td>
                   <td className="numero">{dinero(String(totalSaldo))}</td>
