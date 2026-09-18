@@ -318,12 +318,16 @@ export function Indicador({
   nota,
   pista,
   tono,
+  tamano = "grande",
 }: {
   etiqueta: string;
   valor: ReactNode;
   nota?: ReactNode;
   pista?: ReactNode;
   tono?: "exito" | "aviso" | "peligro";
+  /** «mediano» para cifras largas —un peso de doce dígitos— que no caben
+   * en el tamaño por defecto sin partirse en dos líneas. */
+  tamano?: "grande" | "mediano";
 }) {
   return (
     <div className={`indicador${tono ? ` indicador--${tono}` : ""}`}>
@@ -331,7 +335,11 @@ export function Indicador({
         {etiqueta}
         {pista ? <Pista etiqueta={etiqueta}>{pista}</Pista> : null}
       </span>
-      <span className="indicador__valor">{valor}</span>
+      <span
+        className={`indicador__valor${tamano === "mediano" ? " indicador__valor--mediano" : ""}`}
+      >
+        {valor}
+      </span>
       {nota ? <span className="indicador__nota">{nota}</span> : null}
     </div>
   );

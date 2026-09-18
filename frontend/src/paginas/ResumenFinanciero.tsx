@@ -138,12 +138,13 @@ export function ResumenFinanciero() {
           <>
             <h3>Balance general</h3>
             <div className="rejilla rejilla--indicadores">
-              <Indicador etiqueta="Activo" valor={<span title={dinero(balance.data.activo)}>{dineroCorto(balance.data.activo)}</span>} />
-              <Indicador etiqueta="Pasivo" valor={<span title={dinero(balance.data.pasivo)}>{dineroCorto(balance.data.pasivo)}</span>} />
-              <Indicador etiqueta="Patrimonio" valor={<span title={dinero(balance.data.patrimonio)}>{dineroCorto(balance.data.patrimonio)}</span>} />
+              <Indicador etiqueta="Activo" valor={dinero(balance.data.activo)} tamano="mediano" />
+              <Indicador etiqueta="Pasivo" valor={dinero(balance.data.pasivo)} tamano="mediano" />
+              <Indicador etiqueta="Patrimonio" valor={dinero(balance.data.patrimonio)} tamano="mediano" />
               <Indicador
                 etiqueta="Descuadre"
-                valor={<span title={dinero(balance.data.descuadre)}>{dineroCorto(balance.data.descuadre)}</span>}
+                valor={dinero(balance.data.descuadre)}
+                tamano="mediano"
                 nota="Activo − pasivo − patrimonio. Debe ser cero; si no lo es, el descuadre viene del origen."
                 tono={balance.data.descuadre === "0.00" ? undefined : "aviso"}
               />
@@ -155,12 +156,13 @@ export function ResumenFinanciero() {
           <>
             <h3>Estado de resultados</h3>
             <div className="rejilla rejilla--indicadores">
-              <Indicador etiqueta="Ingresos" valor={<span title={dinero(resultados.data.ingresos)}>{dineroCorto(resultados.data.ingresos)}</span>} />
-              <Indicador etiqueta="Costos" valor={<span title={dinero(resultados.data.costos)}>{dineroCorto(resultados.data.costos)}</span>} />
-              <Indicador etiqueta="Gastos" valor={<span title={dinero(resultados.data.gastos)}>{dineroCorto(resultados.data.gastos)}</span>} />
+              <Indicador etiqueta="Ingresos" valor={dinero(resultados.data.ingresos)} tamano="mediano" />
+              <Indicador etiqueta="Costos" valor={dinero(resultados.data.costos)} tamano="mediano" />
+              <Indicador etiqueta="Gastos" valor={dinero(resultados.data.gastos)} tamano="mediano" />
               <Indicador
                 etiqueta="Utilidad neta"
-                valor={<span title={dinero(resultados.data.utilidad_neta)}>{dineroCorto(resultados.data.utilidad_neta)}</span>}
+                valor={dinero(resultados.data.utilidad_neta)}
+                tamano="mediano"
                 tono={resultados.data.utilidad_neta.trim().startsWith("-") ? "peligro" : "exito"}
               />
             </div>
