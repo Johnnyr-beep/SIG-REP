@@ -63,6 +63,25 @@ class RespuestaCartera(EsquemaBase):
     parametros_calculo: ParametrosCalculoFinanciero
 
 
+class FilaDetalleCuenta(EsquemaBase):
+    mayor_iii: str = Field(description="Cuenta PUC de 4 dígitos")
+    mayor_iv: str | None = Field(default=None, description="Subcuenta PUC de 6 dígitos")
+    descripcion: str | None = None
+    clase: str = Field(description="Activo, Pasivo, Patrimonio, Ingresos, Gastos, Costos…")
+    centro_costo: str | None = None
+    id_tercero: str | None = None
+    razon_social: str | None = None
+    saldo_inicial: DecimalStr
+    debitos: DecimalStr
+    creditos: DecimalStr
+    final: DecimalStr
+
+
+class RespuestaDetalleCuentas(EsquemaBase):
+    filas: list[FilaDetalleCuenta]
+    parametros_calculo: ParametrosCalculoFinanciero
+
+
 class RespuestaIndicadoresFinancieros(EsquemaBase):
     liquidez_corriente: DecimalStr | None = Field(
         default=None,

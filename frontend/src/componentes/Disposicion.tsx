@@ -138,6 +138,7 @@ const MENU_FINANCIERO: GrupoNav[] = [
     titulo: "Gerencia",
     items: [
       { ruta: "/", etiqueta: "Resumen financiero", icono: "◱", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
+      { ruta: "/detalle-cuentas", etiqueta: "Detalle de cuentas", icono: "▤", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
     ],
   },
   {
@@ -221,6 +222,7 @@ const TITULOS: Record<string, string> = {
   "/ingesta": "Ingesta desde SIESA",
   "/usuarios": "Administración de usuarios",
   "/permisos": "Permisos de consulta",
+  "/detalle-cuentas": "Detalle de cuentas",
 };
 
 type Tema = "sistema" | "claro" | "oscuro";

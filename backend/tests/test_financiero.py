@@ -283,6 +283,104 @@ def test_cartera_agrupa_por_tercero(sesion: Session) -> None:
     assert filas[0].saldo == Decimal("200.00")
 
 
+def test_detalle_cuentas_agrupa_por_cuenta_centro_y_tercero(sesion: Session) -> None:
+    """Dos líneas de la misma cuenta a 4 dígitos, distinto centro de costo y
+    tercero: `detalle_cuentas` las mantiene separadas; `balance_comprobacion`
+    (que agrega solo por `mayor_iii`) las habría sumado en una sola fila.
+    """
+    sesion.add_all(
+        [
+            MovimientoContable(
+                cia=4,
+                co="402",
+                periodo=PERIODO,
+                auxiliar="1305010101",
+                mayor_iii="1305",
+                mayor_iv="130501",
+                descripcion="CLIENTES NACIONALES",
+                centro_costo="TESORERIA",
+                id_tercero="900111",
+                razon_social="CLIENTE UNO",
+                saldo_inicial=Decimal("0"),
+                debitos=Decimal("200.00"),
+                creditos=Decimal("0"),
+                final=Decimal("200.00"),
+            ),
+            MovimientoContable(
+                cia=4,
+                co="402",
+                periodo=PERIODO,
+                auxiliar="1305010102",
+                mayor_iii="1305",
+                mayor_iv="130501",
+                descripcion="CLIENTES NACIONALES",
+                centro_costo="CARTERA",
+                id_tercero="900222",
+                razon_social="CLIENTE DOS",
+                saldo_inicial=Decimal("0"),
+                debitos=Decimal("50.00"),
+                creditos=Decimal("0"),
+                final=Decimal("50.00"),
+            ),
+        ]
+    )
+    sesion.commit()
+    servicio = FinancieroReportesService(sesion)
+
+    filas = servicio.detalle_cuentas(FiltrosFinanciero(periodo=PERIODO))
+
+    assert len(filas) == 2
+    por_tercero = {fila.id_tercero: fila for fila in filas}
+    assert por_tercero["900111"].centro_costo == "TESORERIA"
+    assert por_tercero["900111"].final == Decimal("200.00")
+    assert por_tercero["900222"].centro_costo == "CARTERA"
+    assert por_tercero["900222"].final == Decimal("50.00")
+    assert all(fila.mayor_iii == "1305" and fila.clase == "Activo" for fila in filas)
+
+
+def test_detalle_cuentas_filtra_por_centro_costo_y_cuenta(sesion: Session) -> None:
+    sesion.add_all(
+        [
+            MovimientoContable(
+                cia=4,
+                co="402",
+                periodo=PERIODO,
+                auxiliar="1305010101",
+                mayor_iii="1305",
+                mayor_iv="130501",
+                centro_costo="TESORERIA",
+                id_tercero="900111",
+                saldo_inicial=Decimal("0"),
+                debitos=Decimal("200.00"),
+                creditos=Decimal("0"),
+                final=Decimal("200.00"),
+            ),
+            MovimientoContable(
+                cia=4,
+                co="402",
+                periodo=PERIODO,
+                auxiliar="5105",
+                mayor_iii="5105",
+                mayor_iv="510501",
+                centro_costo="TESORERIA",
+                saldo_inicial=Decimal("0"),
+                debitos=Decimal("30.00"),
+                creditos=Decimal("0"),
+                final=Decimal("30.00"),
+            ),
+        ]
+    )
+    sesion.commit()
+    servicio = FinancieroReportesService(sesion)
+
+    filas = servicio.detalle_cuentas(
+        FiltrosFinanciero(periodo=PERIODO), centro_costo="TESORERIA", mayor_iii="1305"
+    )
+
+    assert len(filas) == 1
+    assert filas[0].id_tercero == "900111"
+
+
 def test_indicadores_liquidez_endeudamiento_margen(sesion: Session) -> None:
     _sembrar_movimientos(sesion)
     servicio = FinancieroReportesService(sesion)

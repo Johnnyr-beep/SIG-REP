@@ -29,6 +29,7 @@ import {
   useBalanceGeneral,
   useEstadoResultados,
   useIndicadoresFinancieros,
+  useSerieBalanceGeneral,
   useSerieEstadoResultados,
 } from "@/api/consultasFinanciero";
 import { AvisoError, Cargando, Tarjeta } from "@/componentes/comunes";
@@ -68,6 +69,30 @@ function mesCortoDePeriodo(periodo: string): string {
     .replace(".", "");
 }
 
+interface FilaAnalisis {
+  etiqueta: string;
+  actual: string | null;
+  base: string | null;
+  anterior: string | null;
+}
+
+/** Participación de `actual` sobre `base` (análisis vertical). */
+function participacion(actual: string | null, base: string | null): string | null {
+  if (actual === null || base === null || Number(base) === 0) return null;
+  return String(Math.abs(Number(actual) / Number(base)));
+}
+
+/** Variación porcentual de `actual` contra `anterior` (análisis horizontal). */
+function variacionPorcentual(actual: string | null, anterior: string | null): string | null {
+  if (actual === null || anterior === null || Number(anterior) === 0) return null;
+  return String((Number(actual) - Number(anterior)) / Math.abs(Number(anterior)));
+}
+
+function variacionAbsoluta(actual: string | null, anterior: string | null): string | null {
+  if (actual === null || anterior === null) return null;
+  return String(Number(actual) - Number(anterior));
+}
+
 export function ResumenFinanciero() {
   const [mes, setMes] = useState(periodoActual());
   const periodo = aPeriodoApi(mes);
@@ -79,6 +104,7 @@ export function ResumenFinanciero() {
 
   const periodosSerie = ultimosPeriodos(mes, 6);
   const serie = useSerieEstadoResultados(periodosSerie);
+  const serieBalance = useSerieBalanceGeneral(periodosSerie);
 
   const cargando = balance.isLoading || resultados.isLoading || indicadores.isLoading;
   const error = balance.error ?? resultados.error ?? indicadores.error;
@@ -107,6 +133,24 @@ export function ResumenFinanciero() {
     utilidad_neta: serie[indice]?.data ? Number(serie[indice]?.data?.utilidad_neta) : null,
   }));
   const serieCargando = serie.some((consulta) => consulta.isLoading);
+
+  // Análisis vertical y horizontal: el mes elegido es el último punto de la
+  // serie de 6 meses que ya se pidió para la tendencia, así que el mes
+  // anterior sale de ahí sin una petición nueva.
+  const resultadosAnterior = serie[serie.length - 2]?.data ?? null;
+  const balanceAnterior = serieBalance[serieBalance.length - 2]?.data ?? null;
+
+  const filasAnalisis: FilaAnalisis[] = balance.data && resultados.data
+    ? [
+        { etiqueta: "Activo", actual: balance.data.activo, base: balance.data.activo, anterior: balanceAnterior?.activo ?? null },
+        { etiqueta: "Pasivo", actual: balance.data.pasivo, base: balance.data.activo, anterior: balanceAnterior?.pasivo ?? null },
+        { etiqueta: "Patrimonio", actual: balance.data.patrimonio, base: balance.data.activo, anterior: balanceAnterior?.patrimonio ?? null },
+        { etiqueta: "Ingresos", actual: resultados.data.ingresos, base: resultados.data.ingresos, anterior: resultadosAnterior?.ingresos ?? null },
+        { etiqueta: "Costos", actual: resultados.data.costos, base: resultados.data.ingresos, anterior: resultadosAnterior?.costos ?? null },
+        { etiqueta: "Gastos", actual: resultados.data.gastos, base: resultados.data.ingresos, anterior: resultadosAnterior?.gastos ?? null },
+        { etiqueta: "Utilidad neta", actual: resultados.data.utilidad_neta, base: resultados.data.ingresos, anterior: resultadosAnterior?.utilidad_neta ?? null },
+      ]
+    : [];
 
   return (
     <div className="pila">
@@ -191,6 +235,50 @@ export function ResumenFinanciero() {
             </div>
           </>
         ) : null}
+      </Tarjeta>
+
+      <Tarjeta
+        titulo="Análisis vertical y horizontal"
+        descripcion="Participación de cada cifra sobre su total (activo o ingresos) y variación contra el mes anterior."
+      >
+        {cargando || serieCargando ? (
+          <Cargando texto="Cargando el análisis…" />
+        ) : filasAnalisis.length === 0 ? null : (
+          <div className="tabla-envoltorio">
+            <table className="tabla">
+              <thead>
+                <tr>
+                  <th scope="col">Cifra</th>
+                  <th scope="col" className="numero">Valor</th>
+                  <th scope="col" className="numero">% vertical</th>
+                  <th scope="col" className="numero">Mes anterior</th>
+                  <th scope="col" className="numero">Variación</th>
+                  <th scope="col" className="numero">% horizontal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filasAnalisis.map((fila) => (
+                  <tr key={fila.etiqueta}>
+                    <th scope="row">{fila.etiqueta}</th>
+                    <td className="numero">{dinero(fila.actual)}</td>
+                    <td className="numero">
+                      {participacion(fila.actual, fila.base) === null
+                        ? "—"
+                        : porcentaje(participacion(fila.actual, fila.base))}
+                    </td>
+                    <td className="numero suave">{dinero(fila.anterior)}</td>
+                    <td className="numero">{dinero(variacionAbsoluta(fila.actual, fila.anterior))}</td>
+                    <td className="numero">
+                      {variacionPorcentual(fila.actual, fila.anterior) === null
+                        ? "—"
+                        : porcentaje(variacionPorcentual(fila.actual, fila.anterior))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Tarjeta>
 
       <div className="rejilla rejilla--panel">

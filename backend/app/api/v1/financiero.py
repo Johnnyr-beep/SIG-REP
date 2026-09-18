@@ -27,10 +27,12 @@ from app.infrastructure.models.usuario import Usuario
 from app.schemas.financiero import (
     FilaBalanceComprobacion,
     FilaCartera,
+    FilaDetalleCuenta,
     ParametrosCalculoFinanciero,
     RespuestaBalanceComprobacion,
     RespuestaBalanceGeneral,
     RespuestaCartera,
+    RespuestaDetalleCuentas,
     RespuestaEstadoResultados,
     RespuestaIndicadoresFinancieros,
 )
@@ -132,6 +134,43 @@ def cartera(
         for fila in servicio.cartera_por_cliente(FiltrosFinanciero(periodo=int(periodo), cia=cia))
     ]
     return RespuestaCartera(filas=filas, parametros_calculo=_parametros(periodo, cia))
+
+
+@router.get(
+    "/detalle-cuentas",
+    response_model=RespuestaDetalleCuentas,
+    summary="Detalle por cuenta, centro de costo y tercero",
+)
+def detalle_cuentas(
+    usuario: UsuarioFinancieroDep,
+    sesion: SesionDep,
+    periodo: str = PeriodoQuery,
+    cia: int | None = CiaQuery,
+    centro_costo: str | None = Query(
+        default=None, description="Filtra por un centro de costo exacto."
+    ),
+    mayor_iii: str | None = Query(
+        default=None,
+        pattern=r"^\d{4}$",
+        description="Filtra por una cuenta PUC de 4 dígitos.",
+    ),
+) -> RespuestaDetalleCuentas:
+    """Base de Balance/PyG «por tercero» y «por centro de costo»: un renglón
+    por cuenta de 6 dígitos × centro de costo × tercero, sin agregar. La
+    pantalla decide cómo agruparlo; el backend no supone cuál de los dos ejes
+    importa más.
+    """
+    del usuario
+    servicio = FinancieroReportesService(sesion)
+    filas = [
+        FilaDetalleCuenta.model_validate(fila)
+        for fila in servicio.detalle_cuentas(
+            FiltrosFinanciero(periodo=int(periodo), cia=cia),
+            centro_costo=centro_costo,
+            mayor_iii=mayor_iii,
+        )
+    ]
+    return RespuestaDetalleCuentas(filas=filas, parametros_calculo=_parametros(periodo, cia))
 
 
 @router.get(

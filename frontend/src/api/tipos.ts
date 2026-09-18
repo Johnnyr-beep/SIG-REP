@@ -685,3 +685,22 @@ export interface RespuestaIndicadoresFinancieros {
   margen_neto?: string | null;
   parametros_calculo: ParametrosCalculoFinanciero;
 }
+
+export interface FilaDetalleCuenta {
+  mayor_iii: string;
+  mayor_iv?: string | null;
+  descripcion?: string | null;
+  clase: string;
+  centro_costo?: string | null;
+  id_tercero?: string | null;
+  razon_social?: string | null;
+  saldo_inicial: string;
+  debitos: string;
+  creditos: string;
+  final: string;
+}
+
+export interface RespuestaDetalleCuentas {
+  filas: FilaDetalleCuenta[];
+  parametros_calculo: ParametrosCalculoFinanciero;
+}

@@ -7,6 +7,7 @@ import type {
   RespuestaBalanceComprobacion,
   RespuestaBalanceGeneral,
   RespuestaCartera,
+  RespuestaDetalleCuentas,
   RespuestaEstadoResultados,
   RespuestaIndicadoresFinancieros,
 } from "./tipos";
@@ -75,6 +76,27 @@ export function useBalanceComprobacion(filtros: FiltrosFinanciero, habilitado = 
   });
 }
 
+export interface FiltrosDetalleCuentas extends FiltrosFinanciero {
+  centro_costo?: string | null;
+  mayor_iii?: string | null;
+}
+
+export function useDetalleCuentas(filtros: FiltrosDetalleCuentas, habilitado = true) {
+  return useQuery({
+    queryKey: ["financiero", "detalle-cuentas", filtros],
+    queryFn: () =>
+      peticion<RespuestaDetalleCuentas>("/financiero/detalle-cuentas", {
+        parametros: {
+          periodo: filtros.periodo,
+          cia: filtros.cia ?? undefined,
+          centro_costo: filtros.centro_costo ?? undefined,
+          mayor_iii: filtros.mayor_iii ?? undefined,
+        },
+      }),
+    enabled: habilitado && Boolean(filtros.periodo),
+  });
+}
+
 /**
  * El estado de resultados de varios períodos a la vez, para la tendencia.
  *
@@ -88,6 +110,19 @@ export function useSerieEstadoResultados(periodos: string[]) {
       queryKey: ["financiero", "estado-resultados", { periodo }],
       queryFn: () =>
         peticion<RespuestaEstadoResultados>("/financiero/estado-resultados", {
+          parametros: { periodo },
+        }),
+    })),
+  });
+}
+
+/** Igual que `useSerieEstadoResultados`, para el análisis horizontal del balance. */
+export function useSerieBalanceGeneral(periodos: string[]) {
+  return useQueries({
+    queries: periodos.map((periodo) => ({
+      queryKey: ["financiero", "balance-general", { periodo }],
+      queryFn: () =>
+        peticion<RespuestaBalanceGeneral>("/financiero/balance-general", {
           parametros: { periodo },
         }),
     })),

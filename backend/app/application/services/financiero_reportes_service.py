@@ -97,6 +97,21 @@ class FilaCartera:
 
 
 @dataclass(frozen=True)
+class FilaDetalleCuenta:
+    mayor_iii: str
+    mayor_iv: str | None
+    descripcion: str | None
+    clase: str
+    centro_costo: str | None
+    id_tercero: str | None
+    razon_social: str | None
+    saldo_inicial: Decimal
+    debitos: Decimal
+    creditos: Decimal
+    final: Decimal
+
+
+@dataclass(frozen=True)
 class IndicadoresFinancieros:
     liquidez_corriente: Decimal | None
     endeudamiento: Decimal | None
@@ -201,6 +216,85 @@ class FinancieroReportesService:
             FilaCartera(id_tercero=id_tercero, razon_social=razon_social, saldo=final or CERO)
             for id_tercero, razon_social, final in self._sesion.execute(consulta)
         ]
+
+    def detalle_cuentas(
+        self,
+        filtros: FiltrosFinanciero,
+        *,
+        centro_costo: str | None = None,
+        mayor_iii: str | None = None,
+    ) -> list[FilaDetalleCuenta]:
+        """Un renglón por cuenta (6 dígitos) × centro de costo × tercero.
+
+        Es el nivel de detalle que pide contabilidad para el balance y el PyG
+        «por tercero» y «por centro de costo»: la misma cuenta a 4 dígitos que
+        `balance_comprobacion`, pero sin sumar sobre `CO` ni sobre tercero, para
+        que la tabla se pueda cruzar por cualquiera de los dos.
+
+        `centro_costo` y `mayor_iii` filtran, no agrupan: sin ellos la tabla
+        trae todo el período, que para un mes normal son unos cientos de filas,
+        no 1,27 millones — el filtro es para la pantalla que ya eligió una
+        cuenta o un centro y quiere ver su desglose, no para acotar la consulta
+        por rendimiento.
+        """
+        consulta = filtros.aplicar(
+            select(
+                MovimientoContable.mayor_iv,
+                func.max(MovimientoContable.descripcion).label("descripcion"),
+                MovimientoContable.centro_costo,
+                MovimientoContable.id_tercero,
+                func.max(MovimientoContable.razon_social).label("razon_social"),
+                func.sum(MovimientoContable.saldo_inicial).label("saldo_inicial"),
+                func.sum(MovimientoContable.debitos).label("debitos"),
+                func.sum(MovimientoContable.creditos).label("creditos"),
+                func.sum(MovimientoContable.final).label("final"),
+            ).group_by(
+                MovimientoContable.mayor_iv,
+                MovimientoContable.centro_costo,
+                MovimientoContable.id_tercero,
+            )
+        )
+        if centro_costo is not None:
+            consulta = consulta.where(MovimientoContable.centro_costo == centro_costo)
+        if mayor_iii is not None:
+            consulta = consulta.where(MovimientoContable.mayor_iii == mayor_iii)
+        consulta = consulta.order_by(MovimientoContable.mayor_iv, MovimientoContable.centro_costo)
+
+        filas = []
+        for (
+            mayor_iv,
+            descripcion,
+            centro,
+            id_tercero,
+            razon_social,
+            saldo_inicial,
+            debitos,
+            creditos,
+            final,
+        ) in self._sesion.execute(consulta):
+            # `mayor_iv` puede venir vacío en filas mal exportadas por SIESA
+            # (§ carga del libro mayor); sin él no hay de dónde sacar la clase
+            # ni los cuatro dígitos, y la fila se descarta en vez de mostrarse
+            # con una clase adivinada.
+            if not mayor_iv:
+                continue
+            clase = clasificar(mayor_iv[:4])
+            filas.append(
+                FilaDetalleCuenta(
+                    mayor_iii=mayor_iv[:4],
+                    mayor_iv=mayor_iv,
+                    descripcion=descripcion,
+                    clase=etiqueta_clase(clase) if clase else "Sin clasificar",
+                    centro_costo=centro,
+                    id_tercero=id_tercero,
+                    razon_social=razon_social,
+                    saldo_inicial=saldo_inicial or CERO,
+                    debitos=debitos or CERO,
+                    creditos=creditos or CERO,
+                    final=final or CERO,
+                )
+            )
+        return filas
 
     def indicadores(self, filtros: FiltrosFinanciero) -> IndicadoresFinancieros:
         """Liquidez, endeudamiento y margen neto. Ver los supuestos de
