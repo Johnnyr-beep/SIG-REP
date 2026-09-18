@@ -138,12 +138,12 @@ export function ResumenFinanciero() {
           <>
             <h3>Balance general</h3>
             <div className="rejilla rejilla--indicadores">
-              <Indicador etiqueta="Activo" valor={dinero(balance.data.activo)} />
-              <Indicador etiqueta="Pasivo" valor={dinero(balance.data.pasivo)} />
-              <Indicador etiqueta="Patrimonio" valor={dinero(balance.data.patrimonio)} />
+              <Indicador etiqueta="Activo" valor={<span title={dinero(balance.data.activo)}>{dineroCorto(balance.data.activo)}</span>} />
+              <Indicador etiqueta="Pasivo" valor={<span title={dinero(balance.data.pasivo)}>{dineroCorto(balance.data.pasivo)}</span>} />
+              <Indicador etiqueta="Patrimonio" valor={<span title={dinero(balance.data.patrimonio)}>{dineroCorto(balance.data.patrimonio)}</span>} />
               <Indicador
                 etiqueta="Descuadre"
-                valor={dinero(balance.data.descuadre)}
+                valor={<span title={dinero(balance.data.descuadre)}>{dineroCorto(balance.data.descuadre)}</span>}
                 nota="Activo − pasivo − patrimonio. Debe ser cero; si no lo es, el descuadre viene del origen."
                 tono={balance.data.descuadre === "0.00" ? undefined : "aviso"}
               />
@@ -155,12 +155,12 @@ export function ResumenFinanciero() {
           <>
             <h3>Estado de resultados</h3>
             <div className="rejilla rejilla--indicadores">
-              <Indicador etiqueta="Ingresos" valor={dinero(resultados.data.ingresos)} />
-              <Indicador etiqueta="Costos" valor={dinero(resultados.data.costos)} />
-              <Indicador etiqueta="Gastos" valor={dinero(resultados.data.gastos)} />
+              <Indicador etiqueta="Ingresos" valor={<span title={dinero(resultados.data.ingresos)}>{dineroCorto(resultados.data.ingresos)}</span>} />
+              <Indicador etiqueta="Costos" valor={<span title={dinero(resultados.data.costos)}>{dineroCorto(resultados.data.costos)}</span>} />
+              <Indicador etiqueta="Gastos" valor={<span title={dinero(resultados.data.gastos)}>{dineroCorto(resultados.data.gastos)}</span>} />
               <Indicador
                 etiqueta="Utilidad neta"
-                valor={dinero(resultados.data.utilidad_neta)}
+                valor={<span title={dinero(resultados.data.utilidad_neta)}>{dineroCorto(resultados.data.utilidad_neta)}</span>}
                 tono={resultados.data.utilidad_neta.trim().startsWith("-") ? "peligro" : "exito"}
               />
             </div>
