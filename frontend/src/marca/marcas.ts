@@ -16,6 +16,8 @@ import logoCarnes from "@/recursos/carnes-santacruz.png";
 import logoCarnesFrias from "@/recursos/carnes-frias.png";
 import logoAgropecuaria from "@/recursos/frigorifico-agropecuaria.png";
 import logoGrupoSantacruz from "@/recursos/grupo-santacruz.png";
+import logoAgroporcicola from "@/recursos/agroporcicola.png";
+import logoTransantacruz from "@/recursos/transantacruz.png";
 
 export type ClaveMarca =
   | "carnes"
@@ -95,24 +97,23 @@ export const MARCAS: readonly Marca[] = [
     descripcion: "Línea de derivados cárnicos. Venta desde SIESA compañía 8.",
   },
   {
-    // PROVISIONAL: reutiliza el logo corporativo hasta que llegue el propio.
-    // El selector la muestra igual que a las demás —activa u oculta la decide
-    // `GET /salud` según si su base ya está configurada, no este archivo.
+    // Recortado a su contenido y con el blanco original vuelto transparente
+    // (el archivo entregado tenía margen de sobra alrededor del círculo).
     clave: "agroporcicola",
     nombre: "Agroporcícola",
-    logo: logoGrupoSantacruz,
+    logo: logoAgroporcicola,
     logoAncho: 480,
-    logoAlto: 455,
+    logoAlto: 468,
     estado: "activa",
     descripcion: "Base propia y acceso habilitado. El módulo de esta unidad todavía no está definido.",
   },
   {
-    // PROVISIONAL: mismo logo que Agroporcícola hasta recibir el suyo.
+    // Mismo tratamiento: recortado y con fondo transparente.
     clave: "transantacruz",
     nombre: "Transantacruz",
-    logo: logoGrupoSantacruz,
+    logo: logoTransantacruz,
     logoAncho: 480,
-    logoAlto: 455,
+    logoAlto: 119,
     estado: "activa",
     descripcion: "Base propia y acceso habilitado. El módulo de esta unidad todavía no está definido.",
   },
