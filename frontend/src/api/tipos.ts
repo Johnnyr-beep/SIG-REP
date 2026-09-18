@@ -595,7 +595,13 @@ export interface EventoAuditoria {
 
 /** Unidad de negocio que sirve una instancia. `todas` es el caso de hoy. */
 export type UnidadNegocio =
-  "todas" | "carnes" | "agropecuaria" | "carnes-frias" | "grupo-santacruz";
+  | "todas"
+  | "carnes"
+  | "agropecuaria"
+  | "carnes-frias"
+  | "grupo-santacruz"
+  | "agroporcicola"
+  | "transantacruz";
 
 export interface Salud {
   estado: string;

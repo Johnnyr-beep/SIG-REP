@@ -66,6 +66,8 @@ UnidadNegocio = Literal[
     "agropecuaria",
     "carnes-frias",
     "grupo-santacruz",
+    "agroporcicola",
+    "transantacruz",
 ]
 
 #: Que unidades tienen modulo construido. `carnes-frias` es hoy una marca sin
@@ -77,6 +79,18 @@ UNIDADES_CON_MODULO: tuple[UnidadNegocio, ...] = (
     "agropecuaria",
     "carnes-frias",
     "grupo-santacruz",
+    "agroporcicola",
+    "transantacruz",
+)
+
+#: Unidades que comparten el modulo financiero (libro mayor) de grupo-santacruz
+#: en vez del modulo de venta operativa. Cada una con su propia base —misma
+#: forma que Grupo Santacruz—, aislada por conexion, sin dimensiones de venta
+#: propias.
+UNIDADES_FINANCIERAS: tuple[UnidadNegocio, ...] = (
+    "grupo-santacruz",
+    "agroporcicola",
+    "transantacruz",
 )
 
 #: Esquemas heredados que los proveedores gestionados siguen entregando y que
@@ -197,6 +211,11 @@ class Settings(BaseSettings):
     #: debe partir de fuentes homologadas y nunca de una conexión reutilizada
     #: de un negocio operativo.
     db_url_grupo_santacruz: str | None = None
+    #: Bases de las dos unidades financieras nuevas, mismo patrón que Grupo
+    #: Santacruz: sin URL propia, `url_de_unidad` se niega a arrancar la sesión
+    #: en lugar de caer a la base de otra compañía.
+    db_url_agroporcicola: str | None = None
+    db_url_transantacruz: str | None = None
     #: Dirección pública de la instancia corporativa. La instancia operativa
     #: solo publica este enlace en su selector; nunca usa esta URL para abrir
     #: una conexión de base de datos.
@@ -225,6 +244,20 @@ class Settings(BaseSettings):
                     "no puede usar la base de una unidad operativa."
                 )
             return _normalizar_url(self.db_url_grupo_santacruz)
+        if unidad == "agroporcicola":
+            if not self.db_url_agroporcicola:
+                raise ValueError(
+                    "Agroporcicola requiere SIGREP_DB_URL_AGROPORCICOLA; "
+                    "no puede usar la base de otra unidad."
+                )
+            return _normalizar_url(self.db_url_agroporcicola)
+        if unidad == "transantacruz":
+            if not self.db_url_transantacruz:
+                raise ValueError(
+                    "Transantacruz requiere SIGREP_DB_URL_TRANSANTACRUZ; "
+                    "no puede usar la base de otra unidad."
+                )
+            return _normalizar_url(self.db_url_transantacruz)
         return self.database_url
 
     @property
@@ -250,12 +283,16 @@ class Settings(BaseSettings):
             unidades: list[str] = [
                 unidad
                 for unidad in UNIDADES_CON_MODULO
-                if unidad not in ("carnes-frias", "grupo-santacruz")
+                if unidad not in ("carnes-frias", *UNIDADES_FINANCIERAS)
             ]
             if self.db_url_carnes_frias:
                 unidades.append("carnes-frias")
             if self.db_url_grupo_santacruz:
                 unidades.append("grupo-santacruz")
+            if self.db_url_agroporcicola:
+                unidades.append("agroporcicola")
+            if self.db_url_transantacruz:
+                unidades.append("transantacruz")
             return unidades
         return [self.unidad]
 

@@ -144,7 +144,13 @@ export function App() {
   // cerrada.
   const esAgro = marca.clave === "agropecuaria";
   const esCarnesFrias = marca.clave === "carnes-frias";
-  const esGrupoSantacruz = marca.clave === "grupo-santacruz";
+  // Grupo Santacruz, Agroporcicola y Transantacruz comparten el mismo modulo
+  // financiero (libro mayor): son la misma pantalla contra bases distintas, no
+  // tres implementaciones.
+  const esFinanciera =
+    marca.clave === "grupo-santacruz" ||
+    marca.clave === "agroporcicola" ||
+    marca.clave === "transantacruz";
   const permisosGranulares =
     usuario?.rol === "CONSULTA" &&
     usuario.permisos.some((codigo) => !codigo.startsWith("PERMISO_AGRO_"));
@@ -159,7 +165,7 @@ export function App() {
   return (
     <Routes>
       <Route element={<Disposicion />}>
-        {esGrupoSantacruz ? (
+        {esFinanciera ? (
           <>
             <Route
               index

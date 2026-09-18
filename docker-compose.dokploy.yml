@@ -80,6 +80,11 @@ services:
       # Instancia corporativa: conexión exclusiva, obligatoria al declarar
       # SIGREP_UNIDAD=grupo-santacruz.
       SIGREP_DB_URL_GRUPO_SANTACRUZ: ${SIGREP_DB_URL_GRUPO_SANTACRUZ:-}
+      # Mismo patrón que Grupo Santacruz: bases financieras propias para las
+      # dos unidades nuevas, obligatorias solo al declarar SIGREP_UNIDAD con su
+      # nombre. Vacías es válido mientras no se hayan provisionado.
+      SIGREP_DB_URL_AGROPORCICOLA: ${SIGREP_DB_URL_AGROPORCICOLA:-}
+      SIGREP_DB_URL_TRANSANTACRUZ: ${SIGREP_DB_URL_TRANSANTACRUZ:-}
       # El portal operativo publica esta URL como enlace, sin conectarse a la
       # base del Stack corporativo.
       SIGREP_URL_INSTANCIA_GRUPO_SANTACRUZ: ${SIGREP_URL_INSTANCIA_GRUPO_SANTACRUZ:-}

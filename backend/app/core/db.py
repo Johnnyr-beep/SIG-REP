@@ -37,7 +37,9 @@ from app.core.config import obtener_settings
 
 #: Cada unidad que se puede autenticar tiene un motor propio. Carnes Frías no
 #: cae nunca a Carnes Santacruz: sin URL propia el arranque de su sesión falla.
-UnidadDatos = Literal["carnes", "agropecuaria", "carnes-frias", "grupo-santacruz"]
+UnidadDatos = Literal[
+    "carnes", "agropecuaria", "carnes-frias", "grupo-santacruz", "agroporcicola", "transantacruz"
+]
 
 UNIDAD_POR_DEFECTO: UnidadDatos = "carnes"
 
@@ -122,6 +124,10 @@ def urls_por_unidad() -> dict[str, str]:
     settings = obtener_settings()
     if settings.unidad == "grupo-santacruz":
         return {"grupo-santacruz": settings.url_de_unidad("grupo-santacruz")}
+    if settings.unidad == "agroporcicola":
+        return {"agroporcicola": settings.url_de_unidad("agroporcicola")}
+    if settings.unidad == "transantacruz":
+        return {"transantacruz": settings.url_de_unidad("transantacruz")}
 
     urls = {
         "carnes": settings.url_de_unidad("carnes"),
@@ -131,6 +137,10 @@ def urls_por_unidad() -> dict[str, str]:
         urls["carnes-frias"] = settings.url_de_unidad("carnes-frias")
     if settings.db_url_grupo_santacruz:
         urls["grupo-santacruz"] = settings.url_de_unidad("grupo-santacruz")
+    if settings.db_url_agroporcicola:
+        urls["agroporcicola"] = settings.url_de_unidad("agroporcicola")
+    if settings.db_url_transantacruz:
+        urls["transantacruz"] = settings.url_de_unidad("transantacruz")
     return urls
 
 

@@ -186,10 +186,16 @@
   --marca-suave-oscuro: color-mix(in srgb, var(--marca-500) 28%, #000000);
 }
 
-/* Grupo Santacruz — identidad corporativa neutra, separada de las paletas
-   operativas para que el consolidado no parezca pertenecer a un negocio. */
+/* Grupo Santacruz, Agroporcicola y Transantacruz — identidad corporativa
+   neutra, separada de las paletas operativas para que el consolidado no
+   parezca pertenecer a un negocio. Agroporcicola y Transantacruz la comparten
+   PROVISIONALMENTE hasta que cada una tenga su propia paleta. */
 :root[data-marca="grupo-santacruz"],
-[data-marca-tarjeta="grupo-santacruz"] {
+[data-marca-tarjeta="grupo-santacruz"],
+:root[data-marca="agroporcicola"],
+[data-marca-tarjeta="agroporcicola"],
+:root[data-marca="transantacruz"],
+[data-marca-tarjeta="transantacruz"] {
   --marca-400: #91a4ba;
   --marca-500: #71879f;
   --marca-600: #344b63;

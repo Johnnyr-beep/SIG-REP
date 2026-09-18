@@ -186,7 +186,9 @@ const MENU_CARNES_FRIAS: GrupoNav[] = [
 function menuDe(marca: ClaveMarca): GrupoNav[] {
   if (marca === "agropecuaria") return MENU_AGRO;
   if (marca === "carnes-frias") return MENU_CARNES_FRIAS;
-  if (marca === "grupo-santacruz") return MENU_FINANCIERO;
+  if (marca === "grupo-santacruz" || marca === "agroporcicola" || marca === "transantacruz") {
+    return MENU_FINANCIERO;
+  }
   return MENU_CARNES;
 }
 
@@ -457,13 +459,15 @@ export function Disposicion({ children }: { children?: ReactNode }) {
   const { salir } = useAuth();
   const { pathname } = useLocation();
   const marca = useMarcaElegida();
-  // "/" es el índice de tres unidades distintas: el título no puede salir de
-  // un mapa indexado solo por ruta o Grupo Santacruz heredaría "Tablero
-  // gerencial", que es el título de otra compañía.
+  // "/" es el índice de varias unidades distintas: el título no puede salir de
+  // un mapa indexado solo por ruta o las unidades financieras heredarían
+  // "Tablero gerencial", que es el título de otra compañía.
+  const esFinanciera =
+    marca.clave === "grupo-santacruz" ||
+    marca.clave === "agroporcicola" ||
+    marca.clave === "transantacruz";
   const titulo =
-    pathname === "/" && marca.clave === "grupo-santacruz"
-      ? "Resumen financiero"
-      : (TITULOS[pathname] ?? "SIGREP");
+    pathname === "/" && esFinanciera ? "Resumen financiero" : (TITULOS[pathname] ?? "SIGREP");
 
   return (
     <div className="disposicion">

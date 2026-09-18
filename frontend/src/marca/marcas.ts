@@ -21,7 +21,9 @@ export type ClaveMarca =
   | "carnes"
   | "agropecuaria"
   | "carnes-frias"
-  | "grupo-santacruz";
+  | "grupo-santacruz"
+  | "agroporcicola"
+  | "transantacruz";
 
 /**
  * `activa` es la instancia desplegada; `proximamente` es una unidad que existe
@@ -91,6 +93,28 @@ export const MARCAS: readonly Marca[] = [
     logoAlto: 116,
     estado: "activa",
     descripcion: "Línea de derivados cárnicos. Venta desde SIESA compañía 8.",
+  },
+  {
+    // PROVISIONAL: reutiliza el logo corporativo hasta que llegue el propio.
+    // El selector la muestra igual que a las demás —activa u oculta la decide
+    // `GET /salud` según si su base ya está configurada, no este archivo.
+    clave: "agroporcicola",
+    nombre: "Agroporcícola",
+    logo: logoGrupoSantacruz,
+    logoAncho: 480,
+    logoAlto: 455,
+    estado: "activa",
+    descripcion: "Instancia financiera propia, mismo tablero de libro mayor que Grupo Santacruz.",
+  },
+  {
+    // PROVISIONAL: mismo logo que Agroporcícola hasta recibir el suyo.
+    clave: "transantacruz",
+    nombre: "Transantacruz",
+    logo: logoGrupoSantacruz,
+    logoAncho: 480,
+    logoAlto: 455,
+    estado: "activa",
+    descripcion: "Instancia financiera propia, mismo tablero de libro mayor que Grupo Santacruz.",
   },
 ];
 

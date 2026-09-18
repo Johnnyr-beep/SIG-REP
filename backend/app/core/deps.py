@@ -132,7 +132,9 @@ _esquema_bearer = HTTPBearer(auto_error=False, description="Token JWT de acceso"
 #: falta saber contra qué base autenticar antes de que exista un token.
 CABECERA_UNIDAD = "X-SIGREP-Unidad"
 
-_UNIDADES: frozenset[str] = frozenset({"carnes", "agropecuaria", "carnes-frias", "grupo-santacruz"})
+_UNIDADES: frozenset[str] = frozenset(
+    {"carnes", "agropecuaria", "carnes-frias", "grupo-santacruz", "agroporcicola", "transantacruz"}
+)
 
 
 def unidad_de_peticion(peticion: Request) -> UnidadDatos:
