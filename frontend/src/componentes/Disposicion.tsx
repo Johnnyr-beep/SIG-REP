@@ -139,6 +139,7 @@ const MENU_FINANCIERO: GrupoNav[] = [
     items: [
       { ruta: "/", etiqueta: "Resumen financiero", icono: "◱", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/detalle-cuentas", etiqueta: "Detalle de cuentas", icono: "▤", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
+      { ruta: "/cartera", etiqueta: "Cartera por cliente", icono: "◈", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
     ],
   },
   {
@@ -235,6 +236,7 @@ const TITULOS: Record<string, string> = {
   "/usuarios": "Administración de usuarios",
   "/permisos": "Permisos de consulta",
   "/detalle-cuentas": "Detalle de cuentas",
+  "/cartera": "Cartera por cliente",
 };
 
 type Tema = "sistema" | "claro" | "oscuro";

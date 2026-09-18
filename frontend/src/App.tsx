@@ -31,6 +31,7 @@ import { HistoriaVenta } from "@/paginas/HistoriaVenta";
 import { Presupuesto } from "@/paginas/Presupuesto";
 import { Permisos } from "@/paginas/Permisos";
 import { DetalleCuentas } from "@/paginas/DetalleCuentas";
+import { Cartera } from "@/paginas/Cartera";
 import { SelectorMarca } from "@/paginas/SelectorMarca";
 import { Tablero } from "@/paginas/Tablero";
 import { Usuarios } from "@/paginas/Usuarios";
@@ -174,6 +175,7 @@ export function App() {
               }
             />
             <Route path="detalle-cuentas" element={<DetalleCuentas />} />
+            <Route path="cartera" element={<Cartera />} />
           </>
         ) : esSoloAcceso ? (
           <Route
