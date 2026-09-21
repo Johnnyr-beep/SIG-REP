@@ -32,6 +32,7 @@ import {
   useIndicadoresFinancieros,
   useSerieBalanceGeneral,
   useSerieEstadoResultados,
+  useSituacionFinancieraVivo,
 } from "@/api/consultasFinanciero";
 import { AvisoError, Cargando, Tarjeta } from "@/componentes/comunes";
 import { Indicador } from "@/componentes/indicadores";
@@ -95,6 +96,16 @@ const EMPRESAS_EN_VIVO = [
 
 type ClaveEmpresa = (typeof EMPRESAS_EN_VIVO)[number]["valor"];
 
+/** Color por clase PUC en el gráfico de composición en vivo. */
+const COLOR_POR_CLASE: Record<string, string> = {
+  Ingresos: "var(--exito)",
+  Costos: "var(--aviso)",
+  Gastos: "var(--peligro)",
+  Activo: "var(--acento)",
+  Pasivo: "var(--peligro)",
+  Patrimonio: "var(--info)",
+};
+
 /** Participación de `actual` sobre `base` (análisis vertical). */
 function participacion(actual: string | null, base: string | null): string | null {
   if (actual === null || base === null || Number(base) === 0) return null;
@@ -124,6 +135,7 @@ export function ResumenFinanciero() {
   const resultados = useEstadoResultados(filtros, !esVivo);
   const indicadores = useIndicadoresFinancieros(filtros, !esVivo);
   const resultadosVivo = useEstadoResultadosVivo(cia, periodo, esVivo);
+  const situacionVivo = useSituacionFinancieraVivo(cia, periodo, esVivo);
 
   const periodosSerie = ultimosPeriodos(mes, 6);
   const serie = useSerieEstadoResultados(esVivo ? [] : periodosSerie);
@@ -139,6 +151,26 @@ export function ResumenFinanciero() {
         { nombre: "Gastos", valor: Number(resultados.data.gastos) },
       ]
     : [];
+
+  const datosResultadosVivo = resultadosVivo.data
+    ? [
+        { nombre: "Ingresos", valor: Number(resultadosVivo.data.ingresos) },
+        { nombre: "Costos", valor: Number(resultadosVivo.data.costos) },
+        { nombre: "Gastos", valor: Number(resultadosVivo.data.gastos) },
+      ]
+    : [];
+
+  // Composición del mes por subgrupo PUC, la misma agrupación que el reporte
+  // sumarizado nativo de SIESA. Las diez más grandes en magnitud: con
+  // cientos de subgrupos posibles, el resto son ruido en una barra horizontal.
+  const datosSituacionVivo = (situacionVivo.data?.filas ?? [])
+    .map((fila) => ({
+      nombre: `${fila.subgrupo} (${fila.clase})`,
+      valor: Number(fila.monto),
+      color: COLOR_POR_CLASE[fila.clase] ?? "var(--texto-suave)",
+    }))
+    .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor))
+    .slice(0, 10);
 
   // Estructura de financiación: de qué está hecho el activo, pasivo o
   // patrimonio. En magnitud absoluta a propósito —la torta reparte peso, no
@@ -328,6 +360,71 @@ export function ResumenFinanciero() {
           </>
         )}
       </Tarjeta>
+
+      {esVivo ? (
+        <>
+          <Tarjeta titulo="Ingresos, costos y gastos — en vivo" descripcion="Del período elegido.">
+            {resultadosVivo.isLoading ? (
+              <Cargando texto="Cargando…" />
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={datosResultadosVivo}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--borde)" />
+                  <XAxis dataKey="nombre" stroke="var(--texto-suave)" fontSize={12} />
+                  <YAxis
+                    stroke="var(--texto-suave)"
+                    fontSize={12}
+                    tickFormatter={(v) => dineroCorto(String(v))}
+                    width={70}
+                  />
+                  <Tooltip
+                    formatter={(v) => dinero(String(v ?? 0))}
+                    contentStyle={{ background: "var(--superficie)", border: "1px solid var(--borde)" }}
+                  />
+                  <Bar dataKey="valor" fill="var(--acento)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </Tarjeta>
+
+          <Tarjeta
+            titulo="Composición del mes por subgrupo — en vivo"
+            descripcion="Los diez subgrupos PUC más grandes del mes, tal como los agrupa el reporte sumarizado de SIESA."
+          >
+            {situacionVivo.isLoading ? (
+              <Cargando texto="Cargando…" />
+            ) : datosSituacionVivo.length === 0 ? null : (
+              <ResponsiveContainer width="100%" height={360}>
+                <BarChart data={datosSituacionVivo} layout="vertical" margin={{ left: 24 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--borde)" />
+                  <XAxis
+                    type="number"
+                    stroke="var(--texto-suave)"
+                    fontSize={12}
+                    tickFormatter={(v) => dineroCorto(String(v))}
+                  />
+                  <YAxis
+                    dataKey="nombre"
+                    type="category"
+                    stroke="var(--texto-suave)"
+                    fontSize={11}
+                    width={220}
+                  />
+                  <Tooltip
+                    formatter={(v) => dinero(String(v ?? 0))}
+                    contentStyle={{ background: "var(--superficie)", border: "1px solid var(--borde)" }}
+                  />
+                  <Bar dataKey="valor" radius={[0, 4, 4, 0]}>
+                    {datosSituacionVivo.map((entrada) => (
+                      <Cell key={entrada.nombre} fill={entrada.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </Tarjeta>
+        </>
+      ) : null}
 
       {esVivo ? null : (
         <>

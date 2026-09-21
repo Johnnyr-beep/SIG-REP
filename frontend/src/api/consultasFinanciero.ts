@@ -11,6 +11,7 @@ import type {
   RespuestaEstadoResultados,
   RespuestaEstadoResultadosEnVivo,
   RespuestaIndicadoresFinancieros,
+  RespuestaSituacionFinancieraEnVivo,
 } from "./tipos";
 
 export interface FiltrosFinanciero {
@@ -141,6 +142,22 @@ export function useEstadoResultadosVivo(cia: number | null, periodo: string, hab
     queryKey: ["financiero", "estado-resultados-vivo", { cia, periodo }],
     queryFn: () =>
       peticion<RespuestaEstadoResultadosEnVivo>("/financiero/estado-resultados-vivo", {
+        parametros: { cia: String(cia), periodo },
+      }),
+    enabled: habilitado && cia !== null && Boolean(periodo),
+  });
+}
+
+/** El sumarizado por clase × subgrupo, para el gráfico de composición en vivo. */
+export function useSituacionFinancieraVivo(
+  cia: number | null,
+  periodo: string,
+  habilitado = true,
+) {
+  return useQuery({
+    queryKey: ["financiero", "situacion-financiera-vivo", { cia, periodo }],
+    queryFn: () =>
+      peticion<RespuestaSituacionFinancieraEnVivo>("/financiero/situacion-financiera-vivo", {
         parametros: { cia: String(cia), periodo },
       }),
     enabled: habilitado && cia !== null && Boolean(periodo),

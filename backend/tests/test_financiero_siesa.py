@@ -19,6 +19,7 @@ from app.domain.financiero import ClaseCuenta
 from app.infrastructure.fuentes.financiero_siesa import (
     ConfiguracionFinancieroSiesa,
     saldos_por_clase_en_vivo,
+    situacion_financiera_en_vivo,
 )
 
 ENCABEZADO = (
@@ -34,11 +35,14 @@ def fila_mensual(
     desc_auxiliar: str = "CUENTA DE PRUEBA",
     desc_co: str = "PRINCIPAL",
     tercero: str = "UN TERCERO",
+    grupo: str = "GRUPO",
+    subgrupo: str = "CLASE",
+    cuenta: str = "CUENTA",
 ) -> str:
     """Una fila del CSV pivotado, con valor solo en los meses indicados."""
     columnas = [str(valores_por_mes.get(m, "0")) for m in range(1, 13)]
     return (
-        f"GRUPO,CLASE,CUENTA,{auxiliar},{desc_auxiliar},{desc_co},{tercero},,301,003,900000000,"
+        f"{grupo},{subgrupo},{cuenta},{auxiliar},{desc_auxiliar},{desc_co},{tercero},,301,003,900000000,"
         + ",".join(columnas)
     )
 
@@ -123,3 +127,38 @@ def test_cuenta_sin_clasificar_se_ignora() -> None:
         )
 
     assert saldos == {ClaseCuenta.INGRESO: Decimal("100.00")}
+
+
+def test_situacion_financiera_agrupa_por_clase_y_subgrupo() -> None:
+    """Dos cuentas del mismo subgrupo se suman en un solo renglón; una de otro
+
+    subgrupo queda aparte, igual que el reporte sumarizado nativo de SIESA.
+    """
+    cuerpo = csv_estado_financiero(
+        fila_mensual(
+            "5105060101", {1: "200.00"}, grupo="GASTOS", subgrupo="OPERACIONALES DE ADMON"
+        ),
+        fila_mensual("5105390101", {1: "50.00"}, grupo="GASTOS", subgrupo="OPERACIONALES DE ADMON"),
+        fila_mensual("4135010101", {1: "-1000.00"}, grupo="INGRESOS", subgrupo="OPERACIONALES"),
+    )
+    with _cliente(cuerpo) as cliente:
+        filas = situacion_financiera_en_vivo(
+            3, 202601, configuracion=_configuracion(), cliente=cliente
+        )
+
+    por_subgrupo = {(f.clase, f.subgrupo): f.monto for f in filas}
+    assert por_subgrupo[(ClaseCuenta.GASTO, "OPERACIONALES DE ADMON")] == Decimal("250.00")
+    assert por_subgrupo[(ClaseCuenta.INGRESO, "OPERACIONALES")] == Decimal("1000.00")
+
+
+def test_situacion_financiera_omite_filas_sin_movimiento_ese_mes() -> None:
+    """Una cuenta con movimiento en otro mes no aparece en el renglón del mes pedido."""
+    cuerpo = csv_estado_financiero(
+        fila_mensual("5105060101", {2: "200.00"}, grupo="GASTOS", subgrupo="ADMON"),
+    )
+    with _cliente(cuerpo) as cliente:
+        filas = situacion_financiera_en_vivo(
+            3, 202601, configuracion=_configuracion(), cliente=cliente
+        )
+
+    assert filas == []

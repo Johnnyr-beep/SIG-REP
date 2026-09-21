@@ -147,6 +147,78 @@ def _lineas(
         yield from respuesta.iter_lines()
 
 
+@dataclass(frozen=True, slots=True)
+class FilaMovimientoEnVivo:
+    """Una fila del CSV, ya resuelta al mes pedido y con el signo económico
+
+    aplicado (naturaleza crédito invertida). `grupo` y `subgrupo` son el texto
+    tal como lo entrega SIESA (`GASTOS`, `OPERACIONALES DE ADMINISTRACION`...),
+    recortado de espacios; no reemplazan a `clase`, que es la clasificación PUC
+    por el primer dígito de `auxiliar` y la que decide el signo.
+    """
+
+    clase: ClaseCuenta
+    grupo: str
+    subgrupo: str
+    cuenta: str
+    valor: Decimal
+
+
+def _filas_del_mes(
+    cia: int,
+    periodo: int,
+    configuracion: ConfiguracionFinancieroSiesa,
+    cliente: httpx.Client,
+) -> Iterator[FilaMovimientoEnVivo]:
+    """Las filas del año de `periodo`, resueltas a un solo mes y ya con signo.
+
+    Filas sin `auxiliar` clasificable o con movimiento cero en ese mes no se
+    entregan: no aportan nada a un resumen ni a un detalle.
+    """
+    anio = periodo // 100
+    mes = periodo % 100
+    # El encabezado se pliega a minúsculas más abajo (`s1`, no `S1`): la
+    # columna tiene que buscarse con la misma forma o no encuentra nada.
+    columna_mes = f"s{mes}"
+
+    encabezado: list[str] | None = None
+    for linea in _lineas(cia, anio, configuracion, cliente):
+        if not linea.strip():
+            continue
+        if encabezado is None:
+            encabezado = [nombre.strip().lower() for nombre in next(csv.reader([linea]))]
+            continue
+        campos = next(csv.reader([linea]))
+        fila = dict(zip(encabezado, campos, strict=False))
+        auxiliar = (fila.get(COL_AUXILIAR) or "").strip()
+        clase = clasificar(auxiliar[:4])
+        if clase is None:
+            continue
+        valor = _a_decimal(fila.get(columna_mes))
+        if valor == _CERO:
+            continue
+        saldo = -valor if es_naturaleza_credito(clase) else valor
+        yield FilaMovimientoEnVivo(
+            clase=clase,
+            grupo=(fila.get("grupo") or "").strip(),
+            subgrupo=(fila.get("clase") or "").strip(),
+            cuenta=(fila.get("cuenta") or fila.get("desc_auxiliar") or "").strip(),
+            valor=saldo,
+        )
+
+
+def _cliente_http(configuracion: ConfiguracionFinancieroSiesa) -> httpx.Client:
+    return httpx.Client(
+        timeout=httpx.Timeout(
+            connect=configuracion.timeout_conexion_seg,
+            read=configuracion.timeout_lectura_seg,
+            write=configuracion.timeout_conexion_seg,
+            pool=configuracion.timeout_conexion_seg,
+        ),
+        follow_redirects=True,
+    )
+
+
 def saldos_por_clase_en_vivo(
     cia: int,
     periodo: int,
@@ -164,45 +236,61 @@ def saldos_por_clase_en_vivo(
 
         configuracion = ConfiguracionFinancieroSiesa.desde_settings(obtener_settings())
 
-    anio = periodo // 100
-    mes = periodo % 100
-    # El encabezado se pliega a minúsculas más abajo (`s1`, no `S1`): la
-    # columna tiene que buscarse con la misma forma o no encuentra nada.
-    columna_mes = f"s{mes}"
-
     propio = cliente is None
-    cliente = cliente or httpx.Client(
-        timeout=httpx.Timeout(
-            connect=configuracion.timeout_conexion_seg,
-            read=configuracion.timeout_lectura_seg,
-            write=configuracion.timeout_conexion_seg,
-            pool=configuracion.timeout_conexion_seg,
-        ),
-        follow_redirects=True,
-    )
+    cliente = cliente or _cliente_http(configuracion)
 
     acumulado: dict[ClaseCuenta, Decimal] = {}
     try:
-        encabezado: list[str] | None = None
-        for linea in _lineas(cia, anio, configuracion, cliente):
-            if not linea.strip():
-                continue
-            if encabezado is None:
-                encabezado = [nombre.strip().lower() for nombre in next(csv.reader([linea]))]
-                continue
-            campos = next(csv.reader([linea]))
-            fila = dict(zip(encabezado, campos, strict=False))
-            auxiliar = (fila.get(COL_AUXILIAR) or "").strip()
-            clase = clasificar(auxiliar[:4])
-            if clase is None:
-                continue
-            valor = _a_decimal(fila.get(columna_mes))
-            if valor == _CERO:
-                continue
-            saldo = -valor if es_naturaleza_credito(clase) else valor
-            acumulado[clase] = acumulado.get(clase, _CERO) + saldo
+        for fila in _filas_del_mes(cia, periodo, configuracion, cliente):
+            acumulado[fila.clase] = acumulado.get(fila.clase, _CERO) + fila.valor
     finally:
         if propio:
             cliente.close()
 
     return acumulado
+
+
+@dataclass(frozen=True, slots=True)
+class FilaSituacionFinanciera:
+    """Un renglón sumarizado: clase PUC × subgrupo, con su monto del mes."""
+
+    clase: ClaseCuenta
+    grupo: str
+    subgrupo: str
+    monto: Decimal
+
+
+def situacion_financiera_en_vivo(
+    cia: int,
+    periodo: int,
+    *,
+    configuracion: ConfiguracionFinancieroSiesa | None = None,
+    cliente: httpx.Client | None = None,
+) -> list[FilaSituacionFinanciera]:
+    """El sumarizado de la situación financiera del mes: una fila por
+
+    (clase PUC, subgrupo), la misma agrupación que muestra el reporte nativo
+    de SIESA («Consulta sumarizada estado de la situación financiera»), en vez
+    del detalle cuenta por cuenta × tercero × centro.
+    """
+    if configuracion is None:
+        from app.core.config import obtener_settings
+
+        configuracion = ConfiguracionFinancieroSiesa.desde_settings(obtener_settings())
+
+    propio = cliente is None
+    cliente = cliente or _cliente_http(configuracion)
+
+    acumulado: dict[tuple[ClaseCuenta, str, str], Decimal] = {}
+    try:
+        for fila in _filas_del_mes(cia, periodo, configuracion, cliente):
+            clave = (fila.clase, fila.grupo, fila.subgrupo)
+            acumulado[clave] = acumulado.get(clave, _CERO) + fila.valor
+    finally:
+        if propio:
+            cliente.close()
+
+    return [
+        FilaSituacionFinanciera(clase=clase, grupo=grupo, subgrupo=subgrupo, monto=monto)
+        for (clase, grupo, subgrupo), monto in acumulado.items()
+    ]

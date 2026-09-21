@@ -688,6 +688,18 @@ export interface RespuestaEstadoResultadosEnVivo {
   parametros_calculo: ParametrosCalculoEnVivo;
 }
 
+export interface FilaSituacionFinancieraEnVivo {
+  clase: string;
+  grupo: string;
+  subgrupo: string;
+  monto: string;
+}
+
+export interface RespuestaSituacionFinancieraEnVivo {
+  filas: FilaSituacionFinancieraEnVivo[];
+  parametros_calculo: ParametrosCalculoEnVivo;
+}
+
 export interface FilaCartera {
   id_tercero: string;
   razon_social?: string | null;

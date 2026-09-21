@@ -74,6 +74,18 @@ class RespuestaEstadoResultadosEnVivo(EsquemaBase):
     parametros_calculo: ParametrosCalculoEnVivo
 
 
+class FilaSituacionFinancieraEnVivo(EsquemaBase):
+    clase: str = Field(description="Activo, Pasivo, Patrimonio, Ingresos, Gastos, Costos…")
+    grupo: str = Field(description="Grupo PUC tal como lo entrega SIESA, ej. GASTOS")
+    subgrupo: str = Field(description="Subgrupo PUC, ej. OPERACIONALES DE ADMINISTRACION")
+    monto: DecimalStr
+
+
+class RespuestaSituacionFinancieraEnVivo(EsquemaBase):
+    filas: list[FilaSituacionFinancieraEnVivo]
+    parametros_calculo: ParametrosCalculoEnVivo
+
+
 class FilaCartera(EsquemaBase):
     id_tercero: str
     razon_social: str | None = None

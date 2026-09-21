@@ -25,11 +25,14 @@ from app.application.services.financiero_reportes_service import (
 )
 from app.core.deps import PERMISO_CONSULTAR_FINANCIERO, SesionDep, exigir_permiso_consulta
 from app.core.errors import ErrorValidacion
+from app.domain.financiero import etiqueta_clase
+from app.infrastructure.fuentes.financiero_siesa import situacion_financiera_en_vivo
 from app.infrastructure.models.usuario import Usuario
 from app.schemas.financiero import (
     FilaBalanceComprobacion,
     FilaCartera,
     FilaDetalleCuenta,
+    FilaSituacionFinancieraEnVivo,
     ParametrosCalculoEnVivo,
     ParametrosCalculoFinanciero,
     RespuestaBalanceComprobacion,
@@ -39,6 +42,7 @@ from app.schemas.financiero import (
     RespuestaEstadoResultados,
     RespuestaEstadoResultadosEnVivo,
     RespuestaIndicadoresFinancieros,
+    RespuestaSituacionFinancieraEnVivo,
 )
 
 router = APIRouter(prefix="/financiero", tags=["Financiero"])
@@ -175,6 +179,41 @@ def estado_resultados_vivo(
         gastos=resultado.gastos,
         utilidad_neta=resultado.utilidad_neta,
         parametros_calculo=ParametrosCalculoEnVivo(periodo=periodo, cia=cia),
+    )
+
+
+@router.get(
+    "/situacion-financiera-vivo",
+    response_model=RespuestaSituacionFinancieraEnVivo,
+    summary="Sumarizado de la situación financiera en vivo (SIESA)",
+)
+def situacion_financiera_vivo(
+    usuario: UsuarioFinancieroDep,
+    periodo: str = PeriodoQuery,
+    cia: int = Query(description="Compañía SIESA; debe ser una de las que ya tienen movimientos"),
+) -> RespuestaSituacionFinancieraEnVivo:
+    """Un renglón por clase PUC × subgrupo, igual agrupación que el reporte
+    nativo de SIESA («Consulta sumarizada estado de la situación financiera»).
+    Es la base del gráfico de composición; el resumen de cuatro cifras sigue
+    siendo `/estado-resultados-vivo`.
+    """
+    del usuario
+    if cia not in CIAS_EN_VIVO:
+        raise ErrorValidacion(
+            f"La compañía {cia} no tiene situación financiera en vivo. Las disponibles son: "
+            + ", ".join(f"{codigo} ({nombre})" for codigo, nombre in CIAS_EN_VIVO.items())
+        )
+    filas = [
+        FilaSituacionFinancieraEnVivo(
+            clase=etiqueta_clase(fila.clase),
+            grupo=fila.grupo,
+            subgrupo=fila.subgrupo,
+            monto=fila.monto,
+        )
+        for fila in situacion_financiera_en_vivo(cia, int(periodo))
+    ]
+    return RespuestaSituacionFinancieraEnVivo(
+        filas=filas, parametros_calculo=ParametrosCalculoEnVivo(periodo=periodo, cia=cia)
     )
 
 
