@@ -675,6 +675,19 @@ export interface RespuestaEstadoResultados {
   parametros_calculo: ParametrosCalculoFinanciero;
 }
 
+export interface ParametrosCalculoEnVivo {
+  periodo: string;
+  cia: number;
+}
+
+export interface RespuestaEstadoResultadosEnVivo {
+  ingresos: string;
+  costos: string;
+  gastos: string;
+  utilidad_neta: string;
+  parametros_calculo: ParametrosCalculoEnVivo;
+}
+
 export interface FilaCartera {
   id_tercero: string;
   razon_social?: string | null;

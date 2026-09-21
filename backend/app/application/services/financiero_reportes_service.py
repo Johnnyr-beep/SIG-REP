@@ -32,6 +32,20 @@ from app.infrastructure.models.financiero import MovimientoContable
 CERO = Decimal("0.00")
 
 
+def _estado_resultados_de_saldos(saldos: dict[ClaseCuenta, Decimal]) -> EstadoResultados:
+    ingresos = saldos.get(ClaseCuenta.INGRESO, CERO)
+    costos = saldos.get(ClaseCuenta.COSTO_VENTA, CERO) + saldos.get(
+        ClaseCuenta.COSTO_PRODUCCION, CERO
+    )
+    gastos = saldos.get(ClaseCuenta.GASTO, CERO)
+    return EstadoResultados(
+        ingresos=ingresos,
+        costos=costos,
+        gastos=gastos,
+        utilidad_neta=ingresos - costos - gastos,
+    )
+
+
 def _dividir(numerador: Decimal, denominador: Decimal) -> Decimal | None:
     """`None` en vez de una `ZeroDivisionError` o un cero engañoso."""
     if denominador == 0:
@@ -199,18 +213,7 @@ class FinancieroReportesService:
         )
 
     def estado_resultados(self, filtros: FiltrosFinanciero) -> EstadoResultados:
-        saldos = self._saldos_por_clase(filtros)
-        ingresos = saldos.get(ClaseCuenta.INGRESO, CERO)
-        costos = saldos.get(ClaseCuenta.COSTO_VENTA, CERO) + saldos.get(
-            ClaseCuenta.COSTO_PRODUCCION, CERO
-        )
-        gastos = saldos.get(ClaseCuenta.GASTO, CERO)
-        return EstadoResultados(
-            ingresos=ingresos,
-            costos=costos,
-            gastos=gastos,
-            utilidad_neta=ingresos - costos - gastos,
-        )
+        return _estado_resultados_de_saldos(self._saldos_por_clase(filtros))
 
     def cartera_por_cliente(self, filtros: FiltrosFinanciero) -> list[FilaCartera]:
         """Saldo final por tercero, cuentas del grupo `13` (deudores/cartera)."""
@@ -343,3 +346,17 @@ class FinancieroReportesService:
             endeudamiento=_dividir(pasivo_total, activo_total),
             margen_neto=_dividir(resultados.utilidad_neta, resultados.ingresos),
         )
+
+
+def estado_resultados_en_vivo(cia: int, periodo: int) -> EstadoResultados:
+    """Estado de resultados del mes `periodo`, leído en vivo de SIESA.
+
+    No usa la base local ni `Consolidado.json`: pide a
+    `app.infrastructure.fuentes.financiero_siesa` el movimiento del mes de la
+    compañía pedida y lo agrega igual que `estado_resultados`. Sin sesión de
+    base de datos a propósito —esta función no toca `movimientos_contables`—.
+    """
+    from app.infrastructure.fuentes.financiero_siesa import saldos_por_clase_en_vivo
+
+    saldos = saldos_por_clase_en_vivo(cia, periodo)
+    return _estado_resultados_de_saldos(saldos)

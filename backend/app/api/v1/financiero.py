@@ -21,23 +21,38 @@ from fastapi import APIRouter, Depends, Query
 from app.application.services.financiero_reportes_service import (
     FiltrosFinanciero,
     FinancieroReportesService,
+    estado_resultados_en_vivo,
 )
 from app.core.deps import PERMISO_CONSULTAR_FINANCIERO, SesionDep, exigir_permiso_consulta
+from app.core.errors import ErrorValidacion
 from app.infrastructure.models.usuario import Usuario
 from app.schemas.financiero import (
     FilaBalanceComprobacion,
     FilaCartera,
     FilaDetalleCuenta,
+    ParametrosCalculoEnVivo,
     ParametrosCalculoFinanciero,
     RespuestaBalanceComprobacion,
     RespuestaBalanceGeneral,
     RespuestaCartera,
     RespuestaDetalleCuentas,
     RespuestaEstadoResultados,
+    RespuestaEstadoResultadosEnVivo,
     RespuestaIndicadoresFinancieros,
 )
 
 router = APIRouter(prefix="/financiero", tags=["Financiero"])
+
+#: Compañías con identidad confirmada para el estado de resultados en vivo.
+#: Ver `docs/GRUPO_SANTACRUZ.md`: las seis unidades del grupo, de las cuales
+#: estas cinco ya tienen movimientos en la API de consulta.
+CIAS_EN_VIVO: dict[int, str] = {
+    3: "Agropecuaria Santacruz",
+    4: "Carnes Santacruz",
+    6: "Cristian Serrano",
+    7: "Serueda",
+    8: "Inversiones Serrano Millán",
+}
 
 PeriodoQuery = Query(
     pattern=r"^\d{6}$",
@@ -135,6 +150,32 @@ def cartera(
         for fila in servicio.cartera_por_cliente(FiltrosFinanciero(periodo=int(periodo), cia=cia))
     ]
     return RespuestaCartera(filas=filas, parametros_calculo=_parametros(periodo, cia))
+
+
+@router.get(
+    "/estado-resultados-vivo",
+    response_model=RespuestaEstadoResultadosEnVivo,
+    summary="Estado de resultados en vivo (SIESA)",
+)
+def estado_resultados_vivo(
+    usuario: UsuarioFinancieroDep,
+    periodo: str = PeriodoQuery,
+    cia: int = Query(description="Compañía SIESA; debe ser una de las que ya tienen movimientos"),
+) -> RespuestaEstadoResultadosEnVivo:
+    del usuario
+    if cia not in CIAS_EN_VIVO:
+        raise ErrorValidacion(
+            f"La compañía {cia} no tiene estado de resultados en vivo. Las disponibles son: "
+            + ", ".join(f"{codigo} ({nombre})" for codigo, nombre in CIAS_EN_VIVO.items())
+        )
+    resultado = estado_resultados_en_vivo(cia, int(periodo))
+    return RespuestaEstadoResultadosEnVivo(
+        ingresos=resultado.ingresos,
+        costos=resultado.costos,
+        gastos=resultado.gastos,
+        utilidad_neta=resultado.utilidad_neta,
+        parametros_calculo=ParametrosCalculoEnVivo(periodo=periodo, cia=cia),
+    )
 
 
 @router.get(

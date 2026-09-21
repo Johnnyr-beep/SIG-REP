@@ -28,6 +28,7 @@ import {
 import {
   useBalanceGeneral,
   useEstadoResultados,
+  useEstadoResultadosVivo,
   useIndicadoresFinancieros,
   useSerieBalanceGeneral,
   useSerieEstadoResultados,
@@ -76,6 +77,24 @@ interface FilaAnalisis {
   anterior: string | null;
 }
 
+/**
+ * Empresas con estado de resultados en vivo (SIESA), sin pasar por la base
+ * local ni por `Consolidado.json`. `"local"` es el consolidado de siempre,
+ * cargado por `cargar_libro_mayor`; cada cia trae solo el mes puntual
+ * —el origen no da saldo de apertura, así que estas no tienen balance
+ * general todavía—.
+ */
+const EMPRESAS_EN_VIVO = [
+  { valor: "local", etiqueta: "Grupo Santacruz (consolidado)" },
+  { valor: "3", etiqueta: "Agropecuaria Santacruz — en vivo" },
+  { valor: "4", etiqueta: "Carnes Santacruz — en vivo" },
+  { valor: "6", etiqueta: "Cristian Serrano — en vivo" },
+  { valor: "7", etiqueta: "Serueda — en vivo" },
+  { valor: "8", etiqueta: "Inversiones Serrano Millán — en vivo" },
+] as const;
+
+type ClaveEmpresa = (typeof EMPRESAS_EN_VIVO)[number]["valor"];
+
 /** Participación de `actual` sobre `base` (análisis vertical). */
 function participacion(actual: string | null, base: string | null): string | null {
   if (actual === null || base === null || Number(base) === 0) return null;
@@ -95,16 +114,20 @@ function variacionAbsoluta(actual: string | null, anterior: string | null): stri
 
 export function ResumenFinanciero() {
   const [mes, setMes] = useState(periodoActual());
+  const [empresa, setEmpresa] = useState<ClaveEmpresa>("local");
   const periodo = aPeriodoApi(mes);
   const filtros = { periodo };
+  const esVivo = empresa !== "local";
+  const cia = esVivo ? Number(empresa) : null;
 
-  const balance = useBalanceGeneral(filtros);
-  const resultados = useEstadoResultados(filtros);
-  const indicadores = useIndicadoresFinancieros(filtros);
+  const balance = useBalanceGeneral(filtros, !esVivo);
+  const resultados = useEstadoResultados(filtros, !esVivo);
+  const indicadores = useIndicadoresFinancieros(filtros, !esVivo);
+  const resultadosVivo = useEstadoResultadosVivo(cia, periodo, esVivo);
 
   const periodosSerie = ultimosPeriodos(mes, 6);
-  const serie = useSerieEstadoResultados(periodosSerie);
-  const serieBalance = useSerieBalanceGeneral(periodosSerie);
+  const serie = useSerieEstadoResultados(esVivo ? [] : periodosSerie);
+  const serieBalance = useSerieBalanceGeneral(esVivo ? [] : periodosSerie);
 
   const cargando = balance.isLoading || resultados.isLoading || indicadores.isLoading;
   const error = balance.error ?? resultados.error ?? indicadores.error;
@@ -163,6 +186,20 @@ export function ResumenFinanciero() {
             onSubmit={(evento) => evento.preventDefault()}
           >
             <label className="campo">
+              <span>Empresa</span>
+              <select
+                className="campo__control"
+                value={empresa}
+                onChange={(evento) => setEmpresa(evento.target.value as ClaveEmpresa)}
+              >
+                {EMPRESAS_EN_VIVO.map((opcion) => (
+                  <option key={opcion.valor} value={opcion.valor}>
+                    {opcion.etiqueta}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="campo">
               <span>Período</span>
               <input
                 className="campo__control"
@@ -175,6 +212,52 @@ export function ResumenFinanciero() {
           </form>
         }
       >
+        {esVivo ? (
+          <>
+            <AvisoError error={resultadosVivo.error} />
+            {resultadosVivo.isLoading ? (
+              <Cargando texto="Cargando el estado de resultados en vivo…" />
+            ) : null}
+            {!resultadosVivo.isLoading && resultadosVivo.data ? (
+              <>
+                <h3>Estado de resultados — en vivo, leído de SIESA</h3>
+                <p className="tarjeta__descripcion">
+                  Movimiento real del mes elegido, sin acumular desde enero. El balance
+                  general de esta compañía no está disponible en vivo todavía: el origen no
+                  trae saldo de apertura anterior a diciembre de 2025.
+                </p>
+                <div className="rejilla rejilla--indicadores">
+                  <Indicador
+                    etiqueta="Ingresos"
+                    valor={dinero(resultadosVivo.data.ingresos)}
+                    tamano="mediano"
+                  />
+                  <Indicador
+                    etiqueta="Costos"
+                    valor={dinero(resultadosVivo.data.costos)}
+                    tamano="mediano"
+                  />
+                  <Indicador
+                    etiqueta="Gastos"
+                    valor={dinero(resultadosVivo.data.gastos)}
+                    tamano="mediano"
+                  />
+                  <Indicador
+                    etiqueta="Utilidad neta"
+                    valor={dinero(resultadosVivo.data.utilidad_neta)}
+                    tamano="mediano"
+                    tono={
+                      resultadosVivo.data.utilidad_neta.trim().startsWith("-")
+                        ? "peligro"
+                        : "exito"
+                    }
+                  />
+                </div>
+              </>
+            ) : null}
+          </>
+        ) : (
+          <>
         <AvisoError error={error} />
         {cargando ? <Cargando texto="Cargando el resumen financiero…" /> : null}
 
@@ -242,8 +325,12 @@ export function ResumenFinanciero() {
             </div>
           </>
         ) : null}
+          </>
+        )}
       </Tarjeta>
 
+      {esVivo ? null : (
+        <>
       <Tarjeta
         titulo="Análisis vertical y horizontal"
         descripcion="Participación de cada cifra sobre su total (activo o ingresos) y variación contra el mes anterior."
@@ -354,6 +441,8 @@ export function ResumenFinanciero() {
           </ResponsiveContainer>
         )}
       </Tarjeta>
+        </>
+      )}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import type {
   RespuestaCartera,
   RespuestaDetalleCuentas,
   RespuestaEstadoResultados,
+  RespuestaEstadoResultadosEnVivo,
   RespuestaIndicadoresFinancieros,
 } from "./tipos";
 
@@ -126,5 +127,22 @@ export function useSerieBalanceGeneral(periodos: string[]) {
           parametros: { periodo },
         }),
     })),
+  });
+}
+
+/**
+ * Estado de resultados en vivo, leido de SIESA para una compañia especifica.
+ *
+ * A diferencia de `useEstadoResultados`, `cia` es obligatoria: en vivo no hay
+ * "todas las cargadas", cada compañia es una peticion aparte al origen.
+ */
+export function useEstadoResultadosVivo(cia: number | null, periodo: string, habilitado = true) {
+  return useQuery({
+    queryKey: ["financiero", "estado-resultados-vivo", { cia, periodo }],
+    queryFn: () =>
+      peticion<RespuestaEstadoResultadosEnVivo>("/financiero/estado-resultados-vivo", {
+        parametros: { cia: String(cia), periodo },
+      }),
+    enabled: habilitado && cia !== null && Boolean(periodo),
   });
 }

@@ -57,6 +57,23 @@ class RespuestaEstadoResultados(EsquemaBase):
     parametros_calculo: ParametrosCalculoFinanciero
 
 
+class ParametrosCalculoEnVivo(EsquemaBase):
+    """Igual que `ParametrosCalculoFinanciero`, pero `cia` es obligatoria: en
+    vivo no hay «todas las cargadas», cada compañía es una petición aparte a
+    SIESA."""
+
+    periodo: str = Field(description="AAAAMM tal como lo entrega SIESA", examples=["202607"])
+    cia: int = Field(description="Compañía SIESA consultada en vivo")
+
+
+class RespuestaEstadoResultadosEnVivo(EsquemaBase):
+    ingresos: DecimalStr
+    costos: DecimalStr
+    gastos: DecimalStr
+    utilidad_neta: DecimalStr
+    parametros_calculo: ParametrosCalculoEnVivo
+
+
 class FilaCartera(EsquemaBase):
     id_tercero: str
     razon_social: str | None = None
