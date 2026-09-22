@@ -26,8 +26,7 @@ import {
   useVentaDiariaAgro,
   useVentasComercialesAgro,
 } from "@/api/consultasAgro";
-import type { FilaResumenAgro, IndicadoresAgro } from "@/api/tiposAgro";
-import type { Medida } from "@/api/tipos";
+import type { IndicadoresAgro } from "@/api/tiposAgro";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import { useAuth } from "@/auth/ContextoAuth";
 import { Indicador, Semaforo, notaComparativa } from "@/componentes/indicadores";
@@ -40,7 +39,6 @@ import {
 import type { ColumnaComparada, FilaRanking, PuntoAcumulado } from "@/componentes/graficos";
 import {
   dinero,
-  fecha,
   kilos,
   multiplicar,
   porcentaje,
@@ -351,14 +349,13 @@ export function ResumenAgro() {
             </Tarjeta>
 
             <Tarjeta
-              titulo={`Mayores por ${opcion.singular}`}
-              descripcion={`Los diez de mayor venta del corte, de ${filas.length}.`}
-              sinRelleno
+              titulo="Evolución mensual"
+              descripcion="Venta neta y presupuesto de enero a diciembre. Los meses aún no abiertos se muestran atenuados."
             >
-              <Escalafon
-                filas={filas.slice(0, 10)}
-                medida={medida}
-                sujeto={opcion.singular}
+              <ColumnasComparadas
+                columnas={columnasMensuales}
+                titulo="Venta mensual frente a presupuesto"
+                formatear={dinero}
               />
             </Tarjeta>
           </div>
@@ -468,68 +465,6 @@ function AlertaClientesSinPresupuesto({
         </p>
       </div>
     </div>
-  );
-}
-
-/**
- * Los mayores del corte, con su ultima venta.
- *
- * Es la misma informacion que las primeras filas de la tabla, en una forma que
- * se lee de un vistazo y sin desplazamiento lateral. No sustituye a la tabla:
- * la tabla trae los indicadores completos y este escalafon responde otra
- * pregunta, la de «quien pesa» y «cuando fue la ultima vez».
- *
- * **No hay pestana de «no compran»**, y es deliberado. Para decir que alguien
- * dejo de comprar hay que emparejar al mismo cliente entre dos periodos, y la
- * API de agropecuaria no entrega identificador de cliente: solo el nombre. El
- * dia que alguien corrija una razon social en SIESA, el sistema diria que uno
- * dejo de comprar y aparecio otro nuevo —una alerta falsa con toda la pinta de
- * un dato—. Queda fuera hasta que la fuente entregue el NIT; esta pedido en
- * `docs/INTEGRACION-SIESA.md` §4.5.
- */
-function Escalafon({
-  filas,
-  medida,
-  sujeto,
-}: {
-  filas: FilaResumenAgro[];
-  medida: Medida;
-  /** «cliente», «vendedor»: la fecha se rotula segun de quien sea la fila. */
-  sujeto: string;
-}) {
-  if (filas.length === 0) {
-    return (
-      <Vacio
-        titulo="Sin venta en el corte"
-        detalle="Nadie registro venta con estos filtros."
-      />
-    );
-  }
-
-  return (
-    <ol className="escalafon">
-      {filas.map((fila, indice) => (
-        <li key={fila.clave} className="escalafon__fila">
-          <span className="escalafon__puesto" aria-hidden="true">
-            {indice + 1}
-          </span>
-          <span className="escalafon__nombre">{fila.nombre}</span>
-          <span className="escalafon__cifra">
-            {porMedida(fila.venta, medida)}
-            {fila.ultima_venta ? (
-              <span
-                className="escalafon__fecha"
-                title={`Ultimo dia con venta dentro del corte. No es la ultima ${
-                  sujeto === "cliente" ? "compra" : "venta"
-                } historica.`}
-              >
-                {fecha(fila.ultima_venta)}
-              </span>
-            ) : null}
-          </span>
-        </li>
-      ))}
-    </ol>
   );
 }
 
