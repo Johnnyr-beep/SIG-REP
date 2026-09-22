@@ -26,13 +26,14 @@ import {
   useVentaDiariaAgro,
   useVentasComercialesAgro,
 } from "@/api/consultasAgro";
-import type { FilaResumenAgro, IndicadoresAgro } from "@/api/tiposAgro";
+import type { FilaResumenAgro, IndicadoresAgro, ParametrosCalculoAgro } from "@/api/tiposAgro";
 import type { Medida } from "@/api/tipos";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import { useAuth } from "@/auth/ContextoAuth";
-import { Indicador } from "@/componentes/indicadores";
+import { Indicador, Semaforo, notaComparativa } from "@/componentes/indicadores";
 import {
   AnilloCumplimiento,
+  BarraContraIdeal,
   BarrasRanking,
   ColumnasComparadas,
   TendenciaAcumulada,
@@ -47,6 +48,7 @@ import {
   porMedida,
   sumar,
 } from "@/utilidades/formato";
+import { FORMULAS } from "@/utilidades/dominio";
 import {
   BarraFiltrosAgro,
   filtrosAgroDe,
@@ -303,9 +305,14 @@ export function ResumenAgro() {
             <AvisoEjeSinMeta eje={opcion.singular} />
           )}
 
-          <TarjetasResumen
+          <ConsolidadoResumenAgro
+            titulo={`Consolidado por ${opcion.singular}`}
+            fechaCorte={data.fecha_corte}
             enPesos={consolidadoPesos}
             enKilos={consolidadoKilos}
+            medida={medida}
+            sujeto={opcion.singular}
+            parametros={data.parametros_calculo}
           />
 
           <div className="rejilla rejilla--panel">
@@ -554,65 +561,112 @@ function Escalafon({
 }
 
 /**
- * El corte en cuatro cifras, encima de la tabla.
+ * El consolidado del eje elegido, con la misma lectura de tres velocidades que
+ * el tablero gerencial de carnes —semáforo, barra contra el ideal, cifras—:
+ * cumplimiento, badge de estado, brecha frente al ideal, barra con la marca
+ * del ideal y, debajo, la fila de indicadores en pesos.
  *
- * Cada tarjeta lleva la magnitud en pesos arriba y su equivalente en kilos
- * debajo, porque son dos lecturas del mismo hecho y la gerencia mira las dos: un
- * mes puede cumplir en pesos y no en kilos —o al reves— y eso, que es
- * exactamente lo que hay que ver, se pierde si solo se ensena una.
- *
- * Tres de las cuatro salen vacias mientras nadie capture el presupuesto de
- * agropecuaria. **Es informacion, no un hueco por cargar**: sin meta no hay
- * cumplimiento que calcular ni proyeccion que hacer, y publicar un cero ahi
- * seria afirmar que la meta es cero.
+ * Se mide siempre en pesos (`enPesos`): es la medida que presupuesta el
+ * negocio y la que lleva cumplimiento e ideal. `enKilos` solo aporta la nota
+ * de "de meta"/"vendidos" al lado de presupuesto y venta, igual que antes.
  */
-function TarjetasResumen({
+function ConsolidadoResumenAgro({
+  titulo,
+  fechaCorte,
   enPesos,
   enKilos,
+  medida,
+  sujeto,
+  parametros,
 }: {
+  titulo: string;
+  fechaCorte: string;
   enPesos: IndicadoresAgro | null;
   enKilos: IndicadoresAgro | null;
+  medida: Medida;
+  sujeto: string;
+  parametros: ParametrosCalculoAgro;
 }) {
-  // La venta no necesita la segunda consulta: el contrato ya publica
-  // `venta_valor` siempre en pesos y `kilos` siempre en kilos, precisamente
-  // para poder ensenar las dos sin volver a preguntar.
   const base = enPesos ?? enKilos;
 
   return (
-    <div className="rejilla rejilla--indicadores">
-      <Indicador
-        etiqueta="Presupuesto del mes"
-        valor={dinero(enPesos?.presupuesto ?? null)}
-        nota={
-          enKilos?.presupuesto
-            ? `${kilos(enKilos.presupuesto)} de meta`
-            : "Sin meta en kilos"
-        }
-      />
-      <Indicador
-        etiqueta="Ventas acumuladas"
-        valor={dinero(base?.venta_valor ?? null)}
-        nota={base ? `${kilos(base.kilos)} vendidos` : undefined}
-      />
-      <Indicador
-        etiqueta="Cumplimiento"
-        valor={porcentaje(enPesos?.cumplimiento ?? null)}
-        nota={
-          enKilos?.cumplimiento
-            ? `${porcentaje(enKilos.cumplimiento)} en kilos`
-            : "Sin cumplimiento en kilos"
-        }
-      />
-      <Indicador
-        etiqueta="Proyección al cierre"
-        valor={dinero(enPesos?.proyeccion ?? null)}
-        nota={
-          enPesos?.cumplimiento_proyectado
-            ? `${porcentaje(enPesos.cumplimiento_proyectado)} del presupuesto`
-            : "Necesita presupuesto para proyectar"
-        }
-      />
-    </div>
+    <Tarjeta
+      titulo={titulo}
+      descripcion={`Venta acumulada contra presupuesto del mes, al ${fechaCorte}.`}
+      pie={<PieCalculoAgro parametros={parametros} medida={medida} />}
+    >
+      <div className="consolidado">
+        <div className="consolidado__foco">
+          <p className="consolidado__etiqueta">Cumplimiento</p>
+          <p className="consolidado__cifra">
+            {porcentaje(enPesos?.cumplimiento ?? null)}
+          </p>
+          <Semaforo estado={enPesos?.semaforo ?? "SIN_PRESUPUESTO"} sujeto={sujeto} />
+          {enPesos?.brecha ? (
+            <p className="consolidado__brecha">
+              {porcentaje(enPesos.brecha)} frente al ideal
+            </p>
+          ) : null}
+          <p className="tenue">
+            {notaComparativa(enPesos?.cumplimiento ?? null, enPesos?.ideal ?? null)}
+          </p>
+        </div>
+
+        <div className="consolidado__barra">
+          <BarraContraIdeal
+            cumplimiento={enPesos?.cumplimiento ?? null}
+            ideal={enPesos?.ideal ?? null}
+            semaforo={enPesos?.semaforo ?? "SIN_PRESUPUESTO"}
+            etiqueta={titulo}
+          />
+        </div>
+      </div>
+
+      <div className="rejilla rejilla--indicadores">
+        <Indicador
+          etiqueta="Presupuesto del mes"
+          valor={dinero(enPesos?.presupuesto ?? null)}
+          nota={
+            enKilos?.presupuesto
+              ? `${kilos(enKilos.presupuesto)} de meta`
+              : "Sin meta en kilos"
+          }
+        />
+        <Indicador
+          etiqueta="Venta acumulada"
+          valor={dinero(base?.venta_valor ?? null)}
+          nota={base ? `${kilos(base.kilos)} vendidos` : undefined}
+        />
+        <Indicador
+          etiqueta="Proyección al cierre"
+          valor={dinero(enPesos?.proyeccion ?? null)}
+          nota={
+            enPesos?.cumplimiento_proyectado
+              ? `${porcentaje(enPesos.cumplimiento_proyectado)} del presupuesto`
+              : "Necesita presupuesto para proyectar"
+          }
+          pista={<p className="formula">{FORMULAS.proyeccion}</p>}
+        />
+        <Indicador
+          etiqueta="Venta diaria requerida"
+          valor={dinero(enPesos?.venta_diaria_requerida ?? null)}
+          nota="Para llegar al presupuesto con los días que quedan"
+          pista={<p className="formula">{FORMULAS.venta_diaria_requerida}</p>}
+        />
+        <Indicador
+          etiqueta="Venta diaria promedio"
+          valor={dinero(enPesos?.venta_diaria_promedio ?? null)}
+          nota="Ritmo actual"
+          pista={<p className="formula">{FORMULAS.venta_diaria_promedio}</p>}
+        />
+        <Indicador
+          etiqueta="Margen"
+          valor={porcentaje(enPesos?.margen_porcentaje ?? null)}
+          nota={porMedida(enPesos?.margen_valor ?? null, "valor")}
+          pista={<p className="formula">{FORMULAS.margen_porcentaje}</p>}
+        />
+      </div>
+    </Tarjeta>
   );
 }
 
