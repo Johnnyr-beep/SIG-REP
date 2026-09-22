@@ -3241,3 +3241,71 @@ textarea.campo__control {
   font-size: 0.72rem;
   color: var(--texto-tenue);
 }
+/* ── Ranking de barras (BarrasRanking) ────────────────────────────────────── */
+
+/* Nunca tuvo regla propia: etiqueta, barra y cifra —tres `<span>` seguidos en
+   el marcado— caían en el flujo inline por defecto y salían en una sola línea
+   pegados («NOMBRE$ 1.234,5 %»). La rejilla separa etiqueta y cifra en la fila
+   de arriba y manda la barra a una fila propia abajo, de ancho completo. */
+.ranking {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ranking__fila {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "etiqueta cifra"
+    "pista pista";
+  column-gap: var(--espacio-3);
+  row-gap: var(--espacio-2);
+  padding: var(--espacio-3) var(--espacio-4);
+  border-bottom: 1px solid var(--borde);
+}
+
+.ranking__fila:last-child {
+  border-bottom: none;
+}
+
+.ranking__etiqueta {
+  grid-area: etiqueta;
+  min-width: 0;
+  font-size: 0.86rem;
+  overflow-wrap: anywhere;
+}
+
+.ranking__cifra {
+  grid-area: cifra;
+  display: flex;
+  align-items: baseline;
+  gap: var(--espacio-2);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ranking__parte {
+  color: var(--texto-tenue);
+  font-weight: 500;
+  font-size: 0.78rem;
+}
+
+.ranking__pista {
+  grid-area: pista;
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--superficie-2);
+  overflow: hidden;
+}
+
+.ranking__barra {
+  display: block;
+  height: 100%;
+  background: var(--acento);
+  border-radius: 999px;
+}

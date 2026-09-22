@@ -32,7 +32,6 @@ import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import { useAuth } from "@/auth/ContextoAuth";
 import { Indicador, Semaforo, notaComparativa } from "@/componentes/indicadores";
 import {
-  AnilloCumplimiento,
   BarraContraIdeal,
   BarrasRanking,
   ColumnasComparadas,
@@ -178,12 +177,6 @@ export function ResumenAgro() {
       ? (data?.consolidado ?? null)
       : (otra?.consolidado ?? null);
 
-  const enPesos = {
-    cumplimiento: consolidadoPesos?.cumplimiento ?? null,
-    ideal: consolidadoPesos?.ideal ?? null,
-    semaforo: consolidadoPesos?.semaforo,
-  };
-
   const columnasMensuales = useMemo<ColumnaComparada[]>(
     () =>
       (serieMensual.data?.totales.meses ?? []).map((mes) => ({
@@ -319,12 +312,6 @@ export function ResumenAgro() {
                 titulo="Venta mensual frente a presupuesto"
                 formatear={dinero}
               />
-            </Tarjeta>
-
-            <Tarjeta titulo="Cumplimiento del mes">
-              <div className="anillos">
-                <AnilloCumplimiento etiqueta="Pesos" {...enPesos} />
-              </div>
             </Tarjeta>
 
             <Tarjeta
