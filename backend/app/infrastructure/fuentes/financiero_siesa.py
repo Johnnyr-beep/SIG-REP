@@ -232,29 +232,53 @@ def _filas_del_anio(
         cliente_activo = cliente or _cliente_http(configuracion)
         filas: list[FilaAnualEnVivo] = []
         try:
+            # `csv.reader` una sola vez sobre todo el flujo, no una instancia
+            # nueva por línea: con ~226.000 filas (cia 4) esa asignación de
+            # más era una parte medible del tiempo de análisis. Los índices de
+            # columna se calculan una sola vez, al leer el encabezado; nada de
+            # armar un diccionario por fila para leer cinco campos.
+            lector = csv.reader(_lineas(cia, anio, configuracion, cliente_activo))
             encabezado: list[str] | None = None
-            for linea in _lineas(cia, anio, configuracion, cliente_activo):
-                if not linea.strip():
+            i_auxiliar = i_grupo = i_subgrupo = i_cuenta = i_desc_auxiliar = -1
+            indices_meses: list[int] = []
+            largo_minimo = 0
+            for campos in lector:
+                if not campos:
                     continue
                 if encabezado is None:
-                    encabezado = [nombre.strip().lower() for nombre in next(csv.reader([linea]))]
+                    encabezado = [nombre.strip().lower() for nombre in campos]
+                    indice = {nombre: posicion for posicion, nombre in enumerate(encabezado)}
+                    i_auxiliar = indice.get(COL_AUXILIAR, -1)
+                    i_grupo = indice.get("grupo", -1)
+                    i_subgrupo = indice.get("clase", -1)
+                    i_cuenta = indice.get("cuenta", -1)
+                    i_desc_auxiliar = indice.get("desc_auxiliar", -1)
+                    indices_meses = [indice.get(f"s{mes}", -1) for mes in range(1, 13)]
+                    largo_minimo = max([i_auxiliar, *indices_meses]) + 1
                     continue
-                campos = next(csv.reader([linea]))
-                fila = dict(zip(encabezado, campos, strict=False))
-                auxiliar = (fila.get(COL_AUXILIAR) or "").strip()
+                if len(campos) < largo_minimo:
+                    continue
+
+                auxiliar = campos[i_auxiliar].strip() if i_auxiliar >= 0 else ""
                 clase = clasificar(auxiliar[:4])
                 if clase is None:
                     continue
                 signo = -1 if es_naturaleza_credito(clase) else 1
-                valores = tuple(_a_decimal(fila.get(f"s{mes}")) * signo for mes in range(1, 13))
+                valores = tuple(
+                    _a_decimal(campos[posicion]) * signo if posicion >= 0 else _CERO
+                    for posicion in indices_meses
+                )
                 if all(valor == _CERO for valor in valores):
                     continue
+                cuenta = (campos[i_cuenta].strip() if i_cuenta >= 0 else "") or (
+                    campos[i_desc_auxiliar].strip() if i_desc_auxiliar >= 0 else ""
+                )
                 filas.append(
                     FilaAnualEnVivo(
                         clase=clase,
-                        grupo=(fila.get("grupo") or "").strip(),
-                        subgrupo=(fila.get("clase") or "").strip(),
-                        cuenta=(fila.get("cuenta") or fila.get("desc_auxiliar") or "").strip(),
+                        grupo=campos[i_grupo].strip() if i_grupo >= 0 else "",
+                        subgrupo=campos[i_subgrupo].strip() if i_subgrupo >= 0 else "",
+                        cuenta=cuenta,
                         valores=valores,
                     )
                 )
