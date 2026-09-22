@@ -2118,6 +2118,30 @@ textarea.campo__control {
   color: var(--texto-tenue);
 }
 
+/* Las fórmulas que envía el backend (Agropecuaria), una por indicador: sin
+   esta regla el `<dl>` salía con el estilo por omisión del navegador —negro
+   plano, sin relación visual con `.formula`— y la etiqueta ("Venta",
+   "Cumplimiento"…) se perdía contra la caja de la expresión. */
+.pie-calculo__formulario {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+  margin: 0;
+}
+
+.pie-calculo__formulario dt {
+  color: var(--acento);
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.pie-calculo__formulario dd {
+  margin: 0;
+}
+
 /* ── Barra contra el ideal ───────────────────────────────────────────────── */
 
 .barra-ideal {
