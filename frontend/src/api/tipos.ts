@@ -702,6 +702,8 @@ export interface RespuestaSituacionFinancieraEnVivo {
 
 export interface FilaDetalleCuentaEnVivo {
   clase: string;
+  grupo: string;
+  subgrupo: string;
   auxiliar: string;
   cuenta: string;
   tercero: string;

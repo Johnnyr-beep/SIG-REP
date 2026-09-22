@@ -222,6 +222,7 @@ def test_detalle_cuentas_en_vivo_no_suma_por_tercero_ni_centro() -> None:
     por_tercero = {f.tercero: (f.centro_costo, f.monto) for f in filas}
     assert por_tercero["EMPLEADO UNO"] == ("ADMINISTRACION", Decimal("200.00"))
     assert por_tercero["EMPLEADO DOS"] == ("VENTAS", Decimal("300.00"))
+    assert all(f.grupo and f.subgrupo for f in filas)
 
 
 def test_detalle_cuentas_en_vivo_omite_meses_sin_movimiento() -> None:

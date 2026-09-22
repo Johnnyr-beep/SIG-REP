@@ -395,10 +395,15 @@ class FilaDetalleEnVivo:
     """Un renglón sin agregar: cuenta auxiliar × tercero × centro de costo,
 
     igual nivel de detalle que `FilaDetalleCuenta` (el reporte local de
-    `Consolidado.json`), pero leído en vivo de SIESA.
+    `Consolidado.json`), pero leído en vivo de SIESA. `grupo` y `subgrupo` son
+    los mismos de `FilaSituacionFinanciera`: permiten mostrar el detalle bajo
+    el mismo encabezado de subgrupo que trae el reporte nativo de SIESA
+    («Consulta sumarizada estado de la situación financiera»).
     """
 
     clase: ClaseCuenta
+    grupo: str
+    subgrupo: str
     auxiliar: str
     cuenta: str
     tercero: str
@@ -437,6 +442,8 @@ def detalle_cuentas_en_vivo(
         resultado.append(
             FilaDetalleEnVivo(
                 clase=fila.clase,
+                grupo=fila.grupo,
+                subgrupo=fila.subgrupo,
                 auxiliar=fila.auxiliar,
                 cuenta=fila.cuenta,
                 tercero=fila.tercero,

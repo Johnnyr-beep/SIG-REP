@@ -88,6 +88,8 @@ class RespuestaSituacionFinancieraEnVivo(EsquemaBase):
 
 class FilaDetalleCuentaEnVivo(EsquemaBase):
     clase: str = Field(description="Activo, Pasivo, Patrimonio, Ingresos, Gastos, Costos…")
+    grupo: str = Field(description="Grupo PUC tal como lo entrega SIESA, ej. GASTOS")
+    subgrupo: str = Field(description="Subgrupo PUC, ej. OPERACIONALES DE ADMINISTRACION")
     auxiliar: str = Field(description="Código completo de la cuenta (10 dígitos)")
     cuenta: str
     tercero: str

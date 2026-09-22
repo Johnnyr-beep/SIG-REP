@@ -8,7 +8,7 @@
  * abrir el detalle por cuenta o por tercero.
  */
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -186,6 +186,27 @@ export function ResumenFinanciero() {
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filasDetalleVivo, busquedaDetalle]);
+
+  // Agrupa el detalle filtrado por subgrupo PUC, igual que el reporte nativo
+  // de SIESA: un encabezado en negrilla por subgrupo (con su subtotal) y las
+  // cuentas/terceros/centros que lo componen indentados debajo.
+  const gruposDetalleVivo = useMemo(() => {
+    const grupos = new Map<
+      string,
+      { grupo: string; subgrupo: string; clase: string; filas: typeof filasDetalleVivoFiltradas; subtotal: number }
+    >();
+    for (const fila of filasDetalleVivoFiltradas) {
+      const clave = `${fila.clase}·${fila.grupo}·${fila.subgrupo}`;
+      let entrada = grupos.get(clave);
+      if (!entrada) {
+        entrada = { grupo: fila.grupo, subgrupo: fila.subgrupo, clase: fila.clase, filas: [], subtotal: 0 };
+        grupos.set(clave, entrada);
+      }
+      entrada.filas.push(fila);
+      entrada.subtotal += Number(fila.monto);
+    }
+    return Array.from(grupos.values());
+  }, [filasDetalleVivoFiltradas]);
 
   // Estructura de financiación: de qué está hecho el activo, pasivo o
   // patrimonio. En magnitud absoluta a propósito —la torta reparte peso, no
@@ -485,16 +506,28 @@ export function ResumenFinanciero() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filasDetalleVivoFiltradas.map((fila, indice) => (
-                      <tr key={`${fila.auxiliar}-${fila.tercero}-${fila.centro_costo}-${indice}`}>
-                        <th scope="row" className="columna-ancla">
-                          <span title={fila.cuenta}>{fila.auxiliar}</span>
-                        </th>
-                        <td>{fila.clase}</td>
-                        <td>{fila.tercero || "—"}</td>
-                        <td>{fila.centro_costo || "—"}</td>
-                        <td className="numero">{dinero(fila.monto)}</td>
-                      </tr>
+                    {gruposDetalleVivo.map((grupo) => (
+                      <Fragment key={`${grupo.clase}-${grupo.grupo}-${grupo.subgrupo}`}>
+                        <tr className="columna-total">
+                          <th scope="rowgroup" className="columna-ancla columna-total">
+                            {grupo.grupo}-{grupo.subgrupo}
+                          </th>
+                          <td className="columna-total">{grupo.clase}</td>
+                          <td className="columna-total" colSpan={2} />
+                          <td className="numero columna-total">{dinero(String(grupo.subtotal))}</td>
+                        </tr>
+                        {grupo.filas.map((fila, indice) => (
+                          <tr key={`${fila.auxiliar}-${fila.tercero}-${fila.centro_costo}-${indice}`}>
+                            <th scope="row" className="columna-ancla columna-ancla--hija">
+                              <span title={fila.cuenta}>{fila.auxiliar}</span>
+                            </th>
+                            <td>{fila.clase}</td>
+                            <td>{fila.tercero || "—"}</td>
+                            <td>{fila.centro_costo || "—"}</td>
+                            <td className="numero">{dinero(fila.monto)}</td>
+                          </tr>
+                        ))}
+                      </Fragment>
                     ))}
                   </tbody>
                   <tfoot>

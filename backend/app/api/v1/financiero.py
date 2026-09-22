@@ -244,6 +244,8 @@ def detalle_cuentas_vivo(
     filas = [
         FilaDetalleCuentaEnVivo(
             clase=etiqueta_clase(fila.clase),
+            grupo=fila.grupo,
+            subgrupo=fila.subgrupo,
             auxiliar=fila.auxiliar,
             cuenta=fila.cuenta,
             tercero=fila.tercero,
