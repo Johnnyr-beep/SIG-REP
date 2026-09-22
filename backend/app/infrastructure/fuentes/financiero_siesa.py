@@ -51,6 +51,8 @@ dígitos son el `mayor_iii` que clasifica `app.domain.financiero.clasificar`.
 from __future__ import annotations
 
 import csv
+import threading
+import time
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
@@ -148,63 +150,21 @@ def _lineas(
 
 
 @dataclass(frozen=True, slots=True)
-class FilaMovimientoEnVivo:
-    """Una fila del CSV, ya resuelta al mes pedido y con el signo económico
+class FilaAnualEnVivo:
+    """Una fila del CSV, con sus doce meses ya resueltos y con el signo
 
-    aplicado (naturaleza crédito invertida). `grupo` y `subgrupo` son el texto
-    tal como lo entrega SIESA (`GASTOS`, `OPERACIONALES DE ADMINISTRACION`...),
-    recortado de espacios; no reemplazan a `clase`, que es la clasificación PUC
-    por el primer dígito de `auxiliar` y la que decide el signo.
+    económico aplicado (naturaleza crédito invertida). `valores[0]` es enero,
+    `valores[11]` diciembre. `grupo` y `subgrupo` son el texto tal como lo
+    entrega SIESA (`GASTOS`, `OPERACIONALES DE ADMINISTRACION`...); no
+    reemplazan a `clase`, que es la clasificación PUC por el primer dígito de
+    `auxiliar` y la que decide el signo.
     """
 
     clase: ClaseCuenta
     grupo: str
     subgrupo: str
     cuenta: str
-    valor: Decimal
-
-
-def _filas_del_mes(
-    cia: int,
-    periodo: int,
-    configuracion: ConfiguracionFinancieroSiesa,
-    cliente: httpx.Client,
-) -> Iterator[FilaMovimientoEnVivo]:
-    """Las filas del año de `periodo`, resueltas a un solo mes y ya con signo.
-
-    Filas sin `auxiliar` clasificable o con movimiento cero en ese mes no se
-    entregan: no aportan nada a un resumen ni a un detalle.
-    """
-    anio = periodo // 100
-    mes = periodo % 100
-    # El encabezado se pliega a minúsculas más abajo (`s1`, no `S1`): la
-    # columna tiene que buscarse con la misma forma o no encuentra nada.
-    columna_mes = f"s{mes}"
-
-    encabezado: list[str] | None = None
-    for linea in _lineas(cia, anio, configuracion, cliente):
-        if not linea.strip():
-            continue
-        if encabezado is None:
-            encabezado = [nombre.strip().lower() for nombre in next(csv.reader([linea]))]
-            continue
-        campos = next(csv.reader([linea]))
-        fila = dict(zip(encabezado, campos, strict=False))
-        auxiliar = (fila.get(COL_AUXILIAR) or "").strip()
-        clase = clasificar(auxiliar[:4])
-        if clase is None:
-            continue
-        valor = _a_decimal(fila.get(columna_mes))
-        if valor == _CERO:
-            continue
-        saldo = -valor if es_naturaleza_credito(clase) else valor
-        yield FilaMovimientoEnVivo(
-            clase=clase,
-            grupo=(fila.get("grupo") or "").strip(),
-            subgrupo=(fila.get("clase") or "").strip(),
-            cuenta=(fila.get("cuenta") or fila.get("desc_auxiliar") or "").strip(),
-            valor=saldo,
-        )
+    valores: tuple[Decimal, ...]
 
 
 def _cliente_http(configuracion: ConfiguracionFinancieroSiesa) -> httpx.Client:
@@ -217,6 +177,105 @@ def _cliente_http(configuracion: ConfiguracionFinancieroSiesa) -> httpx.Client:
         ),
         follow_redirects=True,
     )
+
+
+#: `cia` 4 (Carnes Santacruz) trae ~226.000 filas por año contra ~32.000 de la
+#: cía 3: sin memoria, cada cambio de mes o de reporte volvía a descargar y
+#: parsear el año entero, y con dos reportes pidiéndolo casi a la vez
+#: (`estado-resultados-vivo` y `situacion-financiera-vivo`) la carga se sentía
+#: el doble de lenta de lo necesario. Se cachea el año completo —los doce
+#: meses de una vez, no solo el mes pedido— para que cambiar de período o
+#: pedir el otro reporte de la misma cía y año no vuelva a tocar la red.
+_TTL_CACHE_SEG = 600.0
+_cache: dict[tuple[int, int], tuple[float, list[FilaAnualEnVivo]]] = {}
+_bloqueos: dict[tuple[int, int], threading.Lock] = {}
+_bloqueo_registro = threading.Lock()
+
+
+def _bloqueo_de(clave: tuple[int, int]) -> threading.Lock:
+    with _bloqueo_registro:
+        if clave not in _bloqueos:
+            _bloqueos[clave] = threading.Lock()
+        return _bloqueos[clave]
+
+
+def limpiar_cache_en_vivo() -> None:
+    """Vacía la caché de años descargados. Solo para pruebas: sin esto, una
+
+    prueba que reutiliza (cia, año) de otra hereda su CSV simulado y afirma
+    sobre datos que no son los suyos.
+    """
+    _cache.clear()
+
+
+def _filas_del_anio(
+    cia: int,
+    anio: int,
+    configuracion: ConfiguracionFinancieroSiesa,
+    cliente: httpx.Client | None,
+    *,
+    usar_cache: bool = True,
+) -> list[FilaAnualEnVivo]:
+    clave = (cia, anio)
+    if usar_cache:
+        entrada = _cache.get(clave)
+        if entrada is not None and time.monotonic() - entrada[0] < _TTL_CACHE_SEG:
+            return entrada[1]
+
+    with _bloqueo_de(clave) if usar_cache else _NULO:
+        if usar_cache:
+            entrada = _cache.get(clave)
+            if entrada is not None and time.monotonic() - entrada[0] < _TTL_CACHE_SEG:
+                return entrada[1]
+
+        propio = cliente is None
+        cliente_activo = cliente or _cliente_http(configuracion)
+        filas: list[FilaAnualEnVivo] = []
+        try:
+            encabezado: list[str] | None = None
+            for linea in _lineas(cia, anio, configuracion, cliente_activo):
+                if not linea.strip():
+                    continue
+                if encabezado is None:
+                    encabezado = [nombre.strip().lower() for nombre in next(csv.reader([linea]))]
+                    continue
+                campos = next(csv.reader([linea]))
+                fila = dict(zip(encabezado, campos, strict=False))
+                auxiliar = (fila.get(COL_AUXILIAR) or "").strip()
+                clase = clasificar(auxiliar[:4])
+                if clase is None:
+                    continue
+                signo = -1 if es_naturaleza_credito(clase) else 1
+                valores = tuple(_a_decimal(fila.get(f"s{mes}")) * signo for mes in range(1, 13))
+                if all(valor == _CERO for valor in valores):
+                    continue
+                filas.append(
+                    FilaAnualEnVivo(
+                        clase=clase,
+                        grupo=(fila.get("grupo") or "").strip(),
+                        subgrupo=(fila.get("clase") or "").strip(),
+                        cuenta=(fila.get("cuenta") or fila.get("desc_auxiliar") or "").strip(),
+                        valores=valores,
+                    )
+                )
+        finally:
+            if propio:
+                cliente_activo.close()
+
+        if usar_cache:
+            _cache[clave] = (time.monotonic(), filas)
+        return filas
+
+
+class _ContextoNulo:
+    def __enter__(self) -> None:
+        return None
+
+    def __exit__(self, *_: object) -> None:
+        return None
+
+
+_NULO = _ContextoNulo()
 
 
 def saldos_por_clase_en_vivo(
@@ -236,17 +295,19 @@ def saldos_por_clase_en_vivo(
 
         configuracion = ConfiguracionFinancieroSiesa.desde_settings(obtener_settings())
 
-    propio = cliente is None
-    cliente = cliente or _cliente_http(configuracion)
+    anio = periodo // 100
+    mes = periodo % 100
+    # Sin caché cuando la prueba trae su propio cliente simulado: cada prueba
+    # arma un CSV distinto para la misma (cia, año) y no debe heredar la
+    # respuesta de la anterior.
+    filas = _filas_del_anio(cia, anio, configuracion, cliente, usar_cache=cliente is None)
 
     acumulado: dict[ClaseCuenta, Decimal] = {}
-    try:
-        for fila in _filas_del_mes(cia, periodo, configuracion, cliente):
-            acumulado[fila.clase] = acumulado.get(fila.clase, _CERO) + fila.valor
-    finally:
-        if propio:
-            cliente.close()
-
+    for fila in filas:
+        valor = fila.valores[mes - 1]
+        if valor == _CERO:
+            continue
+        acumulado[fila.clase] = acumulado.get(fila.clase, _CERO) + valor
     return acumulado
 
 
@@ -278,17 +339,17 @@ def situacion_financiera_en_vivo(
 
         configuracion = ConfiguracionFinancieroSiesa.desde_settings(obtener_settings())
 
-    propio = cliente is None
-    cliente = cliente or _cliente_http(configuracion)
+    anio = periodo // 100
+    mes = periodo % 100
+    filas = _filas_del_anio(cia, anio, configuracion, cliente, usar_cache=cliente is None)
 
     acumulado: dict[tuple[ClaseCuenta, str, str], Decimal] = {}
-    try:
-        for fila in _filas_del_mes(cia, periodo, configuracion, cliente):
-            clave = (fila.clase, fila.grupo, fila.subgrupo)
-            acumulado[clave] = acumulado.get(clave, _CERO) + fila.valor
-    finally:
-        if propio:
-            cliente.close()
+    for fila in filas:
+        valor = fila.valores[mes - 1]
+        if valor == _CERO:
+            continue
+        clave = (fila.clase, fila.grupo, fila.subgrupo)
+        acumulado[clave] = acumulado.get(clave, _CERO) + valor
 
     return [
         FilaSituacionFinanciera(clase=clase, grupo=grupo, subgrupo=subgrupo, monto=monto)

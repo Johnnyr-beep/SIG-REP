@@ -18,6 +18,8 @@ from pydantic import SecretStr
 from app.domain.financiero import ClaseCuenta
 from app.infrastructure.fuentes.financiero_siesa import (
     ConfiguracionFinancieroSiesa,
+    _filas_del_anio,
+    limpiar_cache_en_vivo,
     saldos_por_clase_en_vivo,
     situacion_financiera_en_vivo,
 )
@@ -162,3 +164,30 @@ def test_situacion_financiera_omite_filas_sin_movimiento_ese_mes() -> None:
         )
 
     assert filas == []
+
+
+def test_cache_del_anio_evita_una_segunda_peticion() -> None:
+    """cia 4 trae ~226.000 filas por año: sin caché, cambiar de mes o pedir el
+
+    otro reporte del mismo año volvía a descargarlo entero. Con `usar_cache`,
+    la segunda llamada al mismo (cia, año) no debe tocar la red otra vez.
+    """
+    limpiar_cache_en_vivo()
+    peticiones = 0
+    cuerpo = csv_estado_financiero(fila_mensual("4135010101", {1: "-100.00"}))
+
+    def _responder(peticion: httpx.Request) -> httpx.Response:
+        nonlocal peticiones
+        peticiones += 1
+        return httpx.Response(200, text=cuerpo, request=peticion)
+
+    cliente = httpx.Client(transport=httpx.MockTransport(_responder))
+    try:
+        primera = _filas_del_anio(3, 2026, _configuracion(), cliente, usar_cache=True)
+        segunda = _filas_del_anio(3, 2026, _configuracion(), cliente, usar_cache=True)
+    finally:
+        cliente.close()
+        limpiar_cache_en_vivo()
+
+    assert peticiones == 1
+    assert primera == segunda
