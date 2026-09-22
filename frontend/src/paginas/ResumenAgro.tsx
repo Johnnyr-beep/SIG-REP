@@ -26,7 +26,7 @@ import {
   useVentaDiariaAgro,
   useVentasComercialesAgro,
 } from "@/api/consultasAgro";
-import type { FilaResumenAgro, IndicadoresAgro, ParametrosCalculoAgro } from "@/api/tiposAgro";
+import type { FilaResumenAgro, IndicadoresAgro } from "@/api/tiposAgro";
 import type { Medida } from "@/api/tipos";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import { useAuth } from "@/auth/ContextoAuth";
@@ -306,9 +306,7 @@ export function ResumenAgro() {
             fechaCorte={data.fecha_corte}
             enPesos={consolidadoPesos}
             enKilos={consolidadoKilos}
-            medida={medida}
             sujeto={opcion.singular}
-            parametros={data.parametros_calculo}
           />
 
           <div className="rejilla rejilla--panel">
@@ -570,17 +568,13 @@ function ConsolidadoResumenAgro({
   fechaCorte,
   enPesos,
   enKilos,
-  medida,
   sujeto,
-  parametros,
 }: {
   titulo: string;
   fechaCorte: string;
   enPesos: IndicadoresAgro | null;
   enKilos: IndicadoresAgro | null;
-  medida: Medida;
   sujeto: string;
-  parametros: ParametrosCalculoAgro;
 }) {
   const base = enPesos ?? enKilos;
 
@@ -588,7 +582,6 @@ function ConsolidadoResumenAgro({
     <Tarjeta
       titulo={titulo}
       descripcion={`Venta acumulada contra presupuesto del mes, al ${fechaCorte}.`}
-      pie={<PieCalculoAgro parametros={parametros} medida={medida} />}
     >
       <div className="consolidado">
         <div className="consolidado__foco">
