@@ -97,6 +97,21 @@ const EMPRESAS_EN_VIVO = [
 
 type ClaveEmpresa = (typeof EMPRESAS_EN_VIVO)[number]["valor"];
 
+/** Tinte de fondo por empresa: un color por cada opción del filtro "Empresa",
+ * muestreado de su marca cuando existe (Agropecuaria, Carnes Santacruz,
+ * Grupo Santacruz) o uno afín cuando la cia no tiene identidad propia
+ * (Cristian Serrano, Serueda, Inversiones Serrano Millán). Se mezcla un 4%
+ * sobre `--fondo` para que el matiz se note sin competir con las tarjetas.
+ */
+const COLOR_POR_EMPRESA: Record<ClaveEmpresa, string> = {
+  local: "#344b63",
+  "3": "#3b7722",
+  "4": "#54000c",
+  "6": "#2f5f83",
+  "7": "#1f6f6f",
+  "8": "#5b4b73",
+};
+
 /** Color por clase PUC en el gráfico de composición en vivo. */
 const COLOR_POR_CLASE: Record<string, string> = {
   Ingresos: "var(--exito)",
@@ -129,6 +144,7 @@ export function ResumenFinanciero() {
   const [empresa, setEmpresa] = useState<ClaveEmpresa>("local");
   const [busquedaDetalle, setBusquedaDetalle] = useState("");
   const [claseDetalle, setClaseDetalle] = useState("");
+  const colorEmpresa = COLOR_POR_EMPRESA[empresa];
   const periodo = aPeriodoApi(mes);
   const filtros = { periodo };
   const esVivo = empresa !== "local";
@@ -252,7 +268,10 @@ export function ResumenFinanciero() {
     : [];
 
   return (
-    <div className="pila">
+    <div
+      className="pila pila--empresa"
+      style={{ background: `color-mix(in srgb, ${colorEmpresa} 4%, var(--fondo))` }}
+    >
       <Tarjeta
         titulo="Resumen financiero"
         descripcion="Balance general y estado de resultados del libro mayor, por período contable."

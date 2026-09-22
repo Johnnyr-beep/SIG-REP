@@ -611,6 +611,16 @@ textarea {
   padding: var(--espacio-5) var(--espacio-6) var(--espacio-7);
 }
 
+/* Tinte de fondo por empresa: la página del resumen financiero lo aplica
+   sobre sí misma con un color inline (`color-mix` con el color de la empresa
+   elegida en el filtro); el margen negativo lo hace sangrar hasta los bordes
+   de `.contenido` en vez de quedar como una franja recortada por su padding. */
+.pila--empresa {
+  margin: calc(-1 * var(--espacio-5)) calc(-1 * var(--espacio-6)) calc(-1 * var(--espacio-7));
+  padding: var(--espacio-5) var(--espacio-6) var(--espacio-7);
+  transition: background-color 0.25s ease;
+}
+
 /* ── Tarjetas y rejillas ─────────────────────────────────────────────────── */
 
 .tarjeta {
