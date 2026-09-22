@@ -3241,6 +3241,83 @@ textarea.campo__control {
   font-size: 0.72rem;
   color: var(--texto-tenue);
 }
+
+/* ── Columnas comparadas (ColumnasComparadas) ─────────────────────────────── */
+
+/* Sin regla propia el SVG salía en el negro por omisión del navegador y la
+   leyenda («VentaPresupuesto») en una sola palabra pegada: dos `<span>`
+   seguidos sin gap ni marca de color. */
+.comparadas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-3);
+}
+
+.comparadas__figura {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.comparadas__guia {
+  stroke: var(--borde);
+  stroke-width: 1;
+}
+
+.comparadas__valor {
+  fill: var(--acento);
+}
+
+.comparadas__valor--atenuada {
+  fill: var(--borde-fuerte);
+}
+
+.comparadas__referencia {
+  fill: var(--texto-tenue);
+  opacity: 0.5;
+}
+
+.comparadas__etiqueta {
+  fill: var(--texto-tenue);
+  font-size: 9px;
+}
+
+.comparadas__etiqueta--atenuada {
+  opacity: 0.55;
+}
+
+.comparadas__leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-4);
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--texto-suave);
+}
+
+.comparadas__clave {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+}
+
+.comparadas__clave::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.comparadas__clave--valor::before {
+  background: var(--acento);
+}
+
+.comparadas__clave--referencia::before {
+  background: var(--texto-tenue);
+  opacity: 0.5;
+}
+
 /* ── Ranking de barras (BarrasRanking) ────────────────────────────────────── */
 
 /* Nunca tuvo regla propia: etiqueta, barra y cifra —tres `<span>` seguidos en

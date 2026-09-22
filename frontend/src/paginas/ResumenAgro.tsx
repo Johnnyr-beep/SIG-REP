@@ -59,7 +59,6 @@ import {
   AvisoSinPresupuestoCapturado,
   CeldasIndicadoresAgro,
   EncabezadosIndicadoresAgro,
-  PieCalculoAgro,
   columnasIndicadoresAgro,
 } from "@/componentes/indicadoresAgro";
 import {
@@ -368,12 +367,6 @@ export function ResumenAgro() {
             titulo={`Venta por ${opcion.singular}`}
             descripcion={opcion.ayuda}
             sinRelleno
-            pie={
-              <PieCalculoAgro
-                parametros={data.parametros_calculo}
-                medida={medida}
-              />
-            }
           >
             {filas.length === 0 ? (
               <Vacio
