@@ -700,6 +700,20 @@ export interface RespuestaSituacionFinancieraEnVivo {
   parametros_calculo: ParametrosCalculoEnVivo;
 }
 
+export interface FilaDetalleCuentaEnVivo {
+  clase: string;
+  auxiliar: string;
+  cuenta: string;
+  tercero: string;
+  centro_costo: string;
+  monto: string;
+}
+
+export interface RespuestaDetalleCuentasEnVivo {
+  filas: FilaDetalleCuentaEnVivo[];
+  parametros_calculo: ParametrosCalculoEnVivo;
+}
+
 export interface FilaCartera {
   id_tercero: string;
   razon_social?: string | null;

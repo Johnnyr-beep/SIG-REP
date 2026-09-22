@@ -26,12 +26,16 @@ from app.application.services.financiero_reportes_service import (
 from app.core.deps import PERMISO_CONSULTAR_FINANCIERO, SesionDep, exigir_permiso_consulta
 from app.core.errors import ErrorValidacion
 from app.domain.financiero import etiqueta_clase
-from app.infrastructure.fuentes.financiero_siesa import situacion_financiera_en_vivo
+from app.infrastructure.fuentes.financiero_siesa import (
+    detalle_cuentas_en_vivo,
+    situacion_financiera_en_vivo,
+)
 from app.infrastructure.models.usuario import Usuario
 from app.schemas.financiero import (
     FilaBalanceComprobacion,
     FilaCartera,
     FilaDetalleCuenta,
+    FilaDetalleCuentaEnVivo,
     FilaSituacionFinancieraEnVivo,
     ParametrosCalculoEnVivo,
     ParametrosCalculoFinanciero,
@@ -39,6 +43,7 @@ from app.schemas.financiero import (
     RespuestaBalanceGeneral,
     RespuestaCartera,
     RespuestaDetalleCuentas,
+    RespuestaDetalleCuentasEnVivo,
     RespuestaEstadoResultados,
     RespuestaEstadoResultadosEnVivo,
     RespuestaIndicadoresFinancieros,
@@ -213,6 +218,41 @@ def situacion_financiera_vivo(
         for fila in situacion_financiera_en_vivo(cia, int(periodo))
     ]
     return RespuestaSituacionFinancieraEnVivo(
+        filas=filas, parametros_calculo=ParametrosCalculoEnVivo(periodo=periodo, cia=cia)
+    )
+
+
+@router.get(
+    "/detalle-cuentas-vivo",
+    response_model=RespuestaDetalleCuentasEnVivo,
+    summary="Detalle por cuenta, tercero y centro de costo en vivo (SIESA)",
+)
+def detalle_cuentas_vivo(
+    usuario: UsuarioFinancieroDep,
+    periodo: str = PeriodoQuery,
+    cia: int = Query(description="Compañía SIESA; debe ser una de las que ya tienen movimientos"),
+) -> RespuestaDetalleCuentasEnVivo:
+    """Un renglón por cuenta auxiliar × tercero × centro de costo, sin sumar:
+    la base con la que se armó cada subgrupo de `/situacion-financiera-vivo`.
+    """
+    del usuario
+    if cia not in CIAS_EN_VIVO:
+        raise ErrorValidacion(
+            f"La compañía {cia} no tiene detalle de cuentas en vivo. Las disponibles son: "
+            + ", ".join(f"{codigo} ({nombre})" for codigo, nombre in CIAS_EN_VIVO.items())
+        )
+    filas = [
+        FilaDetalleCuentaEnVivo(
+            clase=etiqueta_clase(fila.clase),
+            auxiliar=fila.auxiliar,
+            cuenta=fila.cuenta,
+            tercero=fila.tercero,
+            centro_costo=fila.centro_costo,
+            monto=fila.monto,
+        )
+        for fila in detalle_cuentas_en_vivo(cia, int(periodo))
+    ]
+    return RespuestaDetalleCuentasEnVivo(
         filas=filas, parametros_calculo=ParametrosCalculoEnVivo(periodo=periodo, cia=cia)
     )
 

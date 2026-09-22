@@ -86,6 +86,20 @@ class RespuestaSituacionFinancieraEnVivo(EsquemaBase):
     parametros_calculo: ParametrosCalculoEnVivo
 
 
+class FilaDetalleCuentaEnVivo(EsquemaBase):
+    clase: str = Field(description="Activo, Pasivo, Patrimonio, Ingresos, Gastos, Costos…")
+    auxiliar: str = Field(description="Código completo de la cuenta (10 dígitos)")
+    cuenta: str
+    tercero: str
+    centro_costo: str
+    monto: DecimalStr
+
+
+class RespuestaDetalleCuentasEnVivo(EsquemaBase):
+    filas: list[FilaDetalleCuentaEnVivo]
+    parametros_calculo: ParametrosCalculoEnVivo
+
+
 class FilaCartera(EsquemaBase):
     id_tercero: str
     razon_social: str | None = None

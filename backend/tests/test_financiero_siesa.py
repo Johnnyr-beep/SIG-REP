@@ -19,6 +19,7 @@ from app.domain.financiero import ClaseCuenta
 from app.infrastructure.fuentes.financiero_siesa import (
     ConfiguracionFinancieroSiesa,
     _filas_del_anio,
+    detalle_cuentas_en_vivo,
     limpiar_cache_en_vivo,
     saldos_por_clase_en_vivo,
     situacion_financiera_en_vivo,
@@ -40,11 +41,12 @@ def fila_mensual(
     grupo: str = "GRUPO",
     subgrupo: str = "CLASE",
     cuenta: str = "CUENTA",
+    centro_costo: str = "",
 ) -> str:
     """Una fila del CSV pivotado, con valor solo en los meses indicados."""
     columnas = [str(valores_por_mes.get(m, "0")) for m in range(1, 13)]
     return (
-        f"{grupo},{subgrupo},{cuenta},{auxiliar},{desc_auxiliar},{desc_co},{tercero},,301,003,900000000,"
+        f"{grupo},{subgrupo},{cuenta},{auxiliar},{desc_auxiliar},{desc_co},{tercero},{centro_costo},301,003,900000000,"
         + ",".join(columnas)
     )
 
@@ -191,3 +193,40 @@ def test_cache_del_anio_evita_una_segunda_peticion() -> None:
 
     assert peticiones == 1
     assert primera == segunda
+
+
+def test_detalle_cuentas_en_vivo_no_suma_por_tercero_ni_centro() -> None:
+    """Dos filas de la misma cuenta pero distinto tercero deben verse por
+
+    separado, a diferencia de `saldos_por_clase_en_vivo` y
+    `situacion_financiera_en_vivo`, que sí suman.
+    """
+    cuerpo = csv_estado_financiero(
+        fila_mensual(
+            "5105060101",
+            {1: "200.00"},
+            tercero="EMPLEADO UNO",
+            centro_costo="ADMINISTRACION",
+        ),
+        fila_mensual(
+            "5105060101",
+            {1: "300.00"},
+            tercero="EMPLEADO DOS",
+            centro_costo="VENTAS",
+        ),
+    )
+    with _cliente(cuerpo) as cliente:
+        filas = detalle_cuentas_en_vivo(3, 202601, configuracion=_configuracion(), cliente=cliente)
+
+    assert len(filas) == 2
+    por_tercero = {f.tercero: (f.centro_costo, f.monto) for f in filas}
+    assert por_tercero["EMPLEADO UNO"] == ("ADMINISTRACION", Decimal("200.00"))
+    assert por_tercero["EMPLEADO DOS"] == ("VENTAS", Decimal("300.00"))
+
+
+def test_detalle_cuentas_en_vivo_omite_meses_sin_movimiento() -> None:
+    cuerpo = csv_estado_financiero(fila_mensual("5105060101", {2: "200.00"}))
+    with _cliente(cuerpo) as cliente:
+        filas = detalle_cuentas_en_vivo(3, 202601, configuracion=_configuracion(), cliente=cliente)
+
+    assert filas == []

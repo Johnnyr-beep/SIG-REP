@@ -8,6 +8,7 @@ import type {
   RespuestaBalanceGeneral,
   RespuestaCartera,
   RespuestaDetalleCuentas,
+  RespuestaDetalleCuentasEnVivo,
   RespuestaEstadoResultados,
   RespuestaEstadoResultadosEnVivo,
   RespuestaIndicadoresFinancieros,
@@ -158,6 +159,18 @@ export function useSituacionFinancieraVivo(
     queryKey: ["financiero", "situacion-financiera-vivo", { cia, periodo }],
     queryFn: () =>
       peticion<RespuestaSituacionFinancieraEnVivo>("/financiero/situacion-financiera-vivo", {
+        parametros: { cia: String(cia), periodo },
+      }),
+    enabled: habilitado && cia !== null && Boolean(periodo),
+  });
+}
+
+/** El detalle sin agregar (cuenta × tercero × centro de costo), en vivo. */
+export function useDetalleCuentasVivo(cia: number | null, periodo: string, habilitado = true) {
+  return useQuery({
+    queryKey: ["financiero", "detalle-cuentas-vivo", { cia, periodo }],
+    queryFn: () =>
+      peticion<RespuestaDetalleCuentasEnVivo>("/financiero/detalle-cuentas-vivo", {
         parametros: { cia: String(cia), periodo },
       }),
     enabled: habilitado && cia !== null && Boolean(periodo),

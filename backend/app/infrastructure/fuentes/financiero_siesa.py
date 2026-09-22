@@ -161,9 +161,12 @@ class FilaAnualEnVivo:
     """
 
     clase: ClaseCuenta
+    auxiliar: str
     grupo: str
     subgrupo: str
     cuenta: str
+    tercero: str
+    centro_costo: str
     valores: tuple[Decimal, ...]
 
 
@@ -240,6 +243,7 @@ def _filas_del_anio(
             lector = csv.reader(_lineas(cia, anio, configuracion, cliente_activo))
             encabezado: list[str] | None = None
             i_auxiliar = i_grupo = i_subgrupo = i_cuenta = i_desc_auxiliar = -1
+            i_tercero = i_centro_costo = -1
             indices_meses: list[int] = []
             largo_minimo = 0
             for campos in lector:
@@ -253,6 +257,8 @@ def _filas_del_anio(
                     i_subgrupo = indice.get("clase", -1)
                     i_cuenta = indice.get("cuenta", -1)
                     i_desc_auxiliar = indice.get("desc_auxiliar", -1)
+                    i_tercero = indice.get("tercero", -1)
+                    i_centro_costo = indice.get("c_costo", -1)
                     indices_meses = [indice.get(f"s{mes}", -1) for mes in range(1, 13)]
                     largo_minimo = max([i_auxiliar, *indices_meses]) + 1
                     continue
@@ -276,9 +282,12 @@ def _filas_del_anio(
                 filas.append(
                     FilaAnualEnVivo(
                         clase=clase,
+                        auxiliar=auxiliar,
                         grupo=campos[i_grupo].strip() if i_grupo >= 0 else "",
                         subgrupo=campos[i_subgrupo].strip() if i_subgrupo >= 0 else "",
                         cuenta=cuenta,
+                        tercero=campos[i_tercero].strip() if i_tercero >= 0 else "",
+                        centro_costo=campos[i_centro_costo].strip() if i_centro_costo >= 0 else "",
                         valores=valores,
                     )
                 )
@@ -379,3 +388,60 @@ def situacion_financiera_en_vivo(
         FilaSituacionFinanciera(clase=clase, grupo=grupo, subgrupo=subgrupo, monto=monto)
         for (clase, grupo, subgrupo), monto in acumulado.items()
     ]
+
+
+@dataclass(frozen=True, slots=True)
+class FilaDetalleEnVivo:
+    """Un renglón sin agregar: cuenta auxiliar × tercero × centro de costo,
+
+    igual nivel de detalle que `FilaDetalleCuenta` (el reporte local de
+    `Consolidado.json`), pero leído en vivo de SIESA.
+    """
+
+    clase: ClaseCuenta
+    auxiliar: str
+    cuenta: str
+    tercero: str
+    centro_costo: str
+    monto: Decimal
+
+
+def detalle_cuentas_en_vivo(
+    cia: int,
+    periodo: int,
+    *,
+    configuracion: ConfiguracionFinancieroSiesa | None = None,
+    cliente: httpx.Client | None = None,
+) -> list[FilaDetalleEnVivo]:
+    """El detalle del mes, un renglón por cuenta × tercero × centro, sin sumar.
+
+    Es la base para «ver por qué» un subgrupo del sumarizado dio ese monto:
+    `situacion_financiera_en_vivo` agrupa por (clase, subgrupo); esta función
+    entrega las filas que ese agrupado suma, sin perder el tercero ni el
+    centro de costo.
+    """
+    if configuracion is None:
+        from app.core.config import obtener_settings
+
+        configuracion = ConfiguracionFinancieroSiesa.desde_settings(obtener_settings())
+
+    anio = periodo // 100
+    mes = periodo % 100
+    filas = _filas_del_anio(cia, anio, configuracion, cliente, usar_cache=cliente is None)
+
+    resultado: list[FilaDetalleEnVivo] = []
+    for fila in filas:
+        valor = fila.valores[mes - 1]
+        if valor == _CERO:
+            continue
+        resultado.append(
+            FilaDetalleEnVivo(
+                clase=fila.clase,
+                auxiliar=fila.auxiliar,
+                cuenta=fila.cuenta,
+                tercero=fila.tercero,
+                centro_costo=fila.centro_costo,
+                monto=valor,
+            )
+        )
+    return resultado

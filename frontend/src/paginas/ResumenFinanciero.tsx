@@ -8,7 +8,7 @@
  * abrir el detalle por cuenta o por tercero.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -27,6 +27,7 @@ import {
 
 import {
   useBalanceGeneral,
+  useDetalleCuentasVivo,
   useEstadoResultados,
   useEstadoResultadosVivo,
   useIndicadoresFinancieros,
@@ -34,7 +35,7 @@ import {
   useSerieEstadoResultados,
   useSituacionFinancieraVivo,
 } from "@/api/consultasFinanciero";
-import { AvisoError, Cargando, Tarjeta } from "@/componentes/comunes";
+import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import { Indicador } from "@/componentes/indicadores";
 import { dinero, dineroCorto, numero, porcentaje } from "@/utilidades/formato";
 
@@ -126,6 +127,7 @@ function variacionAbsoluta(actual: string | null, anterior: string | null): stri
 export function ResumenFinanciero() {
   const [mes, setMes] = useState(periodoActual());
   const [empresa, setEmpresa] = useState<ClaveEmpresa>("local");
+  const [busquedaDetalle, setBusquedaDetalle] = useState("");
   const periodo = aPeriodoApi(mes);
   const filtros = { periodo };
   const esVivo = empresa !== "local";
@@ -136,6 +138,7 @@ export function ResumenFinanciero() {
   const indicadores = useIndicadoresFinancieros(filtros, !esVivo);
   const resultadosVivo = useEstadoResultadosVivo(cia, periodo, esVivo);
   const situacionVivo = useSituacionFinancieraVivo(cia, periodo, esVivo);
+  const detalleVivo = useDetalleCuentasVivo(cia, periodo, esVivo);
 
   const periodosSerie = ultimosPeriodos(mes, 6);
   const serie = useSerieEstadoResultados(esVivo ? [] : periodosSerie);
@@ -171,6 +174,18 @@ export function ResumenFinanciero() {
     }))
     .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor))
     .slice(0, 10);
+
+  const filasDetalleVivo = detalleVivo.data?.filas ?? [];
+  const filasDetalleVivoFiltradas = useMemo(() => {
+    const texto = busquedaDetalle.trim().toLowerCase();
+    if (!texto) return filasDetalleVivo;
+    return filasDetalleVivo.filter((fila) =>
+      [fila.auxiliar, fila.cuenta, fila.tercero, fila.centro_costo, fila.clase]
+        .filter(Boolean)
+        .some((campo) => campo.toLowerCase().includes(texto)),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filasDetalleVivo, busquedaDetalle]);
 
   // Estructura de financiación: de qué está hecho el activo, pasivo o
   // patrimonio. En magnitud absoluta a propósito —la torta reparte peso, no
@@ -422,6 +437,86 @@ export function ResumenFinanciero() {
                 </BarChart>
               </ResponsiveContainer>
             )}
+          </Tarjeta>
+
+          <Tarjeta
+            titulo="Detalle de cuentas — en vivo"
+            descripcion="Un renglón por cuenta, tercero y centro de costo del mes elegido, sin sumar: la base de la que sale cada subgrupo de arriba."
+            sinRelleno
+            acciones={
+              <form
+                className="formulario formulario--linea"
+                onSubmit={(evento) => evento.preventDefault()}
+              >
+                <label className="campo">
+                  <span>Buscar</span>
+                  <input
+                    className="campo__control"
+                    type="search"
+                    placeholder="Cuenta, tercero o centro de costo…"
+                    value={busquedaDetalle}
+                    onChange={(evento) => setBusquedaDetalle(evento.target.value)}
+                  />
+                </label>
+              </form>
+            }
+          >
+            <AvisoError error={detalleVivo.error} />
+            {detalleVivo.isLoading ? <Cargando texto="Cargando el detalle en vivo…" /> : null}
+            {!detalleVivo.isLoading && filasDetalleVivo.length === 0 ? (
+              <Vacio
+                titulo="Sin movimientos en este período"
+                detalle="SIESA no trae filas para el mes elegido de esta compañía."
+              />
+            ) : null}
+            {!detalleVivo.isLoading && filasDetalleVivo.length > 0 ? (
+              <div className="tabla-envoltorio tabla-envoltorio--alta">
+                <table className="tabla tabla--anclada">
+                  <caption className="solo-lectores">
+                    Detalle en vivo por cuenta, tercero y centro de costo.
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col" className="columna-ancla">Cuenta</th>
+                      <th scope="col">Clase</th>
+                      <th scope="col">Tercero</th>
+                      <th scope="col">Centro de costo</th>
+                      <th scope="col" className="numero">Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filasDetalleVivoFiltradas.map((fila, indice) => (
+                      <tr key={`${fila.auxiliar}-${fila.tercero}-${fila.centro_costo}-${indice}`}>
+                        <th scope="row" className="columna-ancla">
+                          <span title={fila.cuenta}>{fila.auxiliar}</span>
+                        </th>
+                        <td>{fila.clase}</td>
+                        <td>{fila.tercero || "—"}</td>
+                        <td>{fila.centro_costo || "—"}</td>
+                        <td className="numero">{dinero(fila.monto)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={4} className="columna-ancla">
+                        {filasDetalleVivoFiltradas.length} de {filasDetalleVivo.length} filas
+                      </td>
+                      <td className="numero">
+                        {dinero(
+                          String(
+                            filasDetalleVivoFiltradas.reduce(
+                              (total, fila) => total + Number(fila.monto),
+                              0,
+                            ),
+                          ),
+                        )}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            ) : null}
           </Tarjeta>
         </>
       ) : null}
