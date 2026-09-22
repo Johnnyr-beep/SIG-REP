@@ -270,7 +270,7 @@ export function ResumenFinanciero() {
   return (
     <div
       className="pila pila--empresa"
-      style={{ background: `color-mix(in srgb, ${colorEmpresa} 4%, var(--fondo))` }}
+      style={{ background: `color-mix(in srgb, ${colorEmpresa} 7%, var(--fondo))` }}
     >
       <Tarjeta
         titulo="Resumen financiero"

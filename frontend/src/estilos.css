@@ -614,11 +614,19 @@ textarea {
 /* Tinte de fondo por empresa: la página del resumen financiero lo aplica
    sobre sí misma con un color inline (`color-mix` con el color de la empresa
    elegida en el filtro); el margen negativo lo hace sangrar hasta los bordes
-   de `.contenido` en vez de quedar como una franja recortada por su padding. */
+   de `.contenido` en vez de quedar como una franja recortada por su padding.
+   Las tarjetas suben a `--sombra-2` y un borde más marcado sobre este fondo:
+   con solo `--sombra-1` (pensada para blanco sobre `--fondo` neutro) quedaban
+   casi fundidas con el tinte de color. */
 .pila--empresa {
   margin: calc(-1 * var(--espacio-5)) calc(-1 * var(--espacio-6)) calc(-1 * var(--espacio-7));
   padding: var(--espacio-5) var(--espacio-6) var(--espacio-7);
   transition: background-color 0.25s ease;
+}
+
+.pila--empresa .tarjeta {
+  border-color: var(--borde-fuerte);
+  box-shadow: var(--sombra-2);
 }
 
 /* ── Tarjetas y rejillas ─────────────────────────────────────────────────── */
