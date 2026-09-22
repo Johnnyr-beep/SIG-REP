@@ -3174,6 +3174,21 @@ textarea.campo__control {
   align-items: stretch;
 }
 
+/* `align-items: stretch` solo estira la caja de la tarjeta a la altura de la
+   fila; sin esto el contenido se queda arriba y deja el resto en blanco, que
+   es justo lo que pasaba con el gráfico de columnas comparadas junto a
+   tarjetas más altas. */
+.rejilla--panel > .tarjeta {
+  display: flex;
+  flex-direction: column;
+}
+
+.rejilla--panel > .tarjeta > .tarjeta__cuerpo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
 @media (max-width: 62rem) {
   .rejilla--panel {
     grid-template-columns: 1fr;
@@ -3249,14 +3264,16 @@ textarea.campo__control {
    seguidos sin gap ni marca de color. */
 .comparadas {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: var(--espacio-3);
 }
 
 .comparadas__figura {
+  flex: 1;
   width: 100%;
-  height: auto;
-  overflow: visible;
+  height: 100%;
+  min-height: 160px;
 }
 
 .comparadas__guia {

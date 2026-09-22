@@ -392,6 +392,7 @@ export function ColumnasComparadas({
     <figure className="comparadas">
       <svg
         viewBox={`0 0 ${COMPARADAS.ancho} ${COMPARADAS.alto}`}
+        preserveAspectRatio="none"
         className="comparadas__figura"
         role="img"
         aria-label={`${titulo}. ${resumen}.`}
