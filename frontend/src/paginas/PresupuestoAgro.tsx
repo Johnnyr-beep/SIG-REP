@@ -390,7 +390,9 @@ function FormularioMeta({
   const esNueva = meta.clave === "";
   const [clave, setClave] = useState(meta.clave);
   const [monto, setMonto] = useState(meta.monto);
-  const [kilosMeta, setKilos] = useState(meta.kilos);
+  // La meta en kilos ya no se captura desde el formulario: se conserva el
+  // valor que trajera para no perder la que ya estuviera guardada.
+  const kilosMeta = meta.kilos;
   const [motivo, setMotivo] = useState("");
 
   // El catálogo de la dimensión, para elegir a quién. La clave es la del origen
@@ -445,17 +447,6 @@ function FormularioMeta({
             step="0.01"
             value={monto}
             onChange={(evento) => setMonto(evento.target.value)}
-            required
-          />
-        </Campo>
-        <Campo etiqueta="Meta en kilos">
-          <input
-            className="campo__control"
-            type="number"
-            min="0"
-            step="0.001"
-            value={kilosMeta}
-            onChange={(evento) => setKilos(evento.target.value)}
             required
           />
         </Campo>
@@ -820,7 +811,9 @@ function FormularioDetalleMensual({
   );
   const [categoria, setCategoria] = useState(filaExistente?.categoria ?? "");
   const [monto, setMonto] = useState(filaExistente?.monto ?? "0");
-  const [kilosValor, setKilos] = useState(filaExistente?.kilos ?? "0");
+  // La meta en kilos ya no se captura desde el formulario: se conserva el
+  // valor que trajera para no perder la que ya estuviera guardada.
+  const kilosValor = filaExistente?.kilos ?? "0";
 
   // Catálogos de vendedor y cliente, para elegir a quién. La clave es la del
   // origen —la cédula del vendedor, el NIT del cliente—, así que no se teclea:
@@ -982,17 +975,6 @@ function FormularioDetalleMensual({
             required
           />
         </Campo>
-        <Campo etiqueta="Meta en kilos">
-          <input
-            className="campo__control"
-            type="number"
-            min="0"
-            step="0.001"
-            value={kilosValor}
-            onChange={(evento) => setKilos(evento.target.value)}
-            required
-          />
-        </Campo>
       </form>
     </Dialogo>
   );
@@ -1073,17 +1055,6 @@ function BloqueServicio({
               required
             />
           </Campo>
-          <Campo etiqueta="Meta en kilos">
-            <input
-              className="campo__control"
-              type="number"
-              min="0"
-              step="0.001"
-              value={kilosValor}
-              onChange={(evento) => setKilos(evento.target.value)}
-              required
-            />
-          </Campo>
           <div className="fila">
             <button
               type="button"
@@ -1105,14 +1076,6 @@ function BloqueServicio({
             </p>
             <p style={{ fontSize: "1.25rem", fontWeight: 700 }}>
               {dinero(data?.monto)}
-            </p>
-          </div>
-          <div>
-            <p className="tenue" style={{ fontWeight: 600 }}>
-              Meta en kilos
-            </p>
-            <p style={{ fontSize: "1.25rem", fontWeight: 700 }}>
-              {kilos(data?.kilos)}
             </p>
           </div>
         </div>
