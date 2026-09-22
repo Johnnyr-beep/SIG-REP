@@ -301,17 +301,6 @@ export function ResumenAgro() {
 
           <div className="rejilla rejilla--panel">
             <Tarjeta
-              titulo="Evolución mensual"
-              descripcion="Venta neta y presupuesto de enero a diciembre. Los meses aún no abiertos se muestran atenuados."
-            >
-              <ColumnasComparadas
-                columnas={columnasMensuales}
-                titulo="Venta mensual frente a presupuesto"
-                formatear={dinero}
-              />
-            </Tarjeta>
-
-            <Tarjeta
               titulo="Tendencia de ventas"
               descripcion="Las dos series van acumuladas: la distancia entre ellas es lo que falta para la meta."
             >
