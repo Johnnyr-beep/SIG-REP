@@ -3279,7 +3279,7 @@ textarea.campo__control {
 
 .comparadas__etiqueta {
   fill: var(--texto-tenue);
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .comparadas__etiqueta--atenuada {
@@ -3291,7 +3291,7 @@ textarea.campo__control {
   flex-wrap: wrap;
   gap: var(--espacio-4);
   margin: 0;
-  font-size: 0.78rem;
+  font-size: 0.86rem;
   color: var(--texto-suave);
 }
 
@@ -3304,8 +3304,8 @@ textarea.campo__control {
 .comparadas__clave::before {
   content: "";
   display: inline-block;
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 3px;
 }
 
