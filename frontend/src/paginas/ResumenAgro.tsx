@@ -183,11 +183,6 @@ export function ResumenAgro() {
     ideal: consolidadoPesos?.ideal ?? null,
     semaforo: consolidadoPesos?.semaforo,
   };
-  const enKilos = {
-    cumplimiento: consolidadoKilos?.cumplimiento ?? null,
-    ideal: consolidadoKilos?.ideal ?? null,
-    semaforo: consolidadoKilos?.semaforo,
-  };
 
   const columnasMensuales = useMemo<ColumnaComparada[]>(
     () =>
@@ -234,6 +229,7 @@ export function ResumenAgro() {
     <div className="pila">
       <BarraFiltrosAgro
         control={control}
+        mostrar={{ medida: false }}
         acciones={
           <>
             {!granular || tienePermiso("PERMISO_AGRO_CONFIGURAR_EJE_RESUMEN") ? <label className="filtros__campo">
@@ -330,7 +326,6 @@ export function ResumenAgro() {
             <Tarjeta titulo="Cumplimiento del mes">
               <div className="anillos">
                 <AnilloCumplimiento etiqueta="Pesos" {...enPesos} />
-                <AnilloCumplimiento etiqueta="Kilos" {...enKilos} />
               </div>
             </Tarjeta>
 
