@@ -128,6 +128,7 @@ export function ResumenFinanciero() {
   const [mes, setMes] = useState(periodoActual());
   const [empresa, setEmpresa] = useState<ClaveEmpresa>("local");
   const [busquedaDetalle, setBusquedaDetalle] = useState("");
+  const [claseDetalle, setClaseDetalle] = useState("");
   const periodo = aPeriodoApi(mes);
   const filtros = { periodo };
   const esVivo = empresa !== "local";
@@ -176,16 +177,23 @@ export function ResumenFinanciero() {
     .slice(0, 10);
 
   const filasDetalleVivo = detalleVivo.data?.filas ?? [];
+  const clasesDetalleVivo = useMemo(
+    () => Array.from(new Set(filasDetalleVivo.map((fila) => fila.clase))).sort(),
+    [filasDetalleVivo],
+  );
   const filasDetalleVivoFiltradas = useMemo(() => {
     const texto = busquedaDetalle.trim().toLowerCase();
-    if (!texto) return filasDetalleVivo;
-    return filasDetalleVivo.filter((fila) =>
-      [fila.auxiliar, fila.cuenta, fila.tercero, fila.centro_costo, fila.clase]
-        .filter(Boolean)
-        .some((campo) => campo.toLowerCase().includes(texto)),
-    );
+    return filasDetalleVivo
+      .filter((fila) => !claseDetalle || fila.clase === claseDetalle)
+      .filter(
+        (fila) =>
+          !texto ||
+          [fila.auxiliar, fila.cuenta, fila.tercero, fila.centro_costo, fila.clase]
+            .filter(Boolean)
+            .some((campo) => campo.toLowerCase().includes(texto)),
+      );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filasDetalleVivo, busquedaDetalle]);
+  }, [filasDetalleVivo, busquedaDetalle, claseDetalle]);
 
   // Agrupa el detalle filtrado por subgrupo PUC, igual que el reporte nativo
   // de SIESA: un encabezado en negrilla por subgrupo (con su subtotal) y las
@@ -469,6 +477,21 @@ export function ResumenFinanciero() {
                 className="formulario formulario--linea"
                 onSubmit={(evento) => evento.preventDefault()}
               >
+                <label className="campo">
+                  <span>Clase</span>
+                  <select
+                    className="campo__control"
+                    value={claseDetalle}
+                    onChange={(evento) => setClaseDetalle(evento.target.value)}
+                  >
+                    <option value="">Todas</option>
+                    {clasesDetalleVivo.map((clase) => (
+                      <option key={clase} value={clase}>
+                        {clase}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <label className="campo">
                   <span>Buscar</span>
                   <input
