@@ -41,6 +41,7 @@ function textoFila(fila: FilaInventarioPdv): string {
 export function InventarioPdv() {
   const consulta = useInventarioPdv();
   const [compania, setCompania] = useState("");
+  const [puntoVenta, setPuntoVenta] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [pagina, setPagina] = useState(1);
 
@@ -76,13 +77,23 @@ export function InventarioPdv() {
       ),
     [filas],
   );
+  const puntosVenta = useMemo(
+    () =>
+      [...new Set(
+        filas
+          .filter((fila) => !compania || fila.compania === Number(compania))
+          .flatMap((fila) => (fila.punto_venta ? [fila.punto_venta] : [])),
+      )].sort((a, b) => a.localeCompare(b)),
+    [compania, filas],
+  );
   const filasFiltradas = useMemo(() => {
     const termino = normalizarBusqueda(busqueda.trim());
     return filas.filter((fila) => {
       if (compania && fila.compania !== Number(compania)) return false;
+      if (puntoVenta && fila.punto_venta !== puntoVenta) return false;
       return !termino || normalizarBusqueda(textoFila(fila)).includes(termino);
     });
-  }, [busqueda, compania, filas]);
+  }, [busqueda, compania, filas, puntoVenta]);
 
   const totalPaginas = Math.max(1, Math.ceil(filasFiltradas.length / FILAS_POR_PAGINA));
   const inicio = (pagina - 1) * FILAS_POR_PAGINA;
@@ -110,11 +121,27 @@ export function InventarioPdv() {
               <select
                 className="campo__control"
                 value={compania}
-                onChange={(evento) => cambiarFiltro(() => setCompania(evento.target.value))}
+                onChange={(evento) => cambiarFiltro(() => {
+                  setCompania(evento.target.value);
+                  setPuntoVenta("");
+                })}
               >
                 <option value="">Todas</option>
                 {companias.map((codigo) => (
                   <option key={codigo} value={codigo}>{codigo}</option>
+                ))}
+              </select>
+            </label>
+            <label className="campo">
+              <span>Punto de venta</span>
+              <select
+                className="campo__control"
+                value={puntoVenta}
+                onChange={(evento) => cambiarFiltro(() => setPuntoVenta(evento.target.value))}
+              >
+                <option value="">Todos</option>
+                {puntosVenta.map((nombre) => (
+                  <option key={nombre} value={nombre}>{nombre}</option>
                 ))}
               </select>
             </label>
@@ -149,7 +176,7 @@ export function InventarioPdv() {
         {!consulta.isLoading && consulta.data && filas.length > 0 && filasFiltradas.length === 0 ? (
           <Vacio
             titulo="Sin coincidencias"
-            detalle="Ajusta la búsqueda o el filtro de compañía."
+            detalle="Ajusta la búsqueda o los filtros de compañía y punto de venta."
           />
         ) : null}
         {!consulta.isLoading && consulta.data && filasFiltradas.length > 0 ? (
