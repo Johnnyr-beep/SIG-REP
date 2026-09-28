@@ -27,6 +27,7 @@ import { Clientes } from "@/paginas/Clientes";
 import { Cumplimiento } from "@/paginas/Cumplimiento";
 import { Costos } from "@/paginas/Costos";
 import { Ingesta } from "@/paginas/Ingesta";
+import { InventarioPdv } from "@/paginas/InventarioPdv";
 import { HistoriaVenta } from "@/paginas/HistoriaVenta";
 import { Presupuesto } from "@/paginas/Presupuesto";
 import { Permisos } from "@/paginas/Permisos";
@@ -86,6 +87,7 @@ const RUTAS_POR_PERMISO: Record<string, string> = {
   PERMISO_CONSULTAR_TABLERO: "/",
   PERMISO_CONSULTAR_CUMPLIMIENTO: "/cumplimiento",
   PERMISO_CONSULTAR_COSTOS: "/costos",
+  PERMISO_CONSULTAR_INVENTARIO: "/inventario-pdv",
   PERMISO_CONSULTAR_VENTA_DIARIA: "/venta-diaria",
   PERMISO_VENTA_DIARIA_ASADERO: "/venta-diaria-asadero",
   PERMISO_CONSULTAR_CLIENTES: "/clientes",
@@ -241,6 +243,7 @@ export function App() {
               element={<AccesoModulo permiso="PERMISO_CONSULTAR_CUMPLIMIENTO"><Cumplimiento /></AccesoModulo>}
             />
             <Route path="costos" element={<AccesoModulo permiso="PERMISO_CONSULTAR_COSTOS"><Costos /></AccesoModulo>} />
+            <Route path="inventario-pdv" element={<AccesoModulo permiso="PERMISO_CONSULTAR_INVENTARIO"><InventarioPdv /></AccesoModulo>} />
             <Route path="venta-diaria" element={<AccesoModulo permiso="PERMISO_CONSULTAR_VENTA_DIARIA"><VentaDiaria /></AccesoModulo>} />
             <Route path="clientes" element={<AccesoModulo permiso="PERMISO_CONSULTAR_CLIENTES"><Clientes /></AccesoModulo>} />
             <Route

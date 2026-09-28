@@ -27,6 +27,7 @@ import type {
   EntradaUsuario,
   EventoAuditoria,
   FilaCalendario,
+  RespuestaInventarioPdv,
   FilaPresupuesto,
   Grupo,
   HistoriaVenta,
@@ -128,6 +129,7 @@ export const claves = {
   historialPresupuesto: (periodo: string, puntoVenta: string) =>
     ["presupuesto-historial", periodo, puntoVenta] as const,
   historiaVenta: (periodo: string) => ["historia-venta", periodo] as const,
+  inventarioPdv: ["inventario", "pdv"] as const,
   periodos: ["periodos"] as const,
   tablero: (filtros: FiltrosReporte) =>
     ["reporte", "tablero", filtros] as const,
@@ -274,6 +276,14 @@ export function useCostos(
       peticion<RespuestaCostos>("/reportes/costos", {
         parametros: comoParametros(filtros),
       }),
+    staleTime: 60_000,
+  });
+}
+
+export function useInventarioPdv(): UseQueryResult<RespuestaInventarioPdv> {
+  return useQuery({
+    queryKey: claves.inventarioPdv,
+    queryFn: () => peticion<RespuestaInventarioPdv>("/inventario/pdv"),
     staleTime: 60_000,
   });
 }

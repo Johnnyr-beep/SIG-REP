@@ -94,6 +94,26 @@ export interface PuntoVenta {
   presupuestado: boolean;
 }
 
+export interface FilaInventarioPdv {
+  compania: number | null;
+  punto_venta: string | null;
+  codigo_producto: string | null;
+  referencia: string | null;
+  producto: string | null;
+  unidad: string | null;
+  existencia: string | null;
+  comprometida: string | null;
+  pendiente_entrada: string | null;
+  pendiente_salida: string | null;
+  datos: Record<string, string | null>;
+}
+
+export interface RespuestaInventarioPdv {
+  columnas: string[];
+  filas: FilaInventarioPdv[];
+  total: number;
+}
+
 export interface Categoria {
   id: number;
   codigo: string;

@@ -20,6 +20,7 @@ from app.api.v1 import calendario as calendario_api
 from app.api.v1 import catalogos as catalogos_api
 from app.api.v1 import financiero as financiero_api
 from app.api.v1 import ingesta as ingesta_api
+from app.api.v1 import inventario as inventario_api
 from app.api.v1 import presupuesto as presupuesto_api
 from app.api.v1 import reportes as reportes_api
 from app.api.v1 import salud as salud_api
@@ -154,6 +155,7 @@ api.include_router(presupuesto_api.router)
 api.include_router(presupuesto_api.periodos_router)
 api.include_router(presupuesto_api.historia_router)
 api.include_router(reportes_api.router)
+api.include_router(inventario_api.router)
 # La unidad agropecuaria vive bajo su propio prefijo: es otro negocio, con
 # sus dimensiones y su presupuesto por descomposicion, no una variante.
 api.include_router(agro_api.router)
