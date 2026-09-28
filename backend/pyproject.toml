@@ -8,7 +8,8 @@ dependencies = [
     "uvicorn[standard]>=0.32.0",
     "pydantic>=2.9.0",
     "pydantic-settings>=2.6.0",
-    "sqlalchemy>=2.0.36",
+    # 2.1 cambia los genéricos de `Select` y rompe el tipado estricto de queries existentes.
+    "sqlalchemy>=2.0.36,<2.1",
     "alembic>=1.14.0",
     # `psycopg[binary]` trae la libpq compilada: la imagen no necesita
     # compilador ni cabeceras de PostgreSQL.
