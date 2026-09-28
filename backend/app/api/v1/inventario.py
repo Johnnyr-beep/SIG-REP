@@ -116,17 +116,22 @@ def _decimal_siesa(valor: str | None) -> Decimal | None:
 
 def _es_columna_tpv(columna: str) -> bool:
     clave = _clave_columna(columna).lower()
-    return clave.startswith("tpv") or clave.startswith("terminal") or clave in {
-        "tpv",
-        "idtpv",
-        "codtpv",
-        "codigotpv",
-        "puntotpv",
-        "terminal",
-        "idterminal",
-        "codterminal",
-        "codigoterminal",
-    }
+    return (
+        clave.startswith("tpv")
+        or clave.startswith("terminal")
+        or clave
+        in {
+            "tpv",
+            "idtpv",
+            "codtpv",
+            "codigotpv",
+            "puntotpv",
+            "terminal",
+            "idterminal",
+            "codterminal",
+            "codigoterminal",
+        }
+    )
 
 
 def _es_columna_ubicacion(columna: str) -> bool:
@@ -287,7 +292,11 @@ def inventario_pdv(
         nombre_pdv = (
             punto_crudo.strip()
             if punto_crudo and punto_crudo.strip()
-            else punto.nombre if punto else descripcion.strip() if descripcion else codigo
+            else punto.nombre
+            if punto
+            else descripcion.strip()
+            if descripcion
+            else codigo
         )
         clave_pdv = codigo_resuelto or clave_descripcion(nombre_pdv or "")
         if not clave_pdv:
@@ -302,9 +311,7 @@ def inventario_pdv(
         )
         referencia_cruda = datos.get(columna_referencia) if columna_referencia else None
         referencia = (
-            referencia_cruda.strip()
-            if referencia_cruda and referencia_cruda.strip()
-            else None
+            referencia_cruda.strip() if referencia_cruda and referencia_cruda.strip() else None
         )
         producto_crudo = (
             datos.get(columna_descripcion_producto) if columna_descripcion_producto else None
@@ -334,9 +341,7 @@ def inventario_pdv(
             cantidad = _decimal_siesa(datos.get(columna)) if columna else None
             if cantidad is None:
                 continue
-            acumulado.cantidades[nombre] = (
-                acumulado.cantidades.get(nombre, Decimal(0)) + cantidad
-            )
+            acumulado.cantidades[nombre] = acumulado.cantidades.get(nombre, Decimal(0)) + cantidad
             acumulado.cantidades_con_dato.add(nombre)
         for columna in columnas_adicionales:
             atributo = datos.get(columna)
