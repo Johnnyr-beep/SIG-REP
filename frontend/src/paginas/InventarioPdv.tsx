@@ -108,7 +108,7 @@ export function InventarioPdv() {
     <div className="pila">
       <AvisoError error={consulta.error} />
       <Tarjeta
-        titulo="Inventario por producto"
+        titulo="Inventario por punto de venta"
         descripcion="Una fila por producto y punto de venta; las filas repetidas del mismo artículo dentro del punto se consolidan."
         sinRelleno
         acciones={

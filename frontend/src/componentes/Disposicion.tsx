@@ -49,7 +49,7 @@ const MENU_CARNES: GrupoNav[] = [
       { ruta: "/", etiqueta: "Tablero", icono: "◱", permiso: "PERMISO_CONSULTAR_TABLERO" },
       { ruta: "/cumplimiento", etiqueta: "Cumplimiento por PDV", icono: "▤", permiso: "PERMISO_CONSULTAR_CUMPLIMIENTO" },
       { ruta: "/costos", etiqueta: "Costos y margen", icono: "◒", permiso: "PERMISO_CONSULTAR_COSTOS" },
-      { ruta: "/inventario-pdv", etiqueta: "Inventario por producto", icono: "▦", permiso: "PERMISO_CONSULTAR_INVENTARIO" },
+      { ruta: "/inventario-pdv", etiqueta: "Inventario por punto de venta", icono: "▦", permiso: "PERMISO_CONSULTAR_INVENTARIO" },
       { ruta: "/venta-diaria", etiqueta: "Venta diaria", icono: "▦", permiso: "PERMISO_CONSULTAR_VENTA_DIARIA" },
       {
         ruta: "/venta-diaria-asadero",
