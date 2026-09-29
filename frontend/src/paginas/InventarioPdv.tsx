@@ -26,7 +26,6 @@ function textoFila(fila: FilaInventarioPdv): string {
     fila.punto_venta,
     fila.codigo_producto,
     fila.referencia,
-    fila.producto,
     fila.unidad,
     fila.existencia,
     fila.comprometida,
@@ -42,6 +41,7 @@ export function InventarioPdv() {
   const consulta = useInventarioPdv();
   const [compania, setCompania] = useState("");
   const [puntoVenta, setPuntoVenta] = useState("");
+  const [producto, setProducto] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [pagina, setPagina] = useState(1);
 
@@ -88,12 +88,16 @@ export function InventarioPdv() {
   );
   const filasFiltradas = useMemo(() => {
     const termino = normalizarBusqueda(busqueda.trim());
+    const terminoProducto = normalizarBusqueda(producto.trim());
     return filas.filter((fila) => {
       if (compania && fila.compania !== Number(compania)) return false;
       if (puntoVenta && fila.punto_venta !== puntoVenta) return false;
+      if (terminoProducto && !normalizarBusqueda(fila.producto ?? "").includes(terminoProducto)) {
+        return false;
+      }
       return !termino || normalizarBusqueda(textoFila(fila)).includes(termino);
     });
-  }, [busqueda, compania, filas, puntoVenta]);
+  }, [busqueda, compania, filas, producto, puntoVenta]);
 
   const totalPaginas = Math.max(1, Math.ceil(filasFiltradas.length / FILAS_POR_PAGINA));
   const inicio = (pagina - 1) * FILAS_POR_PAGINA;
@@ -146,11 +150,21 @@ export function InventarioPdv() {
               </select>
             </label>
             <label className="campo">
+              <span>Producto</span>
+              <input
+                className="campo__control"
+                type="search"
+                placeholder="Nombre del producto…"
+                value={producto}
+                onChange={(evento) => cambiarFiltro(() => setProducto(evento.target.value))}
+              />
+            </label>
+            <label className="campo">
               <span>Buscar</span>
               <input
                 className="campo__control"
                 type="search"
-                placeholder="Código, referencia o producto…"
+                placeholder="Código o referencia…"
                 value={busqueda}
                 onChange={(evento) => cambiarFiltro(() => setBusqueda(evento.target.value))}
               />
@@ -176,7 +190,7 @@ export function InventarioPdv() {
         {!consulta.isLoading && consulta.data && filas.length > 0 && filasFiltradas.length === 0 ? (
           <Vacio
             titulo="Sin coincidencias"
-            detalle="Ajusta la búsqueda o los filtros de compañía y punto de venta."
+            detalle="Ajusta los filtros de producto, búsqueda, compañía o punto de venta."
           />
         ) : null}
         {!consulta.isLoading && consulta.data && filasFiltradas.length > 0 ? (
