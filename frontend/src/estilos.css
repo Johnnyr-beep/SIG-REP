@@ -3439,6 +3439,10 @@ textarea.campo__control {
   font-size: 0.7rem;
 }
 
+.ingresos-costos__tabla--mes {
+  min-width: 760px;
+}
+
 .ingresos-costos__tabla th,
 .ingresos-costos__tabla td {
   padding: 0.5rem 0.55rem;

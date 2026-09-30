@@ -77,6 +77,7 @@ function totalDe(meses: MovimientoMes[], campo: ClasePyG): number | null {
 export function IngresosCostos() {
   const anioActual = new Date().getFullYear();
   const [anio, setAnio] = useState(anioActual);
+  const [mesSeleccionado, setMesSeleccionado] = useState("");
   const [cia, setCia] = useState<number>(EMPRESAS[0].cia);
   const periodoMaximo = anio === anioActual ? new Date().getMonth() + 1 : 12;
   const periodos = useMemo(
@@ -109,6 +110,16 @@ export function IngresosCostos() {
       };
     });
   }, [consultas]);
+
+  const indicesMesesVista = mesSeleccionado
+    ? [Number(mesSeleccionado) - 1]
+    : Array.from({ length: 12 }, (_, indice) => indice);
+  const mesesVista = indicesMesesVista.map((indice) => meses[indice] ?? {
+    disponible: false,
+    ingresos: null,
+    costos: null,
+    gastos: null,
+  });
 
   const lineasIngreso = useMemo(() => {
     const filasPorMes = consultas.map((consulta) => consulta.data?.filas ?? []);
@@ -151,10 +162,13 @@ export function IngresosCostos() {
 
     return [...porConcepto.values()].sort((a, b) => a.descripcion.localeCompare(b.descripcion, "es-CO"));
   }, [consultas]);
+  const lineasIngresoVista = lineasIngreso.filter((linea) =>
+    indicesMesesVista.some((indice) => linea.ingresos[indice] !== null),
+  );
 
-  const ingresos = totalDe(meses, "Ingresos");
-  const costos = totalDe(meses, "Costos");
-  const gastos = totalDe(meses, "Gastos");
+  const ingresos = totalDe(mesesVista, "Ingresos");
+  const costos = totalDe(mesesVista, "Costos");
+  const gastos = totalDe(mesesVista, "Gastos");
   const utilidad = ingresos === null || costos === null || gastos === null
     ? null
     : ingresos - costos - gastos;
@@ -164,21 +178,29 @@ export function IngresosCostos() {
   const margenNeto = ingresos === null || ingresos === 0 || utilidad === null
     ? null
     : utilidad / ingresos;
-  const mesesDisponibles = meses.filter((mes) => mes.disponible).length;
-  const ultimoMesDisponible = meses.reduce(
-    (ultimo, mes, indice) => (mes.disponible ? indice : ultimo),
-    -1,
-  );
-  const maxIngresos = Math.max(0, ...meses.map((mes) => mes.ingresos ?? 0));
-  const maxCostos = Math.max(0, ...meses.map((mes) => mes.costos ?? 0));
+  const mesesDisponibles = mesesVista.filter((mes) => mes.disponible).length;
+  const ultimoMesDisponible = mesSeleccionado
+    ? Number(mesSeleccionado) - 1
+    : meses.reduce(
+        (ultimo, mes, indice) => (mes.disponible ? indice : ultimo),
+        -1,
+      );
+  const maxIngresos = Math.max(0, ...mesesVista.map((mes) => mes.ingresos ?? 0));
+  const maxCostos = Math.max(0, ...mesesVista.map((mes) => mes.costos ?? 0));
+  const mostrarTotalesAnuales = mesSeleccionado === "";
+  const notaPeriodo = mesSeleccionado
+    ? `Período seleccionado · ${MESES[Number(mesSeleccionado) - 1]} ${anio}`
+    : `Acumulado de ${mesesDisponibles} períodos disponibles`;
   const fechaCorte = new Intl.DateTimeFormat("es-CO", {
     day: "numeric",
     month: "short",
     year: "numeric",
   }).format(new Date());
 
-  function totalValores(valores: Array<number | null>): number | null {
-    const disponibles = valores.filter((valor): valor is number => valor !== null);
+  function totalValores(valores: Array<number | null>, indices = indicesMesesVista): number | null {
+    const disponibles = indices
+      .map((indice) => valores[indice] ?? null)
+      .filter((valor): valor is number => valor !== null);
     return disponibles.length ? disponibles.reduce((total, valor) => total + valor, 0) : null;
   }
 
@@ -192,7 +214,9 @@ export function IngresosCostos() {
           <h2>Ingresos y costos</h2>
           {ultimoMesDisponible >= 0 ? (
             <p className="ingresos-costos__corte">
-              {mesesDisponibles} períodos con datos · último movimiento {MESES[ultimoMesDisponible]} {anio}
+              {mesSeleccionado
+                ? `${MESES[ultimoMesDisponible]} ${anio} · período seleccionado`
+                : `${mesesDisponibles} períodos con datos · último movimiento ${MESES[ultimoMesDisponible]} ${anio}`}
             </p>
           ) : null}
         </div>
@@ -202,10 +226,26 @@ export function IngresosCostos() {
             <select
               className="campo__control"
               value={anio}
-              onChange={(evento) => setAnio(Number(evento.target.value))}
+              onChange={(evento) => {
+                setAnio(Number(evento.target.value));
+                setMesSeleccionado("");
+              }}
             >
               {Array.from({ length: 6 }, (_, indice) => anioActual - indice).map((opcion) => (
                 <option key={opcion} value={opcion}>{opcion}</option>
+              ))}
+            </select>
+          </label>
+          <label className="campo">
+            <span>Mes</span>
+            <select
+              className="campo__control"
+              value={mesSeleccionado}
+              onChange={(evento) => setMesSeleccionado(evento.target.value)}
+            >
+              <option value="">Todo el año</option>
+              {MESES.slice(0, periodoMaximo).map((mes, indice) => (
+                <option key={mes} value={indice + 1}>{mes}</option>
               ))}
             </select>
           </label>
@@ -231,8 +271,10 @@ export function IngresosCostos() {
       {cargando ? <Cargando texto="Consultando movimientos contables del año…" /> : null}
       {!cargando && mesesDisponibles === 0 ? (
         <Vacio
-          titulo="Sin movimientos contables para este año"
-          detalle="No se recibieron balances de comprobación para los períodos consultados. No se mostrarán cifras estimadas."
+          titulo={mesSeleccionado
+            ? `Sin movimientos en ${MESES[Number(mesSeleccionado) - 1]} ${anio}`
+            : "Sin movimientos contables para este año"}
+          detalle="SIESA no devolvió movimientos para el período elegido. No se mostrarán cifras estimadas."
         />
       ) : null}
 
@@ -242,7 +284,7 @@ export function IngresosCostos() {
             <article className="ingresos-costos__indicador">
               <span>Ingresos</span>
               <strong>{dineroMillones(ingresos)}</strong>
-              <small>Acumulado de períodos disponibles</small>
+              <small>{notaPeriodo}</small>
             </article>
             <article className="ingresos-costos__indicador ingresos-costos__indicador--costo">
               <span>Costo</span>
@@ -284,8 +326,18 @@ export function IngresosCostos() {
                 <h3>Ingresos por mes</h3>
                 <span>Millones de pesos</span>
               </div>
-              <ol className="ingresos-costos__barras" aria-label="Ingresos por mes">
-                {meses.map((mes, indice) => {
+              <ol
+                className="ingresos-costos__barras"
+                aria-label="Ingresos por mes"
+                style={{ gridTemplateColumns: `repeat(${indicesMesesVista.length}, minmax(1.2rem, 1fr))` }}
+              >
+                {indicesMesesVista.map((indice) => {
+                  const mes = meses[indice] ?? {
+                    disponible: false,
+                    ingresos: null,
+                    costos: null,
+                    gastos: null,
+                  };
                   const valor = mes.ingresos;
                   const alto = valor === null || maxIngresos === 0
                     ? 0
@@ -311,7 +363,13 @@ export function IngresosCostos() {
                 <span>Millones</span>
               </div>
               <ol className="ingresos-costos__costos">
-                {meses.map((mes, indice) => {
+                {indicesMesesVista.map((indice) => {
+                  const mes = meses[indice] ?? {
+                    disponible: false,
+                    ingresos: null,
+                    costos: null,
+                    gastos: null,
+                  };
                   const valor = mes.costos;
                   const ancho = valor === null || maxCostos === 0
                     ? 0
@@ -340,7 +398,10 @@ export function IngresosCostos() {
             sinRelleno
           >
             <div className="tabla-envoltorio tabla-envoltorio--alta">
-              <table className="tabla tabla--anclada ingresos-costos__tabla" aria-busy={cargando}>
+              <table
+                className={`tabla tabla--anclada ingresos-costos__tabla${mostrarTotalesAnuales ? "" : " ingresos-costos__tabla--mes"}`}
+                aria-busy={cargando}
+              >
                 <caption className="solo-lectores">
                   Detalle mensual por línea PUC, con ingreso, participación vertical, margen bruto y porcentaje de rentabilidad.
                 </caption>
@@ -348,24 +409,37 @@ export function IngresosCostos() {
                   <tr>
                     <th scope="col" className="columna-ancla" rowSpan={2}>Cuenta</th>
                     <th scope="col" rowSpan={2}>Concepto</th>
-                    {MESES.map((mes) => (
-                      <th key={mes} scope="colgroup" className="numero" colSpan={2}>{mes}</th>
+                    {indicesMesesVista.map((indice) => (
+                      <th key={MESES[indice]} scope="colgroup" className="numero" colSpan={2}>
+                        {MESES[indice]}
+                      </th>
                     ))}
-                    <th scope="colgroup" className="numero" colSpan={2}>Total</th>
+                    {mostrarTotalesAnuales ? (
+                      <th scope="colgroup" className="numero" colSpan={2}>Total</th>
+                    ) : null}
                   </tr>
                   <tr>
-                    {Array.from({ length: 13 }, (_, indice) => (
+                    {Array.from(
+                      { length: indicesMesesVista.length + (mostrarTotalesAnuales ? 1 : 0) },
+                      (_, indice) => (
                       <Fragment key={indice}>
                         <th scope="col" className="numero">Ingreso</th>
                         <th scope="col" className="numero">Rentab.</th>
                       </Fragment>
-                    ))}
+                      ),
+                    )}
                   </tr>
                 </thead>
                 <tbody>
                   <tr className="ingresos-costos__grupo">
                     <th scope="rowgroup" className="columna-ancla" colSpan={2}>Ingresos</th>
-                    {meses.map((mes, indice) => {
+                    {indicesMesesVista.map((indice) => {
+                      const mes = meses[indice] ?? {
+                        disponible: false,
+                        ingresos: null,
+                        costos: null,
+                        gastos: null,
+                      };
                       const margen = mes.ingresos !== null && mes.costos !== null
                         ? mes.ingresos - mes.costos
                         : null;
@@ -382,18 +456,22 @@ export function IngresosCostos() {
                         </Fragment>
                       );
                     })}
-                    <td className="numero ingresos-costos__ingreso">
-                      <span>{numeroMillones(ingresos)}</span>
-                      <small>{porcentaje(ingresos !== null && ingresos !== 0 ? 1 : null)}</small>
-                    </td>
-                    <td className="numero ingresos-costos__rentabilidad">
-                      <span>{numeroMillones(ingresos !== null && costos !== null ? ingresos - costos : null)}</span>
-                      <small>{porcentaje(margenBruto)}</small>
-                    </td>
+                    {mostrarTotalesAnuales ? (
+                      <>
+                        <td className="numero ingresos-costos__ingreso">
+                          <span>{numeroMillones(ingresos)}</span>
+                          <small>{porcentaje(ingresos !== null && ingresos !== 0 ? 1 : null)}</small>
+                        </td>
+                        <td className="numero ingresos-costos__rentabilidad">
+                          <span>{numeroMillones(ingresos !== null && costos !== null ? ingresos - costos : null)}</span>
+                          <small>{porcentaje(margenBruto)}</small>
+                        </td>
+                      </>
+                    ) : null}
                   </tr>
-                  {lineasIngreso.map((linea) => {
-                    const totalIngreso = totalValores(linea.ingresos);
-                    const totalCosto = totalValores(linea.costos);
+                  {lineasIngresoVista.map((linea) => {
+                    const totalIngreso = totalValores(linea.ingresos, indicesMesesVista);
+                    const totalCosto = totalValores(linea.costos, indicesMesesVista);
                     const totalMargen = totalIngreso !== null && totalCosto !== null
                       ? totalIngreso - totalCosto
                       : null;
@@ -401,7 +479,8 @@ export function IngresosCostos() {
                       <tr key={linea.descripcion}>
                         <th scope="row" className="columna-ancla">{linea.codigos.join(" / ")}</th>
                         <td>{linea.descripcion}</td>
-                        {linea.ingresos.map((valor, indice) => {
+                        {indicesMesesVista.map((indice) => {
+                          const valor = linea.ingresos[indice] ?? null;
                           const costo = linea.costos[indice] ?? null;
                           const margen = valor !== null && costo !== null ? valor - costo : null;
                           const totalMes = meses[indice]?.ingresos ?? null;
@@ -418,14 +497,18 @@ export function IngresosCostos() {
                             </Fragment>
                           );
                         })}
-                        <td className="numero ingresos-costos__ingreso">
-                          <span>{numeroMillones(totalIngreso)}</span>
-                          <small>{porcentaje(totalIngreso !== null && ingresos ? totalIngreso / ingresos : null)}</small>
-                        </td>
-                        <td className="numero ingresos-costos__rentabilidad">
-                          <span>{numeroMillones(totalMargen)}</span>
-                          <small>{porcentaje(totalMargen !== null && totalIngreso ? totalMargen / totalIngreso : null)}</small>
-                        </td>
+                        {mostrarTotalesAnuales ? (
+                          <>
+                            <td className="numero ingresos-costos__ingreso">
+                              <span>{numeroMillones(totalIngreso)}</span>
+                              <small>{porcentaje(totalIngreso !== null && ingresos ? totalIngreso / ingresos : null)}</small>
+                            </td>
+                            <td className="numero ingresos-costos__rentabilidad">
+                              <span>{numeroMillones(totalMargen)}</span>
+                              <small>{porcentaje(totalMargen !== null && totalIngreso ? totalMargen / totalIngreso : null)}</small>
+                            </td>
+                          </>
+                        ) : null}
                       </tr>
                     );
                   })}
