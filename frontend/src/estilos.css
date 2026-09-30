@@ -677,6 +677,7 @@ textarea {
 }
 
 .ventas-tat__resumen .indicador__valor {
+  font-size: clamp(0.72rem, 8cqi, 1.15rem);
   overflow-wrap: anywhere;
 }
 
