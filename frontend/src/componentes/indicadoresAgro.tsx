@@ -253,7 +253,7 @@ export function CeldasIndicadoresAgro({
  */
 function claseSigno(valor: string | null): string {
   if (valor === null || valor === "") return "suave";
-  return valor.trim().startsWith("-") ? "texto-peligro" : "";
+  return valor.trim().startsWith("-") ? "texto-peligro" : "texto-exito";
 }
 
 // ── El eje que no tiene meta ─────────────────────────────────────────────────

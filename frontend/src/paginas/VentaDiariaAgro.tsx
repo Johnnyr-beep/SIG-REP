@@ -106,7 +106,7 @@ export function VentaDiariaAgro() {
               />
             ) : (
               <div className="tabla-envoltorio tabla-envoltorio--alta">
-                <table className="tabla tabla--anclada tabla--compacta">
+                <table className="tabla tabla--anclada tabla--compacta tabla--venta-diaria-agro">
                   <caption className="solo-lectores">
                     Venta por día y centro de operación, del {data.desde} al{" "}
                     {data.hasta}.
@@ -157,14 +157,14 @@ export function VentaDiariaAgro() {
                             key={fechas[indice] ?? indice}
                             className={
                               esDomingo(fechas[indice] ?? "")
-                                ? "numero columna-domingo"
-                                : "numero"
+                                ? "numero columna-domingo venta-diaria-agro__venta"
+                                : "numero venta-diaria-agro__venta"
                             }
                           >
                             {porMedida(valor, medida)}
                           </td>
                         ))}
-                        <td className="numero">
+                        <td className="numero venta-diaria-agro__venta">
                           {porMedida(fila.total, medida)}
                         </td>
                       </tr>
@@ -187,14 +187,14 @@ export function VentaDiariaAgro() {
                           key={fechas[indice] ?? indice}
                           className={
                             esDomingo(fechas[indice] ?? "")
-                              ? "numero columna-domingo"
-                              : "numero"
+                              ? "numero columna-domingo venta-diaria-agro__venta"
+                              : "numero venta-diaria-agro__venta"
                           }
                         >
                           {porMedida(valor, medida)}
                         </td>
                       ))}
-                      <td className="numero">
+                      <td className="numero venta-diaria-agro__venta">
                         {porMedida(data.totales.total, medida)}
                       </td>
                     </tr>

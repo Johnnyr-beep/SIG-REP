@@ -29,7 +29,7 @@ export function VentasTat() {
                 {consulta.data ? numero(consulta.data.total_cantidad, 2) : "—"}
               </strong>
             </div>
-            <div className="indicador">
+            <div className="indicador indicador--exito">
               <span className="indicador__etiqueta">Venta subtotal</span>
               <strong className="indicador__valor indicador__valor--mediano">
                 {consulta.data ? dinero(consulta.data.total_subtotal) : "—"}
@@ -74,7 +74,7 @@ export function VentasTat() {
             <Vacio titulo="No hay ventas en este rango" detalle="Ajuste las fechas para consultar otro período." />
           ) : (
             <div className="tabla-envoltorio">
-              <table className="tabla tabla--compacta">
+              <table className="tabla tabla--compacta tabla--ventas-tat">
                 <thead>
                   <tr>
                     <th>Fecha</th><th>Documento</th><th>Sucursal</th><th>Cliente</th>
