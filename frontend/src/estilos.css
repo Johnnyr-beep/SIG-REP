@@ -2126,6 +2126,17 @@ textarea.campo__control {
   gap: var(--espacio-2);
 }
 
+.pie-calculo-agro > summary {
+  color: var(--texto-suave);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.pie-calculo-agro[open] > summary {
+  margin-bottom: var(--espacio-3);
+}
+
 .pie-calculo__lista {
   display: flex;
   flex-wrap: wrap;

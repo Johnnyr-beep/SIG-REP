@@ -469,27 +469,30 @@ export function PieCalculoAgro({
   extra?: ReactNode;
 }) {
   return (
-    <PieCalculo
-      parametros={parametros}
-      medida={medida}
-      formulas={parametros.formulas}
-      extra={
-        <>
-          {parametros.dimension_presupuesto ? (
-            <p className="tenue">
-              El cumplimiento de esta pantalla se mide dentro de una sola
-              dimensión de presupuesto:{" "}
-              <strong>
-                {parametros.dimension_presupuesto.replaceAll("_", " ")}
-              </strong>
-              . Las cuatro dimensiones reparten el mismo dinero, así que nunca
-              se suman entre sí.
-            </p>
-          ) : null}
-          <NotaConciliacion conciliacion={parametros.conciliacion} />
-          {extra}
-        </>
-      }
-    />
+    <details className="pie-calculo-agro">
+      <summary>Ver detalles del cálculo</summary>
+      <PieCalculo
+        parametros={parametros}
+        medida={medida}
+        formulas={parametros.formulas}
+        extra={
+          <>
+            {parametros.dimension_presupuesto ? (
+              <p className="tenue">
+                El cumplimiento de esta pantalla se mide dentro de una sola
+                dimensión de presupuesto{" "}
+                <strong>
+                  {parametros.dimension_presupuesto.replaceAll("_", " ")}
+                </strong>
+                . Las cuatro dimensiones reparten el mismo dinero, así que nunca
+                se suman entre sí.
+              </p>
+            ) : null}
+            <NotaConciliacion conciliacion={parametros.conciliacion} />
+            {extra}
+          </>
+        }
+      />
+    </details>
   );
 }
