@@ -100,6 +100,19 @@ export function useDetalleCuentas(filtros: FiltrosDetalleCuentas, habilitado = t
   });
 }
 
+/** Balance de comprobación de cada período, para construir series mensuales. */
+export function useSerieBalanceComprobacion(periodos: string[]) {
+  return useQueries({
+    queries: periodos.map((periodo) => ({
+      queryKey: ["financiero", "balance-comprobacion", { periodo }],
+      queryFn: () =>
+        peticion<RespuestaBalanceComprobacion>("/financiero/balance-comprobacion", {
+          parametros: { periodo },
+        }),
+    })),
+  });
+}
+
 /**
  * El estado de resultados de varios períodos a la vez, para la tendencia.
  *

@@ -28,6 +28,7 @@ import { Cumplimiento } from "@/paginas/Cumplimiento";
 import { Costos } from "@/paginas/Costos";
 import { Ingesta } from "@/paginas/Ingesta";
 import { InventarioPdv } from "@/paginas/InventarioPdv";
+import { IngresosCostos } from "@/paginas/IngresosCostos";
 import { HistoriaVenta } from "@/paginas/HistoriaVenta";
 import { Presupuesto } from "@/paginas/Presupuesto";
 import { Permisos } from "@/paginas/Permisos";
@@ -168,8 +169,9 @@ export function App() {
       <Route element={<Disposicion />}>
         {esGrupoSantacruz ? (
           <>
+            <Route index element={<IngresosCostos />} />
             <Route
-              index
+              path="resumen-financiero"
               element={
                 <Suspense fallback={<Cargando texto="Cargando el resumen financiero…" />}>
                   <ResumenFinanciero />
