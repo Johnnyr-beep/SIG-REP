@@ -138,8 +138,8 @@ const MENU_FINANCIERO: GrupoNav[] = [
   {
     titulo: "Gerencia",
     items: [
-      { ruta: "/", etiqueta: "Ingresos y costos", icono: "◱", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
-      { ruta: "/resumen-financiero", etiqueta: "Resumen financiero", icono: "▤", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
+      { ruta: "/", etiqueta: "Resumen financiero", icono: "◱", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
+      { ruta: "/resumen-financiero", etiqueta: "Balance y resultados", icono: "▤", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/detalle-cuentas", etiqueta: "Detalle de cuentas", icono: "▤", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/cartera", etiqueta: "Cartera por cliente", icono: "◈", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
     ],
@@ -239,7 +239,7 @@ const TITULOS: Record<string, string> = {
   "/usuarios": "Administración de usuarios",
   "/permisos": "Permisos de consulta",
   "/detalle-cuentas": "Detalle de cuentas",
-  "/resumen-financiero": "Resumen financiero",
+  "/resumen-financiero": "Balance y resultados",
   "/cartera": "Cartera por cliente",
 };
 
@@ -480,7 +480,7 @@ export function Disposicion({ children }: { children?: ReactNode }) {
   // gerencial", que es el título de otra compañía.
   const titulo =
     pathname === "/" && marca.clave === "grupo-santacruz"
-      ? "Ingresos y costos"
+      ? "Resumen financiero"
       : pathname === "/" && (marca.clave === "agroporcicola" || marca.clave === "transantacruz")
         ? "Instancia en preparación"
         : (TITULOS[pathname] ?? "SIGREP");

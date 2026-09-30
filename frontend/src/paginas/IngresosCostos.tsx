@@ -211,7 +211,7 @@ export function IngresosCostos() {
           <p className="ingresos-costos__eyebrow">
             GSC REPORTES · {MODO_EJEMPLOS ? "DATOS DE EJEMPLO" : "SIESA · DATOS EN VIVO"}
           </p>
-          <h2>Ingresos y costos</h2>
+          <h2>Resumen financiero</h2>
           {ultimoMesDisponible >= 0 ? (
             <p className="ingresos-costos__corte">
               {mesSeleccionado

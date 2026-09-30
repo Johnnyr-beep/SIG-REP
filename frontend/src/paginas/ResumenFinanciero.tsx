@@ -273,7 +273,7 @@ export function ResumenFinanciero() {
       style={{ background: `color-mix(in srgb, ${colorEmpresa} 7%, var(--fondo))` }}
     >
       <Tarjeta
-        titulo="Resumen financiero"
+        titulo="Balance y resultados"
         descripcion="Balance general y estado de resultados del libro mayor, por período contable."
         acciones={
           <form
