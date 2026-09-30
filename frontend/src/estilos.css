@@ -3435,7 +3435,7 @@ textarea.campo__control {
 }
 
 .ingresos-costos__tabla {
-  min-width: 1120px;
+  min-width: 1920px;
   font-size: 0.7rem;
 }
 
@@ -3452,6 +3452,26 @@ textarea.campo__control {
 
 .ingresos-costos__tabla .ingresos-costos__grupo th {
   text-align: left;
+}
+
+.ingresos-costos__tabla td > span,
+.ingresos-costos__tabla td > small {
+  display: block;
+  white-space: nowrap;
+}
+
+.ingresos-costos__tabla td > small {
+  margin-top: 0.15rem;
+  color: var(--texto-tenue);
+  font-size: 0.6rem;
+}
+
+.ingresos-costos__tabla .ingresos-costos__ingreso > small {
+  color: var(--exito);
+}
+
+.ingresos-costos__tabla .ingresos-costos__rentabilidad > small {
+  color: var(--aviso);
 }
 
 @media (max-width: 72rem) {

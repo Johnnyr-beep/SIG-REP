@@ -17,11 +17,11 @@ interface MovimientoMes {
   gastos: number | null;
 }
 
-interface CuentaAnual {
-  clase: ClasePyG;
-  codigo: string;
+interface LineaIngresoAnual {
+  codigos: string[];
   descripcion: string;
-  valores: Array<number | null>;
+  ingresos: Array<number | null>;
+  costos: Array<number | null>;
 }
 
 function montoMovimiento(fila: FilaBalanceComprobacion): number | null {
@@ -43,6 +43,20 @@ function dineroMillones(valor: number | null): string {
 function porcentaje(valor: number | null): string {
   if (valor === null || !Number.isFinite(valor)) return "—";
   return `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 1 }).format(valor * 100)} %`;
+}
+
+function numeroMillones(valor: number | null): string {
+  if (valor === null || !Number.isFinite(valor)) return "—";
+  return new Intl.NumberFormat("es-CO", { maximumFractionDigits: 3 }).format(valor / 1_000_000);
+}
+
+function claveConcepto(descripcion: string | null | undefined): string {
+  return (descripcion ?? "Sin descripción en SIESA")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("es-CO")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function totalDe(meses: MovimientoMes[], campo: ClasePyG): number | null {
@@ -87,32 +101,45 @@ export function IngresosCostos() {
     });
   }, [consultas]);
 
-  const cuentas = useMemo(() => {
-    const porCuenta = new Map<string, CuentaAnual>();
-    consultas.forEach((consulta, indiceMes) => {
-      for (const fila of consulta.data?.filas ?? []) {
-        const movimiento = montoMovimiento(fila);
-        if (movimiento === null) continue;
-        const clase: ClasePyG = fila.clase === "Ingresos"
-          ? "Ingresos"
-          : fila.clase.startsWith("Costo")
-            ? "Costos"
-            : "Gastos";
-        const clave = `${clase}-${fila.mayor_iii}`;
-        let cuenta = porCuenta.get(clave);
-        if (!cuenta) {
-          cuenta = {
-            clase,
-            codigo: fila.mayor_iii,
+  const lineasIngreso = useMemo(() => {
+    const filasPorMes = consultas.map((consulta) => consulta.data?.filas ?? []);
+    const porConcepto = new Map<string, LineaIngresoAnual>();
+
+    filasPorMes.forEach((filas, indiceMes) => {
+      for (const fila of filas) {
+        if (fila.clase !== "Ingresos") continue;
+        const clave = claveConcepto(fila.descripcion);
+        let linea = porConcepto.get(clave);
+        if (!linea) {
+          linea = {
+            codigos: [],
             descripcion: fila.descripcion ?? "Sin descripción en SIESA",
-            valores: Array.from({ length: 12 }, () => null),
+            ingresos: Array.from({ length: 12 }, () => null),
+            costos: Array.from({ length: 12 }, () => null),
           };
-          porCuenta.set(clave, cuenta);
+          porConcepto.set(clave, linea);
         }
-        cuenta.valores[indiceMes] = (cuenta.valores[indiceMes] ?? 0) + movimiento;
+        if (!linea.codigos.includes(fila.mayor_iii)) linea.codigos.push(fila.mayor_iii);
+        const movimiento = montoMovimiento(fila);
+        if (movimiento !== null) {
+          linea.ingresos[indiceMes] = (linea.ingresos[indiceMes] ?? 0) + movimiento;
+        }
       }
     });
-    return porCuenta;
+
+    filasPorMes.forEach((filas, indiceMes) => {
+      for (const fila of filas) {
+        if (!fila.clase.startsWith("Costo")) continue;
+        const linea = porConcepto.get(claveConcepto(fila.descripcion));
+        if (!linea) continue;
+        const movimiento = montoMovimiento(fila);
+        if (movimiento !== null) {
+          linea.costos[indiceMes] = (linea.costos[indiceMes] ?? 0) + movimiento;
+        }
+      }
+    });
+
+    return [...porConcepto.values()].sort((a, b) => a.descripcion.localeCompare(b.descripcion, "es-CO"));
   }, [consultas]);
 
   const ingresos = totalDe(meses, "Ingresos");
@@ -140,9 +167,9 @@ export function IngresosCostos() {
     year: "numeric",
   }).format(new Date());
 
-  function totalCuenta(cuenta: CuentaAnual): number | null {
-    const valores = cuenta.valores.filter((valor): valor is number => valor !== null);
-    return valores.length ? valores.reduce((total, valor) => total + valor, 0) : null;
+  function totalValores(valores: Array<number | null>): number | null {
+    const disponibles = valores.filter((valor): valor is number => valor !== null);
+    return disponibles.length ? disponibles.reduce((total, valor) => total + valor, 0) : null;
   }
 
   return (
@@ -286,56 +313,98 @@ export function IngresosCostos() {
           </section>
 
           <Tarjeta
-            titulo="Detalle por cuenta PUC"
-            descripcion="Movimientos mensuales de ingresos, costos y gastos. Los guiones indican períodos o cuentas sin datos reportados."
+            titulo="Ingresos detalle"
+            descripcion="Ingreso: valor y participación sobre el total del mes. Rentab.: margen bruto y porcentaje sobre el ingreso de la línea; se calcula cuando coincide la descripción PUC del costo."
             sinRelleno
           >
             <div className="tabla-envoltorio tabla-envoltorio--alta">
               <table className="tabla tabla--anclada ingresos-costos__tabla" aria-busy={cargando}>
                 <caption className="solo-lectores">
-                  Detalle mensual por cuenta PUC, con importes en millones de pesos.
+                  Detalle mensual por línea PUC, con ingreso, participación vertical, margen bruto y porcentaje de rentabilidad.
                 </caption>
                 <thead>
                   <tr>
                     <th scope="col" className="columna-ancla" rowSpan={2}>Cuenta</th>
                     <th scope="col" rowSpan={2}>Concepto</th>
-                    <th scope="col" className="numero" colSpan={12}>Millones de pesos</th>
-                    <th scope="col" className="numero" rowSpan={2}>Total</th>
+                    {MESES.map((mes) => (
+                      <th key={mes} scope="colgroup" className="numero" colSpan={2}>{mes}</th>
+                    ))}
+                    <th scope="colgroup" className="numero" colSpan={2}>Total</th>
                   </tr>
                   <tr>
-                    {MESES.map((mes) => <th key={mes} scope="col" className="numero">{mes}</th>)}
+                    {Array.from({ length: 13 }, (_, indice) => (
+                      <Fragment key={indice}>
+                        <th scope="col" className="numero">Ingreso</th>
+                        <th scope="col" className="numero">Rentab.</th>
+                      </Fragment>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {CLASES_PYG.map((clase) => {
-                    const filas = [...cuentas.values()]
-                      .filter((cuenta) => cuenta.clase === clase)
-                      .sort((a, b) => a.codigo.localeCompare(b.codigo));
-                    const movimientoClase = meses.map((mes) => mes[clase.toLocaleLowerCase() as "ingresos" | "costos" | "gastos"]);
-                    const totalClase = totalDe(meses, clase);
-                    if (!filas.length && totalClase === null) return null;
+                  <tr className="ingresos-costos__grupo">
+                    <th scope="rowgroup" className="columna-ancla" colSpan={2}>Ingresos</th>
+                    {meses.map((mes, indice) => {
+                      const margen = mes.ingresos !== null && mes.costos !== null
+                        ? mes.ingresos - mes.costos
+                        : null;
+                      return (
+                        <Fragment key={MESES[indice]}>
+                          <td className="numero ingresos-costos__ingreso">
+                            <span>{numeroMillones(mes.ingresos)}</span>
+                            <small>{porcentaje(mes.ingresos !== null && mes.ingresos !== 0 ? 1 : null)}</small>
+                          </td>
+                          <td className="numero ingresos-costos__rentabilidad">
+                            <span>{numeroMillones(margen)}</span>
+                            <small>{porcentaje(margen !== null && mes.ingresos ? margen / mes.ingresos : null)}</small>
+                          </td>
+                        </Fragment>
+                      );
+                    })}
+                    <td className="numero ingresos-costos__ingreso">
+                      <span>{numeroMillones(ingresos)}</span>
+                      <small>{porcentaje(ingresos !== null && ingresos !== 0 ? 1 : null)}</small>
+                    </td>
+                    <td className="numero ingresos-costos__rentabilidad">
+                      <span>{numeroMillones(ingresos !== null && costos !== null ? ingresos - costos : null)}</span>
+                      <small>{porcentaje(margenBruto)}</small>
+                    </td>
+                  </tr>
+                  {lineasIngreso.map((linea) => {
+                    const totalIngreso = totalValores(linea.ingresos);
+                    const totalCosto = totalValores(linea.costos);
+                    const totalMargen = totalIngreso !== null && totalCosto !== null
+                      ? totalIngreso - totalCosto
+                      : null;
                     return (
-                      <Fragment key={clase}>
-                        <tr className="ingresos-costos__grupo">
-                          <th scope="rowgroup" className="columna-ancla" colSpan={2}>{clase}</th>
-                          {movimientoClase.map((valor, indice) => (
-                            <td key={MESES[indice]} className="numero">{dineroMillones(valor)}</td>
-                          ))}
-                          <td className="numero">{dineroMillones(totalClase)}</td>
-                        </tr>
-                        {filas.map((cuenta) => (
-                          <tr key={`${cuenta.clase}-${cuenta.codigo}`}>
-                            <th scope="row" className="columna-ancla">{cuenta.codigo}</th>
-                            <td>{cuenta.descripcion}</td>
-                            {cuenta.valores.map((valor, indice) => (
-                              <td key={MESES[indice]} className="numero">
-                                {valor === null ? "—" : dineroMillones(valor).replace("$", "").replace(" M", "")}
+                      <tr key={linea.descripcion}>
+                        <th scope="row" className="columna-ancla">{linea.codigos.join(" / ")}</th>
+                        <td>{linea.descripcion}</td>
+                        {linea.ingresos.map((valor, indice) => {
+                          const costo = linea.costos[indice] ?? null;
+                          const margen = valor !== null && costo !== null ? valor - costo : null;
+                          const totalMes = meses[indice]?.ingresos ?? null;
+                          return (
+                            <Fragment key={MESES[indice]}>
+                              <td className="numero ingresos-costos__ingreso">
+                                <span>{numeroMillones(valor)}</span>
+                                <small>{porcentaje(valor !== null && totalMes ? valor / totalMes : null)}</small>
                               </td>
-                            ))}
-                            <td className="numero">{dineroMillones(totalCuenta(cuenta))}</td>
-                          </tr>
-                        ))}
-                      </Fragment>
+                              <td className="numero ingresos-costos__rentabilidad">
+                                <span>{numeroMillones(margen)}</span>
+                                <small>{porcentaje(margen !== null && valor ? margen / valor : null)}</small>
+                              </td>
+                            </Fragment>
+                          );
+                        })}
+                        <td className="numero ingresos-costos__ingreso">
+                          <span>{numeroMillones(totalIngreso)}</span>
+                          <small>{porcentaje(totalIngreso !== null && ingresos ? totalIngreso / ingresos : null)}</small>
+                        </td>
+                        <td className="numero ingresos-costos__rentabilidad">
+                          <span>{numeroMillones(totalMargen)}</span>
+                          <small>{porcentaje(totalMargen !== null && totalIngreso ? totalMargen / totalIngreso : null)}</small>
+                        </td>
+                      </tr>
                     );
                   })}
                 </tbody>
