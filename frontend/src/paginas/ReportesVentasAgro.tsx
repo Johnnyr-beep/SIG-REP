@@ -135,6 +135,18 @@ function totalCuatroComponentes(
 }
 
 function MatrizCategorias({ filas }: { filas: FilaVentaComercialAgro[] }) {
+  const categorias = CATEGORIAS.map(([patron, etiqueta], indice) => {
+    const categoria = filtrar(filas, patron);
+    return {
+      patron,
+      etiqueta,
+      res: porEspecie(categoria, "RES"),
+      cerdo: porEspecie(categoria, "CERDO"),
+      total: sumaVenta(categoria),
+      indice,
+    };
+  }).sort((a, b) => Number(b.total) - Number(a.total) || a.indice - b.indice);
+
   return (
     <div className="tabla-envoltorio">
       <table className="tabla">
@@ -147,16 +159,13 @@ function MatrizCategorias({ filas }: { filas: FilaVentaComercialAgro[] }) {
           </tr>
         </thead>
         <tbody>
-          {CATEGORIAS.map(([patron, etiqueta]) => {
-            const categoria = filtrar(filas, patron);
-            const res = porEspecie(categoria, "RES");
-            const cerdo = porEspecie(categoria, "CERDO");
+          {categorias.map(({ patron, etiqueta, res, cerdo, total }) => {
             return (
               <tr key={patron}>
                 <th scope="row">{etiqueta}</th>
                 <td className="numero">{res ? dinero(res.venta_valor) : "—"}</td>
                 <td className="numero">{cerdo ? dinero(cerdo.venta_valor) : "—"}</td>
-                <td className="numero">{dinero(sumaVenta(categoria))}</td>
+                <td className="numero">{dinero(total)}</td>
               </tr>
             );
           })}
