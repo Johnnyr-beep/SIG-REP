@@ -61,6 +61,7 @@ export function ReportesVentasAgro() {
               nota={`${kilos(
                 totalCuatroComponentes(tipoItem.data.filas, especie.data.filas, "kilos"),
               )} en Bienes, Servicios, Res y Cerdo`}
+              tono="exito"
             />
             {tipoItem.data.filas.map((fila) => (
               <Indicador
@@ -68,6 +69,7 @@ export function ReportesVentasAgro() {
                 etiqueta={fila.nombre}
                 valor={dinero(fila.venta_valor)}
                 nota={`${kilos(fila.kilos)} vendidos`}
+                tono="exito"
               />
             ))}
             {especie.data.filas
@@ -78,6 +80,7 @@ export function ReportesVentasAgro() {
                   etiqueta={`Venta ${fila.nombre}`}
                   valor={dinero(fila.venta_valor)}
                   nota={`${kilos(fila.kilos)} vendidos`}
+                  tono="exito"
                 />
               ))}
           </section>

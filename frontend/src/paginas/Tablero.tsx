@@ -40,6 +40,26 @@ export function Tablero() {
   const medida = data?.medida ?? filtros.medida;
   const grande = (valor: string | null) =>
     medida === "kilos" ? kilos(valor) : dineroCorto(valor);
+  const tonoSemaforo =
+    data?.consolidado.semaforo === "VERDE"
+      ? "exito"
+      : data?.consolidado.semaforo === "AMARILLO"
+        ? "aviso"
+        : data?.consolidado.semaforo === "ROJO"
+          ? "peligro"
+          : undefined;
+  const tonoMargen =
+    data?.consolidado.margen_porcentaje == null
+      ? undefined
+      : data.consolidado.margen_porcentaje.trim().startsWith("-")
+        ? "peligro"
+        : "exito";
+  const tonoCrecimiento =
+    data?.consolidado.crecimiento == null
+      ? undefined
+      : data.consolidado.crecimiento.trim().startsWith("-")
+        ? "peligro"
+        : "exito";
 
   return (
     <div className="pila">
@@ -78,7 +98,7 @@ export function Tablero() {
             <div className="consolidado">
               <div className="consolidado__foco">
                 <p className="consolidado__etiqueta">Cumplimiento</p>
-                <p className="consolidado__cifra">
+                <p className={`consolidado__cifra${tonoSemaforo ? ` consolidado__cifra--${tonoSemaforo}` : ""}`}>
                   {porcentaje(data.consolidado.cumplimiento)}
                 </p>
                 <Semaforo estado={data.consolidado.semaforo} />
@@ -113,12 +133,14 @@ export function Tablero() {
                 etiqueta="Venta acumulada"
                 valor={grande(data.consolidado.venta)}
                 nota={porMedida(data.consolidado.venta, medida)}
+                tono="exito"
               />
               <Indicador
                 etiqueta="Proyección al cierre"
                 valor={grande(data.consolidado.proyeccion)}
                 nota={`${porcentaje(data.consolidado.cumplimiento_proyectado)} del presupuesto`}
                 pista={<p className="formula">{FORMULAS.proyeccion}</p>}
+                tono={tonoSemaforo}
               />
               <Indicador
                 etiqueta="Venta diaria requerida"
@@ -127,6 +149,7 @@ export function Tablero() {
                 pista={
                   <p className="formula">{FORMULAS.venta_diaria_requerida}</p>
                 }
+                tono="aviso"
               />
               <Indicador
                 etiqueta="Venta diaria promedio"
@@ -135,12 +158,14 @@ export function Tablero() {
                 pista={
                   <p className="formula">{FORMULAS.venta_diaria_promedio}</p>
                 }
+                tono="exito"
               />
               <Indicador
                 etiqueta="Crecimiento año anterior"
                 valor={porcentaje(data.consolidado.crecimiento)}
                 nota={`Año anterior: ${porMedida(data.consolidado.venta_anio_anterior, medida)}`}
                 pista={<p className="formula">{FORMULAS.crecimiento}</p>}
+                tono={tonoCrecimiento}
               />
               <Indicador
                 etiqueta="Margen"
@@ -155,6 +180,7 @@ export function Tablero() {
                     </p>
                   </>
                 }
+                tono={tonoMargen}
               />
             </div>
           </Tarjeta>

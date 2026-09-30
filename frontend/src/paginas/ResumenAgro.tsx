@@ -525,7 +525,7 @@ function ConsolidadoResumenAgro({
         </div>
       </div>
 
-      <div className="rejilla rejilla--indicadores consolidado__indicadores">
+      <div className="rejilla rejilla--indicadores">
         <Indicador
           etiqueta="Presupuesto del mes"
           valor={dinero(enPesos?.presupuesto ?? null)}

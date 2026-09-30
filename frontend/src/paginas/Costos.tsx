@@ -13,6 +13,12 @@ export function Costos() {
   const { filtros } = control;
   const { data, isLoading, error } = useCostos(filtros);
   const { tienePermiso } = useAuth();
+  const tonoMargen =
+    data?.consolidado.margen_porcentaje == null
+      ? undefined
+      : data.consolidado.margen_porcentaje.trim().startsWith("-")
+        ? "peligro"
+        : "exito";
 
   return (
     <div className="pila">
@@ -27,9 +33,9 @@ export function Costos() {
             pie={<PieCalculo parametros={data.parametros_calculo} medida="valor" />}
           >
             <div className="rejilla rejilla--indicadores">
-              <Indicador etiqueta="Venta acumulada" valor={dinero(data.consolidado.venta)} />
-              <Indicador etiqueta="Costo acumulado" valor={dinero(data.consolidado.costo)} />
-              <Indicador etiqueta="Margen" valor={porcentaje(data.consolidado.margen_porcentaje)} nota={dinero(data.consolidado.margen_valor)} />
+              <Indicador etiqueta="Venta acumulada" valor={dinero(data.consolidado.venta)} tono="exito" />
+              <Indicador etiqueta="Costo acumulado" valor={dinero(data.consolidado.costo)} tono="aviso" />
+              <Indicador etiqueta="Margen" valor={porcentaje(data.consolidado.margen_porcentaje)} nota={dinero(data.consolidado.margen_valor)} tono={tonoMargen} />
               <Indicador etiqueta="Cobertura de costo" valor={porcentaje(data.consolidado.cobertura_costo)} nota={`${numero(data.consolidado.lineas_con_costo)} de ${numero(data.consolidado.lineas)} líneas con costo`} />
             </div>
           </Tarjeta>

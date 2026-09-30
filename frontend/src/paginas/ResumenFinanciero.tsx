@@ -326,16 +326,19 @@ export function ResumenFinanciero() {
                     etiqueta="Ingresos"
                     valor={dinero(resultadosVivo.data.ingresos)}
                     tamano="mediano"
+                    tono="exito"
                   />
                   <Indicador
                     etiqueta="Costos"
                     valor={dinero(resultadosVivo.data.costos)}
                     tamano="mediano"
+                    tono="aviso"
                   />
                   <Indicador
                     etiqueta="Gastos"
                     valor={dinero(resultadosVivo.data.gastos)}
                     tamano="mediano"
+                    tono="aviso"
                   />
                   <Indicador
                     etiqueta="Utilidad neta"
@@ -385,9 +388,9 @@ export function ResumenFinanciero() {
           <>
             <h3>Estado de resultados</h3>
             <div className="rejilla rejilla--indicadores">
-              <Indicador etiqueta="Ingresos" valor={dinero(resultados.data.ingresos)} tamano="mediano" />
-              <Indicador etiqueta="Costos" valor={dinero(resultados.data.costos)} tamano="mediano" />
-              <Indicador etiqueta="Gastos" valor={dinero(resultados.data.gastos)} tamano="mediano" />
+              <Indicador etiqueta="Ingresos" valor={dinero(resultados.data.ingresos)} tamano="mediano" tono="exito" />
+              <Indicador etiqueta="Costos" valor={dinero(resultados.data.costos)} tamano="mediano" tono="aviso" />
+              <Indicador etiqueta="Gastos" valor={dinero(resultados.data.gastos)} tamano="mediano" tono="aviso" />
               <Indicador
                 etiqueta="Utilidad neta"
                 valor={dinero(resultados.data.utilidad_neta)}

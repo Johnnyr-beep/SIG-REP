@@ -811,13 +811,26 @@ textarea {
 }
 
 .indicador--exito {
+  background: color-mix(in srgb, var(--exito) 8%, var(--superficie-2));
   border-color: color-mix(in srgb, var(--exito) 35%, transparent);
 }
 .indicador--aviso {
+  background: color-mix(in srgb, var(--aviso) 8%, var(--superficie-2));
   border-color: color-mix(in srgb, var(--aviso) 35%, transparent);
 }
 .indicador--peligro {
+  background: color-mix(in srgb, var(--peligro) 8%, var(--superficie-2));
   border-color: color-mix(in srgb, var(--peligro) 35%, transparent);
+}
+
+.indicador--exito .indicador__valor {
+  color: var(--exito);
+}
+.indicador--aviso .indicador__valor {
+  color: var(--aviso);
+}
+.indicador--peligro .indicador__valor {
+  color: var(--peligro);
 }
 
 .indicador__etiqueta {
@@ -899,30 +912,6 @@ textarea {
 
 .consolidado__brecha {
   font-weight: 600;
-}
-
-.consolidado__indicadores .indicador--exito {
-  background: color-mix(in srgb, var(--exito) 8%, var(--superficie-2));
-}
-
-.consolidado__indicadores .indicador--exito .indicador__valor {
-  color: var(--exito);
-}
-
-.consolidado__indicadores .indicador--aviso {
-  background: color-mix(in srgb, var(--aviso) 8%, var(--superficie-2));
-}
-
-.consolidado__indicadores .indicador--aviso .indicador__valor {
-  color: var(--aviso);
-}
-
-.consolidado__indicadores .indicador--peligro {
-  background: color-mix(in srgb, var(--peligro) 8%, var(--superficie-2));
-}
-
-.consolidado__indicadores .indicador--peligro .indicador__valor {
-  color: var(--peligro);
 }
 
 /* ── Tarjeta de grupo ────────────────────────────────────────────────────── */
