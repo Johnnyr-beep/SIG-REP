@@ -4,6 +4,7 @@ from datetime import date
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.infrastructure.fuentes.agro_tat import FuenteVentasTat
 from app.infrastructure.models.agro_tat import AgroTatCorrida, AgroTatVenta
@@ -14,26 +15,53 @@ class AgroTatService:
     def __init__(self, sesion: Session) -> None:
         self.sesion = sesion
 
-    def listar(self, desde: date, hasta: date, limite: int, offset: int) -> AgroTatResumen:
-        filas = list(
-            self.sesion.scalars(
-                select(AgroTatVenta)
-                .where(AgroTatVenta.fecha_documento.between(desde, hasta))
-                .order_by(AgroTatVenta.fecha_documento, AgroTatVenta.nro_documento)
-                .limit(limite)
-                .offset(offset)
-            )
+    def listar(
+        self,
+        desde: date,
+        hasta: date,
+        tipo_comercial: str | None,
+        limite: int | None,
+        offset: int,
+    ) -> AgroTatResumen:
+        filtros: list[ColumnElement[bool]] = [AgroTatVenta.fecha_documento.between(desde, hasta)]
+        if tipo_comercial is not None:
+            filtros.append(AgroTatVenta.tipo_comercial == tipo_comercial)
+
+        consulta_filas = (
+            select(AgroTatVenta)
+            .where(*filtros)
+            .order_by(AgroTatVenta.fecha_documento, AgroTatVenta.nro_documento)
         )
+        if limite is not None:
+            consulta_filas = consulta_filas.limit(limite)
+        if offset:
+            consulta_filas = consulta_filas.offset(offset)
+        filas = list(self.sesion.scalars(consulta_filas))
+
         total = self.sesion.execute(
             select(
                 func.coalesce(func.sum(AgroTatVenta.cantidad_inv), 0),
                 func.coalesce(func.sum(AgroTatVenta.valor_subtotal), 0),
-            ).where(AgroTatVenta.fecha_documento.between(desde, hasta))
+            ).where(*filtros)
         ).one()
+        tipos_comerciales = [
+            tipo
+            for tipo in self.sesion.scalars(
+                select(AgroTatVenta.tipo_comercial)
+                .where(
+                    AgroTatVenta.fecha_documento.between(desde, hasta),
+                    AgroTatVenta.tipo_comercial.is_not(None),
+                )
+                .distinct()
+                .order_by(AgroTatVenta.tipo_comercial)
+            )
+            if tipo is not None
+        ]
         return AgroTatResumen(
             filas=[AgroTatVentaSalida.model_validate(fila) for fila in filas],
-            total_cantidad=str(total[0]),
-            total_subtotal=str(total[1]),
+            total_cantidad=total[0],
+            total_subtotal=total[1],
+            tipos_comerciales=tipos_comerciales,
         )
 
     def ingerir(

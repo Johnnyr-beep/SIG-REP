@@ -22,6 +22,7 @@ class AgroTatResumen(EsquemaBase):
     filas: list[AgroTatVentaSalida]
     total_cantidad: DecimalStr
     total_subtotal: DecimalStr
+    tipos_comerciales: list[str]
 
 
 class AgroTatIngestaSalida(EsquemaBase):

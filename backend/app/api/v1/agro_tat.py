@@ -20,10 +20,11 @@ def listar(
     sesion: SesionDep,
     fecha_inicio: date,
     fecha_fin: date,
-    limit: int = Query(100, ge=1, le=5000),
+    tipo_comercial: str | None = Query(default=None, min_length=1, max_length=120),
+    limit: int | None = Query(default=None, ge=1, le=5000),
     offset: int = Query(0, ge=0),
 ) -> AgroTatResumen:
-    return AgroTatService(sesion).listar(fecha_inicio, fecha_fin, limit, offset)
+    return AgroTatService(sesion).listar(fecha_inicio, fecha_fin, tipo_comercial, limit, offset)
 
 
 @router.post("/ingesta", response_model=AgroTatIngestaSalida, summary="Ingerir ventas TAT")

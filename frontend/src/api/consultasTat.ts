@@ -6,6 +6,7 @@ import type { AgroTatIngesta, AgroTatResumen } from "./tipos";
 export interface FiltrosTat {
   fecha_inicio: string;
   fecha_fin: string;
+  tipo_comercial?: string;
   limit?: number;
   offset?: number;
 }

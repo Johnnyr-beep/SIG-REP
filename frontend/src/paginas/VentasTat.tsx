@@ -9,8 +9,12 @@ export function VentasTat() {
   const hoy = fechaHoy();
   const [fechaInicio, setFechaInicio] = useState(hoy.slice(0, 8) + "01");
   const [fechaFin, setFechaFin] = useState(hoy);
-  const [offset, setOffset] = useState(0);
-  const filtros = { fecha_inicio: fechaInicio, fecha_fin: fechaFin, limit: 100, offset };
+  const [tipoComercial, setTipoComercial] = useState("");
+  const filtros = {
+    fecha_inicio: fechaInicio,
+    fecha_fin: fechaFin,
+    tipo_comercial: tipoComercial || undefined,
+  };
   const consulta = useVentasTat(filtros);
   const ingesta = useIngestarTat();
   const { tieneRol } = useAuth();
@@ -42,7 +46,6 @@ export function VentasTat() {
           className="formulario formulario--linea"
           onSubmit={(evento) => {
             evento.preventDefault();
-            setOffset(0);
           }}
         >
           <label className="campo">
@@ -52,6 +55,21 @@ export function VentasTat() {
           <label className="campo">
             <span>Fecha final</span>
             <input className="campo__control" type="date" value={fechaFin} min={fechaInicio} onChange={(evento) => setFechaFin(evento.target.value)} required />
+          </label>
+          <label className="campo">
+            <span>Tipo comercial</span>
+            <select
+              className="campo__control"
+              value={tipoComercial}
+              onChange={(evento) => setTipoComercial(evento.target.value)}
+            >
+              <option value="">Todos</option>
+              {(consulta.data?.tipos_comerciales ?? []).map((tipo) => (
+                <option key={tipo} value={tipo}>
+                  {tipo}
+                </option>
+              ))}
+            </select>
           </label>
           <button type="submit" className="boton">Consultar</button>
           <button
@@ -98,10 +116,6 @@ export function VentasTat() {
               </table>
             </div>
           )}
-          <div className="acciones">
-            <button type="button" className="boton boton--sutil" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - 100))}>Anterior</button>
-            <button type="button" className="boton boton--sutil" disabled={consulta.data.filas.length < 100} onClick={() => setOffset(offset + 100)}>Siguiente</button>
-          </div>
         </Tarjeta>
       ) : null}
     </div>

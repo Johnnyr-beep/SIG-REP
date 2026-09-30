@@ -144,6 +144,7 @@ export interface AgroTatResumen {
   filas: AgroTatVenta[];
   total_cantidad: string;
   total_subtotal: string;
+  tipos_comerciales: string[];
 }
 
 export interface AgroTatIngesta {

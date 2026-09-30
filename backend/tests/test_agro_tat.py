@@ -9,6 +9,7 @@ from app.infrastructure.fuentes.agro_tat import (
     ConfiguracionTat,
     FuenteVentasTat,
 )
+from app.infrastructure.models.agro_tat import AgroTatCorrida, AgroTatVenta
 
 
 def test_fuente_tat_envia_contrato_real_y_parsea_csv() -> None:
@@ -62,3 +63,53 @@ def test_fuente_tat_pagina_hasta_el_final() -> None:
 
     assert len(filas) == 5001
     assert [llamada.url.params["offset"] for llamada in llamadas] == ["0", "5000"]
+
+
+def test_listar_tat_devuelve_todas_las_facturas_y_filtra_tipo_comercial(
+    sesion, cliente_http, admin
+) -> None:
+    desde = date(2026, 9, 1)
+    corrida = AgroTatCorrida(desde=desde, hasta=date(2026, 9, 30))
+    sesion.add(corrida)
+    sesion.flush()
+    sesion.add_all(
+        [
+            AgroTatVenta(
+                corrida_id=corrida.id,
+                fecha_documento=desde,
+                nro_documento=f"F-{indice:03}",
+                tipo_comercial="TAT",
+                cantidad_inv=Decimal("1"),
+                valor_subtotal=Decimal("10.00"),
+            )
+            for indice in range(101)
+        ]
+        + [
+            AgroTatVenta(
+                corrida_id=corrida.id,
+                fecha_documento=desde,
+                nro_documento="F-MINORISTA",
+                tipo_comercial="Minorista",
+                cantidad_inv=Decimal("2"),
+                valor_subtotal=Decimal("25.00"),
+            )
+        ]
+    )
+    sesion.commit()
+
+    parametros = {"fecha_inicio": "2026-09-01", "fecha_fin": "2026-09-30"}
+    todas = cliente_http.get("/api/v1/agro/tat", params=parametros, headers=admin)
+    assert todas.status_code == 200, todas.text
+    assert len(todas.json()["filas"]) == 102
+    assert todas.json()["tipos_comerciales"] == ["Minorista", "TAT"]
+
+    filtradas = cliente_http.get(
+        "/api/v1/agro/tat",
+        params={**parametros, "tipo_comercial": "TAT"},
+        headers=admin,
+    )
+    assert filtradas.status_code == 200, filtradas.text
+    assert len(filtradas.json()["filas"]) == 101
+    assert {fila["tipo_comercial"] for fila in filtradas.json()["filas"]} == {"TAT"}
+    assert filtradas.json()["total_cantidad"] == "101.000"
+    assert filtradas.json()["total_subtotal"] == "1010.00"
