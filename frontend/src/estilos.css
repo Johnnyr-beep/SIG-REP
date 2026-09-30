@@ -668,7 +668,7 @@ textarea {
   display: grid;
   grid-template-columns: repeat(2, minmax(132px, 1fr));
   gap: var(--espacio-2);
-  min-width: min(100%, 300px);
+  min-width: min(100%, 340px);
 }
 
 .ventas-tat__resumen .indicador {
