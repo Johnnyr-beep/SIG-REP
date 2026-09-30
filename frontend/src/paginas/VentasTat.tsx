@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import { useIngestarTat, useVentasTat } from "@/api/consultasTat";
-import { useAuth } from "@/auth/ContextoAuth";
+import { useVentasTat } from "@/api/consultasTat";
+import type { FiltrosTat } from "@/api/consultasTat";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import { dinero, fechaHoy, numero } from "@/utilidades/formato";
 
@@ -10,15 +10,13 @@ export function VentasTat() {
   const [fechaInicio, setFechaInicio] = useState(hoy.slice(0, 8) + "01");
   const [fechaFin, setFechaFin] = useState(hoy);
   const [tipoComercial, setTipoComercial] = useState("");
-  const filtros = {
+  const filtros: FiltrosTat = {
     fecha_inicio: fechaInicio,
     fecha_fin: fechaFin,
     tipo_comercial: tipoComercial || undefined,
   };
-  const consulta = useVentasTat(filtros);
-  const ingesta = useIngestarTat();
-  const { tieneRol } = useAuth();
-  const puedeIngerir = tieneRol("ADMIN", "GERENTE", "ANALISTA");
+  const [filtrosConsultados, setFiltrosConsultados] = useState<FiltrosTat>(filtros);
+  const consulta = useVentasTat(filtrosConsultados);
 
   return (
     <div className="pila">
@@ -46,6 +44,7 @@ export function VentasTat() {
           className="formulario formulario--linea"
           onSubmit={(evento) => {
             evento.preventDefault();
+            setFiltrosConsultados(filtros);
           }}
         >
           <label className="campo">
@@ -72,19 +71,10 @@ export function VentasTat() {
             </select>
           </label>
           <button type="submit" className="boton">Consultar</button>
-          <button
-            type="button"
-            className="boton boton--sutil"
-            disabled={ingesta.isPending || !puedeIngerir}
-            onClick={() => ingesta.mutate({ fecha_inicio: fechaInicio, fecha_fin: fechaFin })}
-          >
-            {ingesta.isPending ? "Cargando…" : "Actualizar datos"}
-          </button>
         </form>
       </Tarjeta>
 
       <AvisoError error={consulta.error} />
-      <AvisoError error={ingesta.error} />
       {consulta.isLoading ? <Cargando texto="Cargando ventas TAT…" /> : null}
       {consulta.data ? (
         <Tarjeta titulo={`${numero(consulta.data.filas.length)} facturas`} sinRelleno>

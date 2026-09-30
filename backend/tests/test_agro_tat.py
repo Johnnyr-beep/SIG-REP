@@ -8,8 +8,8 @@ from app.infrastructure.fuentes.agro_tat import (
     COLUMNAS_TAT,
     ConfiguracionTat,
     FuenteVentasTat,
+    LineaTat,
 )
-from app.infrastructure.models.agro_tat import AgroTatCorrida, AgroTatVenta
 
 
 def test_fuente_tat_envia_contrato_real_y_parsea_csv() -> None:
@@ -65,37 +65,48 @@ def test_fuente_tat_pagina_hasta_el_final() -> None:
     assert [llamada.url.params["offset"] for llamada in llamadas] == ["0", "5000"]
 
 
-def test_listar_tat_devuelve_todas_las_facturas_y_filtra_tipo_comercial(
-    sesion, cliente_http, admin
+def test_listar_tat_lee_fuente_directa_y_filtra_tipo_comercial(
+    cliente_http, admin, monkeypatch
 ) -> None:
     desde = date(2026, 9, 1)
-    corrida = AgroTatCorrida(desde=desde, hasta=date(2026, 9, 30))
-    sesion.add(corrida)
-    sesion.flush()
-    sesion.add_all(
-        [
-            AgroTatVenta(
-                corrida_id=corrida.id,
-                fecha_documento=desde,
-                nro_documento=f"F-{indice:03}",
-                tipo_comercial="TAT",
-                cantidad_inv=Decimal("1"),
-                valor_subtotal=Decimal("10.00"),
-            )
-            for indice in range(101)
-        ]
-        + [
-            AgroTatVenta(
-                corrida_id=corrida.id,
-                fecha_documento=desde,
-                nro_documento="F-MINORISTA",
-                tipo_comercial="Minorista",
-                cantidad_inv=Decimal("2"),
-                valor_subtotal=Decimal("25.00"),
-            )
-        ]
-    )
-    sesion.commit()
+    filas_fuente = [
+        LineaTat(
+            fecha_documento=desde,
+            nro_documento=f"F-{indice:03}",
+            tipo_comercial="TAT",
+            cliente_factura=None,
+            razon_social_cliente="Cliente TAT",
+            codigo_sucursal=None,
+            descripcion_sucursal="Sucursal",
+            direccion_sucursal=None,
+            cantidad_inv=Decimal("1"),
+            valor_subtotal=Decimal("10.00"),
+        )
+        for indice in range(101)
+    ] + [
+        LineaTat(
+            fecha_documento=desde,
+            nro_documento="F-MINORISTA",
+            tipo_comercial="Minorista",
+            cliente_factura=None,
+            razon_social_cliente="Cliente minorista",
+            codigo_sucursal=None,
+            descripcion_sucursal="Sucursal",
+            direccion_sucursal=None,
+            cantidad_inv=Decimal("2"),
+            valor_subtotal=Decimal("25.00"),
+        )
+    ]
+
+    class FuentePrueba:
+        def obtener_ventas(self, inicio: date, fin: date) -> list[LineaTat]:
+            assert (inicio, fin) == (desde, date(2026, 9, 30))
+            return filas_fuente
+
+        def cerrar(self) -> None:
+            pass
+
+    monkeypatch.setattr("app.application.services.agro_tat_service.FuenteVentasTat", FuentePrueba)
 
     parametros = {"fecha_inicio": "2026-09-01", "fecha_fin": "2026-09-30"}
     todas = cliente_http.get("/api/v1/agro/tat", params=parametros, headers=admin)
