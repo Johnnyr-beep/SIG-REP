@@ -3647,7 +3647,7 @@ textarea.campo__control {
 }
 
 .comparadas__valor {
-  fill: var(--acento);
+  fill: var(--exito);
 }
 
 .comparadas__valor--atenuada {
@@ -3692,7 +3692,7 @@ textarea.campo__control {
 }
 
 .comparadas__clave--valor::before {
-  background: var(--acento);
+  background: var(--exito);
 }
 
 .comparadas__clave--referencia::before {
@@ -3765,6 +3765,6 @@ textarea.campo__control {
 .ranking__barra {
   display: block;
   height: 100%;
-  background: var(--acento);
+  background: var(--exito);
   border-radius: 999px;
 }
