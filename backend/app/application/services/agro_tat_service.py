@@ -26,32 +26,35 @@ class AgroTatService:
     ) -> AgroTatResumen:
         origen_propio = fuente is None
         origen = fuente or FuenteVentasTat()
+        filas: list[AgroTatVentaSalida] = []
+        tipos_comerciales: set[str] = set()
+        total_cantidad = Decimal(0)
+        total_subtotal = Decimal(0)
+        indice_filtrado = 0
         try:
-            todas = list(origen.obtener_ventas(desde, hasta))
+            for fila in origen.obtener_ventas(desde, hasta):
+                if fila.tipo_comercial is not None:
+                    tipos_comerciales.add(fila.tipo_comercial)
+                if tipo_comercial is not None and fila.tipo_comercial != tipo_comercial:
+                    continue
+
+                total_cantidad += fila.cantidad_inv
+                total_subtotal += fila.valor_subtotal
+                dentro_de_pagina = indice_filtrado >= offset and (
+                    limite is None or indice_filtrado < offset + limite
+                )
+                if dentro_de_pagina:
+                    filas.append(AgroTatVentaSalida.model_validate(fila))
+                indice_filtrado += 1
         finally:
             if origen_propio:
                 origen.cerrar()
 
-        tipos_comerciales = sorted(
-            {fila.tipo_comercial for fila in todas if fila.tipo_comercial is not None}
-        )
-        filtradas = [
-            fila
-            for fila in todas
-            if tipo_comercial is None or fila.tipo_comercial == tipo_comercial
-        ]
-        pagina = filtradas[offset:] if limite is None else filtradas[offset : offset + limite]
-        total_cantidad = sum((fila.cantidad_inv for fila in filtradas), Decimal(0)).quantize(
-            Decimal("0.001")
-        )
-        total_subtotal = sum((fila.valor_subtotal for fila in filtradas), Decimal(0)).quantize(
-            Decimal("0.01")
-        )
         return AgroTatResumen(
-            filas=[AgroTatVentaSalida.model_validate(fila) for fila in pagina],
-            total_cantidad=total_cantidad,
-            total_subtotal=total_subtotal,
-            tipos_comerciales=tipos_comerciales,
+            filas=filas,
+            total_cantidad=total_cantidad.quantize(Decimal("0.001")),
+            total_subtotal=total_subtotal.quantize(Decimal("0.01")),
+            tipos_comerciales=sorted(tipos_comerciales),
         )
 
     def ingerir(

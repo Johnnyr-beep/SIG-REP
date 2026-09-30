@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -16,8 +18,16 @@ def _consulta_agro(sesion: Session, cliente_http: TestClient, *permisos: str) ->
 
 
 def test_consulta_agro_tat_no_puede_abrir_resumen(
-    cliente_http: TestClient, sesion: Session
+    cliente_http: TestClient, sesion: Session, monkeypatch
 ) -> None:
+    class FuenteTATVacia:
+        def obtener_ventas(self, desde: date, hasta: date) -> list[object]:
+            return []
+
+        def cerrar(self) -> None:
+            pass
+
+    monkeypatch.setattr("app.application.services.agro_tat_service.FuenteVentasTat", FuenteTATVacia)
     cabeceras = _consulta_agro(sesion, cliente_http, "PERMISO_AGRO_CONSULTAR_TAT")
 
     tat = cliente_http.get(
