@@ -481,6 +481,17 @@ function ConsolidadoResumenAgro({
   sujeto: string;
 }) {
   const base = enPesos ?? enKilos;
+  const tonoSemaforo =
+    enPesos?.semaforo === "VERDE"
+      ? "exito"
+      : enPesos?.semaforo === "AMARILLO"
+        ? "aviso"
+        : enPesos?.semaforo === "ROJO"
+          ? "peligro"
+          : undefined;
+  const margen = enPesos?.margen_porcentaje;
+  const tonoMargen =
+    margen == null ? undefined : margen.trim().startsWith("-") ? "peligro" : "exito";
 
   return (
     <Tarjeta
@@ -490,7 +501,7 @@ function ConsolidadoResumenAgro({
       <div className="consolidado">
         <div className="consolidado__foco">
           <p className="consolidado__etiqueta">Cumplimiento</p>
-          <p className="consolidado__cifra">
+          <p className={`consolidado__cifra${tonoSemaforo ? ` consolidado__cifra--${tonoSemaforo}` : ""}`}>
             {porcentaje(enPesos?.cumplimiento ?? null)}
           </p>
           <Semaforo estado={enPesos?.semaforo ?? "SIN_PRESUPUESTO"} sujeto={sujeto} />
@@ -514,7 +525,7 @@ function ConsolidadoResumenAgro({
         </div>
       </div>
 
-      <div className="rejilla rejilla--indicadores">
+      <div className="rejilla rejilla--indicadores consolidado__indicadores">
         <Indicador
           etiqueta="Presupuesto del mes"
           valor={dinero(enPesos?.presupuesto ?? null)}
@@ -528,6 +539,7 @@ function ConsolidadoResumenAgro({
           etiqueta="Venta acumulada"
           valor={dinero(base?.venta_valor ?? null)}
           nota={base ? `${kilos(base.kilos)} vendidos` : undefined}
+          tono="exito"
         />
         <Indicador
           etiqueta="Proyección al cierre"
@@ -538,24 +550,28 @@ function ConsolidadoResumenAgro({
               : "Necesita presupuesto para proyectar"
           }
           pista={<p className="formula">{FORMULAS.proyeccion}</p>}
+          tono={tonoSemaforo}
         />
         <Indicador
           etiqueta="Venta diaria requerida"
           valor={dinero(enPesos?.venta_diaria_requerida ?? null)}
           nota="Para llegar al presupuesto con los días que quedan"
           pista={<p className="formula">{FORMULAS.venta_diaria_requerida}</p>}
+          tono="aviso"
         />
         <Indicador
           etiqueta="Venta diaria promedio"
           valor={dinero(enPesos?.venta_diaria_promedio ?? null)}
           nota="Ritmo actual"
           pista={<p className="formula">{FORMULAS.venta_diaria_promedio}</p>}
+          tono="exito"
         />
         <Indicador
           etiqueta="Margen"
           valor={porcentaje(enPesos?.margen_porcentaje ?? null)}
           nota={porMedida(enPesos?.margen_valor ?? null, "valor")}
           pista={<p className="formula">{FORMULAS.margen_porcentaje}</p>}
+          tono={tonoMargen}
         />
       </div>
     </Tarjeta>
