@@ -1159,6 +1159,10 @@ textarea {
   z-index: 3;
 }
 
+.tabla thead th.numero {
+  text-align: right;
+}
+
 /* Resumen del corte (Venta diaria): encabezado oscuro, a propósito distinto
    del resto de tablas de SIGREP — es la identidad visual que pidió el
    negocio para esta pantalla en concreto, no un cambio general. */
