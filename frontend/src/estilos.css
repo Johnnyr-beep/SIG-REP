@@ -802,6 +802,8 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: var(--espacio-1);
+  min-width: 0;
+  container-type: inline-size;
   padding: var(--espacio-4);
   background: var(--superficie-2);
   border: 1px solid var(--borde);
@@ -831,11 +833,11 @@ textarea {
 
 .indicador__valor {
   font-weight: 680;
-  font-size: 1.5rem;
+  font-size: clamp(0.9rem, 7cqi, 1.5rem);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.025em;
   line-height: 1.15;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
 .indicador__valor--mediano {
