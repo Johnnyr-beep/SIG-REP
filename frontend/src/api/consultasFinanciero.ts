@@ -189,3 +189,16 @@ export function useDetalleCuentasVivo(cia: number | null, periodo: string, habil
     enabled: habilitado && cia !== null && Boolean(periodo),
   });
 }
+
+/** Detalle financiero en vivo de una empresa, consultado por cada período. */
+export function useSerieDetalleCuentasVivo(cia: number, periodos: string[]) {
+  return useQueries({
+    queries: periodos.map((periodo) => ({
+      queryKey: ["financiero", "detalle-cuentas-vivo", { cia, periodo }],
+      queryFn: () =>
+        peticion<RespuestaDetalleCuentasEnVivo>("/financiero/detalle-cuentas-vivo", {
+          parametros: { cia: String(cia), periodo },
+        }),
+    })),
+  });
+}

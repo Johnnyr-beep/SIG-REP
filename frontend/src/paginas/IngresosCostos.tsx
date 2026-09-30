@@ -1,12 +1,19 @@
 import { Fragment, useMemo, useState } from "react";
 
 import { MODO_EJEMPLOS } from "@/api/cliente";
-import { useSerieBalanceComprobacion } from "@/api/consultasFinanciero";
-import type { FilaBalanceComprobacion } from "@/api/tipos";
+import { useSerieDetalleCuentasVivo } from "@/api/consultasFinanciero";
+import type { FilaDetalleCuentaEnVivo } from "@/api/tipos";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const CLASES_PYG = ["Ingresos", "Costos", "Gastos"] as const;
+const EMPRESAS = [
+  { cia: 3, nombre: "Agropecuaria Santacruz" },
+  { cia: 4, nombre: "Carnes Santacruz" },
+  { cia: 6, nombre: "Cristian Serrano" },
+  { cia: 7, nombre: "Serueda" },
+  { cia: 8, nombre: "Inversiones Serrano Millán" },
+] as const;
 
 type ClasePyG = (typeof CLASES_PYG)[number];
 
@@ -24,10 +31,10 @@ interface LineaIngresoAnual {
   costos: Array<number | null>;
 }
 
-function montoMovimiento(fila: FilaBalanceComprobacion): number | null {
-  if (fila.clase === "Ingresos") return Number(fila.creditos) - Number(fila.debitos);
-  if (fila.clase.startsWith("Costo")) return Number(fila.debitos) - Number(fila.creditos);
-  if (fila.clase === "Gastos") return Number(fila.debitos) - Number(fila.creditos);
+function montoMovimiento(fila: FilaDetalleCuentaEnVivo): number | null {
+  if (fila.clase === "Ingresos" || fila.clase.startsWith("Costo") || fila.clase === "Gastos") {
+    return Number(fila.monto);
+  }
   return null;
 }
 
@@ -50,8 +57,9 @@ function numeroMillones(valor: number | null): string {
   return new Intl.NumberFormat("es-CO", { maximumFractionDigits: 3 }).format(valor / 1_000_000);
 }
 
-function claveConcepto(descripcion: string | null | undefined): string {
-  return (descripcion ?? "Sin descripción en SIESA")
+function claveConcepto(fila: FilaDetalleCuentaEnVivo): string {
+  const concepto = fila.cuenta.trim() || `cuenta ${fila.auxiliar.slice(0, 4)}`;
+  return concepto
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase("es-CO")
@@ -69,12 +77,13 @@ function totalDe(meses: MovimientoMes[], campo: ClasePyG): number | null {
 export function IngresosCostos() {
   const anioActual = new Date().getFullYear();
   const [anio, setAnio] = useState(anioActual);
+  const [cia, setCia] = useState<number>(EMPRESAS[0].cia);
   const periodoMaximo = anio === anioActual ? new Date().getMonth() + 1 : 12;
   const periodos = useMemo(
     () => Array.from({ length: periodoMaximo }, (_, indice) => periodoDe(anio, indice + 1)),
     [anio, periodoMaximo],
   );
-  const consultas = useSerieBalanceComprobacion(periodos);
+  const consultas = useSerieDetalleCuentasVivo(cia, periodos);
   const cargando = consultas.some((consulta) => consulta.isLoading);
   const error = consultas.find((consulta) => consulta.error)?.error;
 
@@ -88,7 +97,7 @@ export function IngresosCostos() {
       const filasIngresos = filas.filter((fila) => fila.clase === "Ingresos");
       const filasCostos = filas.filter((fila) => fila.clase.startsWith("Costo"));
       const filasGastos = filas.filter((fila) => fila.clase === "Gastos");
-      const sumar = (cuentas: FilaBalanceComprobacion[]) =>
+      const sumar = (cuentas: FilaDetalleCuentaEnVivo[]) =>
         cuentas.reduce((total, fila) => total + (montoMovimiento(fila) ?? 0), 0);
       const disponible = filasIngresos.length + filasCostos.length + filasGastos.length > 0;
 
@@ -108,18 +117,19 @@ export function IngresosCostos() {
     filasPorMes.forEach((filas, indiceMes) => {
       for (const fila of filas) {
         if (fila.clase !== "Ingresos") continue;
-        const clave = claveConcepto(fila.descripcion);
+        const clave = claveConcepto(fila);
         let linea = porConcepto.get(clave);
         if (!linea) {
           linea = {
             codigos: [],
-            descripcion: fila.descripcion ?? "Sin descripción en SIESA",
+            descripcion: fila.cuenta.trim() || `Cuenta PUC ${fila.auxiliar.slice(0, 4)}`,
             ingresos: Array.from({ length: 12 }, () => null),
             costos: Array.from({ length: 12 }, () => null),
           };
           porConcepto.set(clave, linea);
         }
-        if (!linea.codigos.includes(fila.mayor_iii)) linea.codigos.push(fila.mayor_iii);
+        const codigo = fila.auxiliar.slice(0, 4);
+        if (!linea.codigos.includes(codigo)) linea.codigos.push(codigo);
         const movimiento = montoMovimiento(fila);
         if (movimiento !== null) {
           linea.ingresos[indiceMes] = (linea.ingresos[indiceMes] ?? 0) + movimiento;
@@ -130,7 +140,7 @@ export function IngresosCostos() {
     filasPorMes.forEach((filas, indiceMes) => {
       for (const fila of filas) {
         if (!fila.clase.startsWith("Costo")) continue;
-        const linea = porConcepto.get(claveConcepto(fila.descripcion));
+        const linea = porConcepto.get(claveConcepto(fila));
         if (!linea) continue;
         const movimiento = montoMovimiento(fila);
         if (movimiento !== null) {
@@ -177,7 +187,7 @@ export function IngresosCostos() {
       <header className="ingresos-costos__encabezado">
         <div>
           <p className="ingresos-costos__eyebrow">
-            GSC REPORTES · {MODO_EJEMPLOS ? "DATOS DE EJEMPLO" : "LIBRO MAYOR CONTABLE"}
+            GSC REPORTES · {MODO_EJEMPLOS ? "DATOS DE EJEMPLO" : "SIESA · DATOS EN VIVO"}
           </p>
           <h2>Ingresos y costos</h2>
           {ultimoMesDisponible >= 0 ? (
@@ -196,6 +206,18 @@ export function IngresosCostos() {
             >
               {Array.from({ length: 6 }, (_, indice) => anioActual - indice).map((opcion) => (
                 <option key={opcion} value={opcion}>{opcion}</option>
+              ))}
+            </select>
+          </label>
+          <label className="campo">
+            <span>Empresa</span>
+            <select
+              className="campo__control"
+              value={cia}
+              onChange={(evento) => setCia(Number(evento.target.value))}
+            >
+              {EMPRESAS.map((empresa) => (
+                <option key={empresa.cia} value={empresa.cia}>{empresa.nombre}</option>
               ))}
             </select>
           </label>
