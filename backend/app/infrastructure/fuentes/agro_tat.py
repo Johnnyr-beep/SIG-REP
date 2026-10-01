@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 import httpx
@@ -85,6 +85,12 @@ class FuenteVentasTat:
         self._propio = cliente is None
 
     def obtener_ventas(self, desde: date, hasta: date) -> Iterator[LineaTat]:
+        dia = desde
+        while dia <= hasta:
+            yield from self._obtener_ventas_dia(dia)
+            dia += timedelta(days=1)
+
+    def _obtener_ventas_dia(self, dia: date) -> Iterator[LineaTat]:
         try:
             with self._cliente.stream(
                 "GET",
@@ -93,8 +99,8 @@ class FuenteVentasTat:
                     "Authorization": self.configuracion.token.get_secret_value().removeprefix("1-")
                 },
                 params={
-                    "fecha_inicio": desde.isoformat(),
-                    "fecha_fin": hasta.isoformat(),
+                    "fecha_inicio": dia.isoformat(),
+                    "fecha_fin": dia.isoformat(),
                     "cia": self.configuracion.cia,
                     "limit": LIMITE_TAT,
                     "format": "csv",
@@ -104,11 +110,18 @@ class FuenteVentasTat:
                     raise ErrorFuenteTat(f"SIESA TAT respondió HTTP {respuesta.status_code}.")
                 try:
                     registros = csv.DictReader(respuesta.iter_lines())
-                    encabezados = tuple(
-                        (campo or "").strip().lower() for campo in registros.fieldnames or ()
-                    )
-                    if encabezados != COLUMNAS_TAT:
-                        raise ErrorFuenteTat("El CSV TAT no coincide con las columnas esperadas.")
+                    encabezados = [
+                        (campo or "").lstrip("\ufeff").strip().lower()
+                        for campo in registros.fieldnames or ()
+                    ]
+                    faltantes = [campo for campo in COLUMNAS_TAT if campo not in encabezados]
+                    if faltantes:
+                        recibidos = ", ".join(encabezados) or "ninguno"
+                        raise ErrorFuenteTat(
+                            "El CSV TAT no incluye columnas requeridas "
+                            f"({', '.join(faltantes)}). Encabezados recibidos: {recibidos}."
+                        )
+                    registros.fieldnames = encabezados
                     for numero, fila in enumerate(registros, start=2):
                         try:
                             fecha_documento = a_fecha(fila["fecha_documento"])
