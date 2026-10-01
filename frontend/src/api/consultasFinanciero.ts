@@ -12,12 +12,25 @@ import type {
   RespuestaEstadoResultados,
   RespuestaEstadoResultadosEnVivo,
   RespuestaIndicadoresFinancieros,
+  RespuestaRentabilidadMes,
   RespuestaSituacionFinancieraEnVivo,
 } from "./tipos";
 
 export interface FiltrosFinanciero {
   periodo: string;
   cia?: number | null;
+}
+
+export function useRentabilidadMes(periodo: string, habilitado = true) {
+  return useQuery({
+    queryKey: ["financiero", "rentabilidad-mes", periodo],
+    queryFn: () =>
+      peticion<RespuestaRentabilidadMes>("/financiero/rentabilidad-mes", {
+        parametros: { periodo },
+      }),
+    enabled: habilitado && /^\d{6}$/.test(periodo),
+    staleTime: 60_000,
+  });
 }
 
 function parametrosDe(filtros: FiltrosFinanciero) {

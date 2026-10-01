@@ -755,6 +755,44 @@ export interface RespuestaIndicadoresFinancieros {
   parametros_calculo: ParametrosCalculoFinanciero;
 }
 
+export interface FilaRentabilidadMes {
+  etiqueta: string;
+  venta: string;
+  costo: string | null;
+  margen_bruto: string | null;
+  rentabilidad: string | null;
+  kilos: string;
+  participacion: string | null;
+}
+
+export interface PuntoRentabilidadMes {
+  fecha: string;
+  venta: string;
+  rentabilidad: string | null;
+}
+
+export interface FilaEspecieRentabilidadMes extends FilaRentabilidadMes {
+  comerciales: FilaRentabilidadMes[];
+}
+
+export interface RespuestaRentabilidadMes {
+  periodo: string;
+  cia: number;
+  fecha_inicio: string;
+  fecha_fin: string;
+  venta: string;
+  costo: string | null;
+  margen_bruto: string | null;
+  rentabilidad: string | null;
+  kilos: string;
+  lineas_facturadas: number;
+  diario: PuntoRentabilidadMes[];
+  tipos_item: FilaRentabilidadMes[];
+  especies: FilaEspecieRentabilidadMes[];
+  clientes: FilaRentabilidadMes[];
+  productos: FilaRentabilidadMes[];
+}
+
 export interface FilaDetalleCuenta {
   mayor_iii: string;
   mayor_iv?: string | null;

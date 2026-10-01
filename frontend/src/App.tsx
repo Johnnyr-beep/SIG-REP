@@ -29,6 +29,7 @@ import { Costos } from "@/paginas/Costos";
 import { Ingesta } from "@/paginas/Ingesta";
 import { InventarioPdv } from "@/paginas/InventarioPdv";
 import { IngresosCostos } from "@/paginas/IngresosCostos";
+import { RentabilidadMes } from "@/paginas/RentabilidadMes";
 import { HistoriaVenta } from "@/paginas/HistoriaVenta";
 import { Presupuesto } from "@/paginas/Presupuesto";
 import { Permisos } from "@/paginas/Permisos";
@@ -170,6 +171,14 @@ export function App() {
         {esGrupoSantacruz ? (
           <>
             <Route index element={<IngresosCostos />} />
+            <Route
+              path="rentabilidad-mes"
+              element={
+                <AccesoModulo permiso="PERMISO_CONSULTAR_FINANCIERO">
+                  <RentabilidadMes />
+                </AccesoModulo>
+              }
+            />
             <Route
               path="resumen-financiero"
               element={

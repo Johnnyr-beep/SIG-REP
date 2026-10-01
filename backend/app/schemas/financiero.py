@@ -6,6 +6,8 @@ todo indicador indefinido viaja como `null`, nunca como `0` (`app.schemas.common
 
 from __future__ import annotations
 
+from datetime import date
+
 from pydantic import Field
 
 from app.schemas.common import DecimalStr, EsquemaBase
@@ -141,3 +143,41 @@ class RespuestaIndicadoresFinancieros(EsquemaBase):
     endeudamiento: DecimalStr | None = None
     margen_neto: DecimalStr | None = None
     parametros_calculo: ParametrosCalculoFinanciero
+
+
+class FilaRentabilidadMes(EsquemaBase):
+    etiqueta: str
+    venta: DecimalStr
+    costo: DecimalStr | None
+    margen_bruto: DecimalStr | None
+    rentabilidad: DecimalStr | None
+    kilos: DecimalStr
+    participacion: DecimalStr | None = None
+
+
+class PuntoRentabilidadMes(EsquemaBase):
+    fecha: date
+    venta: DecimalStr
+    rentabilidad: DecimalStr | None
+
+
+class FilaEspecieRentabilidadMes(FilaRentabilidadMes):
+    comerciales: list[FilaRentabilidadMes]
+
+
+class RespuestaRentabilidadMes(EsquemaBase):
+    periodo: str
+    cia: int
+    fecha_inicio: date
+    fecha_fin: date
+    venta: DecimalStr
+    costo: DecimalStr | None
+    margen_bruto: DecimalStr | None
+    rentabilidad: DecimalStr | None
+    kilos: DecimalStr
+    lineas_facturadas: int
+    diario: list[PuntoRentabilidadMes]
+    tipos_item: list[FilaRentabilidadMes]
+    especies: list[FilaEspecieRentabilidadMes]
+    clientes: list[FilaRentabilidadMes]
+    productos: list[FilaRentabilidadMes]

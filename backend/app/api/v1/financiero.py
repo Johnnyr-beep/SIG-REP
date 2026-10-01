@@ -18,13 +18,21 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
+from app.application.services.financiero_rentabilidad_service import (
+    calcular_rentabilidad_mes,
+)
 from app.application.services.financiero_reportes_service import (
     FiltrosFinanciero,
     FinancieroReportesService,
     estado_resultados_en_vivo,
 )
-from app.core.deps import PERMISO_CONSULTAR_FINANCIERO, SesionDep, exigir_permiso_consulta
-from app.core.errors import ErrorValidacion
+from app.core.deps import (
+    PERMISO_CONSULTAR_FINANCIERO,
+    SesionDep,
+    UnidadDep,
+    exigir_permiso_consulta,
+)
+from app.core.errors import ErrorAutorizacion, ErrorValidacion
 from app.domain.financiero import etiqueta_clase
 from app.infrastructure.fuentes.financiero_siesa import (
     detalle_cuentas_en_vivo,
@@ -47,6 +55,7 @@ from app.schemas.financiero import (
     RespuestaEstadoResultados,
     RespuestaEstadoResultadosEnVivo,
     RespuestaIndicadoresFinancieros,
+    RespuestaRentabilidadMes,
     RespuestaSituacionFinancieraEnVivo,
 )
 
@@ -79,6 +88,24 @@ UsuarioFinancieroDep = Annotated[
 
 def _parametros(periodo: str, cia: int | None) -> ParametrosCalculoFinanciero:
     return ParametrosCalculoFinanciero(periodo=periodo, cia=cia)
+
+
+@router.get(
+    "/rentabilidad-mes",
+    response_model=RespuestaRentabilidadMes,
+    summary="Rentabilidad mensual operativa de Agropecuaria (módulo Grupo)",
+)
+def rentabilidad_mes(
+    usuario: UsuarioFinancieroDep,
+    unidad: UnidadDep,
+    periodo: str = PeriodoQuery,
+) -> RespuestaRentabilidadMes:
+    del usuario
+    if unidad != "grupo-santacruz":
+        raise ErrorAutorizacion(
+            "Este módulo de rentabilidad está disponible solo en Grupo Santacruz."
+        )
+    return calcular_rentabilidad_mes(periodo)
 
 
 @router.get(
