@@ -85,7 +85,7 @@ export function VentasTat() {
               <table className="tabla tabla--compacta tabla--ventas-tat">
                 <thead>
                   <tr>
-                    <th>Fecha</th><th>Documento</th><th>Sucursal</th><th>Cliente</th>
+                    <th>Fecha</th><th>Hora</th><th>Documento</th><th>Sucursal</th><th>Cliente</th>
                     <th>Tipo comercial</th><th className="numero">Cantidad</th><th className="numero">Venta subtotal</th>
                   </tr>
                 </thead>
@@ -93,6 +93,7 @@ export function VentasTat() {
                   {consulta.data.filas.map((fila) => (
                     <tr key={`${fila.fecha_documento}-${fila.nro_documento}-${fila.cliente_factura}`}>
                       <td>{fila.fecha_documento}</td>
+                      <td>{fila.hora_documento?.slice(0, 8) ?? "—"}</td>
                       <td className="mono">{fila.nro_documento}</td>
                       <td>{fila.descripcion_sucursal ?? fila.codigo_sucursal ?? "—"}</td>
                       <td>{fila.razon_social_cliente ?? fila.cliente_factura ?? "—"}</td>
@@ -102,7 +103,7 @@ export function VentasTat() {
                     </tr>
                   ))}
                 </tbody>
-                <tfoot><tr><th colSpan={5}>Total</th><th className="numero">{consulta.data.total_cantidad}</th><th className="numero">{consulta.data.total_subtotal}</th></tr></tfoot>
+                <tfoot><tr><th colSpan={6}>Total</th><th className="numero">{consulta.data.total_cantidad}</th><th className="numero">{consulta.data.total_subtotal}</th></tr></tfoot>
               </table>
             </div>
           )}

@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, time
 from decimal import Decimal
 
 import httpx
@@ -39,6 +39,44 @@ def test_fuente_tat_envia_contrato_real_y_parsea_csv() -> None:
     assert llamadas[0].url.params["limit"] == "5000"
     assert llamadas[0].url.params["format"] == "csv"
     assert llamadas[0].headers["Authorization"] == "secreto"
+
+
+def test_fuente_tat_parsea_hora_en_columna_opcional() -> None:
+    llamadas: list[httpx.Request] = []
+    encabezado = (*COLUMNAS_TAT, "hora_documento")
+    fila = "2026-09-01,F-10,Minorista,C-7,Cliente 7,S-1,Sucursal Norte,Calle 1,4,1250.50,08:14:35"
+
+    def responder(request: httpx.Request) -> httpx.Response:
+        llamadas.append(request)
+        return httpx.Response(200, text=f"{','.join(encabezado)}\n{fila}\n")
+
+    cliente = httpx.Client(transport=httpx.MockTransport(responder), base_url="https://test.local")
+    fuente = FuenteVentasTat(
+        ConfiguracionTat("https://test.local", SecretStr("secreto")), cliente=cliente
+    )
+
+    filas = list(fuente.obtener_ventas(date(2026, 9, 1), date(2026, 9, 1)))
+
+    assert filas[0].hora_documento.isoformat() == "08:14:35"
+
+
+def test_fuente_tat_extrae_hora_embebida_en_fecha_documento() -> None:
+    encabezado = ",".join(COLUMNAS_TAT)
+    fila = "2026-09-01T16:42:05,F-10,Minorista,C-7,Cliente 7,S-1,Sucursal Norte,Calle 1,4,1250.50"
+    cliente = httpx.Client(
+        transport=httpx.MockTransport(
+            lambda _: httpx.Response(200, text=f"{encabezado}\n{fila}\n")
+        ),
+        base_url="https://test.local",
+    )
+    fuente = FuenteVentasTat(
+        ConfiguracionTat("https://test.local", SecretStr("secreto")), cliente=cliente
+    )
+
+    filas = list(fuente.obtener_ventas(date(2026, 9, 1), date(2026, 9, 1)))
+
+    assert filas[0].fecha_documento == date(2026, 9, 1)
+    assert filas[0].hora_documento.isoformat() == "16:42:05"
 
 
 def test_fuente_tat_csv_completo_se_descarga_en_una_solicitud() -> None:
@@ -100,6 +138,7 @@ def test_listar_tat_lee_fuente_directa_y_filtra_tipo_comercial(
             fecha_documento=desde,
             nro_documento=f"F-{indice:03}",
             tipo_comercial="TAT",
+            hora_documento=time(8, 14),
             cliente_factura=None,
             razon_social_cliente="Cliente TAT",
             codigo_sucursal=None,
@@ -138,6 +177,7 @@ def test_listar_tat_lee_fuente_directa_y_filtra_tipo_comercial(
     todas = cliente_http.get("/api/v1/agro/tat", params=parametros, headers=admin)
     assert todas.status_code == 200, todas.text
     assert len(todas.json()["filas"]) == 102
+    assert todas.json()["filas"][0]["hora_documento"] == "08:14:00"
     assert todas.json()["tipos_comerciales"] == ["Minorista", "TAT"]
 
     filtradas = cliente_http.get(

@@ -73,6 +73,7 @@ class AgroTatService:
                 AgroTatVenta(
                     corrida_id=corrida.id,
                     fecha_documento=fila.fecha_documento,
+                    hora_documento=fila.hora_documento,
                     nro_documento=fila.nro_documento,
                     tipo_comercial=fila.tipo_comercial,
                     cliente_factura=fila.cliente_factura,

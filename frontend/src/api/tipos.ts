@@ -129,6 +129,7 @@ export interface Zona {
 
 export interface AgroTatVenta {
   fecha_documento: string;
+  hora_documento: string | null;
   nro_documento: string;
   tipo_comercial: string | null;
   cliente_factura: string | null;

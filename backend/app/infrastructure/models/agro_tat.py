@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, time
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Date, ForeignKey, Index, Integer, Numeric, String
+from sqlalchemy import BigInteger, Date, ForeignKey, Index, Integer, Numeric, String, Time
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -30,6 +30,7 @@ class AgroTatVenta(Base):
     )
     corrida_id: Mapped[int] = mapped_column(ForeignKey("agro_tat_corridas.id"), nullable=False)
     fecha_documento: Mapped[date] = mapped_column(Date, nullable=False)
+    hora_documento: Mapped[time | None] = mapped_column(Time, nullable=True)
     nro_documento: Mapped[str] = mapped_column(String(80), nullable=False)
     tipo_comercial: Mapped[str | None] = mapped_column(String(120))
     cliente_factura: Mapped[str | None] = mapped_column(String(80))

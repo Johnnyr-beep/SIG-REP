@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
 import httpx
@@ -46,6 +46,42 @@ class LineaTat:
     direccion_sucursal: str | None
     cantidad_inv: Decimal
     valor_subtotal: Decimal
+    hora_documento: time | None = None
+
+
+def _parsear_hora_documento(hora: object, fecha: object) -> time | None:
+    hora_texto = normalizar_texto(hora)
+    fecha_texto = normalizar_texto(fecha)
+
+    if hora_texto:
+        try:
+            return time.fromisoformat(hora_texto)
+        except ValueError:
+            for formato in ("%I:%M:%S %p", "%I:%M %p"):
+                try:
+                    return datetime.strptime(hora_texto, formato).time()
+                except ValueError:
+                    continue
+
+    if not fecha_texto or len(fecha_texto) <= 10:
+        return None
+    try:
+        return (
+            datetime.fromisoformat(fecha_texto.replace("Z", "+00:00")).time().replace(tzinfo=None)
+        )
+    except ValueError:
+        pass
+    for formato in (
+        "%d/%m/%Y %H:%M:%S",
+        "%d/%m/%Y %H:%M",
+        "%d-%m-%Y %H:%M:%S",
+        "%d-%m-%Y %H:%M",
+    ):
+        try:
+            return datetime.strptime(fecha_texto, formato).time()
+        except ValueError:
+            continue
+    return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,6 +173,9 @@ class FuenteVentasTat:
                                 )
                             yield LineaTat(
                                 fecha_documento=fecha_documento,
+                                hora_documento=_parsear_hora_documento(
+                                    fila.get("hora_documento"), fila["fecha_documento"]
+                                ),
                                 nro_documento=normalizar_texto(fila["nro_documento"]) or "",
                                 tipo_comercial=normalizar_texto(fila["tipo_comercial"]),
                                 cliente_factura=normalizar_texto(fila["cliente_factura"]),

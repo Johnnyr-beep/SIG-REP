@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, time
 
 from app.schemas.common import DecimalStr, EsquemaBase
 
 
 class AgroTatVentaSalida(EsquemaBase):
     fecha_documento: date
+    hora_documento: time | None = None
     nro_documento: str
     tipo_comercial: str | None
     cliente_factura: str | None
