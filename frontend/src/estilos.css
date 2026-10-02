@@ -3631,27 +3631,22 @@ textarea.campo__control {
   }
 
   .rentabilidad-mes__indicador {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: baseline;
-    gap: var(--espacio-2);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
     padding: var(--espacio-1) 0;
     border-bottom: 1px solid var(--borde);
   }
 
   .rentabilidad-mes__indicador strong {
-    grid-column: 2;
-    grid-row: 1;
     max-width: 100%;
-    font-size: 1.2rem;
-    line-height: 1.2;
-    text-align: right;
-    white-space: nowrap;
+    font-size: 1.25rem;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
   }
 
   .rentabilidad-mes__indicador span {
-    grid-column: 1;
-    grid-row: 1;
     min-width: 0;
   }
   padding: var(--espacio-2) var(--espacio-3) 0;
