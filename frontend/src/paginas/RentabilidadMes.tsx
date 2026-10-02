@@ -430,19 +430,20 @@ export function RentabilidadMes() {
       ) : null}
 
       {datos && datos.lineas_facturadas > 0 ? (
-        <section className="rentabilidad-mes__estructura" aria-label="Venta y rentabilidad mensual">
-          <div className="rentabilidad-mes__columna rentabilidad-mes__columna--izquierda">
-            <section className="rentabilidad-mes__indicadores" aria-label="Indicadores del mes">
-              <article className="rentabilidad-mes__indicador">
-                <strong>{millones(datos.venta)}</strong>
-                <span>Vlr Facturado</span>
-              </article>
-              <article className="rentabilidad-mes__indicador">
-                <strong>{porcentaje(datos.rentabilidad)}</strong>
-                <span>%Rent</span>
-              </article>
-            </section>
+        <>
+          <section className="rentabilidad-mes__indicadores" aria-label="Indicadores del mes">
+            <article className="rentabilidad-mes__indicador rentabilidad-mes__indicador--venta">
+              <strong>{millones(datos.venta)}</strong>
+              <span>Vlr Facturado</span>
+            </article>
+            <article className="rentabilidad-mes__indicador rentabilidad-mes__indicador--rentabilidad">
+              <strong>{porcentaje(datos.rentabilidad)}</strong>
+              <span>%Rent</span>
+            </article>
+          </section>
 
+          <section className="rentabilidad-mes__estructura" aria-label="Venta y rentabilidad mensual">
+            <div className="rentabilidad-mes__columna rentabilidad-mes__columna--izquierda">
             <section className="rentabilidad-mes__especies" aria-label="Indicadores por especie">
               {especiesResumen(datos.especies).map((fila) => {
                 const especie = etiquetaEspecie(fila.etiqueta).toUpperCase();
@@ -459,7 +460,7 @@ export function RentabilidadMes() {
             <LineaRentabilidadDiaria puntos={datos.diario} />
 
             <BarrasVentaDiaria puntos={datos.diario} />
-          </div>
+            </div>
 
           <div className="rentabilidad-mes__columna rentabilidad-mes__columna--centro">
             <section className="rentabilidad-mes__panel">
@@ -536,7 +537,8 @@ export function RentabilidadMes() {
               totalRentabilidad={datos.rentabilidad}
             />
           </div>
-        </section>
+          </section>
+        </>
       ) : null}
     </main>
   );

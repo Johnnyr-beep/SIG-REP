@@ -3681,54 +3681,41 @@ textarea.campo__control {
 
 .rentabilidad-mes__indicadores {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
+  grid-template-columns: minmax(0, 2fr) minmax(12rem, 1fr);
+  align-items: stretch;
   gap: var(--espacio-4);
-
-  .rentabilidad-mes__indicadores {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .rentabilidad-mes__indicador {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.15rem;
-    padding: var(--espacio-1) 0;
-    border-bottom: 1px solid var(--borde);
-  }
-
-  .rentabilidad-mes__indicador strong {
-    max-width: 100%;
-    font-size: 1.25rem;
-    line-height: 1.15;
-    overflow-wrap: anywhere;
-  }
-
-  .rentabilidad-mes__indicador span {
-    min-width: 0;
-  }
-  padding: var(--espacio-2) var(--espacio-3) 0;
+  width: 100%;
 }
 
 .rentabilidad-mes__indicador {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--espacio-1);
+  justify-content: center;
+  gap: var(--espacio-2);
+  padding: var(--espacio-3) var(--espacio-4);
+  border-bottom: 1px solid var(--borde);
 }
 
 .rentabilidad-mes__indicador strong {
   color: var(--texto);
-  font-size: 1.45rem;
-  font-weight: 500;
+  font-size: 1.65rem;
+  font-weight: 600;
   line-height: 1.15;
   font-variant-numeric: tabular-nums;
 }
 
+.rentabilidad-mes__indicador--venta strong {
+  font-size: 2rem;
+}
+
+.rentabilidad-mes__indicador--rentabilidad strong {
+  font-size: 1.7rem;
+}
+
 .rentabilidad-mes__indicador span {
   color: var(--texto-tenue);
-  font-size: 0.76rem;
+  font-size: 0.78rem;
 }
 
 .rentabilidad-mes__especies {
@@ -4081,11 +4068,32 @@ textarea.campo__control {
     align-items: flex-end;
   }
 
+  .rentabilidad-mes__indicadores {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--espacio-2);
+  }
+
+  .rentabilidad-mes__indicador {
+    align-items: flex-start;
+    gap: var(--espacio-1);
+    padding: var(--espacio-2) var(--espacio-3);
+    border-bottom: 1px solid var(--borde);
+  }
+
+  .rentabilidad-mes__indicador--venta strong {
+    font-size: 1.7rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .rentabilidad-mes__indicador--rentabilidad strong {
+    font-size: 1.45rem;
+  }
+
   .rentabilidad-mes__periodo {
     min-width: 8.5rem;
   }
 
-  .rentabilidad-mes__indicadores,
   .rentabilidad-mes__especies {
     gap: var(--espacio-1);
     padding-inline: 0;
@@ -4241,8 +4249,8 @@ textarea.campo__control {
 /* ── Ranking de barras (BarrasRanking) ────────────────────────────────────── */
 
 /* Nunca tuvo regla propia: etiqueta, barra y cifra —tres `<span>` seguidos en
-   el marcado— caían en el flujo inline por defecto y salían en una sola línea
-   pegados («NOMBRE$ 1.234,5 %»). La rejilla separa etiqueta y cifra en la fila
+  el marcado— caían en el flujo inline por defecto y salían en una sola línea
+  pegados («NOMBRE$ 1.234,5 %»). La rejilla separa etiqueta y cifra en la fila
    de arriba y manda la barra a una fila propia abajo, de ancho completo. */
 .ranking {
   list-style: none;
