@@ -9,6 +9,7 @@ from app.infrastructure.fuentes.agropecuaria import LineaAgro
 def _linea(
     *,
     tipo_item: str,
+    co_id: str = "301",
     especie: str | None,
     tipo_comercial: str | None,
     cliente: str | None,
@@ -19,7 +20,7 @@ def _linea(
 ) -> LineaAgro:
     return LineaAgro(
         fecha=date(2026, 9, 1),
-        co_id="301",
+        co_id=co_id,
         centro_operacion="PLANTA",
         tipo_item_id=None,
         tipo_item=tipo_item,
@@ -71,6 +72,7 @@ def test_rentabilidad_mensual_agrega_dimensiones_y_no_inventa_costo() -> None:
             ),
             _linea(
                 tipo_item="0002 - SERVICIOS",
+                co_id="302",
                 especie=None,
                 tipo_comercial="SERVICIO",
                 cliente="CLIENTE DOS",
@@ -107,6 +109,13 @@ def test_rentabilidad_mensual_agrega_dimensiones_y_no_inventa_costo() -> None:
     ]
     assert resultado.tipos_item[0].rentabilidad == Decimal("0.4")
     assert resultado.tipos_item[1].rentabilidad is None
+    assert [fila.etiqueta for fila in resultado.especies] == ["RES"]
+    assert [
+        (centro.etiqueta, centro.venta) for centro in resultado.tipos_item[0].centros_operacion
+    ] == [("301", Decimal("100"))]
+    assert [
+        (centro.etiqueta, centro.venta) for centro in resultado.tipos_item[1].centros_operacion
+    ] == [("302", Decimal("50"))]
     assert len(resultado.diario) == 30
     assert resultado.diario[0].venta == Decimal("150")
     assert [fila.etiqueta for fila in resultado.clientes] == ["CLIENTE UNO", "CLIENTE DOS"]

@@ -1,10 +1,17 @@
 import { useState } from "react";
 
 import { useRentabilidadMes } from "@/api/consultasFinanciero";
-import type { FilaRentabilidadMes, PuntoRentabilidadMes } from "@/api/tipos";
-import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
-import { BarrasRanking, ColumnasComparadas } from "@/componentes/graficos";
-import type { FilaRanking } from "@/componentes/graficos";
+import type {
+  FilaEspecieRentabilidadMes,
+  FilaRentabilidadMes,
+  FilaTipoItemRentabilidadMes,
+  PuntoRentabilidadMes,
+} from "@/api/tipos";
+import { AvisoError, Cargando, Vacio } from "@/componentes/comunes";
+import { useMarcaElegida } from "@/marca/ContextoMarca";
+
+const LIMITE_RENTABILIDAD_AMARILLO = 0.2;
+const LIMITE_RENTABILIDAD_VERDE = 0.8;
 
 function periodoActual(): string {
   const ahora = new Date();
@@ -17,7 +24,14 @@ function aPeriodoApi(periodo: string): string {
 
 function millones(valor: string | null): string {
   if (valor === null) return "—";
-  return `$ ${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 3 }).format(Number(valor) / 1_000_000)} mill.`;
+  const monto = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 3 }).format(
+    Number(valor) / 1_000_000,
+  );
+  return `$ ${monto} mill.`;
+}
+
+function pesos(valor: number): string {
+  return `$ ${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 1 }).format(valor)}`;
 }
 
 function porcentaje(valor: string | null): string {
@@ -29,17 +43,79 @@ function cantidad(valor: string): string {
   return new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(Number(valor));
 }
 
-function filaRanking(fila: FilaRentabilidadMes): FilaRanking {
-  return {
-    clave: fila.etiqueta,
-    etiqueta: fila.etiqueta,
-    valor: fila.venta,
-    participacion: fila.participacion,
-  };
+function costoPorKilo(fila: FilaRentabilidadMes): string {
+  const kilos = Number(fila.kilos);
+  if (fila.costo === null || kilos === 0) return "—";
+  return pesos(Number(fila.costo) / kilos);
+}
+
+function etiquetaEspecie(etiqueta: string): string {
+  return etiqueta.replace(/^\d+\s*-\s*/, "").trim();
+}
+
+function especiesResumen(especies: FilaEspecieRentabilidadMes[]): FilaEspecieRentabilidadMes[] {
+  const preferidas = ["CERDO", "RES"];
+  const resumen = preferidas
+    .map((nombre) =>
+      especies.find((fila) =>
+        etiquetaEspecie(fila.etiqueta).split(/[^A-Z0-9]+/).includes(nombre),
+      ),
+    )
+    .filter((fila): fila is FilaEspecieRentabilidadMes => fila !== undefined);
+  return resumen.length > 0 ? resumen : especies.slice(0, 2);
+}
+
+function SemaforoRentabilidad({ valor }: { valor: string | null }) {
+  if (valor === null) {
+    return (
+      <span className="rentabilidad-mes__semaforo rentabilidad-mes__semaforo--neutro" role="img" aria-label="Rentabilidad no disponible">
+        <span aria-hidden="true">○</span>
+      </span>
+    );
+  }
+
+  const rentabilidad = Number(valor);
+  const estado =
+    rentabilidad >= LIMITE_RENTABILIDAD_VERDE
+      ? "verde"
+      : rentabilidad >= LIMITE_RENTABILIDAD_AMARILLO
+        ? "amarillo"
+        : "rojo";
+  const etiqueta =
+    estado === "verde" ? "Rentabilidad alta" : estado === "amarillo" ? "Rentabilidad media" : "Rentabilidad baja";
+  const simbolo = estado === "verde" ? "✓" : estado === "amarillo" ? "!" : "×";
+
+  return (
+    <span
+      className={`rentabilidad-mes__semaforo rentabilidad-mes__semaforo--${estado}`}
+      role="img"
+      aria-label={etiqueta}
+      title={`${etiqueta}: ${porcentaje(valor)}. Verde ≥ 80 %, amarillo ≥ 20 %, rojo < 20 %.`}
+    >
+      <span aria-hidden="true">{simbolo}</span>
+    </span>
+  );
+}
+
+function EstadoRentabilidadCalculada({ valor }: { valor: string | null }) {
+  const calculada = valor !== null;
+  const etiqueta = calculada
+    ? "Costo disponible; rentabilidad calculada"
+    : "Costo incompleto; rentabilidad no calculada";
+  return (
+    <span
+      className={`rentabilidad-mes__semaforo rentabilidad-mes__semaforo--${calculada ? "verde" : "neutro"}`}
+      role="img"
+      aria-label={etiqueta}
+      title={etiqueta}
+    >
+      <span aria-hidden="true">{calculada ? "✓" : "○"}</span>
+    </span>
+  );
 }
 
 function LineaRentabilidadDiaria({ puntos }: { puntos: PuntoRentabilidadMes[] }) {
-  const ancho = 640;
+  const ancho = 420;
   const alto = 190;
   const margen = { arriba: 16, derecha: 12, abajo: 28, izquierda: 38 };
   const valores = puntos.map((punto) =>
@@ -59,7 +135,8 @@ function LineaRentabilidadDiaria({ puntos }: { puntos: PuntoRentabilidadMes[] })
     alto: alto - margen.arriba - margen.abajo,
   };
   const x = (indice: number) =>
-    margen.izquierda + (puntos.length <= 1 ? util.ancho / 2 : (indice / (puntos.length - 1)) * util.ancho);
+    margen.izquierda +
+    (puntos.length <= 1 ? util.ancho / 2 : (indice / (puntos.length - 1)) * util.ancho);
   const y = (valor: number) => margen.arriba + ((maximo - valor) / rango) * util.alto;
   const segmentos: string[][] = [];
   let segmento: string[] = [];
@@ -75,6 +152,15 @@ function LineaRentabilidadDiaria({ puntos }: { puntos: PuntoRentabilidadMes[] })
 
   const marcas = [0, Math.floor((puntos.length - 1) / 2), Math.max(0, puntos.length - 1)];
   const resumen = disponibles.map((valor) => `${valor.toFixed(1)} %`).join(", ");
+  const baseY = y(0);
+  const indiceMayor = valores.indexOf(Math.max(...disponibles));
+  const indiceMenor = valores.indexOf(Math.min(...disponibles));
+  const indicesPorcentaje = new Set([0, puntos.length - 1, indiceMayor, indiceMenor]);
+  for (let indice = 4; indice < puntos.length - 1; indice += 5) {
+    if (![...indicesPorcentaje].some((existente) => Math.abs(existente - indice) < 3)) {
+      indicesPorcentaje.add(indice);
+    }
+  }
 
   return (
     <figure className="rentabilidad-mes__linea">
@@ -102,13 +188,40 @@ function LineaRentabilidadDiaria({ puntos }: { puntos: PuntoRentabilidadMes[] })
             </g>
           );
         })}
-        {segmentos.map((segmentosLinea, indice) => (
+        {segmentos.map((puntosSegmento, indice) => {
+          const primero = puntosSegmento[0]?.split(",")[0];
+          const ultimo = puntosSegmento[puntosSegmento.length - 1]?.split(",")[0];
+          if (primero === undefined || ultimo === undefined) return null;
+          return (
+            <polygon
+              key={`area-${indice}`}
+              points={`${primero},${baseY} ${puntosSegmento.join(" ")} ${ultimo},${baseY}`}
+              className="rentabilidad-mes__area"
+            />
+          );
+        })}
+        {segmentos.map((puntosSegmento, indice) => (
           <polyline
-            key={indice}
-            points={segmentosLinea.join(" ")}
+            key={`linea-${indice}`}
+            points={puntosSegmento.join(" ")}
             className="rentabilidad-mes__trazo"
           />
         ))}
+        {Array.from(indicesPorcentaje).map((indice) => {
+          const valor = valores[indice];
+          if (valor === null || valor === undefined) return null;
+          return (
+            <text
+              key={`porcentaje-${indice}`}
+              x={x(indice)}
+              y={Math.max(margen.arriba + 10, y(valor) - 7)}
+              textAnchor="middle"
+              className="rentabilidad-mes__valor-linea"
+            >
+              {`${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 1 }).format(valor)} %`}
+            </text>
+          );
+        })}
         {marcas.map((indice) => {
           const punto = puntos[indice];
           return punto ? (
@@ -118,23 +231,178 @@ function LineaRentabilidadDiaria({ puntos }: { puntos: PuntoRentabilidadMes[] })
           ) : null;
         })}
       </svg>
-      <figcaption>Rentabilidad diaria (%)</figcaption>
+      <figcaption>Día</figcaption>
     </figure>
   );
 }
 
+function BarrasVentaDiaria({ puntos }: { puntos: PuntoRentabilidadMes[] }) {
+  const ancho = 420;
+  const alto = 190;
+  const margen = { arriba: 25, abajo: 28, horizontal: 9 };
+  const valores = puntos.map((punto) => Number(punto.venta));
+  const maximo = Math.max(...valores, 1) * 1.14;
+  const util = ancho - margen.horizontal * 2;
+  const paso = util / Math.max(puntos.length, 1);
+  const anchoBarra = Math.max(3, paso * 0.62);
+  const baseY = alto - margen.abajo;
+  const x = (indice: number) => margen.horizontal + paso * indice + (paso - anchoBarra) / 2;
+  const y = (valor: number) => margen.arriba + (1 - valor / maximo) * (baseY - margen.arriba);
+  const indicesValor = new Set<number>();
+  for (let inicio = 0; inicio < puntos.length; inicio += 6) {
+    const fin = Math.min(inicio + 6, puntos.length);
+    let mayor = inicio;
+    for (let indice = inicio + 1; indice < fin; indice += 1) {
+      const valor = valores[indice];
+      const valorMayor = valores[mayor];
+      if (valor !== undefined && valorMayor !== undefined && valor > valorMayor) mayor = indice;
+    }
+    indicesValor.add(mayor);
+  }
+
+  const valoresAccesibles = puntos
+    .map((punto) => `${Number(punto.fecha.slice(8, 10))}: ${millones(punto.venta)}`)
+    .join("; ");
+
+  return (
+    <figure className="rentabilidad-mes__barras">
+      <svg
+        viewBox={`0 0 ${ancho} ${alto}`}
+        className="rentabilidad-mes__barras-svg"
+        role="img"
+        aria-label={`Venta diaria en millones de pesos. ${valoresAccesibles}.`}
+      >
+        {[0.25, 0.5, 0.75].map((fraccion) => {
+          const posicion = margen.arriba + (baseY - margen.arriba) * fraccion;
+          return (
+            <line
+              key={fraccion}
+              x1={margen.horizontal}
+              x2={ancho - margen.horizontal}
+              y1={posicion}
+              y2={posicion}
+              className="rentabilidad-mes__guia"
+            />
+          );
+        })}
+        {puntos.map((punto, indice) => {
+          const valor = valores[indice];
+          if (valor === undefined) return null;
+          const barraY = y(valor);
+          const dia = Number(punto.fecha.slice(8, 10));
+          const valorCorto = `$ ${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(valor / 1_000_000)}`;
+          return (
+            <g key={punto.fecha}>
+              <title>{`Día ${dia}: ${millones(punto.venta)}`}</title>
+              <rect
+                x={x(indice)}
+                y={barraY}
+                width={anchoBarra}
+                height={Math.max(1, baseY - barraY)}
+                rx="1.5"
+                className="rentabilidad-mes__barra-venta"
+              />
+              <text
+                x={x(indice) + anchoBarra / 2}
+                y={alto - 7}
+                textAnchor="middle"
+                className="rentabilidad-mes__eje"
+              >
+                {dia}
+              </text>
+              {indicesValor.has(indice) ? (
+                <text
+                  x={x(indice) + anchoBarra / 2}
+                  y={Math.max(11, barraY - 5)}
+                  textAnchor="middle"
+                  className="rentabilidad-mes__valor-barra"
+                >
+                  {valorCorto}
+                </text>
+              ) : null}
+            </g>
+          );
+        })}
+      </svg>
+      <figcaption>Venta, en millones de pesos</figcaption>
+    </figure>
+  );
+}
+
+function TablaRanking({
+  titulo,
+  etiqueta,
+  filas,
+  totalVenta,
+  totalRentabilidad,
+  mostrarPosicion = false,
+}: {
+  titulo: string;
+  etiqueta: string;
+  filas: FilaRentabilidadMes[];
+  totalVenta: string;
+  totalRentabilidad: string | null;
+  mostrarPosicion?: boolean;
+}) {
+  return (
+    <section className="rentabilidad-mes__panel">
+      <h2 className="rentabilidad-mes__titulo-panel">{titulo}</h2>
+      <div className="tabla-envoltorio">
+        <table className="tabla tabla--compacta rentabilidad-mes__tabla rentabilidad-mes__tabla--ranking">
+          <thead>
+            <tr>
+              <th>{etiqueta}</th>
+              {mostrarPosicion ? <th className="numero">Rnk $</th> : null}
+              <th className="numero">Vlr_FactMM</th>
+              <th className="numero">%Rent</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((fila, indice) => (
+              <tr key={fila.etiqueta}>
+                <th scope="row">{fila.etiqueta}</th>
+                {mostrarPosicion ? <td className="numero">{indice + 1}</td> : null}
+                <td className="numero">{millones(fila.venta)}</td>
+                <td className="numero">{porcentaje(fila.rentabilidad)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th scope="row">Total</th>
+              {mostrarPosicion ? <td className="numero">—</td> : null}
+              <td className="numero">{millones(totalVenta)}</td>
+              <td className="numero">{porcentaje(totalRentabilidad)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export function RentabilidadMes() {
+  const marca = useMarcaElegida();
   const [periodo, setPeriodo] = useState(periodoActual);
+  const [gruposColapsados, setGruposColapsados] = useState<Set<string>>(() => new Set());
   const consulta = useRentabilidadMes(aPeriodoApi(periodo));
   const datos = consulta.data;
+
+  function alternarGrupo(clave: string) {
+    setGruposColapsados((actuales) => {
+      const nuevos = new Set(actuales);
+      if (nuevos.has(clave)) nuevos.delete(clave);
+      else nuevos.add(clave);
+      return nuevos;
+    });
+  }
 
   return (
     <main className="rentabilidad-mes">
       <header className="rentabilidad-mes__cabecera">
-        <div>
-          <p className="rentabilidad-mes__eyebrow">AGROPECUARIA · CIA 3 · SIESA</p>
-          <h2>Venta - Rentabilidad mes</h2>
-          {datos ? <p className="tenue">Corte del {datos.fecha_inicio} al {datos.fecha_fin}.</p> : null}
+        <div className="rentabilidad-mes__marca">
+          <img src={marca.logo} alt="" />
+          <h1>VENTA - RENTABILIDAD MES</h1>
         </div>
         <label className="campo rentabilidad-mes__periodo">
           <span>Mes</span>
@@ -154,104 +422,180 @@ export function RentabilidadMes() {
       ) : null}
 
       {datos && datos.lineas_facturadas > 0 ? (
-        <>
-          <section className="rentabilidad-mes__kpis" aria-label="Indicadores del mes">
-            <article className="rentabilidad-mes__kpi rentabilidad-mes__kpi--venta">
-              <span>Vlr. facturado</span>
-              <strong>{millones(datos.venta)}</strong>
-              <small>{cantidad(datos.kilos)} kg · {datos.lineas_facturadas.toLocaleString("es-CO")} líneas</small>
-            </article>
-            <article className="rentabilidad-mes__kpi">
-              <span>Rentabilidad</span>
-              <strong>{porcentaje(datos.rentabilidad)}</strong>
-              <small>Margen bruto {millones(datos.margen_bruto)}</small>
-            </article>
-            <article className="rentabilidad-mes__kpi rentabilidad-mes__kpi--costo">
-              <span>Costo</span>
-              <strong>{millones(datos.costo)}</strong>
-              <small>{datos.costo === null ? "Costo incompleto en la fuente" : "Facturación menos costo"}</small>
-            </article>
-            <article className="rentabilidad-mes__kpi">
-              <span>Facturas</span>
-              <strong>{cantidad(String(datos.lineas_facturadas))}</strong>
-              <small>líneas facturadas, no documentos</small>
-            </article>
-          </section>
+        <section className="rentabilidad-mes__estructura" aria-label="Venta y rentabilidad mensual">
+          <div className="rentabilidad-mes__columna rentabilidad-mes__columna--izquierda">
+            <section className="rentabilidad-mes__indicadores" aria-label="Indicadores del mes">
+              <article className="rentabilidad-mes__indicador">
+                <strong>{millones(datos.venta)}</strong>
+                <span>Vlr Facturado</span>
+              </article>
+              <article className="rentabilidad-mes__indicador">
+                <strong>{porcentaje(datos.rentabilidad)}</strong>
+                <span>%Rent</span>
+              </article>
+            </section>
 
-          <section className="rentabilidad-mes__estructura" aria-label="Detalle de venta y rentabilidad">
-            <div className="rentabilidad-mes__columna">
-              <Tarjeta titulo="Rentabilidad diaria" descripcion="Porcentaje calculado con el costo disponible de cada día.">
-                <LineaRentabilidadDiaria puntos={datos.diario} />
-              </Tarjeta>
-              <Tarjeta titulo="Venta diaria" descripcion="Venta neta por fecha, en millones de pesos.">
-                <ColumnasComparadas
-                  columnas={datos.diario.map((punto) => ({
-                    clave: punto.fecha,
-                    etiqueta: String(Number(punto.fecha.slice(8, 10))),
-                    valor: punto.venta,
-                  }))}
-                  titulo="Venta neta diaria"
-                  formatear={millones}
-                  etiquetaValor="Venta"
-                  notaSinReferencia=""
-                />
-              </Tarjeta>
-            </div>
+            <section className="rentabilidad-mes__especies" aria-label="Indicadores por especie">
+              {especiesResumen(datos.especies).map((fila) => {
+                const especie = etiquetaEspecie(fila.etiqueta).toUpperCase();
+                return (
+                  <article className="rentabilidad-mes__especie-resumen" key={fila.etiqueta}>
+                    <strong>{cantidad(fila.kilos)}</strong>
+                    <span>KILOS {especie}</span>
+                    <small>{costoPorKilo(fila)} Costo_KG_PROM</small>
+                  </article>
+                );
+              })}
+            </section>
 
-            <div className="rentabilidad-mes__columna">
-              <Tarjeta titulo="Total facturado por tipo de ítem" descripcion="Venta neta y rentabilidad ponderada.">
-                <div className="tabla-envoltorio">
-                  <table className="tabla rentabilidad-mes__tabla">
-                    <thead><tr><th>Tipo ítem</th><th className="numero">Vlr_FactMM</th><th className="numero">%Rent</th></tr></thead>
-                    <tbody>
-                      {datos.tipos_item.map((fila) => (
-                        <tr key={fila.etiqueta}>
-                          <th scope="row">{fila.etiqueta}</th>
-                          <td className="numero">{millones(fila.venta)}</td>
-                          <td className="numero">{porcentaje(fila.rentabilidad)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </Tarjeta>
+            <LineaRentabilidadDiaria puntos={datos.diario} />
 
-              <Tarjeta titulo="Facturación bienes" descripcion="Venta neta por especie y tipo comercial.">
-                <div className="tabla-envoltorio">
-                  <table className="tabla rentabilidad-mes__tabla">
-                    <thead><tr><th>Especie / tipo comercial</th><th className="numero">Vlr_FactMM</th><th className="numero">%Rent</th></tr></thead>
-                    <tbody>
-                      {datos.especies.filter((especie) => especie.comerciales.length > 0).flatMap((especie) => [
-                        <tr key={`especie-${especie.etiqueta}`} className="rentabilidad-mes__grupo">
-                          <th scope="row">{especie.etiqueta}</th>
-                          <td className="numero">{millones(especie.venta)}</td>
-                          <td className="numero">{porcentaje(especie.rentabilidad)}</td>
-                        </tr>,
-                        ...especie.comerciales.map((fila) => (
-                          <tr key={`${especie.etiqueta}-${fila.etiqueta}`}>
-                            <th scope="row" className="rentabilidad-mes__subfila">{fila.etiqueta}</th>
-                            <td className="numero">{millones(fila.venta)}</td>
-                            <td className="numero">{porcentaje(fila.rentabilidad)}</td>
-                          </tr>
-                        )),
-                      ])}
-                    </tbody>
-                  </table>
-                </div>
-              </Tarjeta>
-            </div>
+            <BarrasVentaDiaria puntos={datos.diario} />
+          </div>
 
-            <div className="rentabilidad-mes__columna">
-              <Tarjeta titulo="Ranking clientes" descripcion="Clientes con mayor venta neta del mes.">
-                <BarrasRanking filas={datos.clientes.map(filaRanking)} titulo="Clientes por venta" formatear={millones} />
-              </Tarjeta>
-              <Tarjeta titulo="Ranking productos" descripcion="Productos con mayor venta neta del mes.">
-                <BarrasRanking filas={datos.productos.map(filaRanking)} titulo="Productos por venta" formatear={millones} />
-              </Tarjeta>
-            </div>
-          </section>
-        </>
+          <div className="rentabilidad-mes__columna rentabilidad-mes__columna--centro">
+            <section className="rentabilidad-mes__panel">
+              <h2 className="rentabilidad-mes__titulo-panel">Total Fact Agropecuaria</h2>
+              <div className="tabla-envoltorio">
+                <table className="tabla tabla--compacta rentabilidad-mes__tabla">
+                  <thead>
+                    <tr><th>TIPO ITEM</th><th className="numero">Vlr_FactMM</th><th aria-label="Semáforo" /><th className="numero">%Rent</th></tr>
+                  </thead>
+                  <tbody>
+                    {datos.tipos_item.map((fila) => {
+                      const clave = `tipo:${fila.etiqueta}`;
+                      const abierto = !gruposColapsados.has(clave);
+                      return (
+                        <FragmentoTipoItem
+                          key={fila.etiqueta}
+                          fila={fila}
+                          abierto={abierto}
+                          alAlternar={() => alternarGrupo(clave)}
+                        />
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr><th scope="row">Total</th><td className="numero">{millones(datos.venta)}</td><td /><td className="numero">{porcentaje(datos.rentabilidad)}</td></tr>
+                  </tfoot>
+                </table>
+              </div>
+            </section>
+
+            <section className="rentabilidad-mes__panel">
+              <h2 className="rentabilidad-mes__titulo-panel">Facturación BIENES</h2>
+              <div className="tabla-envoltorio">
+                <table className="tabla tabla--compacta rentabilidad-mes__tabla">
+                  <thead>
+                    <tr><th>ESPECIE</th><th className="numero">Vlr_FactMM</th><th aria-label="Semáforo" /><th className="numero">%Rent</th></tr>
+                  </thead>
+                  <tbody>
+                    {datos.especies.map((fila) => {
+                      const clave = `especie:${fila.etiqueta}`;
+                      const abierto = !gruposColapsados.has(clave);
+                      return (
+                        <FragmentoEspecie
+                          key={fila.etiqueta}
+                          fila={fila}
+                          abierto={abierto}
+                          alAlternar={() => alternarGrupo(clave)}
+                        />
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr><th scope="row">Total</th><td className="numero">{millones(datos.especies.reduce((suma, fila) => suma + Number(fila.venta), 0).toString())}</td><td /><td className="numero">{porcentaje(datos.rentabilidad)}</td></tr>
+                  </tfoot>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <div className="rentabilidad-mes__columna rentabilidad-mes__columna--derecha">
+            <TablaRanking
+              titulo="Ranking Clientes"
+              etiqueta="Razón social cliente despacho"
+              filas={datos.clientes}
+              totalVenta={datos.venta}
+              totalRentabilidad={datos.rentabilidad}
+              mostrarPosicion
+            />
+            <TablaRanking
+              titulo="Ranking Productos"
+              etiqueta="Desc. item"
+              filas={datos.productos}
+              totalVenta={datos.venta}
+              totalRentabilidad={datos.rentabilidad}
+            />
+          </div>
+        </section>
       ) : null}
     </main>
+  );
+}
+
+function FragmentoTipoItem({
+  fila,
+  abierto,
+  alAlternar,
+}: {
+  fila: FilaTipoItemRentabilidadMes;
+  abierto: boolean;
+  alAlternar: () => void;
+}) {
+  return (
+    <>
+      <tr className="rentabilidad-mes__grupo">
+        <th scope="row">
+          <button type="button" aria-expanded={abierto} onClick={alAlternar}>
+            <span aria-hidden="true">{abierto ? "⊟" : "⊞"}</span>{fila.etiqueta}
+          </button>
+        </th>
+        <td className="numero">{millones(fila.venta)}</td>
+        <td />
+        <td className="numero">{porcentaje(fila.rentabilidad)}</td>
+      </tr>
+      {abierto ? fila.centros_operacion.map((centro) => (
+        <tr key={`${fila.etiqueta}-${centro.etiqueta}`}>
+          <th scope="row" className="rentabilidad-mes__subfila">{centro.etiqueta}</th>
+          <td className="numero">{millones(centro.venta)}</td>
+          <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={centro.rentabilidad} /></td>
+          <td className="numero">{porcentaje(centro.rentabilidad)}</td>
+        </tr>
+      )) : null}
+    </>
+  );
+}
+
+function FragmentoEspecie({
+  fila,
+  abierto,
+  alAlternar,
+}: {
+  fila: FilaEspecieRentabilidadMes;
+  abierto: boolean;
+  alAlternar: () => void;
+}) {
+  return (
+    <>
+      <tr className="rentabilidad-mes__grupo">
+        <th scope="row">
+          <button type="button" aria-expanded={abierto} onClick={alAlternar}>
+            <span aria-hidden="true">{abierto ? "⊟" : "⊞"}</span>{fila.etiqueta}
+          </button>
+        </th>
+        <td className="numero">{millones(fila.venta)}</td>
+        <td />
+        <td className="numero">{porcentaje(fila.rentabilidad)}</td>
+      </tr>
+      {abierto ? fila.comerciales.map((comercial) => (
+        <tr key={`${fila.etiqueta}-${comercial.etiqueta}`}>
+          <th scope="row" className="rentabilidad-mes__subfila">{comercial.etiqueta}</th>
+          <td className="numero">{millones(comercial.venta)}</td>
+          <td className="rentabilidad-mes__celda-semaforo"><EstadoRentabilidadCalculada valor={comercial.rentabilidad} /></td>
+          <td className="numero">{porcentaje(comercial.rentabilidad)}</td>
+        </tr>
+      )) : null}
+    </>
   );
 }

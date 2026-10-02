@@ -766,6 +766,10 @@ export interface FilaRentabilidadMes {
   participacion: string | null;
 }
 
+export interface FilaTipoItemRentabilidadMes extends FilaRentabilidadMes {
+  centros_operacion: FilaRentabilidadMes[];
+}
+
 export interface PuntoRentabilidadMes {
   fecha: string;
   venta: string;
@@ -788,7 +792,7 @@ export interface RespuestaRentabilidadMes {
   kilos: string;
   lineas_facturadas: number;
   diario: PuntoRentabilidadMes[];
-  tipos_item: FilaRentabilidadMes[];
+  tipos_item: FilaTipoItemRentabilidadMes[];
   especies: FilaEspecieRentabilidadMes[];
   clientes: FilaRentabilidadMes[];
   productos: FilaRentabilidadMes[];

@@ -155,6 +155,10 @@ class FilaRentabilidadMes(EsquemaBase):
     participacion: DecimalStr | None = None
 
 
+class FilaTipoItemRentabilidadMes(FilaRentabilidadMes):
+    centros_operacion: list[FilaRentabilidadMes]
+
+
 class PuntoRentabilidadMes(EsquemaBase):
     fecha: date
     venta: DecimalStr
@@ -177,7 +181,7 @@ class RespuestaRentabilidadMes(EsquemaBase):
     kilos: DecimalStr
     lineas_facturadas: int
     diario: list[PuntoRentabilidadMes]
-    tipos_item: list[FilaRentabilidadMes]
+    tipos_item: list[FilaTipoItemRentabilidadMes]
     especies: list[FilaEspecieRentabilidadMes]
     clientes: list[FilaRentabilidadMes]
     productos: list[FilaRentabilidadMes]

@@ -20,6 +20,7 @@ from app.infrastructure.models.agro_vocabulario import es_impuesto
 from app.schemas.financiero import (
     FilaEspecieRentabilidadMes,
     FilaRentabilidadMes,
+    FilaTipoItemRentabilidadMes,
     PuntoRentabilidadMes,
     RespuestaRentabilidadMes,
 )
@@ -104,6 +105,7 @@ def calcular_rentabilidad_mes(
     total = _Acumulado()
     diario = {desde + timedelta(days=dia): _Acumulado() for dia in range((hasta - desde).days + 1)}
     tipos_item: dict[str, _Acumulado] = {}
+    centros_por_tipo_item: dict[tuple[str, str], _Acumulado] = {}
     especies: dict[str, _Acumulado] = {}
     ventas_comerciales: dict[tuple[str, str], _Acumulado] = {}
     clientes: dict[str, _Acumulado] = {}
@@ -115,9 +117,12 @@ def calcular_rentabilidad_mes(
                 continue
             total.agregar(fila)
             diario[fila.fecha].agregar(fila)
-            _acumular(tipos_item, fila.tipo_item or "SIN TIPO DE ITEM", fila)
-            _acumular(especies, fila.especie or "SIN ESPECIE", fila)
+            tipo_item = fila.tipo_item or "SIN TIPO DE ITEM"
+            _acumular(tipos_item, tipo_item, fila)
+            clave_centro = (tipo_item, fila.co_id or "SIN CENTRO")
+            centros_por_tipo_item.setdefault(clave_centro, _Acumulado()).agregar(fila)
             if "BIENES" in (fila.tipo_item or "").upper():
+                _acumular(especies, fila.especie or "SIN ESPECIE", fila)
                 clave_comercial = (
                     fila.especie or "SIN ESPECIE",
                     fila.tipo_comercial or "SIN TIPO COMERCIAL",
@@ -134,11 +139,22 @@ def calcular_rentabilidad_mes(
         if fuente_creada is not None:
             fuente_creada.cerrar()
 
-    tipos_salida = sorted(
-        (_fila(etiqueta, acumulado, total.venta) for etiqueta, acumulado in tipos_item.items()),
-        key=lambda fila: fila.venta,
-        reverse=True,
-    )
+    tipos_salida = []
+    for etiqueta, acumulado in sorted(
+        tipos_item.items(), key=lambda par: par[1].venta, reverse=True
+    ):
+        centros = [
+            _fila(centro, acumulado_centro, total.venta)
+            for (tipo, centro), acumulado_centro in centros_por_tipo_item.items()
+            if tipo == etiqueta
+        ]
+        centros.sort(key=lambda fila: fila.venta, reverse=True)
+        tipos_salida.append(
+            FilaTipoItemRentabilidadMes(
+                **_fila(etiqueta, acumulado, total.venta).model_dump(),
+                centros_operacion=centros,
+            )
+        )
     especies_salida: list[FilaEspecieRentabilidadMes] = []
     for especie, acumulado in sorted(especies.items(), key=lambda par: par[1].venta, reverse=True):
         comerciales = [
