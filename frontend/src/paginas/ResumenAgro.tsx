@@ -339,12 +339,16 @@ export function ResumenAgro() {
 
             <Tarjeta
               titulo="Evolución mensual"
-              descripcion="Venta neta y presupuesto de enero a diciembre. Los meses aún no abiertos se muestran atenuados."
+              descripcion="Venta neta y presupuesto en millones de pesos, de enero a diciembre. Los meses aún no abiertos se muestran atenuados."
             >
               <ColumnasComparadas
                 columnas={columnasMensuales}
                 titulo="Venta mensual frente a presupuesto"
                 formatear={dinero}
+                mostrarValores
+                formatearCifra={(valor) =>
+                  `${(Number(valor) / 1_000_000).toLocaleString("es-CO", { maximumFractionDigits: 0 })} M`
+                }
               />
             </Tarjeta>
           </div>

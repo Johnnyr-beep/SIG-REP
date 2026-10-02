@@ -325,6 +325,8 @@ export function ColumnasComparadas({
   etiquetaValor = "Venta",
   etiquetaReferencia = "Presupuesto",
   notaSinReferencia = "Sin presupuesto capturado en este corte",
+  mostrarValores = false,
+  formatearCifra,
 }: {
   columnas: ColumnaComparada[];
   titulo: string;
@@ -333,6 +335,9 @@ export function ColumnasComparadas({
   etiquetaReferencia?: string;
   /** Qué decir cuando no hay serie de referencia. Vacío para no decir nada. */
   notaSinReferencia?: string;
+  /** Dibuja los importes abreviados sobre las barras y el valor completo al pasar el cursor. */
+  mostrarValores?: boolean;
+  formatearCifra?: (valor: string) => string;
 }) {
   if (columnas.length === 0) {
     return <p className="tenue">Sin categorías que dibujar.</p>;
@@ -364,9 +369,10 @@ export function ColumnasComparadas({
       1,
     ) * 1.12;
 
+  const margenSuperior = mostrarValores ? 42 : COMPARADAS.arriba;
   const util = {
     ancho: COMPARADAS.ancho - COMPARADAS.margenX * 2,
-    alto: COMPARADAS.alto - COMPARADAS.arriba - COMPARADAS.abajo,
+    alto: COMPARADAS.alto - margenSuperior - COMPARADAS.abajo,
   };
   const paso = util.ancho / columnas.length;
   // Con referencia caben dos barras en el hueco; sin ella, una más ancha usa el
@@ -402,8 +408,8 @@ export function ColumnasComparadas({
             key={fraccion}
             x1={COMPARADAS.margenX}
             x2={COMPARADAS.ancho - COMPARADAS.margenX}
-            y1={COMPARADAS.arriba + util.alto * fraccion}
-            y2={COMPARADAS.arriba + util.alto * fraccion}
+            y1={margenSuperior + util.alto * fraccion}
+            y2={margenSuperior + util.alto * fraccion}
             className="comparadas__guia"
           />
         ))}
@@ -413,7 +419,15 @@ export function ColumnasComparadas({
           const inicio = centro - bloque / 2;
           const altoValor = alturaDe(columna.valor);
           const altoMeta = alturaDe(columna.referencia ?? null);
-          const base = COMPARADAS.arriba + util.alto;
+          const base = margenSuperior + util.alto;
+          const techoBarras = base - Math.max(altoValor, altoMeta);
+          const hayDosValores = columna.valor !== null && columna.referencia != null;
+          const valorEtiqueta = (valor: string) =>
+            formatearCifra?.(valor) ??
+            new Intl.NumberFormat("es-CO", {
+              notation: "compact",
+              maximumFractionDigits: 1,
+            }).format(Number(valor));
 
           return (
             <g key={columna.clave}>
@@ -436,6 +450,31 @@ export function ColumnasComparadas({
                   height={Math.max(altoMeta, 1)}
                   rx="2"
                 />
+              ) : null}
+              {mostrarValores && columna.valor !== null ? (
+                <text
+                  className={`comparadas__dato comparadas__dato--valor${columna.atenuada ? " comparadas__dato--atenuada" : ""}`}
+                  x={centro}
+                  y={Math.max(margenSuperior + 10, techoBarras - 6)}
+                  textAnchor="middle"
+                >
+                  {valorEtiqueta(columna.valor)}
+                  <title>{`${etiquetaValor}: ${formatear(columna.valor)}`}</title>
+                </text>
+              ) : null}
+              {mostrarValores && columna.referencia != null ? (
+                <text
+                  className={`comparadas__dato comparadas__dato--referencia${columna.atenuada ? " comparadas__dato--atenuada" : ""}`}
+                  x={centro}
+                  y={Math.max(
+                    margenSuperior + 10,
+                    techoBarras - (hayDosValores ? 19 : 6),
+                  )}
+                  textAnchor="middle"
+                >
+                  {valorEtiqueta(columna.referencia)}
+                  <title>{`${etiquetaReferencia}: ${formatear(columna.referencia)}`}</title>
+                </text>
               ) : null}
               <text
                 className={`comparadas__etiqueta${columna.atenuada ? " comparadas__etiqueta--atenuada" : ""}`}

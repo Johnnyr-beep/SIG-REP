@@ -4254,6 +4254,23 @@ textarea.campo__control {
   opacity: 0.5;
 }
 
+.comparadas__dato {
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.comparadas__dato--valor {
+  fill: var(--exito);
+}
+
+.comparadas__dato--referencia {
+  fill: var(--texto-suave);
+}
+
+.comparadas__dato--atenuada {
+  opacity: 0.55;
+}
+
 .comparadas__etiqueta {
   fill: var(--texto-tenue);
   font-size: 11px;
