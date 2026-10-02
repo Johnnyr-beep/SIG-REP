@@ -3721,22 +3721,26 @@ textarea.campo__control {
 .rentabilidad-mes__especies {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--espacio-2);
-  padding: 0 var(--espacio-3);
+  width: 100%;
+  gap: var(--espacio-3);
+  padding: 0 var(--espacio-3) var(--espacio-2);
 }
 
 .rentabilidad-mes__especie-resumen {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  padding: var(--espacio-1) var(--espacio-2);
+  gap: var(--espacio-1);
+  padding: var(--espacio-2) var(--espacio-3);
   border-top: 1px solid var(--borde);
   font-variant-numeric: tabular-nums;
 }
 
 .rentabilidad-mes__especie-resumen strong {
-  font-size: 0.93rem;
+  color: var(--texto);
+  font-size: 1.4rem;
+  font-weight: 650;
+  line-height: 1.1;
 }
 
 .rentabilidad-mes__especie-resumen strong small {
@@ -3745,10 +3749,23 @@ textarea.campo__control {
   font-weight: 500;
 }
 
-.rentabilidad-mes__especie-resumen span,
-.rentabilidad-mes__especie-resumen > small {
+.rentabilidad-mes__especie-resumen > span {
   color: var(--texto-suave);
-  font-size: 0.63rem;
+  font-size: 0.75rem;
+}
+
+.rentabilidad-mes__especie-resumen > small {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--espacio-1);
+  color: var(--texto-tenue);
+  font-size: 0.7rem;
+}
+
+.rentabilidad-mes__especie-resumen > small strong {
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
 .rentabilidad-mes__linea {
@@ -4095,8 +4112,16 @@ textarea.campo__control {
   }
 
   .rentabilidad-mes__especies {
-    gap: var(--espacio-1);
+    gap: var(--espacio-2);
     padding-inline: 0;
+  }
+
+  .rentabilidad-mes__especie-resumen {
+    padding-inline: var(--espacio-2);
+  }
+
+  .rentabilidad-mes__especie-resumen strong {
+    font-size: 1.25rem;
   }
 }
 

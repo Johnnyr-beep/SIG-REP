@@ -442,24 +442,27 @@ export function RentabilidadMes() {
             </article>
           </section>
 
+          <section className="rentabilidad-mes__especies" aria-label="Indicadores por especie">
+            {especiesResumen(datos.especies).map((fila) => {
+              const especie = etiquetaEspecie(fila.etiqueta).toUpperCase();
+              return (
+                <article className="rentabilidad-mes__especie-resumen" key={fila.etiqueta}>
+                  <strong>{cantidad(fila.kilos)}</strong>
+                  <span>KILOS {especie}</span>
+                  <small>
+                    <strong>{costoPorKilo(fila)}</strong>
+                    <span>Costo_KG_PROM</span>
+                  </small>
+                </article>
+              );
+            })}
+          </section>
+
           <section className="rentabilidad-mes__estructura" aria-label="Venta y rentabilidad mensual">
             <div className="rentabilidad-mes__columna rentabilidad-mes__columna--izquierda">
-            <section className="rentabilidad-mes__especies" aria-label="Indicadores por especie">
-              {especiesResumen(datos.especies).map((fila) => {
-                const especie = etiquetaEspecie(fila.etiqueta).toUpperCase();
-                return (
-                  <article className="rentabilidad-mes__especie-resumen" key={fila.etiqueta}>
-                    <strong>{cantidad(fila.kilos)}</strong>
-                    <span>KILOS {especie}</span>
-                    <small>{costoPorKilo(fila)} Costo_KG_PROM</small>
-                  </article>
-                );
-              })}
-            </section>
+              <LineaRentabilidadDiaria puntos={datos.diario} />
 
-            <LineaRentabilidadDiaria puntos={datos.diario} />
-
-            <BarrasVentaDiaria puntos={datos.diario} />
+              <BarrasVentaDiaria puntos={datos.diario} />
             </div>
 
           <div className="rentabilidad-mes__columna rentabilidad-mes__columna--centro">
