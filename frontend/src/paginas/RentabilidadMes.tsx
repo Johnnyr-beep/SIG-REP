@@ -458,13 +458,20 @@ export function RentabilidadMes() {
             })}
           </section>
 
-          <section className="rentabilidad-mes__estructura" aria-label="Venta y rentabilidad mensual">
-            <div className="rentabilidad-mes__columna rentabilidad-mes__columna--izquierda">
+          <section className="rentabilidad-mes__graficos-diarios" aria-label="Evolución diaria">
+            <div className="rentabilidad-mes__grafico-diario">
+              <h2 className="rentabilidad-mes__titulo-panel">Rentabilidad diaria</h2>
+              <p className="rentabilidad-mes__descripcion-grafico">Porcentaje calculado con el costo disponible de cada día.</p>
               <LineaRentabilidadDiaria puntos={datos.diario} />
-
+            </div>
+            <div className="rentabilidad-mes__grafico-diario">
+              <h2 className="rentabilidad-mes__titulo-panel">Venta diaria</h2>
+              <p className="rentabilidad-mes__descripcion-grafico">Facturación neta por día, en millones de pesos.</p>
               <BarrasVentaDiaria puntos={datos.diario} />
             </div>
+          </section>
 
+          <section className="rentabilidad-mes__estructura" aria-label="Venta y rentabilidad mensual">
           <div className="rentabilidad-mes__columna rentabilidad-mes__columna--centro">
             <section className="rentabilidad-mes__panel">
               <h2 className="rentabilidad-mes__titulo-panel">Total Fact Agropecuaria</h2>

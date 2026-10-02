@@ -3667,7 +3667,7 @@ textarea.campo__control {
 
 .rentabilidad-mes__estructura {
   display: grid;
-  grid-template-columns: minmax(13rem, 0.9fr) minmax(19rem, 1.05fr) minmax(24rem, 1.45fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
   gap: var(--espacio-4);
   align-items: start;
 }
@@ -3716,6 +3716,24 @@ textarea.campo__control {
 .rentabilidad-mes__indicador span {
   color: var(--texto-tenue);
   font-size: 0.78rem;
+}
+
+.rentabilidad-mes__graficos-diarios {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--espacio-5);
+  align-items: start;
+  padding: 0 var(--espacio-3);
+}
+
+.rentabilidad-mes__grafico-diario {
+  min-width: 0;
+}
+
+.rentabilidad-mes__descripcion-grafico {
+  margin: var(--espacio-1) 0 var(--espacio-2);
+  color: var(--texto-suave);
+  font-size: 0.75rem;
 }
 
 .rentabilidad-mes__especies {
@@ -4046,6 +4064,12 @@ textarea.campo__control {
 
   .rentabilidad-mes__estructura {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rentabilidad-mes__graficos-diarios {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--espacio-3);
+    padding-inline: 0;
   }
 
   .rentabilidad-mes__columna--derecha {
