@@ -3823,19 +3823,23 @@ textarea.campo__control {
 }
 
 .rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking) th:first-child {
-  width: 34%;
+  width: 40%;
 }
 
 .rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking) th:nth-child(2) {
-  width: 29%;
+  width: 27%;
 }
 
 .rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking) th:nth-child(3) {
-  width: 10%;
+  width: 9%;
 }
 
 .rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking) th:nth-child(4) {
-  width: 27%;
+  width: 24%;
+}
+
+.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking) tbody th {
+  white-space: normal;
 }
 
 .rentabilidad-mes__celda-semaforo {
@@ -3896,6 +3900,7 @@ textarea.campo__control {
   color: inherit;
   background: transparent;
   text-align: left;
+  white-space: normal;
   font: inherit;
   cursor: pointer;
 }

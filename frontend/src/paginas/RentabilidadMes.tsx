@@ -30,6 +30,14 @@ function millones(valor: string | null): string {
   return `$ ${monto} mill.`;
 }
 
+function millonesTabla(valor: string | null): string {
+  if (valor === null) return "—";
+  const monto = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 3 }).format(
+    Number(valor) / 1_000_000,
+  );
+  return `$ ${monto}`;
+}
+
 function pesos(valor: number): string {
   return `$ ${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 1 }).format(valor)}`;
 }
@@ -476,7 +484,7 @@ export function RentabilidadMes() {
                     })}
                   </tbody>
                   <tfoot>
-                    <tr><th scope="row">Total</th><td className="numero">{millones(datos.venta)}</td><td /><td className="numero">{porcentaje(datos.rentabilidad)}</td></tr>
+                    <tr><th scope="row">Total</th><td className="numero" title={millones(datos.venta)}>{millonesTabla(datos.venta)}</td><td /><td className="numero">{porcentaje(datos.rentabilidad)}</td></tr>
                   </tfoot>
                 </table>
               </div>
@@ -504,7 +512,7 @@ export function RentabilidadMes() {
                     })}
                   </tbody>
                   <tfoot>
-                    <tr><th scope="row">Total</th><td className="numero">{millones(datos.especies.reduce((suma, fila) => suma + Number(fila.venta), 0).toString())}</td><td /><td className="numero">{porcentaje(datos.rentabilidad)}</td></tr>
+                    <tr><th scope="row">Total</th><td className="numero" title={millones(datos.especies.reduce((suma, fila) => suma + Number(fila.venta), 0).toString())}>{millonesTabla(datos.especies.reduce((suma, fila) => suma + Number(fila.venta), 0).toString())}</td><td /><td className="numero">{porcentaje(datos.rentabilidad)}</td></tr>
                   </tfoot>
                 </table>
               </div>
@@ -551,14 +559,14 @@ function FragmentoTipoItem({
             <span aria-hidden="true">{abierto ? "⊟" : "⊞"}</span>{fila.etiqueta}
           </button>
         </th>
-        <td className="numero">{millones(fila.venta)}</td>
+        <td className="numero" title={millones(fila.venta)}>{millonesTabla(fila.venta)}</td>
         <td />
         <td className="numero">{porcentaje(fila.rentabilidad)}</td>
       </tr>
       {abierto ? fila.centros_operacion.map((centro) => (
         <tr key={`${fila.etiqueta}-${centro.etiqueta}`}>
           <th scope="row" className="rentabilidad-mes__subfila">{centro.etiqueta}</th>
-          <td className="numero">{millones(centro.venta)}</td>
+          <td className="numero" title={millones(centro.venta)}>{millonesTabla(centro.venta)}</td>
           <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={centro.rentabilidad} /></td>
           <td className="numero">{porcentaje(centro.rentabilidad)}</td>
         </tr>
@@ -584,14 +592,14 @@ function FragmentoEspecie({
             <span aria-hidden="true">{abierto ? "⊟" : "⊞"}</span>{fila.etiqueta}
           </button>
         </th>
-        <td className="numero">{millones(fila.venta)}</td>
+        <td className="numero" title={millones(fila.venta)}>{millonesTabla(fila.venta)}</td>
         <td />
         <td className="numero">{porcentaje(fila.rentabilidad)}</td>
       </tr>
       {abierto ? fila.comerciales.map((comercial) => (
         <tr key={`${fila.etiqueta}-${comercial.etiqueta}`}>
           <th scope="row" className="rentabilidad-mes__subfila">{comercial.etiqueta}</th>
-          <td className="numero">{millones(comercial.venta)}</td>
+          <td className="numero" title={millones(comercial.venta)}>{millonesTabla(comercial.venta)}</td>
           <td className="rentabilidad-mes__celda-semaforo"><EstadoRentabilidadCalculada valor={comercial.rentabilidad} /></td>
           <td className="numero">{porcentaje(comercial.rentabilidad)}</td>
         </tr>
