@@ -402,6 +402,10 @@ textarea {
   border-right: 1px solid var(--borde);
 }
 
+.barra-lateral__menu-movil {
+  display: none;
+}
+
 .marca {
   display: flex;
   gap: var(--espacio-3);
@@ -2915,24 +2919,79 @@ textarea.campo__control {
 
   .barra-lateral {
     position: static;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--espacio-2) var(--espacio-3);
     height: auto;
+    max-height: none;
+    padding: var(--espacio-2) var(--espacio-3);
+    overflow: visible;
     border-right: none;
     border-bottom: 1px solid var(--borde);
   }
 
+  .barra-lateral .marca {
+    min-width: 0;
+    padding: 0;
+  }
+
+  .barra-lateral__menu-movil {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--espacio-2);
+    min-height: 2.5rem;
+    padding: 0 var(--espacio-3);
+    color: var(--texto);
+    background: var(--superficie-2);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-sm);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .barra-lateral__menu-movil > span {
+    font-size: 1rem;
+    line-height: 1;
+  }
+
   .navegacion {
-    flex-flow: row wrap;
+    display: none;
+    grid-column: 1 / -1;
+    width: 100%;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: var(--espacio-2);
+    border-top: 1px solid var(--borde);
   }
 
   .navegacion__grupo {
-    display: none;
+    display: block;
+    padding: var(--espacio-2) var(--espacio-3) var(--espacio-1);
+  }
+
+  .navegacion--abierta {
+    display: flex;
+    max-height: min(55vh, 24rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .barra-lateral .enlace-nav {
+    min-height: 2.6rem;
+    padding: 0.45rem var(--espacio-3);
   }
 
   /* El menú de usuario deja de ser decorativo en cuanto contiene el cambio de
      clave: se compacta, pero no se esconde. */
   .barra-lateral__usuario {
+    grid-column: 1 / -1;
     width: 100%;
     padding: var(--espacio-2) 0 0;
+    border-top: 1px solid var(--borde);
   }
 
   .menu-usuario__panel {

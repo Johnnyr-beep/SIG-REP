@@ -382,6 +382,7 @@ function MenuUsuario() {
 function BarraLateral() {
   const { tieneRol, tienePermiso, usuario } = useAuth();
   const marca = useMarcaElegida();
+  const [menuMovilAbierto, setMenuMovilAbierto] = useState(false);
   const permisosGranulares =
     usuario?.rol === "CONSULTA" &&
     usuario.permisos.some((codigo) =>
@@ -410,7 +411,22 @@ function BarraLateral() {
         </span>
       </div>
 
-      <nav className="navegacion" aria-label="Navegación principal">
+      <button
+        type="button"
+        className="barra-lateral__menu-movil"
+        aria-expanded={menuMovilAbierto}
+        aria-controls="navegacion-principal"
+        onClick={() => setMenuMovilAbierto((abierto) => !abierto)}
+      >
+        <span aria-hidden="true">{menuMovilAbierto ? "×" : "☰"}</span>
+        {menuMovilAbierto ? "Cerrar menú" : "Menú"}
+      </button>
+
+      <nav
+        id="navegacion-principal"
+        className={`navegacion${menuMovilAbierto ? " navegacion--abierta" : ""}`}
+        aria-label="Navegación principal"
+      >
         {menuDe(marca.clave).map((grupo) => {
           const visibles = grupo.items.filter(
             (item) => {
