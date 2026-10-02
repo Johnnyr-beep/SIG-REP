@@ -118,6 +118,7 @@ export function VentaDiariaAgro() {
                       </th>
                       <th
                         scope="col"
+                        className="numero"
                         title="Presupuesto mensual del centro dividido por sus días hábiles."
                       >
                         Ppto. diario
@@ -126,16 +127,16 @@ export function VentaDiariaAgro() {
                         <th
                           key={fecha}
                           scope="col"
-                          className={
-                            esDomingo(fecha) ? "columna-domingo" : undefined
-                          }
+                          className={`numero${esDomingo(fecha) ? " columna-domingo" : ""}`}
                           title={fecha}
                         >
                           {diaDelMes(fecha)}
                           <span className="tenue"> {mesCorto(fecha)}</span>
                         </th>
                       ))}
-                      <th scope="col">Total</th>
+                      <th scope="col" className="numero">
+                        Total
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
