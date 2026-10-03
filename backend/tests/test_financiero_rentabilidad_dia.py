@@ -17,6 +17,8 @@ def _linea(
     venta: str,
     costo: str | None,
     cantidad: str,
+    referencia: str = "ITEM-01",
+    descripcion: str = "Producto",
 ) -> LineaAgro:
     return LineaAgro(
         fecha=date(2026, 9, dia),
@@ -30,8 +32,8 @@ def _linea(
         tipo_comercial=tipo_comercial,
         grupo_id=None,
         grupo=None,
-        item_ref="ITEM-01",
-        item_desc="Producto",
+        item_ref=referencia,
+        item_desc=descripcion,
         cliente="CLIENTE",
         codigo_vendedor=codigo_vendedor,
         nombre_vendedor="Vendedor",
@@ -77,6 +79,19 @@ def test_rentabilidad_diaria_agrega_canal_especies_y_clases() -> None:
                 venta="50",
                 costo="30",
                 cantidad="2",
+                referencia="RES-CORTE-01",
+                descripcion="Lomo",
+            ),
+            _linea(
+                2,
+                especie="RES",
+                tipo_comercial="SUBPRODUCTO",
+                codigo_vendedor="V2",
+                venta="0",
+                costo="0",
+                cantidad="0",
+                referencia="RES-SUB-01",
+                descripcion="Hueso",
             ),
         ]
     )
@@ -101,6 +116,11 @@ def test_rentabilidad_diaria_agrega_canal_especies_y_clases() -> None:
     assert filas_clase["MAY"].valores[1] == Decimal("50")
     fila_cerdo = next(fila for fila in resultado.especies_bienes if fila.etiqueta == "CERDO")
     assert fila_cerdo.detalle[0].valores[0] == Decimal("100")
+    fila_res = next(fila for fila in resultado.especies_bienes if fila.etiqueta == "RES")
+    tipos_res = {fila.etiqueta: fila for fila in fila_res.detalle}
+    assert tipos_res["CORTE"].productos[0].etiqueta == "RES-CORTE-01 · Lomo"
+    assert tipos_res["CORTE"].productos[0].valores[1] == Decimal("50")
+    assert tipos_res["SUBPRODUCTO"].productos[0].etiqueta == "RES-SUB-01 · Hueso"
 
 
 def test_rentabilidad_diaria_no_calcula_margen_si_falta_costo() -> None:

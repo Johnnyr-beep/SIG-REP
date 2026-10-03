@@ -22,6 +22,7 @@ from app.infrastructure.fuentes.agropecuaria import (
 )
 from app.infrastructure.models.agro_vocabulario import es_impuesto
 from app.schemas.financiero import (
+    FilaComercialRentabilidadDia,
     FilaGrupoRentabilidadDia,
     FilaMatrizRentabilidadDia,
     PuntoRentabilidadMes,
@@ -121,6 +122,8 @@ def calcular_rentabilidad_dia(
     especies_diarias: dict[str, dict[date, _Acumulado]] = {}
     comerciales: dict[tuple[str, str], _Acumulado] = {}
     comerciales_diarias: dict[tuple[str, str], dict[date, _Acumulado]] = {}
+    productos: dict[tuple[str, str, str], _Acumulado] = {}
+    productos_diarios: dict[tuple[str, str, str], dict[date, _Acumulado]] = {}
     clases_diarias = {
         clase: {fecha: _Acumulado() for fecha in fechas} for clase in CLASES_RENTABILIDAD
     }
@@ -150,6 +153,16 @@ def calcular_rentabilidad_dia(
             comerciales_diarias.setdefault(
                 clave_comercial, {fecha: _Acumulado() for fecha in fechas}
             )[fila.fecha].agregar(fila)
+            etiqueta_producto = (
+                f"{fila.item_ref} · {fila.item_desc}"
+                if fila.item_ref and fila.item_desc
+                else fila.item_ref or fila.item_desc or "SIN PRODUCTO"
+            )
+            clave_producto = (*clave_comercial, etiqueta_producto)
+            productos.setdefault(clave_producto, _Acumulado()).agregar(fila)
+            productos_diarios.setdefault(clave_producto, {fecha: _Acumulado() for fecha in fechas})[
+                fila.fecha
+            ].agregar(fila)
 
             tipo_comercial = (fila.tipo_comercial or "").upper()
             if "CANAL" in tipo_comercial:
@@ -168,11 +181,34 @@ def calcular_rentabilidad_dia(
 
     grupos_especie = []
     for etiqueta, acumulado in sorted(especies.items(), key=lambda par: par[1].venta, reverse=True):
-        detalle = [
-            _matriz(tipo, valor, comerciales_diarias[(nombre_especie, tipo)], fechas)
-            for (nombre_especie, tipo), valor in comerciales.items()
-            if nombre_especie == etiqueta
-        ]
+        detalle = []
+        for (nombre_especie, tipo), valor in comerciales.items():
+            if nombre_especie != etiqueta:
+                continue
+            clave_comercial = (nombre_especie, tipo)
+            productos_comerciales = [
+                _matriz(
+                    nombre_producto,
+                    acumulado_producto,
+                    productos_diarios[(nombre_especie, tipo, nombre_producto)],
+                    fechas,
+                )
+                for (
+                    especie_producto,
+                    tipo_producto,
+                    nombre_producto,
+                ), acumulado_producto in productos.items()
+                if especie_producto == nombre_especie and tipo_producto == tipo
+            ]
+            productos_comerciales.sort(key=lambda fila: fila.venta, reverse=True)
+            detalle.append(
+                FilaComercialRentabilidadDia(
+                    **_matriz(
+                        tipo, valor, comerciales_diarias[clave_comercial], fechas
+                    ).model_dump(),
+                    productos=productos_comerciales,
+                )
+            )
         detalle.sort(key=lambda fila: fila.venta, reverse=True)
         serie_especie = _matriz(etiqueta, acumulado, especies_diarias[etiqueta], fechas)
         grupos_especie.append(

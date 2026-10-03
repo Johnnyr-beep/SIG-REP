@@ -193,8 +193,12 @@ class FilaMatrizRentabilidadDia(EsquemaBase):
     valores: list[DecimalStr]
 
 
+class FilaComercialRentabilidadDia(FilaMatrizRentabilidadDia):
+    productos: list[FilaMatrizRentabilidadDia]
+
+
 class FilaGrupoRentabilidadDia(FilaMatrizRentabilidadDia):
-    detalle: list[FilaMatrizRentabilidadDia]
+    detalle: list[FilaComercialRentabilidadDia]
 
 
 class RespuestaRentabilidadDia(EsquemaBase):

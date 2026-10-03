@@ -3867,36 +3867,80 @@ textarea.campo__control {
   overscroll-behavior-inline: contain;
 }
 
-.rentabilidad-dia__tabla {
+.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking).rentabilidad-dia__tabla {
+  table-layout: auto;
   width: max-content;
   min-width: 100%;
 }
 
-.rentabilidad-dia__tabla th:first-child {
+.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking).rentabilidad-dia__tabla th:first-child,
+.rentabilidad-dia__tabla td:first-child {
   position: sticky;
   left: 0;
-  min-width: 10rem;
+  width: 16rem;
+  min-width: 16rem;
   background: var(--superficie);
   text-align: left;
   z-index: 1;
 }
 
-.rentabilidad-dia__tabla th:not(:first-child),
-.rentabilidad-dia__tabla td {
-  min-width: 4.8rem;
+.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking).rentabilidad-dia__tabla th:nth-child(2),
+.rentabilidad-dia__tabla td:nth-child(2) {
+  width: 8rem;
+  min-width: 8rem;
 }
 
-.rentabilidad-dia__fila-grupo th {
+.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking).rentabilidad-dia__tabla th:nth-child(n + 3),
+.rentabilidad-dia__tabla td:nth-child(n + 3) {
+  width: 6.5rem;
+  min-width: 6.5rem;
+}
+
+.rentabilidad-dia__tabla th,
+.rentabilidad-dia__tabla td {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.rentabilidad-dia__nivel-0 th {
   font-weight: 700;
 }
 
-.rentabilidad-dia__subfila th:first-child {
-  padding-left: 1.25rem;
+.rentabilidad-dia__nivel-1 th:first-child {
+  padding-left: 1.5rem;
   color: var(--texto-suave);
 }
 
-.rentabilidad-dia__tabla thead th:first-child,
-.rentabilidad-dia__tabla tfoot th:first-child {
+.rentabilidad-dia__nivel-2 th:first-child {
+  padding-left: 2.75rem;
+  color: var(--texto-tenue);
+}
+
+.rentabilidad-dia__tabla tbody th button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.rentabilidad-dia__tabla tbody th button:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+}
+
+.rentabilidad-dia__tabla tbody th button span {
+  color: var(--texto-tenue);
+}
+
+.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking).rentabilidad-dia__tabla thead th:first-child,
+.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking).rentabilidad-dia__tabla tfoot th:first-child {
   z-index: 2;
 }
 

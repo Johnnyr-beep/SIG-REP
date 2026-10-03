@@ -1,11 +1,36 @@
 import { useState } from "react";
 
 import { useRentabilidadDia } from "@/api/consultasFinanciero";
-import type { FilaMatrizRentabilidadDia } from "@/api/tipos";
+import type { FilaGrupoRentabilidadDia, FilaMatrizRentabilidadDia } from "@/api/tipos";
 import { AvisoError, Cargando, Vacio } from "@/componentes/comunes";
 import { useMarcaElegida } from "@/marca/ContextoMarca";
 
 import { BarrasVentaDiaria, LineaRentabilidadDiaria } from "./RentabilidadMes";
+
+interface FilaMatrizArbol {
+  fila: FilaMatrizRentabilidadDia;
+  clave: string;
+  nivel: number;
+  hijos?: FilaMatrizArbol[];
+}
+
+function filasDeBienes(especies: FilaGrupoRentabilidadDia[]): FilaMatrizArbol[] {
+  return especies.map((especie) => ({
+    fila: especie,
+    clave: `especie:${especie.etiqueta}`,
+    nivel: 0,
+    hijos: especie.detalle.map((comercial) => ({
+      fila: comercial,
+      clave: `comercial:${especie.etiqueta}:${comercial.etiqueta}`,
+      nivel: 1,
+      hijos: comercial.productos.map((producto) => ({
+        fila: producto,
+        clave: `producto:${especie.etiqueta}:${comercial.etiqueta}:${producto.etiqueta}`,
+        nivel: 2,
+      })),
+    })),
+  }));
+}
 
 function periodoActual(): string {
   const ahora = new Date();
@@ -46,14 +71,35 @@ function TablaMatriz({
   total,
   valoresTotal,
   encabezado,
+  filasJerarquicas = false,
 }: {
   titulo: string;
-  filas: Array<FilaMatrizRentabilidadDia & { nivel?: number }>;
+  filas: FilaMatrizArbol[];
   dias: number[];
   total: string;
   valoresTotal?: string[];
   encabezado: string;
+  filasJerarquicas?: boolean;
 }) {
+  const [abiertas, setAbiertas] = useState<Set<string>>(() => new Set());
+  const visibles: FilaMatrizArbol[] = [];
+  const agregarVisibles = (filasAnidadas: FilaMatrizArbol[]) => {
+    for (const fila of filasAnidadas) {
+      visibles.push(fila);
+      if (fila.hijos?.length && abiertas.has(fila.clave)) agregarVisibles(fila.hijos);
+    }
+  };
+  agregarVisibles(filas);
+
+  function alternar(clave: string) {
+    setAbiertas((actuales) => {
+      const nuevas = new Set(actuales);
+      if (nuevas.has(clave)) nuevas.delete(clave);
+      else nuevas.add(clave);
+      return nuevas;
+    });
+  }
+
   return (
     <section className="rentabilidad-mes__panel">
       <h2 className="rentabilidad-mes__titulo-panel">{titulo}</h2>
@@ -67,13 +113,25 @@ function TablaMatriz({
             </tr>
           </thead>
           <tbody>
-            {filas.map((fila) => (
-              <tr className={fila.nivel === 1 ? "rentabilidad-dia__subfila" : "rentabilidad-dia__fila-grupo"} key={`${fila.nivel ?? 0}-${fila.etiqueta}`}>
-                <th scope="row">{fila.etiqueta}</th>
-                <td className="numero">{millonesTabla(fila.venta)}</td>
+            {visibles.map((fila) => (
+              <tr className={`rentabilidad-dia__nivel-${fila.nivel}`} key={fila.clave}>
+                <th scope="row">
+                  {filasJerarquicas && fila.hijos?.length ? (
+                    <button
+                      type="button"
+                      aria-expanded={abiertas.has(fila.clave)}
+                      aria-label={`${abiertas.has(fila.clave) ? "Ocultar" : "Mostrar"} detalle de ${fila.fila.etiqueta}`}
+                      onClick={() => alternar(fila.clave)}
+                    >
+                      <span aria-hidden="true">{abiertas.has(fila.clave) ? "⊟" : "⊞"}</span>
+                      {fila.fila.etiqueta}
+                    </button>
+                  ) : fila.fila.etiqueta}
+                </th>
+                <td className="numero">{millonesTabla(fila.fila.venta)}</td>
                 {dias.map((_, indice) => (
-                  <td className="numero" key={`${fila.etiqueta}-${indice}`}>
-                    {millonesTabla(fila.valores[indice] ?? "0")}
+                  <td className="numero" key={`${fila.clave}-${indice}`}>
+                    {millonesTabla(fila.fila.valores[indice] ?? "0")}
                   </td>
                 ))}
               </tr>
@@ -87,7 +145,10 @@ function TablaMatriz({
                 <td className="numero" key={`total-${indice}`}>
                   {millonesTabla(
                     valoresTotal?.[indice] ??
-                      filas.reduce((suma, fila) => suma + Number(fila.valores[indice] ?? 0), 0).toString(),
+                      filas.reduce(
+                        (suma, fila) => suma + Number(fila.fila.valores[indice] ?? 0),
+                        0,
+                      ).toString(),
                   )}
                 </td>
               ))}
@@ -176,18 +237,20 @@ export function RentabilidadDia() {
 
           <TablaMatriz
             titulo="Total Fact Agropecuaria"
-            filas={datos.especies_bienes.flatMap((especie) => [
-              { ...especie, nivel: 0 },
-              ...especie.detalle.map((detalle) => ({ ...detalle, nivel: 1 })),
-            ])}
+            filas={filasDeBienes(datos.especies_bienes)}
             dias={dias}
             total={totalBienes}
             valoresTotal={valoresBienes}
             encabezado="Especie / tipo comercial"
+            filasJerarquicas
           />
           <TablaMatriz
             titulo="Facturación BIENES"
-            filas={datos.vendedores_clases}
+            filas={datos.vendedores_clases.map((fila) => ({
+              fila,
+              clave: `clase:${fila.etiqueta}`,
+              nivel: 0,
+            }))}
             dias={dias}
             total={totalBienes}
             valoresTotal={valoresBienes}

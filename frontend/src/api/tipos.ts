@@ -804,8 +804,12 @@ export interface FilaMatrizRentabilidadDia {
   valores: string[];
 }
 
+export interface FilaComercialRentabilidadDia extends FilaMatrizRentabilidadDia {
+  productos: FilaMatrizRentabilidadDia[];
+}
+
 export interface FilaGrupoRentabilidadDia extends FilaMatrizRentabilidadDia {
-  detalle: FilaMatrizRentabilidadDia[];
+  detalle: FilaComercialRentabilidadDia[];
 }
 
 export interface RespuestaRentabilidadDia {
