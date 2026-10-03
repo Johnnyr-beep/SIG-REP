@@ -3685,49 +3685,49 @@ textarea.campo__control {
   align-items: start;
 }
 
-.rentabilidad-mes__envoltorio-operativa {
+.rentabilidad-mes__envoltorio-metricas {
   overflow-x: auto;
   overscroll-behavior-inline: contain;
 }
 
-.rentabilidad-mes__tabla--operativa {
+.rentabilidad-mes__tabla--metricas {
   width: 100%;
   min-width: 64rem;
   table-layout: auto !important;
 }
 
-.rentabilidad-mes__tabla--operativa th,
-.rentabilidad-mes__tabla--operativa td {
+.rentabilidad-mes__tabla--metricas th,
+.rentabilidad-mes__tabla--metricas td {
   white-space: nowrap;
 }
 
-.rentabilidad-mes__tabla--operativa th:first-child,
-.rentabilidad-mes__tabla--operativa td:first-child {
+.rentabilidad-mes__tabla--metricas th:first-child,
+.rentabilidad-mes__tabla--metricas td:first-child {
   min-width: 13rem;
   text-align: left;
 }
 
-.rentabilidad-mes__tabla--operativa th:nth-child(2),
-.rentabilidad-mes__tabla--operativa td:nth-child(2),
-.rentabilidad-mes__tabla--operativa th:nth-child(4),
-.rentabilidad-mes__tabla--operativa td:nth-child(4),
-.rentabilidad-mes__tabla--operativa th:nth-child(6),
-.rentabilidad-mes__tabla--operativa td:nth-child(6) {
+.rentabilidad-mes__tabla--metricas th:nth-child(2),
+.rentabilidad-mes__tabla--metricas td:nth-child(2),
+.rentabilidad-mes__tabla--metricas th:nth-child(4),
+.rentabilidad-mes__tabla--metricas td:nth-child(4),
+.rentabilidad-mes__tabla--metricas th:nth-child(6),
+.rentabilidad-mes__tabla--metricas td:nth-child(6) {
   min-width: 7rem;
 }
 
-.rentabilidad-mes__tabla--operativa th:nth-child(3),
-.rentabilidad-mes__tabla--operativa td:nth-child(3) {
+.rentabilidad-mes__tabla--metricas th:nth-child(3),
+.rentabilidad-mes__tabla--metricas td:nth-child(3) {
   min-width: 9rem;
 }
 
-.rentabilidad-mes__tabla--operativa th:nth-child(5),
-.rentabilidad-mes__tabla--operativa td:nth-child(5) {
+.rentabilidad-mes__tabla--metricas th:nth-child(5),
+.rentabilidad-mes__tabla--metricas td:nth-child(5) {
   min-width: 2.5rem;
 }
 
-.rentabilidad-mes__tabla--operativa th:nth-child(7),
-.rentabilidad-mes__tabla--operativa td:nth-child(7) {
+.rentabilidad-mes__tabla--metricas th:nth-child(7),
+.rentabilidad-mes__tabla--metricas td:nth-child(7) {
   min-width: 10rem;
 }
 
