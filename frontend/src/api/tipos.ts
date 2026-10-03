@@ -824,8 +824,12 @@ export interface FilaRentabilidadVendedorDia extends FilaMatrizRentabilidadDia {
   rentabilidad: string | null;
 }
 
-export interface FilaVendedorClaseRentabilidadDia extends FilaRentabilidadVendedorDia {
+export interface FilaVendedorRentabilidadDia extends FilaRentabilidadVendedorDia {
   productos: FilaRentabilidadVendedorDia[];
+}
+
+export interface FilaVendedorClaseRentabilidadDia extends FilaRentabilidadVendedorDia {
+  vendedores: FilaVendedorRentabilidadDia[];
 }
 
 export interface RespuestaRentabilidadDia {

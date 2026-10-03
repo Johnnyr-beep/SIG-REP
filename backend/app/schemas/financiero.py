@@ -205,8 +205,12 @@ class FilaRentabilidadVendedorDia(FilaMatrizRentabilidadDia):
     rentabilidad: DecimalStr | None
 
 
-class FilaVendedorClaseRentabilidadDia(FilaRentabilidadVendedorDia):
+class FilaVendedorRentabilidadDia(FilaRentabilidadVendedorDia):
     productos: list[FilaRentabilidadVendedorDia]
+
+
+class FilaVendedorClaseRentabilidadDia(FilaRentabilidadVendedorDia):
+    vendedores: list[FilaVendedorRentabilidadDia]
 
 
 class FilaComercialRentabilidadDia(FilaMatrizRentabilidadDia):

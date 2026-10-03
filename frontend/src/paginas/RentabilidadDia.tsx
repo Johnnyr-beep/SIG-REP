@@ -49,11 +49,17 @@ function filasDeVendedores(
     clave: `clase:${clase.etiqueta}`,
     nivel: 0,
     rentabilidad: clase.rentabilidad,
-    hijos: clase.productos.map((producto) => ({
-      fila: producto,
-      clave: `producto:${clase.etiqueta}:${producto.etiqueta}`,
+    hijos: clase.vendedores.map((vendedor) => ({
+      fila: vendedor,
+      clave: `vendedor:${clase.etiqueta}:${vendedor.etiqueta}`,
       nivel: 1,
-      rentabilidad: producto.rentabilidad,
+      rentabilidad: vendedor.rentabilidad,
+      hijos: vendedor.productos.map((producto) => ({
+        fila: producto,
+        clave: `producto:${clase.etiqueta}:${vendedor.etiqueta}:${producto.etiqueta}`,
+        nivel: 2,
+        rentabilidad: producto.rentabilidad,
+      })),
     })),
   }));
 }

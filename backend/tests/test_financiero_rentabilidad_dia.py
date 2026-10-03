@@ -36,7 +36,7 @@ def _linea(
         item_desc=descripcion,
         cliente="CLIENTE",
         codigo_vendedor=codigo_vendedor,
-        nombre_vendedor="Vendedor",
+        nombre_vendedor=f"Vendedor {codigo_vendedor}",
         cantidad_inv=Decimal(cantidad),
         kilos_total=Decimal(cantidad),
         valor_bruto=Decimal(venta),
@@ -72,6 +72,17 @@ def test_rentabilidad_diaria_agrega_canal_especies_y_clases() -> None:
                 cantidad="4",
             ),
             _linea(
+                3,
+                especie="CERDO",
+                tipo_comercial="CORTE",
+                codigo_vendedor="V3",
+                venta="25",
+                costo="10",
+                cantidad="1",
+                referencia="CERDO-03",
+                descripcion="Corte vendedor tres",
+            ),
+            _linea(
                 2,
                 especie="RES",
                 tipo_comercial="CORTE",
@@ -99,24 +110,30 @@ def test_rentabilidad_diaria_agrega_canal_especies_y_clases() -> None:
     resultado = calcular_rentabilidad_dia(
         "202609",
         fuente=fuente,
-        mapa_vendedores={"V1": "CCT", "V2": "MAY"},
+        mapa_vendedores={"V1": "CCT", "V2": "MAY", "V3": "CCT"},
     )
 
-    assert resultado.venta == Decimal("150")
-    assert resultado.rentabilidad == Decimal("0.4")
+    assert resultado.venta == Decimal("175")
+    assert resultado.rentabilidad == Decimal("75") / Decimal("175")
     assert resultado.canal_cerdo == Decimal("4")
     assert resultado.canal_res == Decimal("0")
-    assert resultado.costo_kg_cerdo == Decimal("15")
+    assert resultado.costo_kg_cerdo == Decimal("14")
     assert resultado.costo_kg_res == Decimal("15")
     assert len(resultado.diario) == 30
     assert resultado.diario[0].venta == Decimal("100")
     assert resultado.diario[1].venta == Decimal("50")
+    assert resultado.diario[2].venta == Decimal("25")
     filas_clase = {fila.etiqueta: fila for fila in resultado.vendedores_clases}
     assert filas_clase["CCT"].valores[0] == Decimal("100")
-    assert filas_clase["CCT"].rentabilidad == Decimal("0.4")
-    assert filas_clase["CCT"].productos[0].etiqueta == "ITEM-01 · Producto"
-    assert filas_clase["CCT"].productos[0].valores[0] == Decimal("100")
-    assert filas_clase["CCT"].productos[0].rentabilidad == Decimal("0.4")
+    assert filas_clase["CCT"].rentabilidad == Decimal("55") / Decimal("125")
+    vendedores_cct = {fila.etiqueta: fila for fila in filas_clase["CCT"].vendedores}
+    assert set(vendedores_cct) == {"V1 · Vendedor V1", "V3 · Vendedor V3"}
+    assert vendedores_cct["V1 · Vendedor V1"].productos[0].etiqueta == "ITEM-01 · Producto"
+    assert vendedores_cct["V1 · Vendedor V1"].productos[0].valores[0] == Decimal("100")
+    assert vendedores_cct["V3 · Vendedor V3"].productos[0].etiqueta == (
+        "CERDO-03 · Corte vendedor tres"
+    )
+    assert vendedores_cct["V3 · Vendedor V3"].productos[0].valores[2] == Decimal("25")
     assert filas_clase["MAY"].valores[1] == Decimal("50")
     fila_cerdo = next(fila for fila in resultado.especies_bienes if fila.etiqueta == "CERDO")
     assert fila_cerdo.detalle[0].valores[0] == Decimal("100")
