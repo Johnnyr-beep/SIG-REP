@@ -155,8 +155,12 @@ class FilaRentabilidadMes(EsquemaBase):
     participacion: DecimalStr | None = None
 
 
+class FilaCentroRentabilidadMes(FilaRentabilidadMes):
+    productos: list[FilaRentabilidadMes]
+
+
 class FilaTipoItemRentabilidadMes(FilaRentabilidadMes):
-    centros_operacion: list[FilaRentabilidadMes]
+    centros_operacion: list[FilaCentroRentabilidadMes]
 
 
 class FilaComercialRentabilidadMes(FilaRentabilidadMes):

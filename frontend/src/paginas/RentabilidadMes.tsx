@@ -398,6 +398,7 @@ export function RentabilidadMes() {
   const marca = useMarcaElegida();
   const [periodo, setPeriodo] = useState(periodoActual);
   const [gruposColapsados, setGruposColapsados] = useState<Set<string>>(() => new Set());
+  const [centrosExpandidos, setCentrosExpandidos] = useState<Set<string>>(() => new Set());
   const [comercialesExpandidos, setComercialesExpandidos] = useState<Set<string>>(() => new Set());
   const consulta = useRentabilidadMes(aPeriodoApi(periodo));
   const datos = consulta.data;
@@ -413,6 +414,15 @@ export function RentabilidadMes() {
 
   function alternarComercial(clave: string) {
     setComercialesExpandidos((actuales) => {
+      const nuevos = new Set(actuales);
+      if (nuevos.has(clave)) nuevos.delete(clave);
+      else nuevos.add(clave);
+      return nuevos;
+    });
+  }
+
+  function alternarCentro(clave: string) {
+    setCentrosExpandidos((actuales) => {
       const nuevos = new Set(actuales);
       if (nuevos.has(clave)) nuevos.delete(clave);
       else nuevos.add(clave);
@@ -505,6 +515,8 @@ export function RentabilidadMes() {
                           fila={fila}
                           abierto={abierto}
                           alAlternar={() => alternarGrupo(clave)}
+                          centrosExpandidos={centrosExpandidos}
+                          alAlternarCentro={alternarCentro}
                         />
                       );
                     })}
@@ -575,10 +587,14 @@ function FragmentoTipoItem({
   fila,
   abierto,
   alAlternar,
+  centrosExpandidos,
+  alAlternarCentro,
 }: {
   fila: FilaTipoItemRentabilidadMes;
   abierto: boolean;
   alAlternar: () => void;
+  centrosExpandidos: Set<string>;
+  alAlternarCentro: (clave: string) => void;
 }) {
   return (
     <>
@@ -592,14 +608,32 @@ function FragmentoTipoItem({
         <td />
         <td className="numero">{porcentaje(fila.rentabilidad)}</td>
       </tr>
-      {abierto ? fila.centros_operacion.map((centro) => (
-        <tr key={`${fila.etiqueta}-${centro.etiqueta}`}>
-          <th scope="row" className="rentabilidad-mes__subfila">{centro.etiqueta}</th>
-          <td className="numero" title={millones(centro.venta)}>{millonesTabla(centro.venta)}</td>
-          <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={centro.rentabilidad} /></td>
-          <td className="numero">{porcentaje(centro.rentabilidad)}</td>
-        </tr>
-      )) : null}
+      {abierto ? fila.centros_operacion.map((centro) => {
+        const clave = `centro:${fila.etiqueta}:${centro.etiqueta}`;
+        const expandido = centrosExpandidos.has(clave);
+        return (
+          <Fragment key={clave}>
+            <tr className="rentabilidad-mes__grupo-centro">
+              <th scope="row" className="rentabilidad-mes__subfila">
+                <button type="button" aria-expanded={expandido} onClick={() => alAlternarCentro(clave)}>
+                  <span aria-hidden="true">{expandido ? "⊟" : "⊞"}</span>{centro.etiqueta}
+                </button>
+              </th>
+              <td className="numero" title={millones(centro.venta)}>{millonesTabla(centro.venta)}</td>
+              <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={centro.rentabilidad} /></td>
+              <td className="numero">{porcentaje(centro.rentabilidad)}</td>
+            </tr>
+            {expandido ? centro.productos.map((producto) => (
+              <tr className="rentabilidad-mes__producto" key={`${clave}:${producto.etiqueta}`}>
+                <th scope="row" className="rentabilidad-mes__subfila">{producto.etiqueta}</th>
+                <td className="numero" title={millones(producto.venta)}>{millonesTabla(producto.venta)}</td>
+                <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={producto.rentabilidad} /></td>
+                <td className="numero">{porcentaje(producto.rentabilidad)}</td>
+              </tr>
+            )) : null}
+          </Fragment>
+        );
+      }) : null}
     </>
   );
 }

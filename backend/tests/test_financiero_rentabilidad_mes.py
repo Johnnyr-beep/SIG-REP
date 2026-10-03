@@ -116,6 +116,10 @@ def test_rentabilidad_mensual_agrega_dimensiones_y_no_inventa_costo() -> None:
     assert [
         (centro.etiqueta, centro.venta) for centro in resultado.tipos_item[1].centros_operacion
     ] == [("302", Decimal("50"))]
+    assert resultado.tipos_item[0].centros_operacion[0].productos[0].etiqueta == (
+        "RES-01 · Producto RES-01"
+    )
+    assert resultado.tipos_item[0].centros_operacion[0].productos[0].venta == Decimal("100")
     assert len(resultado.diario) == 30
     assert resultado.diario[0].venta == Decimal("150")
     assert [fila.etiqueta for fila in resultado.clientes] == ["CLIENTE UNO", "CLIENTE DOS"]

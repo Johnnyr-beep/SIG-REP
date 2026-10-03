@@ -766,8 +766,12 @@ export interface FilaRentabilidadMes {
   participacion: string | null;
 }
 
+export interface FilaCentroRentabilidadMes extends FilaRentabilidadMes {
+  productos: FilaRentabilidadMes[];
+}
+
 export interface FilaTipoItemRentabilidadMes extends FilaRentabilidadMes {
-  centros_operacion: FilaRentabilidadMes[];
+  centros_operacion: FilaCentroRentabilidadMes[];
 }
 
 export interface FilaComercialRentabilidadMes extends FilaRentabilidadMes {

@@ -18,6 +18,7 @@ from app.infrastructure.fuentes.agropecuaria import (
 )
 from app.infrastructure.models.agro_vocabulario import es_impuesto
 from app.schemas.financiero import (
+    FilaCentroRentabilidadMes,
     FilaComercialRentabilidadMes,
     FilaEspecieRentabilidadMes,
     FilaRentabilidadMes,
@@ -107,6 +108,7 @@ def calcular_rentabilidad_mes(
     diario = {desde + timedelta(days=dia): _Acumulado() for dia in range((hasta - desde).days + 1)}
     tipos_item: dict[str, _Acumulado] = {}
     centros_por_tipo_item: dict[tuple[str, str], _Acumulado] = {}
+    productos_por_centro: dict[tuple[str, str, str], _Acumulado] = {}
     especies: dict[str, _Acumulado] = {}
     ventas_comerciales: dict[tuple[str, str], _Acumulado] = {}
     productos_comerciales: dict[tuple[str, str, str], _Acumulado] = {}
@@ -121,8 +123,17 @@ def calcular_rentabilidad_mes(
             diario[fila.fecha].agregar(fila)
             tipo_item = fila.tipo_item or "SIN TIPO DE ITEM"
             _acumular(tipos_item, tipo_item, fila)
-            clave_centro = (tipo_item, fila.co_id or "SIN CENTRO")
+            centro = fila.co_id or "SIN CENTRO"
+            clave_centro = (tipo_item, centro)
             centros_por_tipo_item.setdefault(clave_centro, _Acumulado()).agregar(fila)
+            etiqueta_producto = (
+                f"{fila.item_ref} · {fila.item_desc}"
+                if fila.item_ref and fila.item_desc
+                else fila.item_ref or fila.item_desc or "SIN PRODUCTO"
+            )
+            productos_por_centro.setdefault(
+                (tipo_item, centro, etiqueta_producto), _Acumulado()
+            ).agregar(fila)
             if "BIENES" in (fila.tipo_item or "").upper():
                 especie = fila.especie or "SIN ESPECIE"
                 _acumular(especies, especie, fila)
@@ -132,11 +143,6 @@ def calcular_rentabilidad_mes(
                     tipo_comercial,
                 )
                 ventas_comerciales.setdefault(clave_comercial, _Acumulado()).agregar(fila)
-                etiqueta_producto = (
-                    f"{fila.item_ref} · {fila.item_desc}"
-                    if fila.item_ref and fila.item_desc
-                    else fila.item_ref or fila.item_desc or "SIN PRODUCTO"
-                )
                 productos_comerciales.setdefault(
                     (especie, tipo_comercial, etiqueta_producto), _Acumulado()
                 ).agregar(fila)
@@ -155,11 +161,26 @@ def calcular_rentabilidad_mes(
     for etiqueta, acumulado in sorted(
         tipos_item.items(), key=lambda par: par[1].venta, reverse=True
     ):
-        centros = [
-            _fila(centro, acumulado_centro, total.venta)
-            for (tipo, centro), acumulado_centro in centros_por_tipo_item.items()
-            if tipo == etiqueta
-        ]
+        centros: list[FilaCentroRentabilidadMes] = []
+        for (tipo, centro), acumulado_centro in centros_por_tipo_item.items():
+            if tipo != etiqueta:
+                continue
+            productos_centro = [
+                _fila(nombre_producto, acumulado_producto, acumulado_centro.venta)
+                for (
+                    tipo_producto,
+                    centro_producto,
+                    nombre_producto,
+                ), acumulado_producto in productos_por_centro.items()
+                if tipo_producto == tipo and centro_producto == centro
+            ]
+            productos_centro.sort(key=lambda fila: fila.venta, reverse=True)
+            centros.append(
+                FilaCentroRentabilidadMes(
+                    **_fila(centro, acumulado_centro, total.venta).model_dump(),
+                    productos=productos_centro,
+                )
+            )
         centros.sort(key=lambda fila: fila.venta, reverse=True)
         tipos_salida.append(
             FilaTipoItemRentabilidadMes(

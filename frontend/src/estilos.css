@@ -4085,7 +4085,8 @@ textarea.campo__control {
   font-weight: 400 !important;
 }
 
-.rentabilidad-mes__grupo-comercial button {
+.rentabilidad-mes__grupo-comercial button,
+.rentabilidad-mes__grupo-centro button {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -4099,12 +4100,14 @@ textarea.campo__control {
   cursor: pointer;
 }
 
-.rentabilidad-mes__grupo-comercial button:focus-visible {
+.rentabilidad-mes__grupo-comercial button:focus-visible,
+.rentabilidad-mes__grupo-centro button:focus-visible {
   outline: 2px solid var(--acento);
   outline-offset: 2px;
 }
 
-.rentabilidad-mes__grupo-comercial button span {
+.rentabilidad-mes__grupo-comercial button span,
+.rentabilidad-mes__grupo-centro button span {
   flex: 0 0 auto;
   color: var(--texto-tenue);
   font-size: 0.8rem;
