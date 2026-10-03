@@ -10,6 +10,43 @@ import type {
 import { AvisoError, Cargando, Vacio } from "@/componentes/comunes";
 import { useMarcaElegida } from "@/marca/ContextoMarca";
 
+export type DireccionOrdenVenta = "desc" | "asc" | null;
+
+export function EncabezadoOrdenableVenta({
+  etiqueta,
+  orden,
+  alAlternar,
+}: {
+  etiqueta: string;
+  orden: DireccionOrdenVenta;
+  alAlternar: () => void;
+}) {
+  const siguiente = orden === "desc" ? "asc" : "desc";
+  return (
+    <th className="numero" aria-sort={orden === "desc" ? "descending" : orden === "asc" ? "ascending" : "none"}>
+      <button
+        type="button"
+        className="rentabilidad-mes__orden-total"
+        aria-label={`Ordenar ${etiqueta} de ${siguiente === "desc" ? "mayor a menor" : "menor a mayor"}`}
+        onClick={alAlternar}
+      >
+        {etiqueta}<span aria-hidden="true">{orden === "desc" ? "↓" : orden === "asc" ? "↑" : "↕"}</span>
+      </button>
+    </th>
+  );
+}
+
+function ordenarPorVenta<T extends { venta: string }>(
+  filas: T[],
+  orden: DireccionOrdenVenta,
+): T[] {
+  if (orden === null) return filas;
+  return [...filas].sort((primera, segunda) => {
+    const diferencia = Number(primera.venta) - Number(segunda.venta);
+    return orden === "desc" ? -diferencia : diferencia;
+  });
+}
+
 const LIMITE_RENTABILIDAD_AMARILLO = 0.2;
 const LIMITE_RENTABILIDAD_VERDE = 0.8;
 
@@ -400,6 +437,8 @@ export function RentabilidadMes() {
   const [gruposColapsados, setGruposColapsados] = useState<Set<string>>(() => new Set());
   const [centrosExpandidos, setCentrosExpandidos] = useState<Set<string>>(() => new Set());
   const [comercialesExpandidos, setComercialesExpandidos] = useState<Set<string>>(() => new Set());
+  const [ordenTipos, setOrdenTipos] = useState<DireccionOrdenVenta>(null);
+  const [ordenBienes, setOrdenBienes] = useState<DireccionOrdenVenta>(null);
   const consulta = useRentabilidadMes(aPeriodoApi(periodo));
   const datos = consulta.data;
 
@@ -503,10 +542,19 @@ export function RentabilidadMes() {
               <div className="tabla-envoltorio">
                 <table className="tabla tabla--compacta rentabilidad-mes__tabla">
                   <thead>
-                    <tr><th>TIPO ITEM</th><th className="numero">Vlr_FactMM</th><th aria-label="Semáforo" /><th className="numero">%Rent</th></tr>
+                    <tr>
+                      <th>TIPO ITEM</th>
+                      <EncabezadoOrdenableVenta
+                        etiqueta="Vlr_FactMM"
+                        orden={ordenTipos}
+                        alAlternar={() => setOrdenTipos((actual) => actual === "desc" ? "asc" : "desc")}
+                      />
+                      <th aria-label="Semáforo" />
+                      <th className="numero">%Rent</th>
+                    </tr>
                   </thead>
                   <tbody>
-                    {datos.tipos_item.map((fila) => {
+                    {ordenarPorVenta(datos.tipos_item, ordenTipos).map((fila) => {
                       const clave = `tipo:${fila.etiqueta}`;
                       const abierto = !gruposColapsados.has(clave);
                       return (
@@ -515,6 +563,7 @@ export function RentabilidadMes() {
                           fila={fila}
                           abierto={abierto}
                           alAlternar={() => alternarGrupo(clave)}
+                          orden={ordenTipos}
                           centrosExpandidos={centrosExpandidos}
                           alAlternarCentro={alternarCentro}
                         />
@@ -533,10 +582,19 @@ export function RentabilidadMes() {
               <div className="tabla-envoltorio">
                 <table className="tabla tabla--compacta rentabilidad-mes__tabla">
                   <thead>
-                    <tr><th>ESPECIE</th><th className="numero">Vlr_FactMM</th><th aria-label="Semáforo" /><th className="numero">%Rent</th></tr>
+                    <tr>
+                      <th>ESPECIE</th>
+                      <EncabezadoOrdenableVenta
+                        etiqueta="Vlr_FactMM"
+                        orden={ordenBienes}
+                        alAlternar={() => setOrdenBienes((actual) => actual === "desc" ? "asc" : "desc")}
+                      />
+                      <th aria-label="Semáforo" />
+                      <th className="numero">%Rent</th>
+                    </tr>
                   </thead>
                   <tbody>
-                    {datos.especies.map((fila) => {
+                    {ordenarPorVenta(datos.especies, ordenBienes).map((fila) => {
                       const clave = `especie:${fila.etiqueta}`;
                       const abierto = !gruposColapsados.has(clave);
                       return (
@@ -547,6 +605,7 @@ export function RentabilidadMes() {
                           alAlternar={() => alternarGrupo(clave)}
                           comercialesExpandidos={comercialesExpandidos}
                           alAlternarComercial={alternarComercial}
+                          orden={ordenBienes}
                         />
                       );
                     })}
@@ -587,12 +646,14 @@ function FragmentoTipoItem({
   fila,
   abierto,
   alAlternar,
+  orden,
   centrosExpandidos,
   alAlternarCentro,
 }: {
   fila: FilaTipoItemRentabilidadMes;
   abierto: boolean;
   alAlternar: () => void;
+  orden: DireccionOrdenVenta;
   centrosExpandidos: Set<string>;
   alAlternarCentro: (clave: string) => void;
 }) {
@@ -608,7 +669,7 @@ function FragmentoTipoItem({
         <td />
         <td className="numero">{porcentaje(fila.rentabilidad)}</td>
       </tr>
-      {abierto ? fila.centros_operacion.map((centro) => {
+      {abierto ? ordenarPorVenta(fila.centros_operacion, orden).map((centro) => {
         const clave = `centro:${fila.etiqueta}:${centro.etiqueta}`;
         const expandido = centrosExpandidos.has(clave);
         return (
@@ -623,7 +684,7 @@ function FragmentoTipoItem({
               <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={centro.rentabilidad} /></td>
               <td className="numero">{porcentaje(centro.rentabilidad)}</td>
             </tr>
-            {expandido ? centro.productos.map((producto) => (
+            {expandido ? ordenarPorVenta(centro.productos, orden).map((producto) => (
               <tr className="rentabilidad-mes__producto" key={`${clave}:${producto.etiqueta}`}>
                 <th scope="row" className="rentabilidad-mes__subfila">{producto.etiqueta}</th>
                 <td className="numero" title={millones(producto.venta)}>{millonesTabla(producto.venta)}</td>
@@ -644,12 +705,14 @@ function FragmentoEspecie({
   alAlternar,
   comercialesExpandidos,
   alAlternarComercial,
+  orden,
 }: {
   fila: FilaEspecieRentabilidadMes;
   abierto: boolean;
   alAlternar: () => void;
   comercialesExpandidos: Set<string>;
   alAlternarComercial: (clave: string) => void;
+  orden: DireccionOrdenVenta;
 }) {
   return (
     <>
@@ -663,7 +726,7 @@ function FragmentoEspecie({
         <td />
         <td className="numero">{porcentaje(fila.rentabilidad)}</td>
       </tr>
-      {abierto ? fila.comerciales.map((comercial) => {
+      {abierto ? ordenarPorVenta(fila.comerciales, orden).map((comercial) => {
         const clave = `comercial:${fila.etiqueta}:${comercial.etiqueta}`;
         const expandido = comercialesExpandidos.has(clave);
         return (
@@ -678,7 +741,7 @@ function FragmentoEspecie({
               <td className="rentabilidad-mes__celda-semaforo"><EstadoRentabilidadCalculada valor={comercial.rentabilidad} /></td>
               <td className="numero">{porcentaje(comercial.rentabilidad)}</td>
             </tr>
-            {expandido ? comercial.productos.map((producto) => (
+            {expandido ? ordenarPorVenta(comercial.productos, orden).map((producto) => (
               <tr className="rentabilidad-mes__producto" key={`${clave}:${producto.etiqueta}`}>
                 <th scope="row" className="rentabilidad-mes__subfila">{producto.etiqueta}</th>
                 <td className="numero" title={millones(producto.venta)}>{millonesTabla(producto.venta)}</td>

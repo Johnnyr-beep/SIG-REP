@@ -3985,6 +3985,30 @@ textarea.campo__control {
   white-space: normal;
 }
 
+.rentabilidad-mes__orden-total {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.3rem;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.rentabilidad-mes__orden-total:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+}
+
+.rentabilidad-mes__orden-total span {
+  color: var(--texto-tenue);
+}
+
 .rentabilidad-mes__tabla tbody th {
   overflow-wrap: anywhere;
 }

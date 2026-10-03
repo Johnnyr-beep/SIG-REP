@@ -11,9 +11,11 @@ import { useMarcaElegida } from "@/marca/ContextoMarca";
 
 import {
   BarrasVentaDiaria,
+  EncabezadoOrdenableVenta,
   EstadoRentabilidadCalculada,
   LineaRentabilidadDiaria,
 } from "./RentabilidadMes";
+import type { DireccionOrdenVenta } from "./RentabilidadMes";
 
 interface FilaMatrizArbol {
   fila: FilaMatrizRentabilidadDia;
@@ -62,6 +64,21 @@ function filasDeVendedores(
       })),
     })),
   }));
+}
+
+function ordenarArbol(
+  filas: FilaMatrizArbol[],
+  orden: DireccionOrdenVenta,
+): FilaMatrizArbol[] {
+  const conHijosOrdenados = filas.map((fila) => ({
+    ...fila,
+    hijos: fila.hijos ? ordenarArbol(fila.hijos, orden) : undefined,
+  }));
+  if (orden === null) return conHijosOrdenados;
+  return conHijosOrdenados.sort((primera, segunda) => {
+    const diferencia = Number(primera.fila.venta) - Number(segunda.fila.venta);
+    return orden === "desc" ? -diferencia : diferencia;
+  });
 }
 
 function periodoActual(): string {
@@ -116,6 +133,7 @@ function TablaMatriz({
   mostrarSemaforo?: boolean;
 }) {
   const [abiertas, setAbiertas] = useState<Set<string>>(() => new Set());
+  const [orden, setOrden] = useState<DireccionOrdenVenta>(null);
   const visibles: FilaMatrizArbol[] = [];
   const agregarVisibles = (filasAnidadas: FilaMatrizArbol[]) => {
     for (const fila of filasAnidadas) {
@@ -123,7 +141,7 @@ function TablaMatriz({
       if (fila.hijos?.length && abiertas.has(fila.clave)) agregarVisibles(fila.hijos);
     }
   };
-  agregarVisibles(filas);
+  agregarVisibles(ordenarArbol(filas, orden));
 
   function alternar(clave: string) {
     setAbiertas((actuales) => {
@@ -142,7 +160,11 @@ function TablaMatriz({
           <thead>
             <tr>
               <th scope="col">{encabezado}</th>
-              <th scope="col" className="numero">Total</th>
+              <EncabezadoOrdenableVenta
+                etiqueta="Total"
+                orden={orden}
+                alAlternar={() => setOrden((actual) => actual === "desc" ? "asc" : "desc")}
+              />
               {mostrarSemaforo ? <th scope="col" aria-label="Semáforo de rentabilidad" /> : null}
               {dias.map((dia) => <th className="numero" scope="col" key={dia}>{dia}</th>)}
             </tr>
