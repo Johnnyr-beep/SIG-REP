@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 
 import { useRentabilidadMes } from "@/api/consultasFinanciero";
 import type {
@@ -393,11 +393,21 @@ export function RentabilidadMes() {
   const marca = useMarcaElegida();
   const [periodo, setPeriodo] = useState(periodoActual);
   const [gruposColapsados, setGruposColapsados] = useState<Set<string>>(() => new Set());
+  const [comercialesExpandidos, setComercialesExpandidos] = useState<Set<string>>(() => new Set());
   const consulta = useRentabilidadMes(aPeriodoApi(periodo));
   const datos = consulta.data;
 
   function alternarGrupo(clave: string) {
     setGruposColapsados((actuales) => {
+      const nuevos = new Set(actuales);
+      if (nuevos.has(clave)) nuevos.delete(clave);
+      else nuevos.add(clave);
+      return nuevos;
+    });
+  }
+
+  function alternarComercial(clave: string) {
+    setComercialesExpandidos((actuales) => {
       const nuevos = new Set(actuales);
       if (nuevos.has(clave)) nuevos.delete(clave);
       else nuevos.add(clave);
@@ -518,6 +528,8 @@ export function RentabilidadMes() {
                           fila={fila}
                           abierto={abierto}
                           alAlternar={() => alternarGrupo(clave)}
+                          comercialesExpandidos={comercialesExpandidos}
+                          alAlternarComercial={alternarComercial}
                         />
                       );
                     })}
@@ -591,10 +603,14 @@ function FragmentoEspecie({
   fila,
   abierto,
   alAlternar,
+  comercialesExpandidos,
+  alAlternarComercial,
 }: {
   fila: FilaEspecieRentabilidadMes;
   abierto: boolean;
   alAlternar: () => void;
+  comercialesExpandidos: Set<string>;
+  alAlternarComercial: (clave: string) => void;
 }) {
   return (
     <>
@@ -608,14 +624,32 @@ function FragmentoEspecie({
         <td />
         <td className="numero">{porcentaje(fila.rentabilidad)}</td>
       </tr>
-      {abierto ? fila.comerciales.map((comercial) => (
-        <tr key={`${fila.etiqueta}-${comercial.etiqueta}`}>
-          <th scope="row" className="rentabilidad-mes__subfila">{comercial.etiqueta}</th>
-          <td className="numero" title={millones(comercial.venta)}>{millonesTabla(comercial.venta)}</td>
-          <td className="rentabilidad-mes__celda-semaforo"><EstadoRentabilidadCalculada valor={comercial.rentabilidad} /></td>
-          <td className="numero">{porcentaje(comercial.rentabilidad)}</td>
-        </tr>
-      )) : null}
+      {abierto ? fila.comerciales.map((comercial) => {
+        const clave = `comercial:${fila.etiqueta}:${comercial.etiqueta}`;
+        const expandido = comercialesExpandidos.has(clave);
+        return (
+          <Fragment key={clave}>
+            <tr className="rentabilidad-mes__grupo-comercial">
+              <th scope="row" className="rentabilidad-mes__subfila">
+                <button type="button" aria-expanded={expandido} onClick={() => alAlternarComercial(clave)}>
+                  <span aria-hidden="true">{expandido ? "⊟" : "⊞"}</span>{comercial.etiqueta}
+                </button>
+              </th>
+              <td className="numero" title={millones(comercial.venta)}>{millonesTabla(comercial.venta)}</td>
+              <td className="rentabilidad-mes__celda-semaforo"><EstadoRentabilidadCalculada valor={comercial.rentabilidad} /></td>
+              <td className="numero">{porcentaje(comercial.rentabilidad)}</td>
+            </tr>
+            {expandido ? comercial.productos.map((producto) => (
+              <tr className="rentabilidad-mes__producto" key={`${clave}:${producto.etiqueta}`}>
+                <th scope="row" className="rentabilidad-mes__subfila">{producto.etiqueta}</th>
+                <td className="numero" title={millones(producto.venta)}>{millonesTabla(producto.venta)}</td>
+                <td className="rentabilidad-mes__celda-semaforo"><EstadoRentabilidadCalculada valor={producto.rentabilidad} /></td>
+                <td className="numero">{porcentaje(producto.rentabilidad)}</td>
+              </tr>
+            )) : null}
+          </Fragment>
+        );
+      }) : null}
     </>
   );
 }

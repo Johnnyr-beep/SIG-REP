@@ -123,3 +123,41 @@ def test_rentabilidad_mensual_agrega_dimensiones_y_no_inventa_costo() -> None:
         "RES-01 · Producto RES-01",
         "SER-01 · Producto SER-01",
     ]
+
+
+def test_rentabilidad_mensual_anida_productos_bajo_su_tipo_comercial() -> None:
+    fuente = _FuenteSimulada(
+        [
+            _linea(
+                tipo_item="0001 - BIENES",
+                especie="RES",
+                tipo_comercial="CORTE",
+                cliente="CLIENTE",
+                referencia="RES-01",
+                venta="100",
+                costo="60",
+                kilos="10",
+            ),
+            _linea(
+                tipo_item="0001 - BIENES",
+                especie="RES",
+                tipo_comercial="SUBPRODUCTO",
+                cliente="CLIENTE",
+                referencia="RES-02",
+                venta="25",
+                costo="10",
+                kilos="5",
+            ),
+        ]
+    )
+
+    resultado = calcular_rentabilidad_mes("202609", fuente=fuente)
+
+    comerciales = {fila.etiqueta: fila for fila in resultado.especies[0].comerciales}
+    assert [fila.etiqueta for fila in comerciales["CORTE"].productos] == [
+        "RES-01 · Producto RES-01"
+    ]
+    assert comerciales["CORTE"].productos[0].venta == Decimal("100")
+    assert [fila.etiqueta for fila in comerciales["SUBPRODUCTO"].productos] == [
+        "RES-02 · Producto RES-02"
+    ]

@@ -770,6 +770,10 @@ export interface FilaTipoItemRentabilidadMes extends FilaRentabilidadMes {
   centros_operacion: FilaRentabilidadMes[];
 }
 
+export interface FilaComercialRentabilidadMes extends FilaRentabilidadMes {
+  productos: FilaRentabilidadMes[];
+}
+
 export interface PuntoRentabilidadMes {
   fecha: string;
   venta: string;
@@ -777,7 +781,7 @@ export interface PuntoRentabilidadMes {
 }
 
 export interface FilaEspecieRentabilidadMes extends FilaRentabilidadMes {
-  comerciales: FilaRentabilidadMes[];
+  comerciales: FilaComercialRentabilidadMes[];
 }
 
 export interface RespuestaRentabilidadMes {

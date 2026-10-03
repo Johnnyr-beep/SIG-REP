@@ -159,6 +159,10 @@ class FilaTipoItemRentabilidadMes(FilaRentabilidadMes):
     centros_operacion: list[FilaRentabilidadMes]
 
 
+class FilaComercialRentabilidadMes(FilaRentabilidadMes):
+    productos: list[FilaRentabilidadMes]
+
+
 class PuntoRentabilidadMes(EsquemaBase):
     fecha: date
     venta: DecimalStr
@@ -166,7 +170,7 @@ class PuntoRentabilidadMes(EsquemaBase):
 
 
 class FilaEspecieRentabilidadMes(FilaRentabilidadMes):
-    comerciales: list[FilaRentabilidadMes]
+    comerciales: list[FilaComercialRentabilidadMes]
 
 
 class RespuestaRentabilidadMes(EsquemaBase):

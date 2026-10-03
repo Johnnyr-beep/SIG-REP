@@ -4085,6 +4085,36 @@ textarea.campo__control {
   font-weight: 400 !important;
 }
 
+.rentabilidad-mes__grupo-comercial button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.rentabilidad-mes__grupo-comercial button:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+}
+
+.rentabilidad-mes__grupo-comercial button span {
+  flex: 0 0 auto;
+  color: var(--texto-tenue);
+  font-size: 0.8rem;
+}
+
+.rentabilidad-mes__producto th:first-child {
+  padding-left: 3rem !important;
+  color: var(--texto-tenue) !important;
+}
+
 .rentabilidad-mes__tabla--ranking tbody th {
   min-width: 9rem;
   font-weight: 500;
