@@ -1,16 +1,25 @@
 import { useState } from "react";
 
 import { useRentabilidadDia } from "@/api/consultasFinanciero";
-import type { FilaGrupoRentabilidadDia, FilaMatrizRentabilidadDia } from "@/api/tipos";
+import type {
+  FilaGrupoRentabilidadDia,
+  FilaMatrizRentabilidadDia,
+  FilaVendedorClaseRentabilidadDia,
+} from "@/api/tipos";
 import { AvisoError, Cargando, Vacio } from "@/componentes/comunes";
 import { useMarcaElegida } from "@/marca/ContextoMarca";
 
-import { BarrasVentaDiaria, LineaRentabilidadDiaria } from "./RentabilidadMes";
+import {
+  BarrasVentaDiaria,
+  EstadoRentabilidadCalculada,
+  LineaRentabilidadDiaria,
+} from "./RentabilidadMes";
 
 interface FilaMatrizArbol {
   fila: FilaMatrizRentabilidadDia;
   clave: string;
   nivel: number;
+  rentabilidad?: string | null;
   hijos?: FilaMatrizArbol[];
 }
 
@@ -28,6 +37,23 @@ function filasDeBienes(especies: FilaGrupoRentabilidadDia[]): FilaMatrizArbol[] 
         clave: `producto:${especie.etiqueta}:${comercial.etiqueta}:${producto.etiqueta}`,
         nivel: 2,
       })),
+    })),
+  }));
+}
+
+function filasDeVendedores(
+  clases: FilaVendedorClaseRentabilidadDia[],
+): FilaMatrizArbol[] {
+  return clases.map((clase) => ({
+    fila: clase,
+    clave: `clase:${clase.etiqueta}`,
+    nivel: 0,
+    rentabilidad: clase.rentabilidad,
+    hijos: clase.productos.map((producto) => ({
+      fila: producto,
+      clave: `producto:${clase.etiqueta}:${producto.etiqueta}`,
+      nivel: 1,
+      rentabilidad: producto.rentabilidad,
     })),
   }));
 }
@@ -72,6 +98,7 @@ function TablaMatriz({
   valoresTotal,
   encabezado,
   filasJerarquicas = false,
+  mostrarSemaforo = false,
 }: {
   titulo: string;
   filas: FilaMatrizArbol[];
@@ -80,6 +107,7 @@ function TablaMatriz({
   valoresTotal?: string[];
   encabezado: string;
   filasJerarquicas?: boolean;
+  mostrarSemaforo?: boolean;
 }) {
   const [abiertas, setAbiertas] = useState<Set<string>>(() => new Set());
   const visibles: FilaMatrizArbol[] = [];
@@ -104,11 +132,12 @@ function TablaMatriz({
     <section className="rentabilidad-mes__panel">
       <h2 className="rentabilidad-mes__titulo-panel">{titulo}</h2>
       <div className="tabla-envoltorio rentabilidad-dia__envoltorio">
-        <table className="tabla tabla--compacta rentabilidad-mes__tabla rentabilidad-dia__tabla">
+        <table className={`tabla tabla--compacta rentabilidad-mes__tabla rentabilidad-dia__tabla${mostrarSemaforo ? " rentabilidad-dia__tabla--semaforo" : ""}`}>
           <thead>
             <tr>
               <th scope="col">{encabezado}</th>
               <th scope="col" className="numero">Total</th>
+              {mostrarSemaforo ? <th scope="col" aria-label="Semáforo de rentabilidad" /> : null}
               {dias.map((dia) => <th className="numero" scope="col" key={dia}>{dia}</th>)}
             </tr>
           </thead>
@@ -129,6 +158,11 @@ function TablaMatriz({
                   ) : fila.fila.etiqueta}
                 </th>
                 <td className="numero">{millonesTabla(fila.fila.venta)}</td>
+                {mostrarSemaforo ? (
+                  <td className="rentabilidad-mes__celda-semaforo">
+                    <EstadoRentabilidadCalculada valor={fila.rentabilidad ?? null} />
+                  </td>
+                ) : null}
                 {dias.map((_, indice) => (
                   <td className="numero" key={`${fila.clave}-${indice}`}>
                     {millonesTabla(fila.fila.valores[indice] ?? "0")}
@@ -141,6 +175,7 @@ function TablaMatriz({
             <tr>
               <th scope="row">Total</th>
               <td className="numero">{millonesTabla(total)}</td>
+              {mostrarSemaforo ? <td /> : null}
               {dias.map((_, indice) => (
                 <td className="numero" key={`total-${indice}`}>
                   {millonesTabla(
@@ -246,15 +281,13 @@ export function RentabilidadDia() {
           />
           <TablaMatriz
             titulo="Facturación BIENES"
-            filas={datos.vendedores_clases.map((fila) => ({
-              fila,
-              clave: `clase:${fila.etiqueta}`,
-              nivel: 0,
-            }))}
+            filas={filasDeVendedores(datos.vendedores_clases)}
             dias={dias}
             total={totalBienes}
             valoresTotal={valoresBienes}
             encabezado="Clase vendedor"
+            filasJerarquicas
+            mostrarSemaforo
           />
         </>
       ) : null}

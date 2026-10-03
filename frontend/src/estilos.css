@@ -3896,6 +3896,19 @@ textarea.campo__control {
   min-width: 6.5rem;
 }
 
+.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking).rentabilidad-dia__tabla--semaforo th:nth-child(3),
+.rentabilidad-dia__tabla--semaforo td:nth-child(3) {
+  width: 3rem;
+  min-width: 3rem;
+  text-align: center;
+}
+
+.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking).rentabilidad-dia__tabla--semaforo th:nth-child(n + 4),
+.rentabilidad-dia__tabla--semaforo td:nth-child(n + 4) {
+  width: 6.5rem;
+  min-width: 6.5rem;
+}
+
 .rentabilidad-dia__tabla th,
 .rentabilidad-dia__tabla td {
   white-space: nowrap;

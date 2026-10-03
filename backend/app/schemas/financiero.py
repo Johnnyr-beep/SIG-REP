@@ -201,6 +201,14 @@ class FilaMatrizRentabilidadDia(EsquemaBase):
     valores: list[DecimalStr]
 
 
+class FilaRentabilidadVendedorDia(FilaMatrizRentabilidadDia):
+    rentabilidad: DecimalStr | None
+
+
+class FilaVendedorClaseRentabilidadDia(FilaRentabilidadVendedorDia):
+    productos: list[FilaRentabilidadVendedorDia]
+
+
 class FilaComercialRentabilidadDia(FilaMatrizRentabilidadDia):
     productos: list[FilaMatrizRentabilidadDia]
 
@@ -223,4 +231,4 @@ class RespuestaRentabilidadDia(EsquemaBase):
     costo_kg_res: DecimalStr | None
     diario: list[PuntoRentabilidadMes]
     especies_bienes: list[FilaGrupoRentabilidadDia]
-    vendedores_clases: list[FilaMatrizRentabilidadDia]
+    vendedores_clases: list[FilaVendedorClaseRentabilidadDia]

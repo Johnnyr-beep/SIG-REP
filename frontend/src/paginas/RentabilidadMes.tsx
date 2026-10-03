@@ -105,7 +105,7 @@ function SemaforoRentabilidad({ valor }: { valor: string | null }) {
   );
 }
 
-function EstadoRentabilidadCalculada({ valor }: { valor: string | null }) {
+export function EstadoRentabilidadCalculada({ valor }: { valor: string | null }) {
   const rentabilidad = valor === null ? null : Number(valor);
   const negativa = rentabilidad !== null && rentabilidad < 0;
   const estado = rentabilidad === null ? "neutro" : negativa ? "rojo" : "verde";

@@ -25,6 +25,8 @@ from app.schemas.financiero import (
     FilaComercialRentabilidadDia,
     FilaGrupoRentabilidadDia,
     FilaMatrizRentabilidadDia,
+    FilaRentabilidadVendedorDia,
+    FilaVendedorClaseRentabilidadDia,
     PuntoRentabilidadMes,
     RespuestaRentabilidadDia,
 )
@@ -83,6 +85,18 @@ def _matriz(
     )
 
 
+def _matriz_vendedor(
+    etiqueta: str,
+    acumulado: _Acumulado,
+    diario: dict[date, _Acumulado],
+    fechas: list[date],
+) -> FilaRentabilidadVendedorDia:
+    return FilaRentabilidadVendedorDia(
+        **_matriz(etiqueta, acumulado, diario, fechas).model_dump(),
+        rentabilidad=acumulado.rentabilidad,
+    )
+
+
 def calcular_rentabilidad_dia(
     periodo: str,
     fuente: FuenteVentaAgro | None = None,
@@ -128,6 +142,8 @@ def calcular_rentabilidad_dia(
         clase: {fecha: _Acumulado() for fecha in fechas} for clase in CLASES_RENTABILIDAD
     }
     clases_totales = {clase: _Acumulado() for clase in CLASES_RENTABILIDAD}
+    productos_por_clase: dict[tuple[str, str], _Acumulado] = {}
+    productos_clase_diarios: dict[tuple[str, str], dict[date, _Acumulado]] = {}
     canal_cerdo = Decimal(0)
     canal_res = Decimal(0)
 
@@ -175,6 +191,11 @@ def calcular_rentabilidad_dia(
             if clase in clases_diarias:
                 clases_diarias[clase][fila.fecha].agregar(fila)
                 clases_totales[clase].agregar(fila)
+                clave_producto_clase = (clase, etiqueta_producto)
+                productos_por_clase.setdefault(clave_producto_clase, _Acumulado()).agregar(fila)
+                productos_clase_diarios.setdefault(
+                    clave_producto_clase, {fecha: _Acumulado() for fecha in fechas}
+                )[fila.fecha].agregar(fila)
     finally:
         if fuente_creada is not None:
             fuente_creada.cerrar()
@@ -254,7 +275,25 @@ def calcular_rentabilidad_dia(
         ],
         especies_bienes=grupos_especie,
         vendedores_clases=[
-            _matriz(clase, clases_totales[clase], clases_diarias[clase], fechas)
+            FilaVendedorClaseRentabilidadDia(
+                **_matriz_vendedor(
+                    clase, clases_totales[clase], clases_diarias[clase], fechas
+                ).model_dump(),
+                productos=[
+                    _matriz_vendedor(
+                        nombre_producto,
+                        acumulado_producto,
+                        productos_clase_diarios[(nombre_clase, nombre_producto)],
+                        fechas,
+                    )
+                    for (nombre_clase, nombre_producto), acumulado_producto in sorted(
+                        productos_por_clase.items(),
+                        key=lambda elemento: elemento[1].venta,
+                        reverse=True,
+                    )
+                    if nombre_clase == clase
+                ],
+            )
             for clase in CLASES_RENTABILIDAD
         ],
     )

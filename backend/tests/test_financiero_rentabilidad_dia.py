@@ -113,6 +113,10 @@ def test_rentabilidad_diaria_agrega_canal_especies_y_clases() -> None:
     assert resultado.diario[1].venta == Decimal("50")
     filas_clase = {fila.etiqueta: fila for fila in resultado.vendedores_clases}
     assert filas_clase["CCT"].valores[0] == Decimal("100")
+    assert filas_clase["CCT"].rentabilidad == Decimal("0.4")
+    assert filas_clase["CCT"].productos[0].etiqueta == "ITEM-01 · Producto"
+    assert filas_clase["CCT"].productos[0].valores[0] == Decimal("100")
+    assert filas_clase["CCT"].productos[0].rentabilidad == Decimal("0.4")
     assert filas_clase["MAY"].valores[1] == Decimal("50")
     fila_cerdo = next(fila for fila in resultado.especies_bienes if fila.etiqueta == "CERDO")
     assert fila_cerdo.detalle[0].valores[0] == Decimal("100")

@@ -820,6 +820,14 @@ export interface FilaGrupoRentabilidadDia extends FilaMatrizRentabilidadDia {
   detalle: FilaComercialRentabilidadDia[];
 }
 
+export interface FilaRentabilidadVendedorDia extends FilaMatrizRentabilidadDia {
+  rentabilidad: string | null;
+}
+
+export interface FilaVendedorClaseRentabilidadDia extends FilaRentabilidadVendedorDia {
+  productos: FilaRentabilidadVendedorDia[];
+}
+
 export interface RespuestaRentabilidadDia {
   periodo: string;
   cia: number;
@@ -834,7 +842,7 @@ export interface RespuestaRentabilidadDia {
   costo_kg_res: string | null;
   diario: PuntoRentabilidadMes[];
   especies_bienes: FilaGrupoRentabilidadDia[];
-  vendedores_clases: FilaMatrizRentabilidadDia[];
+  vendedores_clases: FilaVendedorClaseRentabilidadDia[];
 }
 
 export interface FilaDetalleCuenta {
