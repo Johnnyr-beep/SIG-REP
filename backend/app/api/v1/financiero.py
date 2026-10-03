@@ -18,6 +18,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
+from app.application.services.financiero_rentabilidad_dia_service import (
+    calcular_rentabilidad_dia,
+)
 from app.application.services.financiero_rentabilidad_service import (
     calcular_rentabilidad_mes,
 )
@@ -55,6 +58,7 @@ from app.schemas.financiero import (
     RespuestaEstadoResultados,
     RespuestaEstadoResultadosEnVivo,
     RespuestaIndicadoresFinancieros,
+    RespuestaRentabilidadDia,
     RespuestaRentabilidadMes,
     RespuestaSituacionFinancieraEnVivo,
 )
@@ -106,6 +110,24 @@ def rentabilidad_mes(
             "Este módulo de rentabilidad está disponible solo en Grupo Santacruz."
         )
     return calcular_rentabilidad_mes(periodo)
+
+
+@router.get(
+    "/rentabilidad-dia",
+    response_model=RespuestaRentabilidadDia,
+    summary="Rentabilidad diaria operativa de Agropecuaria (módulo Grupo)",
+)
+def rentabilidad_dia(
+    usuario: UsuarioFinancieroDep,
+    unidad: UnidadDep,
+    periodo: str = PeriodoQuery,
+) -> RespuestaRentabilidadDia:
+    del usuario
+    if unidad != "grupo-santacruz":
+        raise ErrorAutorizacion(
+            "Este módulo de rentabilidad está disponible solo en Grupo Santacruz."
+        )
+    return calcular_rentabilidad_dia(periodo)
 
 
 @router.get(

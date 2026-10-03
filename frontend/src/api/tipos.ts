@@ -798,6 +798,33 @@ export interface RespuestaRentabilidadMes {
   productos: FilaRentabilidadMes[];
 }
 
+export interface FilaMatrizRentabilidadDia {
+  etiqueta: string;
+  venta: string;
+  valores: string[];
+}
+
+export interface FilaGrupoRentabilidadDia extends FilaMatrizRentabilidadDia {
+  detalle: FilaMatrizRentabilidadDia[];
+}
+
+export interface RespuestaRentabilidadDia {
+  periodo: string;
+  cia: number;
+  fecha_inicio: string;
+  fecha_fin: string;
+  venta: string;
+  rentabilidad: string | null;
+  lineas_facturadas: number;
+  canal_cerdo: string;
+  canal_res: string;
+  costo_kg_cerdo: string | null;
+  costo_kg_res: string | null;
+  diario: PuntoRentabilidadMes[];
+  especies_bienes: FilaGrupoRentabilidadDia[];
+  vendedores_clases: FilaMatrizRentabilidadDia[];
+}
+
 export interface FilaDetalleCuenta {
   mayor_iii: string;
   mayor_iv?: string | null;

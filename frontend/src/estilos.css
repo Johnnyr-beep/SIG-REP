@@ -3862,6 +3862,44 @@ textarea.campo__control {
   text-align: center;
 }
 
+.rentabilidad-dia__envoltorio {
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.rentabilidad-dia__tabla {
+  width: max-content;
+  min-width: 100%;
+}
+
+.rentabilidad-dia__tabla th:first-child {
+  position: sticky;
+  left: 0;
+  min-width: 10rem;
+  background: var(--superficie);
+  text-align: left;
+  z-index: 1;
+}
+
+.rentabilidad-dia__tabla th:not(:first-child),
+.rentabilidad-dia__tabla td {
+  min-width: 4.8rem;
+}
+
+.rentabilidad-dia__fila-grupo th {
+  font-weight: 700;
+}
+
+.rentabilidad-dia__subfila th:first-child {
+  padding-left: 1.25rem;
+  color: var(--texto-suave);
+}
+
+.rentabilidad-dia__tabla thead th:first-child,
+.rentabilidad-dia__tabla tfoot th:first-child {
+  z-index: 2;
+}
+
 .rentabilidad-mes__grafico-venta {
   min-width: 0;
 }

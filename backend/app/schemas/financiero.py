@@ -185,3 +185,30 @@ class RespuestaRentabilidadMes(EsquemaBase):
     especies: list[FilaEspecieRentabilidadMes]
     clientes: list[FilaRentabilidadMes]
     productos: list[FilaRentabilidadMes]
+
+
+class FilaMatrizRentabilidadDia(EsquemaBase):
+    etiqueta: str
+    venta: DecimalStr
+    valores: list[DecimalStr]
+
+
+class FilaGrupoRentabilidadDia(FilaMatrizRentabilidadDia):
+    detalle: list[FilaMatrizRentabilidadDia]
+
+
+class RespuestaRentabilidadDia(EsquemaBase):
+    periodo: str
+    cia: int
+    fecha_inicio: date
+    fecha_fin: date
+    venta: DecimalStr
+    rentabilidad: DecimalStr | None
+    lineas_facturadas: int
+    canal_cerdo: DecimalStr
+    canal_res: DecimalStr
+    costo_kg_cerdo: DecimalStr | None
+    costo_kg_res: DecimalStr | None
+    diario: list[PuntoRentabilidadMes]
+    especies_bienes: list[FilaGrupoRentabilidadDia]
+    vendedores_clases: list[FilaMatrizRentabilidadDia]

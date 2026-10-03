@@ -30,6 +30,7 @@ import { Ingesta } from "@/paginas/Ingesta";
 import { InventarioPdv } from "@/paginas/InventarioPdv";
 import { IngresosCostos } from "@/paginas/IngresosCostos";
 import { RentabilidadMes } from "@/paginas/RentabilidadMes";
+import { RentabilidadDia } from "@/paginas/RentabilidadDia";
 import { HistoriaVenta } from "@/paginas/HistoriaVenta";
 import { Presupuesto } from "@/paginas/Presupuesto";
 import { Permisos } from "@/paginas/Permisos";
@@ -176,6 +177,14 @@ export function App() {
               element={
                 <AccesoModulo permiso="PERMISO_CONSULTAR_FINANCIERO">
                   <RentabilidadMes />
+                </AccesoModulo>
+              }
+            />
+            <Route
+              path="rentabilidad-dia"
+              element={
+                <AccesoModulo permiso="PERMISO_CONSULTAR_FINANCIERO">
+                  <RentabilidadDia />
                 </AccesoModulo>
               }
             />

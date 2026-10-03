@@ -140,6 +140,7 @@ const MENU_FINANCIERO: GrupoNav[] = [
     items: [
       { ruta: "/", etiqueta: "Resumen financiero", icono: "◱", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/rentabilidad-mes", etiqueta: "Rentabilidad mes", icono: "◷", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
+      { ruta: "/rentabilidad-dia", etiqueta: "Rentabilidad día", icono: "▦", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/resumen-financiero", etiqueta: "Balance y resultados", icono: "▤", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/detalle-cuentas", etiqueta: "Detalle de cuentas", icono: "▤", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/cartera", etiqueta: "Cartera por cliente", icono: "◈", permiso: "PERMISO_CONSULTAR_FINANCIERO" },

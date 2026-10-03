@@ -122,7 +122,7 @@ function EstadoRentabilidadCalculada({ valor }: { valor: string | null }) {
   );
 }
 
-function LineaRentabilidadDiaria({ puntos }: { puntos: PuntoRentabilidadMes[] }) {
+export function LineaRentabilidadDiaria({ puntos }: { puntos: PuntoRentabilidadMes[] }) {
   const ancho = 420;
   const alto = 190;
   const margen = { arriba: 16, derecha: 12, abajo: 28, izquierda: 38 };
@@ -244,7 +244,7 @@ function LineaRentabilidadDiaria({ puntos }: { puntos: PuntoRentabilidadMes[] })
   );
 }
 
-function BarrasVentaDiaria({ puntos }: { puntos: PuntoRentabilidadMes[] }) {
+export function BarrasVentaDiaria({ puntos }: { puntos: PuntoRentabilidadMes[] }) {
   const ancho = 420;
   const alto = 190;
   const margen = { arriba: 25, abajo: 28, horizontal: 9 };

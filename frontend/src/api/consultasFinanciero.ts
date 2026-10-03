@@ -13,6 +13,7 @@ import type {
   RespuestaEstadoResultadosEnVivo,
   RespuestaIndicadoresFinancieros,
   RespuestaRentabilidadMes,
+  RespuestaRentabilidadDia,
   RespuestaSituacionFinancieraEnVivo,
 } from "./tipos";
 
@@ -26,6 +27,18 @@ export function useRentabilidadMes(periodo: string, habilitado = true) {
     queryKey: ["financiero", "rentabilidad-mes", periodo],
     queryFn: () =>
       peticion<RespuestaRentabilidadMes>("/financiero/rentabilidad-mes", {
+        parametros: { periodo },
+      }),
+    enabled: habilitado && /^\d{6}$/.test(periodo),
+    staleTime: 60_000,
+  });
+}
+
+export function useRentabilidadDia(periodo: string, habilitado = true) {
+  return useQuery({
+    queryKey: ["financiero", "rentabilidad-dia", periodo],
+    queryFn: () =>
+      peticion<RespuestaRentabilidadDia>("/financiero/rentabilidad-dia", {
         parametros: { periodo },
       }),
     enabled: habilitado && /^\d{6}$/.test(periodo),
