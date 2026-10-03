@@ -106,18 +106,23 @@ function SemaforoRentabilidad({ valor }: { valor: string | null }) {
 }
 
 function EstadoRentabilidadCalculada({ valor }: { valor: string | null }) {
-  const calculada = valor !== null;
-  const etiqueta = calculada
-    ? "Costo disponible; rentabilidad calculada"
-    : "Costo incompleto; rentabilidad no calculada";
+  const rentabilidad = valor === null ? null : Number(valor);
+  const negativa = rentabilidad !== null && rentabilidad < 0;
+  const estado = rentabilidad === null ? "neutro" : negativa ? "rojo" : "verde";
+  const etiqueta =
+    rentabilidad === null
+      ? "Costo incompleto; rentabilidad no calculada"
+      : negativa
+        ? `Rentabilidad negativa: ${porcentaje(valor)}`
+        : `Rentabilidad no negativa: ${porcentaje(valor)}`;
   return (
     <span
-      className={`rentabilidad-mes__semaforo rentabilidad-mes__semaforo--${calculada ? "verde" : "neutro"}`}
+      className={`rentabilidad-mes__semaforo rentabilidad-mes__semaforo--${estado}`}
       role="img"
       aria-label={etiqueta}
       title={etiqueta}
     >
-      <span aria-hidden="true">{calculada ? "✓" : "○"}</span>
+      <span aria-hidden="true">{rentabilidad === null ? "○" : negativa ? "×" : "✓"}</span>
     </span>
   );
 }
