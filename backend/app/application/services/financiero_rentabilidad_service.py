@@ -65,6 +65,14 @@ def _acumular(diccionario: dict[str, _Acumulado], clave: str, fila: LineaAgro) -
     diccionario.setdefault(clave, _Acumulado()).agregar(fila)
 
 
+def _orden_tipo_comercial(etiqueta: str) -> int:
+    tipo = etiqueta.upper()
+    for prioridad, palabra in enumerate(("CANAL", "CORTE", "SUBPRODUCTO")):
+        if palabra in tipo:
+            return prioridad
+    return 3
+
+
 def _fila(
     etiqueta: str, acumulado: _Acumulado, venta_total: Decimal | None = None
 ) -> FilaRentabilidadMes:
@@ -210,7 +218,7 @@ def calcular_rentabilidad_mes(
                     productos=productos_comerciales_salida,
                 )
             )
-        comerciales.sort(key=lambda fila: fila.venta, reverse=True)
+        comerciales.sort(key=lambda fila: (_orden_tipo_comercial(fila.etiqueta), -fila.venta))
         especies_salida.append(
             FilaEspecieRentabilidadMes(
                 **_fila(especie, acumulado, total.venta).model_dump(),

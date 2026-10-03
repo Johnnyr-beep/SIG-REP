@@ -89,9 +89,13 @@ function cantidad(valor: string): string {
 }
 
 function costoPorKilo(fila: FilaRentabilidadMes): string {
-  const kilos = Number(fila.kilos);
-  if (fila.costo === null || kilos === 0) return "—";
-  return pesos(Number(fila.costo) / kilos);
+  return costoPorKiloValores(fila.costo, fila.kilos);
+}
+
+function costoPorKiloValores(costo: string | null, kilos: string): string {
+  const cantidadKilos = Number(kilos);
+  if (costo === null || cantidadKilos === 0) return "—";
+  return pesos(Number(costo) / cantidadKilos);
 }
 
 function etiquetaEspecie(etiqueta: string): string {
@@ -536,21 +540,24 @@ export function RentabilidadMes() {
           </section>
 
           <section className="rentabilidad-mes__estructura" aria-label="Venta y rentabilidad mensual">
-          <div className="rentabilidad-mes__columna rentabilidad-mes__columna--centro">
+            <div className="rentabilidad-mes__columna rentabilidad-mes__columna--centro">
             <section className="rentabilidad-mes__panel">
               <h2 className="rentabilidad-mes__titulo-panel">Total Fact Agropecuaria</h2>
-              <div className="tabla-envoltorio">
-                <table className="tabla tabla--compacta rentabilidad-mes__tabla">
+              <div className="tabla-envoltorio rentabilidad-mes__envoltorio-operativa">
+                <table className="tabla tabla--compacta rentabilidad-mes__tabla rentabilidad-mes__tabla--operativa">
                   <thead>
                     <tr>
                       <th>TIPO ITEM</th>
+                      <th className="numero">Q (KG)</th>
                       <EncabezadoOrdenableVenta
-                        etiqueta="Vlr_FactMM"
+                        etiqueta="INGRESOS"
                         orden={ordenTipos}
                         alAlternar={() => setOrdenTipos((actual) => actual === "desc" ? "asc" : "desc")}
                       />
+                      <th className="numero">UT.</th>
                       <th aria-label="Semáforo" />
-                      <th className="numero">%Rent</th>
+                      <th className="numero">%RENTB.</th>
+                      <th className="numero">COSTO UNIT. PROM.</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -571,7 +578,15 @@ export function RentabilidadMes() {
                     })}
                   </tbody>
                   <tfoot>
-                    <tr><th scope="row">Total</th><td className="numero" title={millones(datos.venta)}>{millonesTabla(datos.venta)}</td><td /><td className="numero">{porcentaje(datos.rentabilidad)}</td></tr>
+                    <tr>
+                      <th scope="row">Total</th>
+                      <td className="numero">{cantidad(datos.kilos)}</td>
+                      <td className="numero" title={millones(datos.venta)}>{millonesTabla(datos.venta)}</td>
+                      <td className="numero">{millonesTabla(datos.margen_bruto)}</td>
+                      <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={datos.rentabilidad} /></td>
+                      <td className="numero">{porcentaje(datos.rentabilidad)}</td>
+                      <td className="numero">{costoPorKiloValores(datos.costo, datos.kilos)}</td>
+                    </tr>
                   </tfoot>
                 </table>
               </div>
@@ -616,9 +631,8 @@ export function RentabilidadMes() {
                 </table>
               </div>
             </section>
-          </div>
 
-          <div className="rentabilidad-mes__columna rentabilidad-mes__columna--derecha">
+            <div className="rentabilidad-mes__columna rentabilidad-mes__columna--derecha">
             <TablaRanking
               titulo="Ranking Clientes"
               etiqueta="Razón social cliente despacho"
@@ -634,6 +648,7 @@ export function RentabilidadMes() {
               totalVenta={datos.venta}
               totalRentabilidad={datos.rentabilidad}
             />
+            </div>
           </div>
           </section>
         </>
@@ -665,9 +680,12 @@ function FragmentoTipoItem({
             <span aria-hidden="true">{abierto ? "⊟" : "⊞"}</span>{fila.etiqueta}
           </button>
         </th>
+        <td className="numero">{cantidad(fila.kilos)}</td>
         <td className="numero" title={millones(fila.venta)}>{millonesTabla(fila.venta)}</td>
-        <td />
+        <td className="numero">{millonesTabla(fila.margen_bruto)}</td>
+        <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={fila.rentabilidad} /></td>
         <td className="numero">{porcentaje(fila.rentabilidad)}</td>
+        <td className="numero">{costoPorKilo(fila)}</td>
       </tr>
       {abierto ? ordenarPorVenta(fila.centros_operacion, orden).map((centro) => {
         const clave = `centro:${fila.etiqueta}:${centro.etiqueta}`;
@@ -680,9 +698,12 @@ function FragmentoTipoItem({
                   <span aria-hidden="true">{expandido ? "⊟" : "⊞"}</span>{centro.etiqueta}
                 </button>
               </th>
+              <td className="numero">{cantidad(centro.kilos)}</td>
               <td className="numero" title={millones(centro.venta)}>{millonesTabla(centro.venta)}</td>
+              <td className="numero">{millonesTabla(centro.margen_bruto)}</td>
               <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={centro.rentabilidad} /></td>
               <td className="numero">{porcentaje(centro.rentabilidad)}</td>
+              <td className="numero">{costoPorKilo(centro)}</td>
             </tr>
             {expandido ? ordenarPorVenta(centro.productos, orden).map((producto) => (
               <tr className="rentabilidad-mes__producto" key={`${clave}:${producto.etiqueta}`}>

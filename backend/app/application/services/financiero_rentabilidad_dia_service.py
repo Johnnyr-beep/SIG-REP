@@ -73,6 +73,14 @@ def _es_especie(etiqueta: str | None, nombre: str) -> bool:
     return nombre in (etiqueta or "").upper().replace("-", " ").split()
 
 
+def _orden_tipo_comercial(etiqueta: str) -> int:
+    tipo = etiqueta.upper()
+    for prioridad, palabra in enumerate(("CANAL", "CORTE", "SUBPRODUCTO")):
+        if palabra in tipo:
+            return prioridad
+    return 3
+
+
 def _matriz(
     etiqueta: str,
     acumulado: _Acumulado,
@@ -244,7 +252,7 @@ def calcular_rentabilidad_dia(
                     productos=productos_comerciales,
                 )
             )
-        detalle.sort(key=lambda fila: fila.venta, reverse=True)
+        detalle.sort(key=lambda fila: (_orden_tipo_comercial(fila.etiqueta), -fila.venta))
         serie_especie = _matriz(etiqueta, acumulado, especies_diarias[etiqueta], fechas)
         grupos_especie.append(
             FilaGrupoRentabilidadDia(

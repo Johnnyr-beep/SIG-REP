@@ -83,6 +83,17 @@ def test_rentabilidad_diaria_agrega_canal_especies_y_clases() -> None:
                 descripcion="Corte vendedor tres",
             ),
             _linea(
+                4,
+                especie="RES",
+                tipo_comercial="CANAL",
+                codigo_vendedor="V2",
+                venta="10",
+                costo="8",
+                cantidad="1",
+                referencia="RES-CANAL-01",
+                descripcion="Canal res",
+            ),
+            _linea(
                 2,
                 especie="RES",
                 tipo_comercial="CORTE",
@@ -113,16 +124,17 @@ def test_rentabilidad_diaria_agrega_canal_especies_y_clases() -> None:
         mapa_vendedores={"V1": "CCT", "V2": "MAY", "V3": "CCT"},
     )
 
-    assert resultado.venta == Decimal("175")
-    assert resultado.rentabilidad == Decimal("75") / Decimal("175")
+    assert resultado.venta == Decimal("185")
+    assert resultado.rentabilidad == Decimal("77") / Decimal("185")
     assert resultado.canal_cerdo == Decimal("4")
-    assert resultado.canal_res == Decimal("0")
+    assert resultado.canal_res == Decimal("1")
     assert resultado.costo_kg_cerdo == Decimal("14")
-    assert resultado.costo_kg_res == Decimal("15")
+    assert resultado.costo_kg_res == Decimal("38") / Decimal("3")
     assert len(resultado.diario) == 30
     assert resultado.diario[0].venta == Decimal("100")
     assert resultado.diario[1].venta == Decimal("50")
     assert resultado.diario[2].venta == Decimal("25")
+    assert resultado.diario[3].venta == Decimal("10")
     filas_clase = {fila.etiqueta: fila for fila in resultado.vendedores_clases}
     assert filas_clase["CCT"].valores[0] == Decimal("100")
     assert filas_clase["CCT"].rentabilidad == Decimal("55") / Decimal("125")
@@ -138,6 +150,11 @@ def test_rentabilidad_diaria_agrega_canal_especies_y_clases() -> None:
     fila_cerdo = next(fila for fila in resultado.especies_bienes if fila.etiqueta == "CERDO")
     assert fila_cerdo.detalle[0].valores[0] == Decimal("100")
     fila_res = next(fila for fila in resultado.especies_bienes if fila.etiqueta == "RES")
+    assert [fila.etiqueta for fila in fila_res.detalle] == [
+        "CANAL",
+        "CORTE",
+        "SUBPRODUCTO",
+    ]
     tipos_res = {fila.etiqueta: fila for fila in fila_res.detalle}
     assert tipos_res["CORTE"].productos[0].etiqueta == "RES-CORTE-01 · Lomo"
     assert tipos_res["CORTE"].productos[0].valores[1] == Decimal("50")

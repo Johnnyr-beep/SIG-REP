@@ -3667,7 +3667,7 @@ textarea.campo__control {
 
 .rentabilidad-mes__estructura {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--espacio-4);
   align-items: start;
 }
@@ -3677,6 +3677,58 @@ textarea.campo__control {
   display: flex;
   flex-direction: column;
   gap: var(--espacio-4);
+}
+
+.rentabilidad-mes__columna--derecha {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.rentabilidad-mes__envoltorio-operativa {
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.rentabilidad-mes__tabla--operativa {
+  width: 100%;
+  min-width: 64rem;
+  table-layout: auto !important;
+}
+
+.rentabilidad-mes__tabla--operativa th,
+.rentabilidad-mes__tabla--operativa td {
+  white-space: nowrap;
+}
+
+.rentabilidad-mes__tabla--operativa th:first-child,
+.rentabilidad-mes__tabla--operativa td:first-child {
+  min-width: 13rem;
+  text-align: left;
+}
+
+.rentabilidad-mes__tabla--operativa th:nth-child(2),
+.rentabilidad-mes__tabla--operativa td:nth-child(2),
+.rentabilidad-mes__tabla--operativa th:nth-child(4),
+.rentabilidad-mes__tabla--operativa td:nth-child(4),
+.rentabilidad-mes__tabla--operativa th:nth-child(6),
+.rentabilidad-mes__tabla--operativa td:nth-child(6) {
+  min-width: 7rem;
+}
+
+.rentabilidad-mes__tabla--operativa th:nth-child(3),
+.rentabilidad-mes__tabla--operativa td:nth-child(3) {
+  min-width: 9rem;
+}
+
+.rentabilidad-mes__tabla--operativa th:nth-child(5),
+.rentabilidad-mes__tabla--operativa td:nth-child(5) {
+  min-width: 2.5rem;
+}
+
+.rentabilidad-mes__tabla--operativa th:nth-child(7),
+.rentabilidad-mes__tabla--operativa td:nth-child(7) {
+  min-width: 10rem;
 }
 
 .rentabilidad-mes__indicadores {
@@ -4175,11 +4227,11 @@ textarea.campo__control {
   }
 
   .rentabilidad-mes__estructura {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .rentabilidad-mes__columna--derecha {
-    grid-column: 1 / -1;
+    grid-column: auto;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
