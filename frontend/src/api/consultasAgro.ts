@@ -36,6 +36,7 @@ import type {
   RechazoAgro,
   ResumenPresupuestoMensual,
   RespuestaCruceAgro,
+  RespuestaComparativoDiarioCruce,
   RespuestaCuboAgro,
   RespuestaInteligencia,
   RespuestaResumenAgro,
@@ -104,6 +105,8 @@ export const clavesAgro = {
     ["agro", "reporte", "resumen", por, filtros] as const,
   cruce: (filtros: FiltrosAgro, por: EjeCruceAgro) =>
     ["agro", "reporte", "cruce", por, filtros] as const,
+  cruceDiario: (filtros: FiltrosAgro, vendedor: string, cliente: string) =>
+    ["agro", "reporte", "cruce-diario", vendedor, cliente, filtros] as const,
   cubo: (filtros: FiltrosAgro, dimensiones: string) =>
     ["agro", "reporte", "cubo", dimensiones, filtros] as const,
   ventaDiaria: (filtros: FiltrosAgro) =>
@@ -219,6 +222,27 @@ export function useCruceAgro(
         parametros: { ...comoParametros(filtros), por },
       }),
     enabled: habilitado,
+    staleTime: 60_000,
+  });
+}
+
+export function useComparativoDiarioCruce(
+  filtros: FiltrosAgro,
+  vendedor: string,
+  cliente: string,
+  habilitado = true,
+): UseQueryResult<RespuestaComparativoDiarioCruce> {
+  return useQuery({
+    queryKey: clavesAgro.cruceDiario(filtros, vendedor, cliente),
+    queryFn: () =>
+      peticion<RespuestaComparativoDiarioCruce>("/agro/cruce/diario", {
+        parametros: {
+          ...comoParametrosDiarios(filtros),
+          vendedor,
+          cliente,
+        },
+      }),
+    enabled: habilitado && Boolean(vendedor) && Boolean(cliente),
     staleTime: 60_000,
   });
 }

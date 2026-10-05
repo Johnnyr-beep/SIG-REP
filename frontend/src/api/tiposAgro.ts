@@ -435,6 +435,21 @@ export interface RespuestaCruceAgro {
   parametros_calculo: ParametrosCalculoAgro;
 }
 
+export interface PuntoComparativoDiarioCruce {
+  fecha: string;
+  venta_actual: string | null;
+  fecha_anterior: string | null;
+  venta_anterior: string | null;
+}
+
+export interface RespuestaComparativoDiarioCruce {
+  periodo: string;
+  medida: Medida;
+  desde: string;
+  hasta: string;
+  dias: PuntoComparativoDiarioCruce[];
+}
+
 export interface FilaVentaDiariaAgro {
   /** Código de centro de operación: `301`, `302`. */
   centro: string;

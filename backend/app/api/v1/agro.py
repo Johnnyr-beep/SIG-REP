@@ -83,6 +83,7 @@ from app.schemas.agro import (
     PresupuestoAgroSalida,
     PresupuestoDimensionSalida,
     RechazoAgroSalida,
+    RespuestaComparativoDiarioCruce,
     RespuestaCruceAgro,
     RespuestaCuboAgro,
     RespuestaResumenAgro,
@@ -370,6 +371,34 @@ def cruce(
         usuario, peticion, PERMISO_AGRO_CONFIGURAR_EJE_CRUCE, "por", EjeCruce.VENDEDOR_CLIENTE.value
     )
     return AgroReportesService(sesion).cruce(_filtros(periodo, hasta, desde, centro, medida), por)
+
+
+@router.get(
+    "/cruce/diario",
+    response_model=RespuestaComparativoDiarioCruce,
+    summary="Comparativo diario vendedor-cliente vs mes anterior",
+)
+def comparativo_cruce_diario(
+    usuario: Annotated[
+        Usuario, Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_CRUCE_COMERCIAL))
+    ],
+    sesion: SesionDep,
+    peticion: Request,
+    vendedor: str = Query(min_length=1, max_length=120),
+    cliente: str = Query(min_length=1, max_length=120),
+    periodo: str = PeriodoQuery,
+    hasta: date | None = None,
+    desde: date | None = None,
+    centro: str | None = None,
+    medida: Medida = Medida.VALOR,
+) -> RespuestaComparativoDiarioCruce:
+    validar_filtros_agro(usuario, peticion)
+    _configuracion_agro(
+        usuario, peticion, PERMISO_AGRO_CONFIGURAR_EJE_CRUCE, "por", EjeCruce.VENDEDOR_CLIENTE.value
+    )
+    return AgroReportesService(sesion).comparativo_cruce_diario(
+        _filtros(periodo, hasta, desde, centro, medida), vendedor, cliente
+    )
 
 
 @router.get("/venta-diaria", response_model=RespuestaVentaDiariaAgro, summary="Venta dia por dia")

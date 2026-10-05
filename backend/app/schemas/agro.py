@@ -498,6 +498,21 @@ class RespuestaCruceAgro(EsquemaBase):
     parametros_calculo: ParametrosCalculoAgro
 
 
+class PuntoComparativoDiarioCruce(EsquemaBase):
+    fecha: date
+    venta_actual: DecimalStr | None
+    fecha_anterior: date | None
+    venta_anterior: DecimalStr | None
+
+
+class RespuestaComparativoDiarioCruce(EsquemaBase):
+    periodo: str
+    medida: Medida
+    desde: date
+    hasta: date
+    dias: list[PuntoComparativoDiarioCruce]
+
+
 class FilaVentaDiariaAgro(EsquemaBase):
     """Una fila del reporte de venta diaria: un centro de operación."""
 

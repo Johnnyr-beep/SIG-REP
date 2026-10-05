@@ -13,14 +13,15 @@
  * un aviso que se lea, esa diferencia parece un error de cuadre y no lo es.
  */
 
-import { useMemo } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import {
+  useComparativoDiarioCruce,
   useCruceAgro,
   useExportarAgro,
-  useVentaDiariaAgro,
 } from "@/api/consultasAgro";
+import type { FiltrosAgro } from "@/api/consultasAgro";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import { useAuth } from "@/auth/ContextoAuth";
 import {
@@ -40,26 +41,6 @@ import {
   etiquetaEjeCrudo,
 } from "@/utilidades/dominioAgro";
 import { dinero, kilos, numero, porcentaje, sumar } from "@/utilidades/formato";
-
-function periodoMesAnterior(periodo: string): string {
-  const anio = Number(periodo.slice(0, 4));
-  const mes = Number(periodo.slice(5, 7));
-  const fecha = new Date(Date.UTC(anio, mes - 2, 1));
-  return `${fecha.getUTCFullYear()}-${String(fecha.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
-function fechaMismoDiaMesAnterior(fecha: string): string | null {
-  const [anioTexto, mesTexto, diaTexto] = fecha.split("-");
-  const anio = Number(anioTexto);
-  const mes = Number(mesTexto);
-  const dia = Number(diaTexto);
-  const fechaAnterior = new Date(Date.UTC(anio, mes - 2, 1));
-  const anioAnterior = fechaAnterior.getUTCFullYear();
-  const mesAnterior = fechaAnterior.getUTCMonth() + 1;
-  const ultimoDia = new Date(Date.UTC(anioAnterior, mesAnterior, 0)).getUTCDate();
-  if (dia > ultimoDia) return null;
-  return `${anioAnterior}-${String(mesAnterior).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
-}
 
 function variacionPorcentual(actual: string, anterior: string): string {
   const [enteroActual = "0", fraccionActual = ""] = actual.split(".");
@@ -84,35 +65,13 @@ export function CruceAgro() {
   const { filtros } = control;
 
   const [parametros, setParametros] = useSearchParams();
+  const [filaExpandida, setFilaExpandida] = useState<string | null>(null);
   const crudo = parametros.get("por");
   const eje = esEjeCruce(crudo) ? crudo : "vendedor-cliente";
   const opcion = EJES_CRUCE.find((o) => o.valor === eje) ?? EJES_CRUCE[0]!;
 
   const filtrosAgro = useMemo(() => filtrosAgroDe(filtros), [filtros]);
   const { data, isLoading, error } = useCruceAgro(filtrosAgro, eje);
-  const diariaActual = useVentaDiariaAgro(filtrosAgro, eje === "vendedor-cliente");
-  const comparativoDiario = useMemo(() => {
-    const diaria = diariaActual.data;
-    if (!diaria) return null;
-
-    const fechasAnteriores = diaria.fechas
-      .map(fechaMismoDiaMesAnterior)
-      .filter((fecha): fecha is string => fecha !== null);
-    if (fechasAnteriores.length === 0) return null;
-
-    return {
-      filtros: {
-        ...filtrosAgro,
-        periodo: periodoMesAnterior(filtrosAgro.periodo),
-        desde: fechasAnteriores[0],
-        hasta: fechasAnteriores[fechasAnteriores.length - 1],
-      },
-    };
-  }, [diariaActual.data, filtrosAgro]);
-  const diariaAnterior = useVentaDiariaAgro(
-    comparativoDiario?.filtros ?? filtrosAgro,
-    comparativoDiario !== null,
-  );
   const exportar = useExportarAgro();
 
   const medida = data?.medida ?? filtros.medida;
@@ -166,7 +125,6 @@ export function CruceAgro() {
 
       <AvisoError error={error} />
       <AvisoError error={exportar.error} />
-      {eje === "vendedor-cliente" ? <AvisoError error={diariaActual.error} /> : null}
 
       {isLoading ? <Cargando texto="Cruzando la venta…" /> : null}
 
@@ -256,95 +214,137 @@ export function CruceAgro() {
                       />
                     </tr>
 
-                    {filas.map((fila) => (
-                      <tr key={fila.claves.join("·")}>
-                        {fila.nombres.map((nombre, indice) => (
-                          <th
-                            key={`${fila.claves.join("·")}-${indice}`}
-                            scope={indice === 0 ? "row" : undefined}
-                            className={
-                              indice === 0 ? "columna-ancla" : "columna-texto"
-                            }
-                          >
-                            {nombre}
-                          </th>
-                        ))}
-                        <CeldasIndicadoresAgro
-                          fila={fila}
-                          medida={medida}
-                          conMeta={conMeta}
-                          sujeto="esta combinación"
-                        />
-                      </tr>
-                    ))}
+                    {filas.map((fila) => {
+                      const claveFila = `${eje}:${fila.claves.join("·")}`;
+                      const expandida = filaExpandida === claveFila;
+                      const vendedor = fila.claves[0] ?? "";
+                      const cliente = fila.claves[1] ?? "";
+                      const nombreVendedor = fila.nombres[0] ?? "Vendedor";
+                      const nombreCliente = fila.nombres[1] ?? "Cliente";
+
+                      return (
+                        <Fragment key={claveFila}>
+                          <tr>
+                            {fila.nombres.map((nombre, indice) => (
+                              <th
+                                key={`${fila.claves.join("·")}-${indice}`}
+                                scope={indice === 0 ? "row" : undefined}
+                                className={
+                                  indice === 0 ? "columna-ancla" : "columna-texto"
+                                }
+                              >
+                                {eje === "vendedor-cliente" && indice === 0 ? (
+                                  <button
+                                    type="button"
+                                    aria-expanded={expandida}
+                                    aria-label={`${expandida ? "Ocultar" : "Ver"} comparativo diario de ${nombreVendedor} con ${nombreCliente}`}
+                                    className="cruce-agro__detalle-toggle"
+                                    onClick={() => setFilaExpandida(expandida ? null : claveFila)}
+                                  >
+                                    <span aria-hidden="true">{expandida ? "⊟" : "⊞"}</span>
+                                    {nombre}
+                                  </button>
+                                ) : nombre}
+                              </th>
+                            ))}
+                            <CeldasIndicadoresAgro
+                              fila={fila}
+                              medida={medida}
+                              conMeta={conMeta}
+                              sujeto="esta combinación"
+                            />
+                          </tr>
+                          {expandida ? (
+                            <tr className="cruce-agro__detalle-diario">
+                              <td colSpan={data.ejes.length + (conMeta ? 16 : 7)}>
+                                <ComparativoDiarioVendedorCliente
+                                  filtros={filtrosAgro}
+                                  vendedor={vendedor}
+                                  cliente={cliente}
+                                  medida={medida}
+                                />
+                              </td>
+                            </tr>
+                          ) : null}
+                        </Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             )}
           </Tarjeta>
 
-          {eje === "vendedor-cliente" && diariaActual.data ? (
-            <Tarjeta
-              titulo="Comparativo diario vs. mes anterior"
-              descripcion="Compara cada fecha con el mismo día calendario del mes anterior."
-              sinRelleno
-            >
-              {diariaActual.isLoading || diariaAnterior.isLoading ? (
-                <Cargando texto="Comparando ventas diarias…" />
-              ) : diariaAnterior.error ? (
-                <AvisoError error={diariaAnterior.error} />
-              ) : comparativoDiario && diariaAnterior.data ? (
-                <div className="tabla-envoltorio tabla-envoltorio--alta">
-                  <table className="tabla tabla--compacta">
-                    <thead>
-                      <tr>
-                        <th scope="col">Día</th>
-                        <th scope="col" className="numero">Venta mes actual</th>
-                        <th scope="col">Día mes anterior</th>
-                        <th scope="col" className="numero">Venta mes anterior</th>
-                        <th scope="col" className="numero">Diferencia</th>
-                        <th scope="col" className="numero">Variación</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {diariaActual.data.fechas.map((fecha, indice) => {
-                        const fechaAnterior = fechaMismoDiaMesAnterior(fecha);
-                        const indiceAnterior = fechaAnterior
-                          ? diariaAnterior.data.fechas.indexOf(fechaAnterior)
-                          : -1;
-                        const valorActual = diariaActual.data.totales.valores[indice] ?? "0";
-                        const valorAnterior = indiceAnterior >= 0
-                          ? diariaAnterior.data.totales.valores[indiceAnterior] ?? "0"
-                          : null;
-                        const diferencia = valorAnterior === null
-                          ? null
-                          : sumar(valorActual, `-${valorAnterior}`);
-                        const formatearMedida = medida === "kilos" ? kilos : dinero;
-
-                        return (
-                          <tr key={fecha}>
-                            <th scope="row">{fecha}</th>
-                            <td className="numero">{formatearMedida(valorActual)}</td>
-                            <td>{fechaAnterior ?? "—"}</td>
-                            <td className="numero">{valorAnterior === null ? "—" : formatearMedida(valorAnterior)}</td>
-                            <td className="numero">{diferencia === null ? "—" : formatearMedida(diferencia)}</td>
-                            <td className="numero">{valorAnterior === null ? "—" : variacionPorcentual(valorActual, valorAnterior)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <Vacio
-                  titulo="Sin días comparables"
-                  detalle="El rango no contiene fechas con el mismo día calendario en el mes anterior."
-                />
-              )}
-            </Tarjeta>
-          ) : null}
         </>
       ) : null}
+    </div>
+  );
+}
+
+function ComparativoDiarioVendedorCliente({
+  filtros,
+  vendedor,
+  cliente,
+  medida,
+}: {
+  filtros: FiltrosAgro;
+  vendedor: string;
+  cliente: string;
+  medida: "valor" | "kilos";
+}) {
+  const consulta = useComparativoDiarioCruce(filtros, vendedor, cliente);
+  const formatearMedida = medida === "kilos" ? kilos : dinero;
+
+  if (consulta.isLoading) return <Cargando texto="Comparando días…" />;
+  if (consulta.error) return <AvisoError error={consulta.error} />;
+  if (!consulta.data || consulta.data.dias.length === 0) {
+    return (
+      <Vacio
+        titulo="Sin días comparables"
+        detalle="No hay fechas en el rango seleccionado para esta combinación."
+      />
+    );
+  }
+
+  return (
+    <div className="tabla-envoltorio tabla-envoltorio--alta">
+      <table className="tabla tabla--compacta">
+        <caption className="solo-lectores">
+          Comparativo diario de la combinación, mes actual contra el mes anterior.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Día</th>
+            <th scope="col" className="numero">Venta mes actual</th>
+            <th scope="col">Día mes anterior</th>
+            <th scope="col" className="numero">Venta mes anterior</th>
+            <th scope="col" className="numero">Diferencia</th>
+            <th scope="col" className="numero">Variación</th>
+          </tr>
+        </thead>
+        <tbody>
+          {consulta.data.dias.map((dia) => {
+            const actual = dia.venta_actual ?? "0";
+            const anterior = dia.fecha_anterior === null
+              ? null
+              : dia.venta_anterior ?? "0";
+            const diferencia = anterior === null
+              ? null
+              : sumar(actual, `-${anterior}`);
+
+            return (
+              <tr key={dia.fecha}>
+                <th scope="row">{dia.fecha}</th>
+                <td className="numero">{formatearMedida(actual)}</td>
+                <td>{dia.fecha_anterior ?? "—"}</td>
+                <td className="numero">{anterior === null ? "—" : formatearMedida(anterior)}</td>
+                <td className="numero">{diferencia === null ? "—" : formatearMedida(diferencia)}</td>
+                <td className="numero">{anterior === null ? "—" : variacionPorcentual(actual, anterior)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

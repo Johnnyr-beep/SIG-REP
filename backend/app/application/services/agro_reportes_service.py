@@ -40,6 +40,7 @@ qué.
 
 from __future__ import annotations
 
+from calendar import monthrange
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
@@ -62,6 +63,7 @@ from app.application.services.reportes_service import (
     ErrorRangoInvertido,
 )
 from app.core.config import obtener_settings
+from app.core.errors import ErrorValidacion
 from app.domain.calendario import presupuesto_diario
 from app.domain.enums import Medida
 from app.domain.indicadores import (
@@ -95,6 +97,8 @@ from app.schemas.agro import (
     IndicadoresAgro,
     MesSerieAgro,
     ParametrosCalculoAgro,
+    PuntoComparativoDiarioCruce,
+    RespuestaComparativoDiarioCruce,
     RespuestaCruceAgro,
     RespuestaCuboAgro,
     RespuestaResumenAgro,
@@ -964,6 +968,78 @@ class AgroReportesService:
             parametros_calculo=self._parametros(ctx, consolidado, None),
         )
 
+    def comparativo_cruce_diario(
+        self, filtros: FiltrosAgro, vendedor: str, cliente: str
+    ) -> RespuestaComparativoDiarioCruce:
+        """Venta diaria de una pareja vendedor-cliente y su fecha del mes anterior."""
+        ctx = self._contexto(filtros)
+        desde, hasta = self._rango(ctx, filtros)
+        vendedor_id = next(
+            (
+                identificador
+                for identificador, miembro in ctx.catalogo.items()
+                if miembro.tipo == TipoDimension.VENDEDOR.value and miembro.clave == vendedor
+            ),
+            None,
+        )
+        cliente_id = next(
+            (
+                identificador
+                for identificador, miembro in ctx.catalogo.items()
+                if miembro.tipo == TipoDimension.CLIENTE.value and miembro.clave == cliente
+            ),
+            None,
+        )
+        if vendedor_id is None or cliente_id is None:
+            raise ErrorValidacion("El vendedor o cliente solicitado no existe en Agropecuaria.")
+
+        fechas = _rango_fechas(desde, hasta)
+        fechas_anteriores = {fecha: _mismo_dia_mes_anterior(fecha) for fecha in fechas}
+
+        def consultar(inicio: date, fin: date) -> dict[date, Decimal]:
+            consulta = (
+                select(AgroVentaLinea.fecha, func.sum(_columna(ctx.medida)))
+                .where(
+                    *self._filtros_base(
+                        ctx,
+                        desde=inicio,
+                        hasta=fin,
+                        por_periodo=False,
+                    ),
+                    AgroVentaLinea.vendedor_id == vendedor_id,
+                    AgroVentaLinea.cliente_id == cliente_id,
+                )
+                .group_by(AgroVentaLinea.fecha)
+            )
+            return {fecha: Decimal(valor or 0) for fecha, valor in self._sesion.execute(consulta)}
+
+        actuales = consultar(desde, hasta)
+        fechas_validas = [fecha for fecha in fechas_anteriores.values() if fecha is not None]
+        anteriores = consultar(min(fechas_validas), max(fechas_validas)) if fechas_validas else {}
+        decimales = ctx.medida.decimales
+
+        return RespuestaComparativoDiarioCruce(
+            periodo=ctx.periodo.codigo,
+            medida=ctx.medida,
+            desde=desde,
+            hasta=hasta,
+            dias=[
+                PuntoComparativoDiarioCruce(
+                    fecha=fecha,
+                    venta_actual=(
+                        redondear(actuales[fecha], decimales) if fecha in actuales else None
+                    ),
+                    fecha_anterior=fecha_anterior,
+                    venta_anterior=(
+                        redondear(anteriores[fecha_anterior], decimales)
+                        if fecha_anterior in anteriores
+                        else None
+                    ),
+                )
+                for fecha, fecha_anterior in fechas_anteriores.items()
+            ],
+        )
+
     # ── Venta diaria ──────────────────────────────────────────────────────────
 
     def venta_diaria(self, filtros: FiltrosAgro) -> RespuestaVentaDiariaAgro:
@@ -1555,3 +1631,11 @@ def _rango_fechas(desde: date, hasta: date) -> list[date]:
     if hasta < desde:
         return []
     return [desde + timedelta(days=n) for n in range((hasta - desde).days + 1)]
+
+
+def _mismo_dia_mes_anterior(fecha: date) -> date | None:
+    anio = fecha.year - 1 if fecha.month == 1 else fecha.year
+    mes = 12 if fecha.month == 1 else fecha.month - 1
+    if fecha.day > monthrange(anio, mes)[1]:
+        return None
+    return date(anio, mes, fecha.day)
