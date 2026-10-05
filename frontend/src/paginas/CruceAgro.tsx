@@ -16,7 +16,11 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { useCruceAgro, useExportarAgro } from "@/api/consultasAgro";
+import {
+  useCruceAgro,
+  useExportarAgro,
+  useVentaDiariaAgro,
+} from "@/api/consultasAgro";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import { useAuth } from "@/auth/ContextoAuth";
 import {
@@ -35,7 +39,43 @@ import {
   esEjeCruce,
   etiquetaEjeCrudo,
 } from "@/utilidades/dominioAgro";
-import { numero } from "@/utilidades/formato";
+import { dinero, kilos, numero, porcentaje, sumar } from "@/utilidades/formato";
+
+function periodoMesAnterior(periodo: string): string {
+  const anio = Number(periodo.slice(0, 4));
+  const mes = Number(periodo.slice(5, 7));
+  const fecha = new Date(Date.UTC(anio, mes - 2, 1));
+  return `${fecha.getUTCFullYear()}-${String(fecha.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function fechaMismoDiaMesAnterior(fecha: string): string | null {
+  const [anioTexto, mesTexto, diaTexto] = fecha.split("-");
+  const anio = Number(anioTexto);
+  const mes = Number(mesTexto);
+  const dia = Number(diaTexto);
+  const fechaAnterior = new Date(Date.UTC(anio, mes - 2, 1));
+  const anioAnterior = fechaAnterior.getUTCFullYear();
+  const mesAnterior = fechaAnterior.getUTCMonth() + 1;
+  const ultimoDia = new Date(Date.UTC(anioAnterior, mesAnterior, 0)).getUTCDate();
+  if (dia > ultimoDia) return null;
+  return `${anioAnterior}-${String(mesAnterior).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+}
+
+function variacionPorcentual(actual: string, anterior: string): string {
+  const [enteroActual = "0", fraccionActual = ""] = actual.split(".");
+  const [enteroAnterior = "0", fraccionAnterior = ""] = anterior.split(".");
+  const escala = Math.max(fraccionActual.length, fraccionAnterior.length);
+  const valorActual = BigInt(enteroActual + fraccionActual.padEnd(escala, "0"));
+  const valorAnterior = BigInt(enteroAnterior + fraccionAnterior.padEnd(escala, "0"));
+  if (valorAnterior === 0n) return "—";
+
+  const diferencia = valorActual - valorAnterior;
+  const numerador = (diferencia < 0n ? -diferencia : diferencia) * 1000n;
+  const milesimas = (numerador + valorAnterior / 2n) / valorAnterior;
+  const signo = diferencia < 0n && milesimas > 0n ? "-" : "";
+  const razon = `${signo}${milesimas / 1000n}.${String(milesimas % 1000n).padStart(3, "0")}`;
+  return porcentaje(razon);
+}
 
 export function CruceAgro() {
   const { tienePermiso, usuario } = useAuth();
@@ -50,6 +90,29 @@ export function CruceAgro() {
 
   const filtrosAgro = useMemo(() => filtrosAgroDe(filtros), [filtros]);
   const { data, isLoading, error } = useCruceAgro(filtrosAgro, eje);
+  const diariaActual = useVentaDiariaAgro(filtrosAgro, eje === "vendedor-cliente");
+  const comparativoDiario = useMemo(() => {
+    const diaria = diariaActual.data;
+    if (!diaria) return null;
+
+    const fechasAnteriores = diaria.fechas
+      .map(fechaMismoDiaMesAnterior)
+      .filter((fecha): fecha is string => fecha !== null);
+    if (fechasAnteriores.length === 0) return null;
+
+    return {
+      filtros: {
+        ...filtrosAgro,
+        periodo: periodoMesAnterior(filtrosAgro.periodo),
+        desde: fechasAnteriores[0],
+        hasta: fechasAnteriores[fechasAnteriores.length - 1],
+      },
+    };
+  }, [diariaActual.data, filtrosAgro]);
+  const diariaAnterior = useVentaDiariaAgro(
+    comparativoDiario?.filtros ?? filtrosAgro,
+    comparativoDiario !== null,
+  );
   const exportar = useExportarAgro();
 
   const medida = data?.medida ?? filtros.medida;
@@ -103,6 +166,7 @@ export function CruceAgro() {
 
       <AvisoError error={error} />
       <AvisoError error={exportar.error} />
+      {eje === "vendedor-cliente" ? <AvisoError error={diariaActual.error} /> : null}
 
       {isLoading ? <Cargando texto="Cruzando la venta…" /> : null}
 
@@ -218,6 +282,67 @@ export function CruceAgro() {
               </div>
             )}
           </Tarjeta>
+
+          {eje === "vendedor-cliente" && diariaActual.data ? (
+            <Tarjeta
+              titulo="Comparativo diario vs. mes anterior"
+              descripcion="Compara cada fecha con el mismo día calendario del mes anterior."
+              sinRelleno
+            >
+              {diariaActual.isLoading || diariaAnterior.isLoading ? (
+                <Cargando texto="Comparando ventas diarias…" />
+              ) : diariaAnterior.error ? (
+                <AvisoError error={diariaAnterior.error} />
+              ) : comparativoDiario && diariaAnterior.data ? (
+                <div className="tabla-envoltorio tabla-envoltorio--alta">
+                  <table className="tabla tabla--compacta">
+                    <thead>
+                      <tr>
+                        <th scope="col">Día</th>
+                        <th scope="col" className="numero">Venta mes actual</th>
+                        <th scope="col">Día mes anterior</th>
+                        <th scope="col" className="numero">Venta mes anterior</th>
+                        <th scope="col" className="numero">Diferencia</th>
+                        <th scope="col" className="numero">Variación</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {diariaActual.data.fechas.map((fecha, indice) => {
+                        const fechaAnterior = fechaMismoDiaMesAnterior(fecha);
+                        const indiceAnterior = fechaAnterior
+                          ? diariaAnterior.data.fechas.indexOf(fechaAnterior)
+                          : -1;
+                        const valorActual = diariaActual.data.totales.valores[indice] ?? "0";
+                        const valorAnterior = indiceAnterior >= 0
+                          ? diariaAnterior.data.totales.valores[indiceAnterior] ?? "0"
+                          : null;
+                        const diferencia = valorAnterior === null
+                          ? null
+                          : sumar(valorActual, `-${valorAnterior}`);
+                        const formatearMedida = medida === "kilos" ? kilos : dinero;
+
+                        return (
+                          <tr key={fecha}>
+                            <th scope="row">{fecha}</th>
+                            <td className="numero">{formatearMedida(valorActual)}</td>
+                            <td>{fechaAnterior ?? "—"}</td>
+                            <td className="numero">{valorAnterior === null ? "—" : formatearMedida(valorAnterior)}</td>
+                            <td className="numero">{diferencia === null ? "—" : formatearMedida(diferencia)}</td>
+                            <td className="numero">{valorAnterior === null ? "—" : variacionPorcentual(valorActual, valorAnterior)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <Vacio
+                  titulo="Sin días comparables"
+                  detalle="El rango no contiene fechas con el mismo día calendario en el mes anterior."
+                />
+              )}
+            </Tarjeta>
+          ) : null}
         </>
       ) : null}
     </div>
