@@ -42,6 +42,10 @@ import {
 } from "@/utilidades/dominioAgro";
 import { dinero, kilos, numero, porcentaje, sumar } from "@/utilidades/formato";
 
+function opuestoDecimal(valor: string): string {
+  return valor.startsWith("-") ? valor.slice(1) : `-${valor}`;
+}
+
 function variacionPorcentual(actual: string, anterior: string): string {
   const [enteroActual = "0", fraccionActual = ""] = actual.split(".");
   const [enteroAnterior = "0", fraccionAnterior = ""] = anterior.split(".");
@@ -51,8 +55,9 @@ function variacionPorcentual(actual: string, anterior: string): string {
   if (valorAnterior === 0n) return "—";
 
   const diferencia = valorActual - valorAnterior;
+  const base = valorAnterior < 0n ? -valorAnterior : valorAnterior;
   const numerador = (diferencia < 0n ? -diferencia : diferencia) * 1000n;
-  const milesimas = (numerador + valorAnterior / 2n) / valorAnterior;
+  const milesimas = (numerador + base / 2n) / base;
   const signo = diferencia < 0n && milesimas > 0n ? "-" : "";
   const razon = `${signo}${milesimas / 1000n}.${String(milesimas % 1000n).padStart(3, "0")}`;
   return porcentaje(razon);
@@ -330,7 +335,7 @@ function ComparativoDiarioVendedorCliente({
               : dia.venta_anterior ?? "0";
             const diferencia = anterior === null
               ? null
-              : sumar(actual, `-${anterior}`);
+              : sumar(actual, opuestoDecimal(anterior));
 
             return (
               <tr key={dia.fecha}>
