@@ -12,8 +12,31 @@ import httpx
 from app.core.config import obtener_settings
 from app.infrastructure.fuentes.siesa import ConfiguracionSiesa, ErrorFuenteSiesa
 
-RUTA_INVENTARIO_PDV = "/ventas/inventario-pdv"
-PARAMETROS_INVENTARIO_PDV = {"limit": "5000", "offset": "0", "format": "csv"}
+RUTA_INVENTARIO_BODEGA_COMPANIA = "/ventas/inventario-bodega-compania"
+BODEGAS_INVENTARIO_PDV = (
+    "40103",
+    "40201",
+    "40301",
+    "40501",
+    "40601",
+    "40701",
+    "40901",
+    "41201",
+    "41301",
+    "41401",
+    "41501",
+    "42001",
+    "42101",
+)
+PARAMETROS_INVENTARIO_BODEGA = {
+    "bodega": ",".join(BODEGAS_INVENTARIO_PDV),
+    "lista_precios": "999",
+    "plan1": "001",
+    "plan2": "002",
+    "limit": "5000",
+    "offset": "0",
+    "format": "csv",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,17 +68,34 @@ class FuenteInventarioPdvSiesa:
             self._sesion_http = None
 
     def leer(self) -> InventarioPdvCrudo:
-        """Descarga la instantánea CSV de todas las compañías de Carnes."""
+        """Descarga el inventario CSV por bodega, una petición por compañía."""
         configuracion = self._configuracion
-        url = configuracion.url_base + RUTA_INVENTARIO_PDV
+        url = configuracion.url_base + RUTA_INVENTARIO_BODEGA_COMPANIA
+        columnas: list[str] = []
+        filas: list[dict[str, str | None]] = []
 
+        for compania in configuracion.companias:
+            parametros = {**PARAMETROS_INVENTARIO_BODEGA, "compania": str(compania)}
+            inventario = self._leer_compania(url, parametros)
+            for columna in inventario.columnas:
+                if columna not in columnas:
+                    columnas.append(columna)
+            filas.extend(inventario.filas)
+
+        return InventarioPdvCrudo(
+            columnas=tuple(columnas),
+            filas=tuple({columna: fila.get(columna) for columna in columnas} for fila in filas),
+        )
+
+    def _leer_compania(self, url: str, parametros: dict[str, str]) -> InventarioPdvCrudo:
+        configuracion = self._configuracion
         for intento in range(1, max(configuracion.reintentos, 1) + 1):
             ultimo = intento >= max(configuracion.reintentos, 1)
             try:
                 with self._cliente().stream(
                     "GET",
                     url,
-                    params=PARAMETROS_INVENTARIO_PDV,
+                    params=parametros,
                     headers=configuracion.cabeceras(),
                 ) as respuesta:
                     if respuesta.status_code >= 400:
@@ -66,7 +106,8 @@ class FuenteInventarioPdvSiesa:
                             self._esperar(intento)
                             continue
                         raise ErrorFuenteSiesa(
-                            f"La API de SIESA respondió {estado} en {RUTA_INVENTARIO_PDV}.",
+                            f"La API de SIESA respondió {estado} en "
+                            f"{RUTA_INVENTARIO_BODEGA_COMPANIA}.",
                             reintentable=reintentable,
                         )
 
@@ -76,18 +117,22 @@ class FuenteInventarioPdvSiesa:
             except httpx.HTTPError as exc:
                 if ultimo:
                     raise ErrorFuenteSiesa(
-                        f"No se pudo leer {RUTA_INVENTARIO_PDV} de la API de SIESA "
-                        f"({type(exc).__name__})."
+                        f"No se pudo leer {RUTA_INVENTARIO_BODEGA_COMPANIA} "
+                        f"de la API de SIESA ({type(exc).__name__})."
                     ) from None
                 self._esperar(intento)
 
-        raise ErrorFuenteSiesa(f"No se pudo leer {RUTA_INVENTARIO_PDV} de la API de SIESA.")
+        raise ErrorFuenteSiesa(
+            f"No se pudo leer {RUTA_INVENTARIO_BODEGA_COMPANIA} de la API de SIESA."
+        )
 
     def _parsear(self, lineas: Iterator[str]) -> InventarioPdvCrudo:
         lector = csv.DictReader(lineas)
         encabezado = lector.fieldnames
         if not encabezado:
-            raise ErrorFuenteSiesa(f"El CSV de {RUTA_INVENTARIO_PDV} llegó vacío o sin encabezado.")
+            raise ErrorFuenteSiesa(
+                f"El CSV de {RUTA_INVENTARIO_BODEGA_COMPANIA} llegó vacío o sin encabezado."
+            )
 
         columnas = tuple(str(columna).lstrip("\ufeff").strip() for columna in encabezado)
         filas: list[dict[str, str | None]] = []
@@ -120,8 +165,9 @@ class FuenteInventarioPdvSiesa:
 
 
 __all__ = [
-    "PARAMETROS_INVENTARIO_PDV",
-    "RUTA_INVENTARIO_PDV",
+    "BODEGAS_INVENTARIO_PDV",
+    "PARAMETROS_INVENTARIO_BODEGA",
+    "RUTA_INVENTARIO_BODEGA_COMPANIA",
     "FuenteInventarioPdvSiesa",
     "InventarioPdvCrudo",
 ]

@@ -45,6 +45,9 @@ _ALIAS_CANTIDADES = {
         "cantidadpendienteentrada",
         "cantpendienteentrada",
         "cantpendientesentrada",
+        "cantpendentrar",
+        "cantpendienteentrar",
+        "cantidadpendentrar",
     ),
     "pendiente_salida": (
         "pendientesalida",
@@ -52,6 +55,9 @@ _ALIAS_CANTIDADES = {
         "pendientesdesalida",
         "cantidadpendientesalida",
         "cantpendientesalida",
+        "cantpendsalir",
+        "cantpendientesalir",
+        "cantidadpendsalir",
     ),
 }
 
@@ -87,7 +93,11 @@ def _codigo_pdv(valor: str | None) -> str | None:
         digitos = "".join(caracter for caracter in limpio[3:] if caracter.isdigit())
         if len(digitos) >= 3:
             return digitos[:3]
-    return str(int(limpio)).zfill(3) if limpio.isdecimal() else limpio.upper()
+    if limpio.isdecimal():
+        if len(limpio) == 5:
+            limpio = limpio[:3]
+        return str(int(limpio)).zfill(3)
+    return limpio.upper()
 
 
 def _compania(valor: str | None) -> int | None:
@@ -175,6 +185,7 @@ def inventario_pdv(
         "cod_pdv",
         "id_pdv",
         "pdvcodigo",
+        "bodega",
     )
     columna_descripcion = _buscar_columna(
         inventario.columnas,

@@ -6,7 +6,9 @@ from pydantic import SecretStr
 
 from app.api.v1 import inventario as api_inventario
 from app.infrastructure.fuentes.inventario_siesa import (
-    RUTA_INVENTARIO_PDV,
+    BODEGAS_INVENTARIO_PDV,
+    PARAMETROS_INVENTARIO_BODEGA,
+    RUTA_INVENTARIO_BODEGA_COMPANIA,
     FuenteInventarioPdvSiesa,
     InventarioPdvCrudo,
 )
@@ -24,45 +26,48 @@ def configuracion() -> ConfiguracionSiesa:
     )
 
 
-def test_descarga_inventario_csv_con_parametros_y_columnas_originales() -> None:
+def test_descarga_inventario_por_bodega_una_peticion_por_compania() -> None:
     peticiones: list[httpx.Request] = []
 
     def responder(peticion: httpx.Request) -> httpx.Response:
         peticiones.append(peticion)
         return httpx.Response(
             200,
-            text="cia,id_co,Referencia,Existencia,Comprometida\n4,402,ABC-1,12.50,2\n",
+            text=(
+                "compania,bodega,Referencia,Existencia,Comprometida\n"
+                f"{peticion.url.params['compania']},40201,ABC-1,12.50,2\n"
+            ),
         )
 
     with httpx.Client(transport=httpx.MockTransport(responder)) as cliente:
         fuente = FuenteInventarioPdvSiesa(configuracion=configuracion(), sesion_http=cliente)
         resultado = fuente.leer()
 
-    assert len(peticiones) == 1
-    peticion = peticiones[0]
-    assert peticion.url.path == RUTA_INVENTARIO_PDV
-    assert dict(peticion.url.params) == {
-        "limit": "5000",
-        "offset": "0",
-        "format": "csv",
-    }
-    assert peticion.headers["Authorization"] == "token-solo-de-prueba"
+    assert len(peticiones) == 3
+    assert [peticion.url.path for peticion in peticiones] == [RUTA_INVENTARIO_BODEGA_COMPANIA] * 3
+    assert [peticion.url.params["compania"] for peticion in peticiones] == ["4", "6", "7"]
+    for peticion in peticiones:
+        assert dict(peticion.url.params) == {
+            **PARAMETROS_INVENTARIO_BODEGA,
+            "compania": peticion.url.params["compania"],
+        }
+        assert peticion.headers["Authorization"] == "token-solo-de-prueba"
     assert resultado.columnas == (
-        "cia",
-        "id_co",
+        "compania",
+        "bodega",
         "Referencia",
         "Existencia",
         "Comprometida",
     )
-    assert resultado.filas == (
-        {
-            "cia": "4",
-            "id_co": "402",
-            "Referencia": "ABC-1",
-            "Existencia": "12.50",
-            "Comprometida": "2",
-        },
-    )
+    assert len(resultado.filas) == 3
+    assert resultado.filas[0] == {
+        "compania": "4",
+        "bodega": "40201",
+        "Referencia": "ABC-1",
+        "Existencia": "12.50",
+        "Comprometida": "2",
+    }
+    assert PARAMETROS_INVENTARIO_BODEGA["bodega"] == ",".join(BODEGAS_INVENTARIO_PDV)
 
 
 def test_inventario_preserva_campos_vacios_como_null() -> None:
@@ -248,6 +253,64 @@ def test_api_inventario_consolida_lineas_del_mismo_pdv(
     assert malambo["comprometida"] == "2"
     assert la93["existencia"] == "3"
     assert la93["comprometida"] == "0"
+
+
+def test_api_mapea_bodega_de_malambo_al_punto_de_venta(
+    cliente_http: httpx.Client,
+    estructura: None,
+    admin: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FuenteFalsa:
+        def leer(self) -> InventarioPdvCrudo:
+            return InventarioPdvCrudo(
+                columnas=(
+                    "Compania",
+                    "Bodega",
+                    "Item Codigo",
+                    "Referencia",
+                    "Desc. Item",
+                    "UM",
+                    "Existencia",
+                    "Comprometida",
+                    "Cant Pend Entrar",
+                    "Cant Pend Salir",
+                    "Costo Prom Unit",
+                    "Costo Prom Total",
+                ),
+                filas=(
+                    {
+                        "Compania": "4",
+                        "Bodega": "40201",
+                        "Item Codigo": "1400",
+                        "Referencia": "1033",
+                        "Desc. Item": "COSTILLA ESPECIAL",
+                        "UM": "KG",
+                        "Existencia": "213",
+                        "Comprometida": "0",
+                        "Cant Pend Entrar": "0",
+                        "Cant Pend Salir": "0",
+                        "Costo Prom Unit": "1000",
+                        "Costo Prom Total": "213000",
+                    },
+                ),
+            )
+
+        def cerrar(self) -> None:
+            return None
+
+    monkeypatch.setattr(api_inventario, "FuenteInventarioPdvSiesa", FuenteFalsa)
+    respuesta = cliente_http.get("/api/v1/inventario/pdv", headers=admin)
+
+    assert respuesta.status_code == 200, respuesta.text
+    fila = respuesta.json()["filas"][0]
+    assert fila["punto_venta"] == "MALAMBO"
+    assert fila["codigo_producto"] == "1400"
+    assert fila["referencia"] == "1033"
+    assert fila["producto"] == "COSTILLA ESPECIAL"
+    assert fila["existencia"] == "213"
+    assert fila["pendiente_entrada"] == "0"
+    assert fila["pendiente_salida"] == "0"
 
 
 def test_api_inventario_no_abre_datos_a_jefe_sin_alcance(
