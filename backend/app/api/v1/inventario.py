@@ -31,6 +31,7 @@ _ALIAS_CANTIDADES = {
         "cantidadinventario",
         "cantexistencia",
     ),
+    "disponible": ("disponible", "disponibles"),
     "comprometida": (
         "comprometida",
         "comprometido",
@@ -146,7 +147,9 @@ def _es_columna_tpv(columna: str) -> bool:
 
 def _es_columna_ubicacion(columna: str) -> bool:
     clave = _clave_columna(columna).lower()
-    return clave.startswith(("pdv", "puntoventa", "bodega", "almacen"))
+    return clave.startswith(("pdv", "puntoventa", "bodega", "almacen")) or clave.endswith(
+        "rowidbodega"
+    )
 
 
 @router.get(
@@ -186,6 +189,7 @@ def inventario_pdv(
         "id_pdv",
         "pdvcodigo",
         "bodega",
+        "codigo_bodega",
     )
     columna_descripcion = _buscar_columna(
         inventario.columnas,
@@ -195,6 +199,7 @@ def inventario_pdv(
         "descripcion_pdv",
         "nombre_pdv",
         "pdvdescripcion",
+        "descripcion_bod",
     )
     columna_punto_venta = _buscar_columna(
         inventario.columnas,
@@ -205,6 +210,9 @@ def inventario_pdv(
     columna_codigo_producto = _buscar_columna(
         inventario.columnas,
         "itemcodigo",
+        "item",
+        "item_ext",
+        "itemext",
         "codigo_item",
         "cod_item",
         "item_id",
@@ -220,6 +228,8 @@ def inventario_pdv(
     columna_descripcion_producto = _buscar_columna(
         inventario.columnas,
         "itemdescripcion",
+        "f120_descripcion",
+        "f120descripcion",
         "descitem",
         "descripcion_item",
         "descripcion_producto",
@@ -238,10 +248,10 @@ def inventario_pdv(
         nombre: _buscar_columna(inventario.columnas, *alias)
         for nombre, alias in _ALIAS_CANTIDADES.items()
     }
-    if columnas_cantidad["existencia"] is None:
+    if columnas_cantidad["existencia"] is None and columnas_cantidad["disponible"] is None:
         raise ErrorFuenteSiesa(
-            "SIESA no incluyó una columna de existencia reconocible; no se puede resumir "
-            "el inventario por punto de venta."
+            "SIESA no incluyó una columna de existencia o disponible reconocible; "
+            "el inventario por punto de venta no se puede resumir."
         )
     columnas_metadata = {
         columna

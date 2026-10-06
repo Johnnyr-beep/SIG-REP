@@ -13,6 +13,7 @@ class FilaInventarioPdv(EsquemaBase):
     producto: str | None = None
     unidad: str | None = None
     existencia: DecimalStr | None = None
+    disponible: DecimalStr | None = None
     comprometida: DecimalStr | None = None
     pendiente_entrada: DecimalStr | None = None
     pendiente_salida: DecimalStr | None = None

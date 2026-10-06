@@ -102,6 +102,7 @@ export interface FilaInventarioPdv {
   producto: string | null;
   unidad: string | null;
   existencia: string | null;
+  disponible: string | null;
   comprometida: string | null;
   pendiente_entrada: string | null;
   pendiente_salida: string | null;

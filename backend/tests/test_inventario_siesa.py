@@ -265,33 +265,39 @@ def test_api_mapea_bodega_de_malambo_al_punto_de_venta(
         def leer(self) -> InventarioPdvCrudo:
             return InventarioPdvCrudo(
                 columnas=(
-                    "Compania",
-                    "Bodega",
-                    "Item Codigo",
+                    "Item_ext",
+                    "f400_rowid_bodega",
+                    "Disponible",
+                    "Cia",
+                    "Item",
                     "Referencia",
-                    "Desc. Item",
+                    "f120_descripcion",
                     "UM",
-                    "Existencia",
-                    "Comprometida",
-                    "Cant Pend Entrar",
-                    "Cant Pend Salir",
-                    "Costo Prom Unit",
-                    "Costo Prom Total",
+                    "Codigo_bodega",
+                    "Descripcion_bod",
+                    "Lista_precio",
+                    "UM_precio",
+                    "Precio",
+                    "Criterio_001",
+                    "Criterio_002",
                 ),
                 filas=(
                     {
-                        "Compania": "4",
-                        "Bodega": "40201",
-                        "Item Codigo": "1400",
+                        "Item_ext": "1400",
+                        "f400_rowid_bodega": "1",
+                        "Disponible": "213",
+                        "Cia": "4",
+                        "Item": "1400",
                         "Referencia": "1033",
-                        "Desc. Item": "COSTILLA ESPECIAL",
+                        "f120_descripcion": "COSTILLA ESPECIAL",
                         "UM": "KG",
-                        "Existencia": "213",
-                        "Comprometida": "0",
-                        "Cant Pend Entrar": "0",
-                        "Cant Pend Salir": "0",
-                        "Costo Prom Unit": "1000",
-                        "Costo Prom Total": "213000",
+                        "Codigo_bodega": "40201",
+                        "Descripcion_bod": "PDV MALAMBO",
+                        "Lista_precio": "999",
+                        "UM_precio": "KG",
+                        "Precio": "1000",
+                        "Criterio_001": "001",
+                        "Criterio_002": "002",
                     },
                 ),
             )
@@ -308,9 +314,9 @@ def test_api_mapea_bodega_de_malambo_al_punto_de_venta(
     assert fila["codigo_producto"] == "1400"
     assert fila["referencia"] == "1033"
     assert fila["producto"] == "COSTILLA ESPECIAL"
-    assert fila["existencia"] == "213"
-    assert fila["pendiente_entrada"] == "0"
-    assert fila["pendiente_salida"] == "0"
+    assert fila["existencia"] is None
+    assert fila["disponible"] == "213"
+    assert "f400_rowid_bodega" not in fila["datos"]
 
 
 def test_api_inventario_no_abre_datos_a_jefe_sin_alcance(

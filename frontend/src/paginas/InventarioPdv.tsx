@@ -13,6 +13,7 @@ function normalizarBusqueda(valor: string): string {
 function etiquetaColumna(valor: string): string {
   const etiquetas: Record<string, string> = {
     existencia: "Existencia",
+    disponible: "Disponible",
     comprometida: "Comprometida",
     pendiente_entrada: "Pendiente de entrada",
     pendiente_salida: "Pendiente de salida",
@@ -28,6 +29,7 @@ function textoFila(fila: FilaInventarioPdv): string {
     fila.referencia,
     fila.unidad,
     fila.existencia,
+    fila.disponible,
     fila.comprometida,
     fila.pendiente_entrada,
     fila.pendiente_salida,
@@ -49,7 +51,7 @@ export function InventarioPdv() {
   const columnasCantidad = useMemo(
     () =>
       (consulta.data?.columnas ?? []).filter((columna) =>
-        ["existencia", "comprometida", "pendiente_entrada", "pendiente_salida"].includes(columna),
+        ["existencia", "disponible", "comprometida", "pendiente_entrada", "pendiente_salida"].includes(columna),
       ),
     [consulta.data?.columnas],
   );
@@ -63,6 +65,7 @@ export function InventarioPdv() {
             "producto",
             "unidad",
             "existencia",
+            "disponible",
             "comprometida",
             "pendiente_entrada",
             "pendiente_salida",
@@ -234,6 +237,7 @@ export function InventarioPdv() {
                           {fila[
                             columna as
                               | "existencia"
+                              | "disponible"
                               | "comprometida"
                               | "pendiente_entrada"
                               | "pendiente_salida"
