@@ -26,32 +26,28 @@ def configuracion() -> ConfiguracionSiesa:
     )
 
 
-def test_descarga_inventario_por_bodega_una_peticion_por_compania() -> None:
+def test_descarga_inventario_por_bodega_con_companias_repetidas() -> None:
     peticiones: list[httpx.Request] = []
 
     def responder(peticion: httpx.Request) -> httpx.Response:
         peticiones.append(peticion)
         return httpx.Response(
             200,
-            text=(
-                "compania,bodega,Referencia,Existencia,Comprometida\n"
-                f"{peticion.url.params['compania']},40201,ABC-1,12.50,2\n"
-            ),
+            text="compania,bodega,Referencia,Existencia,Comprometida\n"
+            "4,40201,ABC-1,12.50,2\n6,40201,ABC-2,3,0\n7,40201,ABC-3,4,1\n",
         )
 
     with httpx.Client(transport=httpx.MockTransport(responder)) as cliente:
         fuente = FuenteInventarioPdvSiesa(configuracion=configuracion(), sesion_http=cliente)
         resultado = fuente.leer()
 
-    assert len(peticiones) == 3
-    assert [peticion.url.path for peticion in peticiones] == [RUTA_INVENTARIO_BODEGA_COMPANIA] * 3
-    assert [peticion.url.params["compania"] for peticion in peticiones] == ["4", "6", "7"]
-    for peticion in peticiones:
-        assert dict(peticion.url.params) == {
-            **PARAMETROS_INVENTARIO_BODEGA,
-            "compania": peticion.url.params["compania"],
-        }
-        assert peticion.headers["Authorization"] == "token-solo-de-prueba"
+    assert len(peticiones) == 1
+    peticion = peticiones[0]
+    assert peticion.url.path == RUTA_INVENTARIO_BODEGA_COMPANIA
+    assert peticion.url.params.get_list("compania") == ["4", "6", "7"]
+    for nombre, valor in PARAMETROS_INVENTARIO_BODEGA.items():
+        assert peticion.url.params[nombre] == valor
+    assert peticion.headers["Authorization"] == "token-solo-de-prueba"
     assert resultado.columnas == (
         "compania",
         "bodega",
@@ -67,7 +63,7 @@ def test_descarga_inventario_por_bodega_una_peticion_por_compania() -> None:
         "Existencia": "12.50",
         "Comprometida": "2",
     }
-    assert PARAMETROS_INVENTARIO_BODEGA["bodega"] == ",".join(BODEGAS_INVENTARIO_PDV)
+    assert PARAMETROS_INVENTARIO_BODEGA["bodega"] == ",".join(BODEGAS_INVENTARIO_PDV) + ","
 
 
 def test_inventario_preserva_campos_vacios_como_null() -> None:

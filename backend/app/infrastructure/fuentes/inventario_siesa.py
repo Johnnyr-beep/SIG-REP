@@ -29,7 +29,7 @@ BODEGAS_INVENTARIO_PDV = (
     "42101",
 )
 PARAMETROS_INVENTARIO_BODEGA = {
-    "bodega": ",".join(BODEGAS_INVENTARIO_PDV),
+    "bodega": ",".join(BODEGAS_INVENTARIO_PDV) + ",",
     "lista_precios": "999",
     "plan1": "001",
     "plan2": "002",
@@ -68,26 +68,19 @@ class FuenteInventarioPdvSiesa:
             self._sesion_http = None
 
     def leer(self) -> InventarioPdvCrudo:
-        """Descarga el inventario CSV por bodega, una petición por compañía."""
+        """Descarga una instantánea CSV con todas las compañías y bodegas."""
         configuracion = self._configuracion
         url = configuracion.url_base + RUTA_INVENTARIO_BODEGA_COMPANIA
-        columnas: list[str] = []
-        filas: list[dict[str, str | None]] = []
-
-        for compania in configuracion.companias:
-            parametros = {**PARAMETROS_INVENTARIO_BODEGA, "compania": str(compania)}
-            inventario = self._leer_compania(url, parametros)
-            for columna in inventario.columnas:
-                if columna not in columnas:
-                    columnas.append(columna)
-            filas.extend(inventario.filas)
-
-        return InventarioPdvCrudo(
-            columnas=tuple(columnas),
-            filas=tuple({columna: fila.get(columna) for columna in columnas} for fila in filas),
+        parametros = tuple(PARAMETROS_INVENTARIO_BODEGA.items()) + tuple(
+            ("compania", str(compania)) for compania in configuracion.companias
         )
+        return self._leer_companias(url, parametros)
 
-    def _leer_compania(self, url: str, parametros: dict[str, str]) -> InventarioPdvCrudo:
+    def _leer_companias(
+        self,
+        url: str,
+        parametros: tuple[tuple[str, str], ...],
+    ) -> InventarioPdvCrudo:
         configuracion = self._configuracion
         for intento in range(1, max(configuracion.reintentos, 1) + 1):
             ultimo = intento >= max(configuracion.reintentos, 1)
