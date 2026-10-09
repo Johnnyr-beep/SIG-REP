@@ -29,7 +29,10 @@ from app.core.config import obtener_settings
 from app.core.errors import registrar_manejadores
 from app.core.logging import configurar_logging, obtener_logger
 from app.infrastructure.precalentador_financiero import iniciar_precalentador_financiero_en_vivo
-from app.infrastructure.precalentador_inventario import iniciar_precalentador_inventario
+from app.infrastructure.precalentador_inventario import (
+    iniciar_precalentador_inventario,
+    precalentar_inventario_al_iniciar,
+)
 from app.infrastructure.programador_documentos import iniciar_programador_documentos
 from app.schemas.common import DetalleError
 
@@ -44,6 +47,7 @@ async def ciclo_vida(_: FastAPI) -> AsyncIterator[None]:
     logger.info("aplicacion_iniciando", version=settings.version, entorno=settings.entorno)
     tarea_documentos = iniciar_programador_documentos()
     tarea_financiero_vivo = iniciar_precalentador_financiero_en_vivo()
+    await precalentar_inventario_al_iniciar()
     tarea_inventario = iniciar_precalentador_inventario()
     try:
         yield

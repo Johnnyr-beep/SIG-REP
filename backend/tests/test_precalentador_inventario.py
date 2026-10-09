@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+from types import SimpleNamespace
 
 import pytest
+from pydantic import SecretStr
 
 from app.infrastructure import precalentador_inventario as precalentador
 from app.infrastructure.fuentes.inventario_siesa import InventarioPdvCrudo
@@ -37,6 +39,28 @@ def test_precarga_y_get_reutilizan_el_snapshot(monkeypatch: pytest.MonkeyPatch) 
 
     assert precalentador.obtener_inventario_pdv() is snapshot
     assert llamadas == 1
+
+
+def test_precarga_inicial_antes_de_aceptar_peticiones(monkeypatch: pytest.MonkeyPatch) -> None:
+    snapshot = InventarioPdvCrudo(columnas=("CO_Codigo",), filas=({"CO_Codigo": "402"},))
+
+    class FuenteFalsa:
+        def leer(self) -> InventarioPdvCrudo:
+            return snapshot
+
+        def cerrar(self) -> None:
+            return None
+
+    monkeypatch.setattr(
+        precalentador,
+        "obtener_settings",
+        lambda: SimpleNamespace(siesa_token=SecretStr("token-de-prueba")),
+    )
+    monkeypatch.setattr(precalentador, "FuenteInventarioPdvSiesa", FuenteFalsa)
+
+    asyncio.run(precalentador.precalentar_inventario_al_iniciar())
+
+    assert precalentador.obtener_inventario_pdv() is snapshot
 
 
 def test_fallo_de_refresco_conserva_el_ultimo_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:

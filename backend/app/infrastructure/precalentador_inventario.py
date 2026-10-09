@@ -15,6 +15,7 @@ from app.infrastructure.fuentes.inventario_siesa import (
 logger = obtener_logger(__name__)
 
 INTERVALO_MINUTOS = 5
+ESPERA_INICIAL_SEGUNDOS = 20
 
 _cache: InventarioPdvCrudo | None = None
 _bloqueo_cache = threading.Lock()
@@ -63,9 +64,28 @@ async def _precalentar_una_vez() -> None:
 
 
 async def _bucle() -> None:
+    await asyncio.sleep(INTERVALO_MINUTOS * 60)
     while True:
         await _precalentar_una_vez()
         await asyncio.sleep(INTERVALO_MINUTOS * 60)
+
+
+async def precalentar_inventario_al_iniciar() -> None:
+    """Intenta dejar un snapshot listo antes de que la API acepte peticiones."""
+    if not obtener_settings().siesa_token.get_secret_value():
+        return
+    try:
+        await asyncio.wait_for(
+            asyncio.to_thread(_descargar_y_guardar),
+            timeout=ESPERA_INICIAL_SEGUNDOS,
+        )
+    except TimeoutError:
+        logger.warning(
+            "inventario_pdv_precarga_inicial_timeout",
+            timeout_segundos=ESPERA_INICIAL_SEGUNDOS,
+        )
+    except Exception:
+        logger.exception("inventario_pdv_precarga_inicial_fallo")
 
 
 def iniciar_precalentador_inventario() -> asyncio.Task[None] | None:
