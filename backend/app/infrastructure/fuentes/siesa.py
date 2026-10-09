@@ -229,6 +229,12 @@ COLUMNAS_OBLIGATORIAS = (COL_ORIGEN, COL_DESC_CO, COL_FECHA, COL_SUBTOTAL)
 #: caída un instante. Un 401 o un 422 no se reintentan —volver a pedir lo mismo
 #: con el mismo token da exactamente el mismo 401— y un 404 tampoco.
 ESTADOS_REINTENTABLES = frozenset({408, 429, 500, 502, 503, 504})
+INDICADORES_TIMEOUT_SQL = (
+    "sqldriverconnect",
+    "tcp provider",
+    "[08001]",
+    "pyodbc.operationalerror",
+)
 
 _CERO = Decimal("0")
 #: `Numeric(12, 6)` admite seis enteros y seis decimales; el límite superior
@@ -783,11 +789,20 @@ class FuenteVentaSiesa:
         —«Falta el token», «Token invalido»— caben de sobra, y un volcado
         completo de una página de error solo llenaría la bitácora.
         """
-        detalle = " ".join(respuesta.text.split())[:200]
+        cuerpo = respuesta.text
+        detalle = " ".join(cuerpo.split())[:200]
+        timeout_sql = respuesta.status_code >= 500 and any(
+            indicador in cuerpo.lower() for indicador in INDICADORES_TIMEOUT_SQL
+        )
         if respuesta.status_code == 401:
             pista = (
                 "Revise `SIGREP_SIESA_TOKEN`: se envía en la cabecera `Authorization` con el "
                 "valor pelado, sin «Bearer» y sin el prefijo «1-»."
+            )
+        elif timeout_sql:
+            pista = (
+                "La API de SIESA agotó el tiempo al conectar con su SQL Server (ODBC). "
+                "SIGREP no repetirá este fallo; contacte al soporte de SIESA."
             )
         elif respuesta.status_code in ESTADOS_REINTENTABLES:
             pista = "La API está saturada o no disponible; se reintentó y siguió fallando."
@@ -799,7 +814,7 @@ class FuenteVentaSiesa:
         return ErrorFuenteSiesa(
             f"La API de SIESA respondió {respuesta.status_code} en "
             f"{RUTA_COSTOS_RAZON_SOCIAL}. {pista}" + (f" Respuesta: {detalle}" if detalle else ""),
-            reintentable=respuesta.status_code in ESTADOS_REINTENTABLES,
+            reintentable=respuesta.status_code in ESTADOS_REINTENTABLES and not timeout_sql,
         )
 
     # ── Bitácora ──────────────────────────────────────────────────────────────

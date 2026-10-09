@@ -775,6 +775,19 @@ def test_un_5xx_se_reintenta_y_a_la_tercera_carga() -> None:
     assert api.intentos("6") == 1, "las otras compañías no pagan el reintento de la primera"
 
 
+def test_timeout_odbc_de_siesa_no_repite_la_consulta() -> None:
+    cuerpo = (
+        "[Microsoft][ODBC Driver 18 for SQL Server] TCP Provider: The wait operation "
+        "timed out. (258) (SQLDriverConnect); [08001]"
+    )
+    api = ApiFalsa().todas((500, cuerpo))
+
+    with pytest.raises(ErrorFuenteSiesa, match="SIGREP no repetirá este fallo"):
+        leer(api)
+
+    assert api.intentos("4") == 1
+
+
 def test_un_401_no_se_reintenta_porque_daria_el_mismo_401() -> None:
     api = ApiFalsa().todas((401, '{"detail":"Token invalido."}'))
 
