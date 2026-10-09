@@ -32,7 +32,7 @@ jobs:
     # vacío, que es la única forma de saber que la migración corre de cero.
     services:
       postgres:
-        image: postgres:18-alpine
+        image: public.ecr.aws/docker/library/postgres:18-alpine
         env:
           POSTGRES_DB: sigrep_ci
           POSTGRES_USER: sigrep_ci
