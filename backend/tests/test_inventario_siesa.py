@@ -25,7 +25,7 @@ def configuracion() -> ConfiguracionSiesa:
     )
 
 
-def test_descarga_csv_inventario_pdv_con_companias_configuradas() -> None:
+def test_descarga_csv_inventario_pdv_sin_filtro_de_compania() -> None:
     peticiones: list[httpx.Request] = []
 
     def responder(peticion: httpx.Request) -> httpx.Response:
@@ -50,10 +50,7 @@ def test_descarga_csv_inventario_pdv_con_companias_configuradas() -> None:
     assert len(peticiones) == 1
     peticion = peticiones[0]
     assert peticion.url.path == RUTA_INVENTARIO_PDV
-    assert dict(peticion.url.params) == {
-        "cia": "4,6,7",
-        **PARAMETROS_INVENTARIO_PDV,
-    }
+    assert dict(peticion.url.params) == PARAMETROS_INVENTARIO_PDV
     assert "token" not in peticion.url.params
     assert peticion.headers["Authorization"] == "token-solo-de-prueba"
     assert resultado.columnas == (

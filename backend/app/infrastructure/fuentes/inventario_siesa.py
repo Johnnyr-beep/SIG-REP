@@ -52,11 +52,7 @@ class FuenteInventarioPdvSiesa:
         """Descarga el CSV completo del inventario de puntos de venta."""
         configuracion = self._configuracion
         url = configuracion.url_base + RUTA_INVENTARIO_PDV
-        parametros = (
-            ("cia", ",".join(str(compania) for compania in configuracion.companias)),
-            *PARAMETROS_INVENTARIO_PDV.items(),
-        )
-        return self._leer_csv(url, parametros)
+        return self._leer_csv(url, tuple(PARAMETROS_INVENTARIO_PDV.items()))
 
     def _leer_csv(
         self,
