@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import csv
-from collections.abc import Iterator
+import json
 from dataclasses import dataclass
 from time import sleep
 
@@ -15,8 +14,6 @@ from app.infrastructure.fuentes.siesa import ConfiguracionSiesa, ErrorFuenteSies
 RUTA_INVENTARIO_PDV = "/ventas/inventario-pdv"
 PARAMETROS_INVENTARIO_PDV = {
     "limit": "5000",
-    "offset": "0",
-    "format": "csv",
 }
 
 
@@ -49,16 +46,32 @@ class FuenteInventarioPdvSiesa:
             self._sesion_http = None
 
     def leer(self) -> InventarioPdvCrudo:
-        """Descarga el inventario CSV de los puntos de venta."""
+        """Descarga todas las páginas JSON del inventario de puntos de venta."""
         configuracion = self._configuracion
         url = configuracion.url_base + RUTA_INVENTARIO_PDV
-        return self._leer_inventario(url, tuple(PARAMETROS_INVENTARIO_PDV.items()))
+        columnas: list[str] = []
+        filas: list[dict[str, str | None]] = []
+        offset = 0
+        while True:
+            parametros = (*PARAMETROS_INVENTARIO_PDV.items(), ("offset", str(offset)))
+            pagina, hay_mas, siguiente_offset = self._leer_pagina(url, parametros)
+            for columna in pagina.columnas:
+                if columna not in columnas:
+                    columnas.append(columna)
+            filas.extend(pagina.filas)
+            if not hay_mas:
+                return InventarioPdvCrudo(tuple(columnas), tuple(filas))
+            if siguiente_offset is None or siguiente_offset <= offset:
+                raise ErrorFuenteSiesa(
+                    f"La paginación de {RUTA_INVENTARIO_PDV} no avanzó correctamente."
+                )
+            offset = siguiente_offset
 
-    def _leer_inventario(
+    def _leer_pagina(
         self,
         url: str,
         parametros: tuple[tuple[str, str], ...],
-    ) -> InventarioPdvCrudo:
+    ) -> tuple[InventarioPdvCrudo, bool, int | None]:
         configuracion = self._configuracion
         for intento in range(1, max(configuracion.reintentos, 1) + 1):
             ultimo = intento >= max(configuracion.reintentos, 1)
@@ -81,7 +94,13 @@ class FuenteInventarioPdvSiesa:
                             reintentable=reintentable,
                         )
 
-                    return self._parsear(respuesta.iter_lines())
+                    try:
+                        contenido = respuesta.json()
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        raise ErrorFuenteSiesa(
+                            f"La respuesta JSON de {RUTA_INVENTARIO_PDV} no es válida."
+                        ) from None
+                    return self._parsear(contenido)
             except ErrorFuenteSiesa:
                 raise
             except httpx.HTTPError as exc:
@@ -94,21 +113,40 @@ class FuenteInventarioPdvSiesa:
 
         raise ErrorFuenteSiesa(f"No se pudo leer {RUTA_INVENTARIO_PDV} de la API de SIESA.")
 
-    def _parsear(self, lineas: Iterator[str]) -> InventarioPdvCrudo:
-        lector = csv.DictReader(lineas)
-        encabezado = lector.fieldnames
-        if not encabezado:
-            raise ErrorFuenteSiesa(f"El CSV de {RUTA_INVENTARIO_PDV} llegó vacío o sin encabezado.")
+    def _parsear(self, contenido: object) -> tuple[InventarioPdvCrudo, bool, int | None]:
+        if not isinstance(contenido, dict):
+            raise ErrorFuenteSiesa(f"La respuesta JSON de {RUTA_INVENTARIO_PDV} no es válida.")
+        registros = contenido.get("data")
+        if not isinstance(registros, list):
+            raise ErrorFuenteSiesa(
+                f"La respuesta JSON de {RUTA_INVENTARIO_PDV} no contiene una lista de filas."
+            )
 
-        columnas = tuple(str(columna).lstrip("\ufeff").strip() for columna in encabezado)
+        columnas: list[str] = []
         filas: list[dict[str, str | None]] = []
-        for registro in lector:
+        for registro in registros:
+            if not isinstance(registro, dict):
+                raise ErrorFuenteSiesa(
+                    f"La respuesta JSON de {RUTA_INVENTARIO_PDV} contiene una fila inválida."
+                )
             fila: dict[str, str | None] = {}
-            for original, columna in zip(encabezado, columnas, strict=True):
-                valor = registro.get(original)
-                fila[columna] = valor.strip() if valor and valor.strip() else None
+            for original, valor in registro.items():
+                columna = str(original).strip()
+                if columna not in columnas:
+                    columnas.append(columna)
+                fila[columna] = str(valor).strip() if valor is not None else None
             filas.append(fila)
-        return InventarioPdvCrudo(columnas=columnas, filas=tuple(filas))
+
+        hay_mas = contenido.get("has_more", False)
+        siguiente = contenido.get("next_offset")
+        if not isinstance(hay_mas, bool) or (
+            siguiente is not None
+            and (not isinstance(siguiente, int) or isinstance(siguiente, bool))
+        ):
+            raise ErrorFuenteSiesa(
+                f"La respuesta JSON de {RUTA_INVENTARIO_PDV} tiene datos de paginación inválidos."
+            )
+        return InventarioPdvCrudo(tuple(columnas), tuple(filas)), hay_mas, siguiente
 
     def _cliente(self) -> httpx.Client:
         if self._sesion_http is None:

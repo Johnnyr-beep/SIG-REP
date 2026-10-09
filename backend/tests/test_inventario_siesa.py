@@ -25,47 +25,102 @@ def configuracion() -> ConfiguracionSiesa:
     )
 
 
-def test_descarga_inventario_pdv_en_csv_con_autorizacion_en_cabecera() -> None:
+def test_descarga_todas_las_paginas_json_del_inventario_pdv() -> None:
     peticiones: list[httpx.Request] = []
+    fila_malambo = {
+        "Compania": 4,
+        "CO_Codigo": "402",
+        "CO_Descripcion": "PDV MALAMBO",
+        "Bodega_Codigo": "40201",
+        "Bodega_Descripcion": "PDV MALAMBO VITRINA",
+        "Item_Codigo": 3665,
+        "Item_Referencia": "3203",
+        "Item_Descripcion": "CANUTA DE RES POR KILO",
+        "UM": "KG",
+        "Cant_Existencia": 2.2,
+        "Cant_Comprometida": 0,
+    }
+    fila_otro_producto = {**fila_malambo, "Item_Codigo": 3666, "Item_Referencia": "3204"}
 
     def responder(peticion: httpx.Request) -> httpx.Response:
         peticiones.append(peticion)
+        offset = int(peticion.url.params["offset"])
+        if offset == 0:
+            return httpx.Response(
+                200,
+                json={
+                    "total": 2,
+                    "limit": 5000,
+                    "offset": 0,
+                    "count": 1,
+                    "has_more": True,
+                    "next_offset": 5000,
+                    "data": [fila_malambo],
+                },
+            )
         return httpx.Response(
             200,
-            text="compania,bodega,Referencia,Existencia,Comprometida\n"
-            "4,40201,ABC-1,12.50,2\n6,40201,ABC-2,3,0\n7,40201,ABC-3,4,1\n",
+            json={
+                "total": 2,
+                "limit": 5000,
+                "offset": offset,
+                "count": 1,
+                "has_more": False,
+                "next_offset": None,
+                "data": [fila_otro_producto],
+            },
         )
 
     with httpx.Client(transport=httpx.MockTransport(responder)) as cliente:
         fuente = FuenteInventarioPdvSiesa(configuracion=configuracion(), sesion_http=cliente)
         resultado = fuente.leer()
 
-    assert len(peticiones) == 1
-    peticion = peticiones[0]
-    assert peticion.url.path == RUTA_INVENTARIO_PDV
-    assert dict(peticion.url.params) == PARAMETROS_INVENTARIO_PDV
-    assert "token" not in peticion.url.params
-    assert peticion.headers["Authorization"] == "token-solo-de-prueba"
+    assert len(peticiones) == 2
+    assert [peticion.url.path for peticion in peticiones] == [RUTA_INVENTARIO_PDV] * 2
+    assert [peticion.url.params["offset"] for peticion in peticiones] == ["0", "5000"]
+    for peticion in peticiones:
+        assert peticion.url.params["limit"] == PARAMETROS_INVENTARIO_PDV["limit"]
+        assert "token" not in peticion.url.params
+        assert peticion.headers["Authorization"] == "token-solo-de-prueba"
     assert resultado.columnas == (
-        "compania",
-        "bodega",
-        "Referencia",
-        "Existencia",
-        "Comprometida",
+        "Compania",
+        "CO_Codigo",
+        "CO_Descripcion",
+        "Bodega_Codigo",
+        "Bodega_Descripcion",
+        "Item_Codigo",
+        "Item_Referencia",
+        "Item_Descripcion",
+        "UM",
+        "Cant_Existencia",
+        "Cant_Comprometida",
     )
-    assert len(resultado.filas) == 3
+    assert len(resultado.filas) == 2
     assert resultado.filas[0] == {
-        "compania": "4",
-        "bodega": "40201",
-        "Referencia": "ABC-1",
-        "Existencia": "12.50",
-        "Comprometida": "2",
+        "Compania": "4",
+        "CO_Codigo": "402",
+        "CO_Descripcion": "PDV MALAMBO",
+        "Bodega_Codigo": "40201",
+        "Bodega_Descripcion": "PDV MALAMBO VITRINA",
+        "Item_Codigo": "3665",
+        "Item_Referencia": "3203",
+        "Item_Descripcion": "CANUTA DE RES POR KILO",
+        "UM": "KG",
+        "Cant_Existencia": "2.2",
+        "Cant_Comprometida": "0",
     }
 
 
 def test_inventario_preserva_campos_vacios_como_null() -> None:
     transport = httpx.MockTransport(
-        lambda _: httpx.Response(200, text="cia,id_co,referencia\n4,402,\n")
+        lambda _: httpx.Response(
+            200,
+            json={
+                "has_more": False,
+                "next_offset": None,
+                "data": [{"cia": 4, "id_co": 402, "referencia": None}],
+            },
+        )
     )
     with httpx.Client(transport=transport) as cliente:
         resultado = FuenteInventarioPdvSiesa(
@@ -75,12 +130,12 @@ def test_inventario_preserva_campos_vacios_como_null() -> None:
     assert resultado.filas[0]["referencia"] is None
 
 
-def test_inventario_rechaza_csv_sin_encabezado() -> None:
+def test_inventario_rechaza_respuesta_json_invalida() -> None:
     transport = httpx.MockTransport(lambda _: httpx.Response(200, text=""))
     with httpx.Client(transport=transport) as cliente:
         fuente = FuenteInventarioPdvSiesa(configuracion=configuracion(), sesion_http=cliente)
 
-        with pytest.raises(ErrorFuenteSiesa, match="sin encabezado"):
+        with pytest.raises(ErrorFuenteSiesa, match=r"JSON.*no es válida"):
             fuente.leer()
 
 
@@ -258,39 +313,43 @@ def test_api_mapea_bodega_de_malambo_al_punto_de_venta(
         def leer(self) -> InventarioPdvCrudo:
             return InventarioPdvCrudo(
                 columnas=(
-                    "Item_ext",
-                    "f400_rowid_bodega",
-                    "Disponible",
-                    "Cia",
-                    "Item",
-                    "Referencia",
-                    "f120_descripcion",
+                    "Compania",
+                    "CO_Codigo",
+                    "CO_Descripcion",
+                    "Bodega_Codigo",
+                    "Bodega_Descripcion",
+                    "Item_Codigo",
+                    "Item_Referencia",
+                    "Item_Descripcion",
                     "UM",
-                    "Codigo_bodega",
-                    "Descripcion_bod",
-                    "Lista_precio",
-                    "UM_precio",
-                    "Precio",
-                    "Criterio_001",
-                    "Criterio_002",
+                    "Cant_Existencia",
+                    "Cant_Comprometida",
+                    "Cant_Pend_Entrar",
+                    "Cant_Pend_Salir",
+                    "Costo_Prom_Unit",
+                    "Costo_Prom_Total",
+                    "Fecha_Ult_Entrada",
+                    "Fecha_Ult_Salida",
                 ),
                 filas=(
                     {
-                        "Item_ext": "1400",
-                        "f400_rowid_bodega": "1",
-                        "Disponible": "213",
-                        "Cia": "4",
-                        "Item": "1400",
-                        "Referencia": "1033",
-                        "f120_descripcion": "COSTILLA ESPECIAL",
+                        "Compania": "4",
+                        "CO_Codigo": "402",
+                        "CO_Descripcion": "PDV MALAMBO",
+                        "Bodega_Codigo": "40201",
+                        "Bodega_Descripcion": "PDV MALAMBO VITRINA",
+                        "Item_Codigo": "3665",
+                        "Item_Referencia": "3203",
+                        "Item_Descripcion": "CANUTA DE RES POR KILO",
                         "UM": "KG",
-                        "Codigo_bodega": "40201",
-                        "Descripcion_bod": "PDV MALAMBO",
-                        "Lista_precio": "999",
-                        "UM_precio": "KG",
-                        "Precio": "1000",
-                        "Criterio_001": "001",
-                        "Criterio_002": "002",
+                        "Cant_Existencia": "2.2",
+                        "Cant_Comprometida": "0",
+                        "Cant_Pend_Entrar": "0",
+                        "Cant_Pend_Salir": "0",
+                        "Costo_Prom_Unit": "6000",
+                        "Costo_Prom_Total": "13200",
+                        "Fecha_Ult_Entrada": "2026-10-03T00:00:00",
+                        "Fecha_Ult_Salida": "2026-09-30T00:00:00",
                     },
                 ),
             )
@@ -304,12 +363,12 @@ def test_api_mapea_bodega_de_malambo_al_punto_de_venta(
     assert respuesta.status_code == 200, respuesta.text
     fila = respuesta.json()["filas"][0]
     assert fila["punto_venta"] == "MALAMBO"
-    assert fila["codigo_producto"] == "1400"
-    assert fila["referencia"] == "1033"
-    assert fila["producto"] == "COSTILLA ESPECIAL"
-    assert fila["existencia"] is None
-    assert fila["disponible"] == "213"
-    assert "f400_rowid_bodega" not in fila["datos"]
+    assert fila["codigo_producto"] == "3665"
+    assert fila["referencia"] == "3203"
+    assert fila["producto"] == "CANUTA DE RES POR KILO"
+    assert fila["existencia"] == "2.2"
+    assert fila["comprometida"] == "0"
+    assert "Bodega_Codigo" not in fila["datos"]
 
 
 def test_api_inventario_no_abre_datos_a_jefe_sin_alcance(
