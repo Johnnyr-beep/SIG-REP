@@ -25,63 +25,37 @@ def configuracion() -> ConfiguracionSiesa:
     )
 
 
-def test_descarga_todas_las_paginas_json_del_inventario_pdv() -> None:
+def test_descarga_csv_inventario_pdv_con_companias_configuradas() -> None:
     peticiones: list[httpx.Request] = []
-    fila_malambo = {
-        "Compania": 4,
-        "CO_Codigo": "402",
-        "CO_Descripcion": "PDV MALAMBO",
-        "Bodega_Codigo": "40201",
-        "Bodega_Descripcion": "PDV MALAMBO VITRINA",
-        "Item_Codigo": 3665,
-        "Item_Referencia": "3203",
-        "Item_Descripcion": "CANUTA DE RES POR KILO",
-        "UM": "KG",
-        "Cant_Existencia": 2.2,
-        "Cant_Comprometida": 0,
-    }
-    fila_otro_producto = {**fila_malambo, "Item_Codigo": 3666, "Item_Referencia": "3204"}
 
     def responder(peticion: httpx.Request) -> httpx.Response:
         peticiones.append(peticion)
-        offset = int(peticion.url.params["offset"])
-        if offset == 0:
-            return httpx.Response(
-                200,
-                json={
-                    "total": 2,
-                    "limit": 5000,
-                    "offset": 0,
-                    "count": 1,
-                    "has_more": True,
-                    "next_offset": 5000,
-                    "data": [fila_malambo],
-                },
-            )
         return httpx.Response(
             200,
-            json={
-                "total": 2,
-                "limit": 5000,
-                "offset": offset,
-                "count": 1,
-                "has_more": False,
-                "next_offset": None,
-                "data": [fila_otro_producto],
-            },
+            text=(
+                "Compania,CO_Codigo,CO_Descripcion,Bodega_Codigo,Bodega_Descripcion,"
+                "Item_Codigo,Item_Referencia,Item_Descripcion,UM,Cant_Existencia,"
+                "Cant_Comprometida\n"
+                '4,402,PDV MALAMBO,40201,PDV MALAMBO VITRINA,3665,3203,"CANUTA DE '
+                'RES POR KILO",KG,2.2,0\n'
+                '6,402,PDV MALAMBO,40201,PDV MALAMBO VITRINA,3666,3204,"CANUTA DE '
+                'RES POR KILO",KG,3,0\n'
+            ),
         )
 
     with httpx.Client(transport=httpx.MockTransport(responder)) as cliente:
         fuente = FuenteInventarioPdvSiesa(configuracion=configuracion(), sesion_http=cliente)
         resultado = fuente.leer()
 
-    assert len(peticiones) == 2
-    assert [peticion.url.path for peticion in peticiones] == [RUTA_INVENTARIO_PDV] * 2
-    assert [peticion.url.params["offset"] for peticion in peticiones] == ["0", "5000"]
-    for peticion in peticiones:
-        assert peticion.url.params["limit"] == PARAMETROS_INVENTARIO_PDV["limit"]
-        assert "token" not in peticion.url.params
-        assert peticion.headers["Authorization"] == "token-solo-de-prueba"
+    assert len(peticiones) == 1
+    peticion = peticiones[0]
+    assert peticion.url.path == RUTA_INVENTARIO_PDV
+    assert dict(peticion.url.params) == {
+        "cia": "4,6,7",
+        **PARAMETROS_INVENTARIO_PDV,
+    }
+    assert "token" not in peticion.url.params
+    assert peticion.headers["Authorization"] == "token-solo-de-prueba"
     assert resultado.columnas == (
         "Compania",
         "CO_Codigo",
@@ -113,14 +87,7 @@ def test_descarga_todas_las_paginas_json_del_inventario_pdv() -> None:
 
 def test_inventario_preserva_campos_vacios_como_null() -> None:
     transport = httpx.MockTransport(
-        lambda _: httpx.Response(
-            200,
-            json={
-                "has_more": False,
-                "next_offset": None,
-                "data": [{"cia": 4, "id_co": 402, "referencia": None}],
-            },
-        )
+        lambda _: httpx.Response(200, text="cia,id_co,referencia\n4,402,\n")
     )
     with httpx.Client(transport=transport) as cliente:
         resultado = FuenteInventarioPdvSiesa(
@@ -130,12 +97,12 @@ def test_inventario_preserva_campos_vacios_como_null() -> None:
     assert resultado.filas[0]["referencia"] is None
 
 
-def test_inventario_rechaza_respuesta_json_invalida() -> None:
+def test_inventario_rechaza_csv_sin_encabezado() -> None:
     transport = httpx.MockTransport(lambda _: httpx.Response(200, text=""))
     with httpx.Client(transport=transport) as cliente:
         fuente = FuenteInventarioPdvSiesa(configuracion=configuracion(), sesion_http=cliente)
 
-        with pytest.raises(ErrorFuenteSiesa, match=r"JSON.*no es válida"):
+        with pytest.raises(ErrorFuenteSiesa, match="sin encabezado"):
             fuente.leer()
 
 
