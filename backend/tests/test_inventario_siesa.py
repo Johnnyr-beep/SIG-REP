@@ -152,7 +152,7 @@ def test_api_inventario_filtra_por_alcance_de_jefe_pdv(
         def cerrar(self) -> None:
             return None
 
-    monkeypatch.setattr(api_inventario, "FuenteInventarioPdvSiesa", FuenteFalsa)
+    monkeypatch.setattr(api_inventario, "obtener_inventario_pdv", lambda: FuenteFalsa().leer())
 
     respuesta = cliente_http.get("/api/v1/inventario/pdv", headers=jefe_pdv)
 
@@ -232,7 +232,7 @@ def test_api_inventario_consolida_lineas_del_mismo_pdv(
         def cerrar(self) -> None:
             return None
 
-    monkeypatch.setattr(api_inventario, "FuenteInventarioPdvSiesa", FuenteFalsa)
+    monkeypatch.setattr(api_inventario, "obtener_inventario_pdv", lambda: FuenteFalsa().leer())
 
     respuesta = cliente_http.get("/api/v1/inventario/pdv", headers=admin)
 
@@ -321,7 +321,7 @@ def test_api_mapea_bodega_de_malambo_al_punto_de_venta(
         def cerrar(self) -> None:
             return None
 
-    monkeypatch.setattr(api_inventario, "FuenteInventarioPdvSiesa", FuenteFalsa)
+    monkeypatch.setattr(api_inventario, "obtener_inventario_pdv", lambda: FuenteFalsa().leer())
     respuesta = cliente_http.get("/api/v1/inventario/pdv", headers=admin)
 
     assert respuesta.status_code == 200, respuesta.text
@@ -351,7 +351,7 @@ def test_api_inventario_no_abre_datos_a_jefe_sin_alcance(
         def cerrar(self) -> None:
             return None
 
-    monkeypatch.setattr(api_inventario, "FuenteInventarioPdvSiesa", FuenteFalsa)
+    monkeypatch.setattr(api_inventario, "obtener_inventario_pdv", lambda: FuenteFalsa().leer())
 
     respuesta = cliente_http.get("/api/v1/inventario/pdv", headers=jefe_sin_alcance)
 
@@ -375,7 +375,7 @@ def test_api_inventario_falla_cerrado_si_csv_no_identifica_el_pdv(
         def cerrar(self) -> None:
             return None
 
-    monkeypatch.setattr(api_inventario, "FuenteInventarioPdvSiesa", FuenteFalsa)
+    monkeypatch.setattr(api_inventario, "obtener_inventario_pdv", lambda: FuenteFalsa().leer())
 
     respuesta = cliente_http.get("/api/v1/inventario/pdv", headers=jefe_pdv)
 

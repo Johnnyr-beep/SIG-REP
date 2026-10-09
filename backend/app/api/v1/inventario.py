@@ -15,10 +15,10 @@ from app.core.deps import (
     alcance_puntos_venta,
     exigir_permiso_consulta,
 )
-from app.infrastructure.fuentes.inventario_siesa import FuenteInventarioPdvSiesa
 from app.infrastructure.fuentes.siesa import ErrorFuenteSiesa, clave_descripcion
 from app.infrastructure.models.organizacion import PuntoVenta
 from app.infrastructure.models.usuario import Usuario
+from app.infrastructure.precalentador_inventario import obtener_inventario_pdv
 from app.schemas.inventario import FilaInventarioPdv, RespuestaInventarioPdv
 
 router = APIRouter(prefix="/inventario", tags=["Inventario"])
@@ -161,11 +161,7 @@ def inventario_pdv(
     usuario: Annotated[Usuario, Depends(exigir_permiso_consulta(PERMISO_CONSULTAR_INVENTARIO))],
     sesion: SesionDep,
 ) -> RespuestaInventarioPdv:
-    fuente = FuenteInventarioPdvSiesa()
-    try:
-        inventario = fuente.leer()
-    finally:
-        fuente.cerrar()
+    inventario = obtener_inventario_pdv()
 
     puntos = list(sesion.scalars(select(PuntoVenta)).all())
     por_codigo = {punto.codigo_co: punto for punto in puntos}
