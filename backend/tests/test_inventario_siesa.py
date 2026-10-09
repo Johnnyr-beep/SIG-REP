@@ -6,9 +6,8 @@ from pydantic import SecretStr
 
 from app.api.v1 import inventario as api_inventario
 from app.infrastructure.fuentes.inventario_siesa import (
-    BODEGAS_INVENTARIO_PDV,
-    PARAMETROS_INVENTARIO_BODEGA,
-    RUTA_INVENTARIO_BODEGA_COMPANIA,
+    PARAMETROS_INVENTARIO_PDV,
+    RUTA_INVENTARIO_PDV,
     FuenteInventarioPdvSiesa,
     InventarioPdvCrudo,
 )
@@ -26,7 +25,7 @@ def configuracion() -> ConfiguracionSiesa:
     )
 
 
-def test_descarga_inventario_por_bodega_con_companias_repetidas() -> None:
+def test_descarga_inventario_pdv_en_csv_con_autorizacion_en_cabecera() -> None:
     peticiones: list[httpx.Request] = []
 
     def responder(peticion: httpx.Request) -> httpx.Response:
@@ -43,10 +42,9 @@ def test_descarga_inventario_por_bodega_con_companias_repetidas() -> None:
 
     assert len(peticiones) == 1
     peticion = peticiones[0]
-    assert peticion.url.path == RUTA_INVENTARIO_BODEGA_COMPANIA
-    assert peticion.url.params.get_list("compania") == ["4", "6", "7"]
-    for nombre, valor in PARAMETROS_INVENTARIO_BODEGA.items():
-        assert peticion.url.params[nombre] == valor
+    assert peticion.url.path == RUTA_INVENTARIO_PDV
+    assert dict(peticion.url.params) == PARAMETROS_INVENTARIO_PDV
+    assert "token" not in peticion.url.params
     assert peticion.headers["Authorization"] == "token-solo-de-prueba"
     assert resultado.columnas == (
         "compania",
@@ -63,7 +61,6 @@ def test_descarga_inventario_por_bodega_con_companias_repetidas() -> None:
         "Existencia": "12.50",
         "Comprometida": "2",
     }
-    assert PARAMETROS_INVENTARIO_BODEGA["bodega"] == ",".join(BODEGAS_INVENTARIO_PDV) + ","
 
 
 def test_inventario_preserva_campos_vacios_como_null() -> None:
