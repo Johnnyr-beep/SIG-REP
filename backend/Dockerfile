@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1.7
 #
 # Imagen de la API de SIGREP.
 #

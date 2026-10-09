@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1.7
 #
 # Imagen del frontend de SIGREP: compila la SPA con Node y la sirve con Nginx.
 # La imagen final no lleva Node ni node_modules — solo estáticos y el servidor.
