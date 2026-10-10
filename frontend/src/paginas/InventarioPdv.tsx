@@ -5,6 +5,12 @@ import type { FilaInventarioPdv } from "@/api/tipos";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 
 const FILAS_POR_PAGINA = 50;
+const CANTIDADES_VISIBLES = ["existencia", "disponible"];
+const ATRIBUTOS_OCULTOS = new Set(["fechaultentrada", "fechaultsalida"]);
+
+function normalizarColumna(valor: string): string {
+  return valor.replace(/[^a-z0-9]/gi, "").toLocaleLowerCase();
+}
 
 function normalizarBusqueda(valor: string): string {
   return valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
@@ -30,10 +36,9 @@ function textoFila(fila: FilaInventarioPdv): string {
     fila.unidad,
     fila.existencia,
     fila.disponible,
-    fila.comprometida,
-    fila.pendiente_entrada,
-    fila.pendiente_salida,
-    ...Object.values(fila.datos),
+    ...Object.entries(fila.datos)
+      .filter(([columna]) => !ATRIBUTOS_OCULTOS.has(normalizarColumna(columna)))
+      .map(([, valor]) => valor),
   ]
     .filter((valor): valor is string | number => valor !== null && valor !== undefined)
     .join(" ");
@@ -51,7 +56,7 @@ export function InventarioPdv() {
   const columnasCantidad = useMemo(
     () =>
       (consulta.data?.columnas ?? []).filter((columna) =>
-        ["existencia", "disponible", "comprometida", "pendiente_entrada", "pendiente_salida"].includes(columna),
+        CANTIDADES_VISIBLES.includes(columna),
       ),
     [consulta.data?.columnas],
   );
@@ -59,6 +64,7 @@ export function InventarioPdv() {
     () =>
       (consulta.data?.columnas ?? []).filter(
         (columna) =>
+          !ATRIBUTOS_OCULTOS.has(normalizarColumna(columna)) &&
           ![
             "referencia",
             "codigo_producto",
@@ -238,9 +244,6 @@ export function InventarioPdv() {
                             columna as
                               | "existencia"
                               | "disponible"
-                              | "comprometida"
-                              | "pendiente_entrada"
-                              | "pendiente_salida"
                           ] ?? "—"}
                         </td>
                       ))}
