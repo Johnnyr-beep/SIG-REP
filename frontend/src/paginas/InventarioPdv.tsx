@@ -2,14 +2,48 @@ import { useMemo, useState } from "react";
 
 import { useInventarioPdv } from "@/api/consultas";
 import type { FilaInventarioPdv } from "@/api/tipos";
-import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
+import { AvisoError, Cargando, Distintivo, Tarjeta, Vacio } from "@/componentes/comunes";
 
 const FILAS_POR_PAGINA = 50;
+const DIAS_SIN_ROTACION = 10;
 const CANTIDADES_VISIBLES = ["existencia", "disponible"];
 const ATRIBUTOS_OCULTOS = new Set(["fechaultentrada", "fechaultsalida"]);
 
+type EstadoRotacion = {
+  etiqueta: string;
+  tono: "neutro" | "exito" | "aviso" | "peligro";
+};
+
 function normalizarColumna(valor: string): string {
   return valor.replace(/[^a-z0-9]/gi, "").toLocaleLowerCase();
+}
+
+function fechaUltimaSalida(fila: FilaInventarioPdv): Date | null {
+  const valor = Object.entries(fila.datos).find(
+    ([columna]) => normalizarColumna(columna) === "fechaultsalida",
+  )?.[1];
+  const coincidencia = valor?.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!coincidencia) return null;
+
+  const [, anio, mes, dia] = coincidencia;
+  return new Date(Date.UTC(Number(anio), Number(mes) - 1, Number(dia)));
+}
+
+function estadoRotacion(fila: FilaInventarioPdv): EstadoRotacion {
+  const cantidad = Number(fila.existencia ?? fila.disponible);
+  if (!Number.isFinite(cantidad)) return { etiqueta: "Sin dato", tono: "neutro" };
+  if (cantidad <= 0) return { etiqueta: "Sin existencia", tono: "neutro" };
+
+  const ultimaSalida = fechaUltimaSalida(fila);
+  if (!ultimaSalida) return { etiqueta: "Sin fecha de salida", tono: "aviso" };
+
+  const ahora = new Date();
+  const hoy = Date.UTC(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+  const diasSinSalida = Math.max(0, Math.floor((hoy - ultimaSalida.getTime()) / 86_400_000));
+  if (diasSinSalida >= DIAS_SIN_ROTACION) {
+    return { etiqueta: `Sin rotación · ${diasSinSalida} d`, tono: "peligro" };
+  }
+  return { etiqueta: `Con movimiento · ${diasSinSalida} d`, tono: "exito" };
 }
 
 function normalizarBusqueda(valor: string): string {
@@ -217,6 +251,7 @@ export function InventarioPdv() {
                     <th scope="col">Referencia</th>
                     <th scope="col">Producto</th>
                     <th scope="col">Unidad</th>
+                    <th scope="col">Rotación (10 días)</th>
                     {columnasCantidad.map((columna) => (
                       <th key={columna} scope="col" className="numero">
                         {etiquetaColumna(columna)}
@@ -228,30 +263,30 @@ export function InventarioPdv() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filasPagina.map((fila, indice) => (
-                    <tr
-                      key={`${fila.compania ?? ""}-${fila.punto_venta ?? ""}-${fila.codigo_producto ?? fila.referencia ?? ""}-${inicio + indice}`}
-                    >
-                      <th scope="row" className="columna-ancla">{fila.punto_venta ?? "—"}</th>
-                      <td>{fila.compania ?? "—"}</td>
-                      <td>{fila.codigo_producto ?? "—"}</td>
-                      <td>{fila.referencia ?? "—"}</td>
-                      <td>{fila.producto ?? "—"}</td>
-                      <td>{fila.unidad ?? "—"}</td>
-                      {columnasCantidad.map((columna) => (
-                        <td key={columna} className="numero">
-                          {fila[
-                            columna as
-                              | "existencia"
-                              | "disponible"
-                          ] ?? "—"}
-                        </td>
-                      ))}
-                      {columnasAtributos.map((columna) => (
-                        <td key={columna}>{fila.datos[columna] ?? "—"}</td>
-                      ))}
-                    </tr>
-                  ))}
+                  {filasPagina.map((fila, indice) => {
+                    const estado = estadoRotacion(fila);
+                    return (
+                      <tr
+                        key={`${fila.compania ?? ""}-${fila.punto_venta ?? ""}-${fila.codigo_producto ?? fila.referencia ?? ""}-${inicio + indice}`}
+                      >
+                        <th scope="row" className="columna-ancla">{fila.punto_venta ?? "—"}</th>
+                        <td>{fila.compania ?? "—"}</td>
+                        <td>{fila.codigo_producto ?? "—"}</td>
+                        <td>{fila.referencia ?? "—"}</td>
+                        <td>{fila.producto ?? "—"}</td>
+                        <td>{fila.unidad ?? "—"}</td>
+                        <td><Distintivo tono={estado.tono}>{estado.etiqueta}</Distintivo></td>
+                        {columnasCantidad.map((columna) => (
+                          <td key={columna} className="numero">
+                            {fila[columna as "existencia" | "disponible"] ?? "—"}
+                          </td>
+                        ))}
+                        {columnasAtributos.map((columna) => (
+                          <td key={columna}>{fila.datos[columna] ?? "—"}</td>
+                        ))}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
