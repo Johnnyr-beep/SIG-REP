@@ -34,12 +34,15 @@ class _Acumulado:
     costo: Decimal = Decimal(0)
     kilos: Decimal = Decimal(0)
     lineas: int = 0
+    fecha_ultima_venta: date | None = None
     costo_completo: bool = True
 
     def agregar(self, fila: LineaAgro) -> None:
         self.venta += fila.total_neto
         self.kilos += fila.kilos_total
         self.lineas += fila.lineas_facturadas
+        if self.fecha_ultima_venta is None or fila.fecha > self.fecha_ultima_venta:
+            self.fecha_ultima_venta = fila.fecha
         if fila.total_costo is None:
             self.costo_completo = False
         else:
@@ -87,6 +90,7 @@ def _fila(
         rentabilidad=acumulado.porcentaje,
         kilos=acumulado.kilos,
         participacion=participacion,
+        fecha_ultima_venta=acumulado.fecha_ultima_venta,
     )
 
 

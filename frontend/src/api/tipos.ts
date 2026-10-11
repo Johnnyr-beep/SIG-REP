@@ -765,6 +765,7 @@ export interface FilaRentabilidadMes {
   rentabilidad: string | null;
   kilos: string;
   participacion: string | null;
+  fecha_ultima_venta: string | null;
 }
 
 export interface FilaCentroRentabilidadMes extends FilaRentabilidadMes {

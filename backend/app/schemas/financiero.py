@@ -153,6 +153,10 @@ class FilaRentabilidadMes(EsquemaBase):
     rentabilidad: DecimalStr | None
     kilos: DecimalStr
     participacion: DecimalStr | None = None
+    fecha_ultima_venta: date | None = Field(
+        default=None,
+        description="Fecha de la última factura incluida en el período para esta fila.",
+    )
 
 
 class FilaCentroRentabilidadMes(FilaRentabilidadMes):

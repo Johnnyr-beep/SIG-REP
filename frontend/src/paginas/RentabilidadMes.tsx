@@ -7,7 +7,7 @@ import type {
   FilaTipoItemRentabilidadMes,
   PuntoRentabilidadMes,
 } from "@/api/tipos";
-import { AvisoError, Cargando, Vacio } from "@/componentes/comunes";
+import { AvisoError, Cargando, Distintivo, Vacio } from "@/componentes/comunes";
 import { useMarcaElegida } from "@/marca/ContextoMarca";
 
 export type DireccionOrdenVenta = "desc" | "asc" | null;
@@ -49,6 +49,28 @@ function ordenarPorVenta<T extends { venta: string }>(
 
 const LIMITE_RENTABILIDAD_AMARILLO = 0.2;
 const LIMITE_RENTABILIDAD_VERDE = 0.8;
+const DIAS_SIN_ROTACION = 10;
+
+function fechaCorteRotacion(fechaFin: string): string {
+  const ahora = new Date();
+  const hoy = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}-${String(ahora.getDate()).padStart(2, "0")}`;
+  return fechaFin < hoy ? fechaFin : hoy;
+}
+
+function estadoRotacion(fechaUltimaVenta: string | null, fechaCorte: string) {
+  if (!fechaUltimaVenta) return { etiqueta: "Sin fecha", tono: "neutro" as const };
+  const milisegundosDia = 86_400_000;
+  const ultima = Date.parse(`${fechaUltimaVenta}T00:00:00Z`);
+  const corte = Date.parse(`${fechaCorte}T00:00:00Z`);
+  const dias = Number.isFinite(ultima) && Number.isFinite(corte)
+    ? Math.max(0, Math.floor((corte - ultima) / milisegundosDia))
+    : null;
+  if (dias === null) return { etiqueta: "Sin fecha", tono: "neutro" as const };
+  if (dias >= DIAS_SIN_ROTACION) {
+    return { etiqueta: `Sin rotación · ${dias} d`, tono: "peligro" as const };
+  }
+  return { etiqueta: `Con movimiento · ${dias} d`, tono: "exito" as const };
+}
 
 function periodoActual(): string {
   const ahora = new Date();
@@ -606,6 +628,7 @@ export function RentabilidadMes() {
                       />
                       <th aria-label="Semáforo" />
                       <th className="numero">%Rent</th>
+                      <th>Rotación</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -621,12 +644,13 @@ export function RentabilidadMes() {
                           comercialesExpandidos={comercialesExpandidos}
                           alAlternarComercial={alternarComercial}
                           orden={ordenBienes}
+                          fechaCorte={fechaCorteRotacion(datos.fecha_fin)}
                         />
                       );
                     })}
                   </tbody>
                   <tfoot>
-                    <tr><th scope="row">Total</th><td className="numero" title={millones(datos.especies.reduce((suma, fila) => suma + Number(fila.venta), 0).toString())}>{millonesTabla(datos.especies.reduce((suma, fila) => suma + Number(fila.venta), 0).toString())}</td><td /><td className="numero">{porcentaje(datos.rentabilidad)}</td></tr>
+                    <tr><th scope="row">Total</th><td className="numero" title={millones(datos.especies.reduce((suma, fila) => suma + Number(fila.venta), 0).toString())}>{millonesTabla(datos.especies.reduce((suma, fila) => suma + Number(fila.venta), 0).toString())}</td><td /><td className="numero">{porcentaje(datos.rentabilidad)}</td><td /></tr>
                   </tfoot>
                 </table>
               </div>
@@ -730,6 +754,7 @@ function FragmentoEspecie({
   comercialesExpandidos,
   alAlternarComercial,
   orden,
+  fechaCorte,
 }: {
   fila: FilaEspecieRentabilidadMes;
   abierto: boolean;
@@ -737,6 +762,7 @@ function FragmentoEspecie({
   comercialesExpandidos: Set<string>;
   alAlternarComercial: (clave: string) => void;
   orden: DireccionOrdenVenta;
+  fechaCorte: string;
 }) {
   return (
     <>
@@ -749,6 +775,7 @@ function FragmentoEspecie({
         <td className="numero" title={millones(fila.venta)}>{millonesTabla(fila.venta)}</td>
         <td />
         <td className="numero">{porcentaje(fila.rentabilidad)}</td>
+        <td />
       </tr>
       {abierto ? ordenarPorVenta(fila.comerciales, orden).map((comercial) => {
         const clave = `comercial:${fila.etiqueta}:${comercial.etiqueta}`;
@@ -764,15 +791,22 @@ function FragmentoEspecie({
               <td className="numero" title={millones(comercial.venta)}>{millonesTabla(comercial.venta)}</td>
               <td className="rentabilidad-mes__celda-semaforo"><EstadoRentabilidadCalculada valor={comercial.rentabilidad} /></td>
               <td className="numero">{porcentaje(comercial.rentabilidad)}</td>
+              <td />
             </tr>
-            {expandido ? ordenarPorVenta(comercial.productos, orden).map((producto) => (
-              <tr className="rentabilidad-mes__producto" key={`${clave}:${producto.etiqueta}`}>
-                <th scope="row" className="rentabilidad-mes__subfila">{producto.etiqueta}</th>
-                <td className="numero" title={millones(producto.venta)}>{millonesTabla(producto.venta)}</td>
-                <td className="rentabilidad-mes__celda-semaforo"><EstadoRentabilidadCalculada valor={producto.rentabilidad} /></td>
-                <td className="numero">{porcentaje(producto.rentabilidad)}</td>
-              </tr>
-            )) : null}
+            {expandido ? ordenarPorVenta(comercial.productos, orden).map((producto) => {
+              const estado = estadoRotacion(producto.fecha_ultima_venta, fechaCorte);
+              return (
+                <tr className="rentabilidad-mes__producto" key={`${clave}:${producto.etiqueta}`}>
+                  <th scope="row" className="rentabilidad-mes__subfila">{producto.etiqueta}</th>
+                  <td className="numero" title={millones(producto.venta)}>{millonesTabla(producto.venta)}</td>
+                  <td className="rentabilidad-mes__celda-semaforo"><EstadoRentabilidadCalculada valor={producto.rentabilidad} /></td>
+                  <td className="numero">{porcentaje(producto.rentabilidad)}</td>
+                  <td title="Días desde la última factura hasta el corte del período.">
+                    <Distintivo tono={estado.tono}>{estado.etiqueta}</Distintivo>
+                  </td>
+                </tr>
+              );
+            }) : null}
           </Fragment>
         );
       }) : null}

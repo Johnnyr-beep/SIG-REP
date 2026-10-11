@@ -17,9 +17,10 @@ def _linea(
     venta: str,
     costo: str | None,
     kilos: str,
+    fecha: date = date(2026, 9, 1),
 ) -> LineaAgro:
     return LineaAgro(
-        fecha=date(2026, 9, 1),
+        fecha=fecha,
         co_id=co_id,
         centro_operacion="PLANTA",
         tipo_item_id=None,
@@ -180,3 +181,26 @@ def test_rentabilidad_mensual_anida_productos_bajo_su_tipo_comercial() -> None:
     assert [fila.etiqueta for fila in comerciales["SUBPRODUCTO"].productos] == [
         "RES-02 · Producto RES-02"
     ]
+
+
+def test_producto_expone_la_fecha_de_su_ultima_venta_en_el_periodo() -> None:
+    producto_base = {
+        "tipo_item": "0001 - BIENES",
+        "especie": "RES",
+        "tipo_comercial": "CORTE",
+        "cliente": "CLIENTE",
+        "referencia": "RES-01",
+        "costo": "60",
+        "kilos": "10",
+    }
+    fuente = _FuenteSimulada(
+        [
+            _linea(**producto_base, venta="100", fecha=date(2026, 9, 2)),
+            _linea(**producto_base, venta="50", fecha=date(2026, 9, 21)),
+        ]
+    )
+
+    resultado = calcular_rentabilidad_mes("202609", fuente=fuente)
+
+    producto = resultado.especies[0].comerciales[0].productos[0]
+    assert producto.fecha_ultima_venta == date(2026, 9, 21)
