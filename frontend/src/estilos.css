@@ -4098,20 +4098,56 @@ textarea.campo__control {
   padding: 0.35rem 0.3rem;
 }
 
-.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking):not(.rentabilidad-mes__tabla--metricas-bienes) th:first-child {
+.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking):not(.rentabilidad-mes__tabla--metricas-bienes):not(.rentabilidad-carnes__tabla) th:first-child {
   width: 40%;
 }
 
-.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking):not(.rentabilidad-mes__tabla--metricas-bienes) th:nth-child(2) {
+.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking):not(.rentabilidad-mes__tabla--metricas-bienes):not(.rentabilidad-carnes__tabla) th:nth-child(2) {
   width: 27%;
 }
 
-.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking):not(.rentabilidad-mes__tabla--metricas-bienes) th:nth-child(3) {
+.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking):not(.rentabilidad-mes__tabla--metricas-bienes):not(.rentabilidad-carnes__tabla) th:nth-child(3) {
   width: 9%;
 }
 
-.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking):not(.rentabilidad-mes__tabla--metricas-bienes) th:nth-child(4) {
+.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking):not(.rentabilidad-mes__tabla--metricas-bienes):not(.rentabilidad-carnes__tabla) th:nth-child(4) {
   width: 24%;
+}
+
+.rentabilidad-mes__tabla.rentabilidad-carnes__tabla {
+  min-width: 72rem;
+  table-layout: fixed;
+}
+
+.rentabilidad-mes__tabla.rentabilidad-carnes__tabla th:first-child {
+  width: 24rem;
+}
+
+.rentabilidad-mes__tabla.rentabilidad-carnes__tabla th:nth-child(2) {
+  width: 7.5rem;
+}
+
+.rentabilidad-mes__tabla.rentabilidad-carnes__tabla th:nth-child(3),
+.rentabilidad-mes__tabla.rentabilidad-carnes__tabla th:nth-child(4) {
+  width: 9.5rem;
+}
+
+.rentabilidad-mes__tabla.rentabilidad-carnes__tabla th:nth-child(5) {
+  width: 8rem;
+}
+
+.rentabilidad-mes__tabla.rentabilidad-carnes__tabla th:nth-child(6) {
+  width: 13rem;
+}
+
+.rentabilidad-mes__tabla.rentabilidad-carnes__tabla th:not(:first-child),
+.rentabilidad-mes__tabla.rentabilidad-carnes__tabla td {
+  white-space: nowrap;
+}
+
+.rentabilidad-mes__tabla.rentabilidad-carnes__tabla thead th:not(:first-child) {
+  white-space: normal;
+  line-height: 1.2;
 }
 
 .rentabilidad-mes__tabla--metricas-bienes {
