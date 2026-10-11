@@ -19,6 +19,7 @@ Uso:
     python -m app.infrastructure.semilla --admin             # + usuario gerente
     python -m app.infrastructure.semilla --administrador     # + usuario admin (rol ADMIN)
     python -m app.infrastructure.semilla --periodo 2026-08   # + calendario del mes
+    python -m app.infrastructure.semilla --unidad grupo-santacruz  # estructura corporativa
 
 `--admin` y `--administrador` no son lo mismo y los nombres son desafortunados,
 pero `--admin` ya estaba documentado y renombrarlo rompería el arranque de quien
@@ -227,10 +228,13 @@ def _sembrar_puntos_venta(
         for codigo in codigos:
             zona_de_punto[codigo] = nombre_zona
 
-    existentes = {p.codigo_co for p in sesion.execute(select(PuntoVenta)).scalars()}
+    existentes = {punto.codigo_co: punto for punto in sesion.execute(select(PuntoVenta)).scalars()}
 
     for codigo, nombre, descripcion, codigo_grupo in PUNTOS_VENTA:
-        if codigo in existentes:
+        existente = existentes.get(codigo)
+        if existente is not None:
+            if existente.descripcion_siesa is None:
+                existente.descripcion_siesa = descripcion
             continue
         zona = zonas.get(zona_de_punto.get(codigo, ""))
         sesion.add(
@@ -246,7 +250,11 @@ def _sembrar_puntos_venta(
         )
 
     codigo, nombre, descripcion = PUNTO_SIN_PRESUPUESTO
-    if codigo not in existentes:
+    existente = existentes.get(codigo)
+    if existente is not None:
+        if existente.descripcion_siesa is None:
+            existente.descripcion_siesa = descripcion
+    else:
         zona = zonas.get(zona_de_punto.get(codigo, ""))
         sesion.add(
             PuntoVenta(
@@ -456,12 +464,11 @@ def main() -> None:  # pragma: no cover - utilidad de línea de comandos
     print(f"Sembrando la base de {unidad}.")
 
     with sesion_ambito(unidad) as sesion:
-        # La estructura actual es exclusiva de Carnes Santacruz. Agropecuaria y
-        # Carnes Frías tienen fuentes y catálogos propios, así que esta utilidad
-        # solo crea allí las cuentas iniciales hasta que se cargue su catálogo.
-        if unidad == "carnes":
+        # Grupo Santacruz consulta las compañías de Carnes y necesita el mismo
+        # directorio de centros para resolver DescCO en su base independiente.
+        if unidad in {"carnes", "grupo-santacruz"}:
             sembrar_estructura(sesion)
-            if argumentos.periodo:
+            if unidad == "carnes" and argumentos.periodo:
                 sembrar_calendario(sesion, argumentos.periodo)
         elif argumentos.periodo:
             print(

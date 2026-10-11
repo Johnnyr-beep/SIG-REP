@@ -286,15 +286,15 @@ manifestaría como una columna que no existe.
 ## 6. Inicialización y verificación
 
 Con el despliegue en verde, abra la terminal del contenedor `api` desde el panel
-y siembre los datos base:
+y siembre el directorio SIESA de la base independiente de Grupo Santacruz:
 
 ```bash
-python -m app.infrastructure.semilla --admin --periodo 2026-08
+python -m app.infrastructure.semilla --unidad grupo-santacruz
 ```
 
-Esto crea los 4 grupos, los 16 puntos de venta con su C.O. de SIESA, las 8
-categorías con su tabla de mapeo, las zonas con su calendario, y el usuario
-`gerente`.
+El comando es idempotente. Crea los grupos, puntos de venta, descripciones
+`DescCO`, categorías, mapeos y zonas que falten; completa una descripción SIESA
+vacía en un punto ya existente. No crea usuarios ni calendarios.
 
 **Copie la clave provisional en el momento.** Se imprime **una sola vez**, no
 queda en ningún log, y el sistema exigirá cambiarla en el primer acceso.

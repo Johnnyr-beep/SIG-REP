@@ -260,8 +260,9 @@ MENSAJE_SIN_COMPANIAS = (
 MENSAJE_SIN_DESCRIPCIONES = (
     "La fuente «siesa» resuelve el punto de venta por la descripción que entrega "
     "SIESA (`DescCO`), y no hay ningún punto de venta con `descripcion_siesa` en la "
-    "base. Siembre la estructura (§3.1) antes de ingerir: sin ese directorio, todas "
-    "las filas se rechazarían por punto de venta desconocido."
+    "base. Siembre la estructura de la unidad con `python -m "
+    "app.infrastructure.semilla --unidad grupo-santacruz` antes de consultar o "
+    "ingerir; sin ese directorio, las filas no se pueden asociar a un C.O."
 )
 
 
