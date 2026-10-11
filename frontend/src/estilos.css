@@ -4098,20 +4098,44 @@ textarea.campo__control {
   padding: 0.35rem 0.3rem;
 }
 
-.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking) th:first-child {
+.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking):not(.rentabilidad-mes__tabla--rotacion) th:first-child {
   width: 40%;
 }
 
-.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking) th:nth-child(2) {
+.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking):not(.rentabilidad-mes__tabla--rotacion) th:nth-child(2) {
   width: 27%;
 }
 
-.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking) th:nth-child(3) {
+.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking):not(.rentabilidad-mes__tabla--rotacion) th:nth-child(3) {
   width: 9%;
 }
 
-.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking) th:nth-child(4) {
+.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking):not(.rentabilidad-mes__tabla--rotacion) th:nth-child(4) {
   width: 24%;
+}
+
+.rentabilidad-mes__tabla--rotacion {
+  min-width: 50rem;
+}
+
+.rentabilidad-mes__tabla--rotacion th:first-child {
+  width: 32%;
+}
+
+.rentabilidad-mes__tabla--rotacion th:nth-child(2) {
+  width: 20%;
+}
+
+.rentabilidad-mes__tabla--rotacion th:nth-child(3) {
+  width: 2.75rem;
+}
+
+.rentabilidad-mes__tabla--rotacion th:nth-child(4) {
+  width: 14%;
+}
+
+.rentabilidad-mes__tabla--rotacion th:nth-child(5) {
+  width: 13rem;
 }
 
 .rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking) tbody th {

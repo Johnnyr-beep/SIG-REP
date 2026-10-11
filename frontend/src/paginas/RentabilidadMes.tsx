@@ -617,7 +617,7 @@ export function RentabilidadMes() {
             <section className="rentabilidad-mes__panel">
               <h2 className="rentabilidad-mes__titulo-panel">Facturación BIENES</h2>
               <div className="tabla-envoltorio">
-                <table className="tabla tabla--compacta rentabilidad-mes__tabla">
+                <table className="tabla tabla--compacta rentabilidad-mes__tabla rentabilidad-mes__tabla--rotacion">
                   <thead>
                     <tr>
                       <th>ESPECIE</th>
