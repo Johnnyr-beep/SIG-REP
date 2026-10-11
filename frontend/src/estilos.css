@@ -4119,24 +4119,32 @@ textarea.campo__control {
   table-layout: fixed;
 }
 
-.rentabilidad-mes__tabla.rentabilidad-carnes__tabla th:first-child {
+.rentabilidad-mes__tabla.rentabilidad-carnes__tabla--mes {
+  min-width: 75rem;
+}
+
+.rentabilidad-mes__tabla.rentabilidad-carnes__tabla--mes th:first-child {
   width: 24rem;
 }
 
-.rentabilidad-mes__tabla.rentabilidad-carnes__tabla th:nth-child(2) {
+.rentabilidad-mes__tabla.rentabilidad-carnes__tabla--mes th:nth-child(2) {
   width: 7.5rem;
 }
 
-.rentabilidad-mes__tabla.rentabilidad-carnes__tabla th:nth-child(3),
-.rentabilidad-mes__tabla.rentabilidad-carnes__tabla th:nth-child(4) {
+.rentabilidad-mes__tabla.rentabilidad-carnes__tabla--mes th:nth-child(3),
+.rentabilidad-mes__tabla.rentabilidad-carnes__tabla--mes th:nth-child(4) {
   width: 9.5rem;
 }
 
-.rentabilidad-mes__tabla.rentabilidad-carnes__tabla th:nth-child(5) {
+.rentabilidad-mes__tabla.rentabilidad-carnes__tabla--mes th:nth-child(5) {
+  width: 2.75rem;
+}
+
+.rentabilidad-mes__tabla.rentabilidad-carnes__tabla--mes th:nth-child(6) {
   width: 8rem;
 }
 
-.rentabilidad-mes__tabla.rentabilidad-carnes__tabla th:nth-child(6) {
+.rentabilidad-mes__tabla.rentabilidad-carnes__tabla--mes th:nth-child(7) {
   width: 13rem;
 }
 
