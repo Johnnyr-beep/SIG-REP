@@ -212,12 +212,18 @@ export function LineaRentabilidadDiaria({ puntos }: { puntos: PuntoRentabilidadM
   const baseY = y(0);
   const indiceMayor = valores.indexOf(Math.max(...disponibles));
   const indiceMenor = valores.indexOf(Math.min(...disponibles));
-  const indicesPorcentaje = new Set([0, puntos.length - 1, indiceMayor, indiceMenor]);
-  for (let indice = 4; indice < puntos.length - 1; indice += 5) {
-    if (![...indicesPorcentaje].some((existente) => Math.abs(existente - indice) < 3)) {
-      indicesPorcentaje.add(indice);
-    }
-  }
+  const valorMayor = valores[indiceMayor] ?? 0;
+  const valorMenor = valores[indiceMenor] ?? 0;
+  const indiceExtremo =
+    Math.abs(valorMayor) >= Math.abs(valorMenor) ? indiceMayor : indiceMenor;
+  const indicesPorcentaje = new Set([indiceExtremo]);
+  const formatearEje = (valor: number) => {
+    const abreviar = Math.abs(valor) >= 1000;
+    const numeroEje = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 1 }).format(
+      abreviar ? valor / 1000 : valor,
+    );
+    return abreviar ? `${numeroEje} mil%` : `${numeroEje}%`;
+  };
 
   return (
     <figure className="rentabilidad-mes__linea">
@@ -240,7 +246,7 @@ export function LineaRentabilidadDiaria({ puntos }: { puntos: PuntoRentabilidadM
                 className="rentabilidad-mes__guia"
               />
               <text x={margen.izquierda - 6} y={posicion + 4} textAnchor="end" className="rentabilidad-mes__eje">
-                {valor.toFixed(0)}%
+                {formatearEje(valor)}
               </text>
             </g>
           );
@@ -267,15 +273,29 @@ export function LineaRentabilidadDiaria({ puntos }: { puntos: PuntoRentabilidadM
         {Array.from(indicesPorcentaje).map((indice) => {
           const valor = valores[indice];
           if (valor === null || valor === undefined) return null;
+          const etiqueta = `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 1 }).format(valor)} %`;
+          const posicion = x(indice);
+          const anclaje =
+            posicion <= margen.izquierda + 28
+              ? "start"
+              : posicion >= ancho - margen.derecha - 28
+                ? "end"
+                : "middle";
           return (
             <text
               key={`porcentaje-${indice}`}
-              x={x(indice)}
-              y={Math.max(margen.arriba + 10, y(valor) - 7)}
-              textAnchor="middle"
+              x={
+                anclaje === "start"
+                  ? margen.izquierda + 4
+                  : anclaje === "end"
+                    ? ancho - margen.derecha - 4
+                    : posicion
+              }
+              y={Math.max(margen.arriba + 12, Math.min(alto - margen.abajo - 5, y(valor) - 7))}
+              textAnchor={anclaje}
               className="rentabilidad-mes__valor-linea"
             >
-              {`${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 1 }).format(valor)} %`}
+              {etiqueta}
             </text>
           );
         })}
