@@ -7,6 +7,7 @@ todo indicador indefinido viaja como `null`, nunca como `0` (`app.schemas.common
 from __future__ import annotations
 
 from datetime import date
+from typing import Literal
 
 from pydantic import Field
 
@@ -173,11 +174,61 @@ class PuntoRentabilidadMes(EsquemaBase):
     rentabilidad: DecimalStr | None
 
 
+class PuntoRentabilidadCarnes(EsquemaBase):
+    fecha: date
+    kilos: DecimalStr
+    venta: DecimalStr
+    margen_bruto: DecimalStr | None
+    rentabilidad: DecimalStr | None
+    costo_unitario_promedio: DecimalStr | None
+
+
+class FilaMetricasCarnes(EsquemaBase):
+    etiqueta: str
+    kilos: DecimalStr
+    venta: DecimalStr
+    costo: DecimalStr | None
+    margen_bruto: DecimalStr | None
+    rentabilidad: DecimalStr | None
+    costo_unitario_promedio: DecimalStr | None
+    ventas_por_dia: list[DecimalStr]
+
+
+class FilaProductoCarnes(FilaMetricasCarnes):
+    referencia: str | None = None
+
+
+class FilaCategoriaCarnes(FilaMetricasCarnes):
+    productos: list[FilaProductoCarnes]
+
+
+class FilaCompaniaCarnes(FilaMetricasCarnes):
+    compania: int
+    categorias: list[FilaCategoriaCarnes]
+
+
+class RespuestaRentabilidadCarnes(EsquemaBase):
+    empresa: Literal["carnes"] = "carnes"
+    periodo: str
+    companias: list[int]
+    fechas: list[date]
+    venta: DecimalStr
+    kilos: DecimalStr
+    costo: DecimalStr | None
+    margen_bruto: DecimalStr | None
+    rentabilidad: DecimalStr | None
+    costo_unitario_promedio: DecimalStr | None
+    lineas_facturadas: int
+    diario: list[PuntoRentabilidadCarnes]
+    detalle_companias: list[FilaCompaniaCarnes]
+
+
 class FilaEspecieRentabilidadMes(FilaRentabilidadMes):
     comerciales: list[FilaComercialRentabilidadMes]
 
 
 class RespuestaRentabilidadMes(EsquemaBase):
+    empresa: Literal["agropecuaria"] = "agropecuaria"
     periodo: str
     cia: int
     fecha_inicio: date
@@ -222,6 +273,7 @@ class FilaGrupoRentabilidadDia(FilaMatrizRentabilidadDia):
 
 
 class RespuestaRentabilidadDia(EsquemaBase):
+    empresa: Literal["agropecuaria"] = "agropecuaria"
     periodo: str
     cia: int
     fecha_inicio: date

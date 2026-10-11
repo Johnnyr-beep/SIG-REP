@@ -1,14 +1,17 @@
 import { Fragment, useState } from "react";
 
 import { useRentabilidadMes } from "@/api/consultasFinanciero";
+import type { EmpresaRentabilidad } from "@/api/consultasFinanciero";
 import type {
   FilaEspecieRentabilidadMes,
   FilaRentabilidadMes,
   FilaTipoItemRentabilidadMes,
   PuntoRentabilidadMes,
+  RespuestaRentabilidadMes,
 } from "@/api/tipos";
 import { AvisoError, Cargando, Vacio } from "@/componentes/comunes";
 import { useMarcaElegida } from "@/marca/ContextoMarca";
+import { TablaRentabilidadCarnes } from "./TablaRentabilidadCarnes";
 
 export type DireccionOrdenVenta = "desc" | "asc" | null;
 
@@ -438,14 +441,17 @@ function TablaRanking({
 export function RentabilidadMes() {
   const marca = useMarcaElegida();
   const [periodo, setPeriodo] = useState(periodoActual);
+  const [empresa, setEmpresa] = useState<EmpresaRentabilidad>("agropecuaria");
   const [gruposColapsados, setGruposColapsados] = useState<Set<string>>(() => new Set());
   const [centrosExpandidos, setCentrosExpandidos] = useState<Set<string>>(() => new Set());
   const [comercialesExpandidos, setComercialesExpandidos] = useState<Set<string>>(() => new Set());
   const [ordenTipos, setOrdenTipos] = useState<DireccionOrdenVenta>(null);
   const [ordenBienes, setOrdenBienes] = useState<DireccionOrdenVenta>(null);
-  const consulta = useRentabilidadMes(aPeriodoApi(periodo));
+  const consulta = useRentabilidadMes(aPeriodoApi(periodo), empresa);
   const datos = consulta.data;
-  const especiesBienes = datos?.especies ?? [];
+  const datosAgro: RespuestaRentabilidadMes | null =
+    datos?.empresa === "agropecuaria" ? datos as RespuestaRentabilidadMes : null;
+  const especiesBienes = datosAgro?.especies ?? [];
   const ventaBienes = especiesBienes.reduce((suma, fila) => suma + Number(fila.venta), 0);
   const kilosBienes = especiesBienes.reduce((suma, fila) => suma + Number(fila.kilos), 0);
   const costoBienes = especiesBienes.length > 0 && especiesBienes.every((fila) => fila.costo !== null)
@@ -498,6 +504,17 @@ export function RentabilidadMes() {
             onChange={(evento) => setPeriodo(evento.target.value)}
           />
         </label>
+        <label className="campo rentabilidad-mes__periodo">
+          <span>Empresa</span>
+          <select
+            className="campo__control"
+            value={empresa}
+            onChange={(evento) => setEmpresa(evento.target.value as EmpresaRentabilidad)}
+          >
+            <option value="agropecuaria">Agropecuaria · 3</option>
+            <option value="carnes">Carnes · 4, 6 y 7</option>
+          </select>
+        </label>
       </header>
 
       <AvisoError error={consulta.error} />
@@ -506,7 +523,33 @@ export function RentabilidadMes() {
         <Vacio titulo="Sin facturas para este mes" detalle="SIESA no devolvió líneas comerciales en el período elegido." />
       ) : null}
 
-      {datos && datos.lineas_facturadas > 0 ? (
+      {datos?.empresa === "carnes" && datos.lineas_facturadas > 0 ? (
+        <>
+          <section className="rentabilidad-mes__indicadores" aria-label="Indicadores de Carnes">
+            <article className="rentabilidad-mes__indicador rentabilidad-mes__indicador--venta">
+              <strong>{millones(datos.venta)}</strong>
+              <span>Vlr Facturado Carnes</span>
+            </article>
+            <article className="rentabilidad-mes__indicador rentabilidad-mes__indicador--rentabilidad">
+              <strong>{porcentaje(datos.rentabilidad)}</strong>
+              <span>%Rent</span>
+            </article>
+          </section>
+          <section className="rentabilidad-mes__graficos-diarios" aria-label="Evolución diaria de Carnes">
+            <div className="rentabilidad-mes__grafico-diario">
+              <h2 className="rentabilidad-mes__titulo-panel">Rentabilidad diaria</h2>
+              <LineaRentabilidadDiaria puntos={datos.diario} />
+            </div>
+            <div className="rentabilidad-mes__grafico-diario">
+              <h2 className="rentabilidad-mes__titulo-panel">Venta diaria</h2>
+              <BarrasVentaDiaria puntos={datos.diario} />
+            </div>
+          </section>
+          <TablaRentabilidadCarnes datos={datos} modo="mes" />
+        </>
+      ) : null}
+
+      {datos?.empresa === "agropecuaria" && datos.lineas_facturadas > 0 ? (
         <>
           <section className="rentabilidad-mes__indicadores" aria-label="Indicadores del mes">
             <article className="rentabilidad-mes__indicador rentabilidad-mes__indicador--venta">

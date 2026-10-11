@@ -790,6 +790,7 @@ export interface FilaEspecieRentabilidadMes extends FilaRentabilidadMes {
 }
 
 export interface RespuestaRentabilidadMes {
+  empresa: "agropecuaria";
   periodo: string;
   cia: number;
   fecha_inicio: string;
@@ -805,6 +806,55 @@ export interface RespuestaRentabilidadMes {
   especies: FilaEspecieRentabilidadMes[];
   clientes: FilaRentabilidadMes[];
   productos: FilaRentabilidadMes[];
+}
+
+export interface PuntoRentabilidadCarnesDia {
+  fecha: string;
+  venta: string;
+  kilos: string;
+  margen_bruto: string | null;
+  rentabilidad: string | null;
+  costo_unitario_promedio: string | null;
+}
+
+export interface FilaMetricasCarnes {
+  etiqueta: string;
+  kilos: string;
+  venta: string;
+  costo: string | null;
+  margen_bruto: string | null;
+  rentabilidad: string | null;
+  costo_unitario_promedio: string | null;
+  ventas_por_dia: string[];
+}
+
+export interface FilaProductoCarnes extends FilaMetricasCarnes {
+  referencia: string | null;
+}
+
+export interface FilaCategoriaCarnes extends FilaMetricasCarnes {
+  productos: FilaProductoCarnes[];
+}
+
+export interface FilaCompaniaCarnes extends FilaMetricasCarnes {
+  compania: number;
+  categorias: FilaCategoriaCarnes[];
+}
+
+export interface RespuestaRentabilidadCarnes {
+  empresa: "carnes";
+  periodo: string;
+  companias: number[];
+  fechas: string[];
+  venta: string;
+  kilos: string;
+  costo: string | null;
+  margen_bruto: string | null;
+  rentabilidad: string | null;
+  costo_unitario_promedio: string | null;
+  lineas_facturadas: number;
+  diario: PuntoRentabilidadCarnesDia[];
+  detalle_companias: FilaCompaniaCarnes[];
 }
 
 export interface FilaMatrizRentabilidadDia {
@@ -834,6 +884,7 @@ export interface FilaVendedorClaseRentabilidadDia extends FilaRentabilidadVended
 }
 
 export interface RespuestaRentabilidadDia {
+  empresa: "agropecuaria";
   periodo: string;
   cia: number;
   fecha_inicio: string;

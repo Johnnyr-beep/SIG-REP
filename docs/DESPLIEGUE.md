@@ -266,8 +266,9 @@ de versión de Alembic y las demás esperan y encuentran el esquema ya migrado.
 ### Reversión
 
 ```bash
-# Volver a una etiqueta anterior: el CI publica cada imagen también con el SHA
-SIGREP_VERSION=<sha-del-commit-anterior>
+# Volver a una etiqueta anterior: el CI publica cada imagen también con el SHA.
+# Fijar la misma etiqueta en api y web para conservar versiones compatibles.
+SIGREP_IMAGEN_TAG=<sha-del-commit-anterior>
 ```
 
 > **Volver a una imagen anterior NO revierte el esquema.** Diseñe siempre

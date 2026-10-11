@@ -12,6 +12,7 @@ import type {
   RespuestaEstadoResultados,
   RespuestaEstadoResultadosEnVivo,
   RespuestaIndicadoresFinancieros,
+  RespuestaRentabilidadCarnes,
   RespuestaRentabilidadMes,
   RespuestaRentabilidadDia,
   RespuestaSituacionFinancieraEnVivo,
@@ -22,24 +23,26 @@ export interface FiltrosFinanciero {
   cia?: number | null;
 }
 
-export function useRentabilidadMes(periodo: string, habilitado = true) {
+export type EmpresaRentabilidad = "agropecuaria" | "carnes";
+
+export function useRentabilidadMes(periodo: string, empresa: EmpresaRentabilidad, habilitado = true) {
   return useQuery({
-    queryKey: ["financiero", "rentabilidad-mes", periodo],
+    queryKey: ["financiero", "rentabilidad-mes", periodo, empresa],
     queryFn: () =>
-      peticion<RespuestaRentabilidadMes>("/financiero/rentabilidad-mes", {
-        parametros: { periodo },
+      peticion<RespuestaRentabilidadMes | RespuestaRentabilidadCarnes>("/financiero/rentabilidad-mes", {
+        parametros: { periodo, empresa },
       }),
     enabled: habilitado && /^\d{6}$/.test(periodo),
     staleTime: 60_000,
   });
 }
 
-export function useRentabilidadDia(periodo: string, habilitado = true) {
+export function useRentabilidadDia(periodo: string, empresa: EmpresaRentabilidad, habilitado = true) {
   return useQuery({
-    queryKey: ["financiero", "rentabilidad-dia", periodo],
+    queryKey: ["financiero", "rentabilidad-dia", periodo, empresa],
     queryFn: () =>
-      peticion<RespuestaRentabilidadDia>("/financiero/rentabilidad-dia", {
-        parametros: { periodo },
+      peticion<RespuestaRentabilidadDia | RespuestaRentabilidadCarnes>("/financiero/rentabilidad-dia", {
+        parametros: { periodo, empresa },
       }),
     enabled: habilitado && /^\d{6}$/.test(periodo),
     staleTime: 60_000,

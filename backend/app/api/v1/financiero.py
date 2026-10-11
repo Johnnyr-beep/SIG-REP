@@ -14,10 +14,13 @@ conectado a esa base.
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
 
+from app.application.services.financiero_rentabilidad_carnes_service import (
+    calcular_rentabilidad_carnes_mes,
+)
 from app.application.services.financiero_rentabilidad_dia_service import (
     calcular_rentabilidad_dia,
 )
@@ -58,6 +61,7 @@ from app.schemas.financiero import (
     RespuestaEstadoResultados,
     RespuestaEstadoResultadosEnVivo,
     RespuestaIndicadoresFinancieros,
+    RespuestaRentabilidadCarnes,
     RespuestaRentabilidadDia,
     RespuestaRentabilidadMes,
     RespuestaSituacionFinancieraEnVivo,
@@ -82,6 +86,11 @@ PeriodoQuery = Query(
     description="Año y mes contable AAAAMM, tal como lo entrega SIESA.",
 )
 CiaQuery = Query(default=None, description="Compañía; sin ella se suman todas las cargadas.")
+EmpresaRentabilidad = Literal["agropecuaria", "carnes"]
+EmpresaRentabilidadQuery = Query(
+    default="agropecuaria",
+    description="Agropecuaria (cia 3) o Carnes (consolidado cias 4, 6 y 7).",
+)
 
 #: Igual que el resto de reportes: RBAC declarado endpoint por endpoint,
 #: nunca heredado por prefijo (ver `app.api.v1.__init__`).
@@ -96,37 +105,45 @@ def _parametros(periodo: str, cia: int | None) -> ParametrosCalculoFinanciero:
 
 @router.get(
     "/rentabilidad-mes",
-    response_model=RespuestaRentabilidadMes,
-    summary="Rentabilidad mensual operativa de Agropecuaria (módulo Grupo)",
+    response_model=RespuestaRentabilidadMes | RespuestaRentabilidadCarnes,
+    summary="Rentabilidad mensual operativa de Agropecuaria o Carnes",
 )
 def rentabilidad_mes(
     usuario: UsuarioFinancieroDep,
     unidad: UnidadDep,
+    sesion: SesionDep,
     periodo: str = PeriodoQuery,
-) -> RespuestaRentabilidadMes:
+    empresa: EmpresaRentabilidad = EmpresaRentabilidadQuery,
+) -> RespuestaRentabilidadMes | RespuestaRentabilidadCarnes:
     del usuario
     if unidad != "grupo-santacruz":
         raise ErrorAutorizacion(
             "Este módulo de rentabilidad está disponible solo en Grupo Santacruz."
         )
+    if empresa == "carnes":
+        return calcular_rentabilidad_carnes_mes(periodo, sesion)
     return calcular_rentabilidad_mes(periodo)
 
 
 @router.get(
     "/rentabilidad-dia",
-    response_model=RespuestaRentabilidadDia,
-    summary="Rentabilidad diaria operativa de Agropecuaria (módulo Grupo)",
+    response_model=RespuestaRentabilidadDia | RespuestaRentabilidadCarnes,
+    summary="Rentabilidad diaria operativa de Agropecuaria o Carnes",
 )
 def rentabilidad_dia(
     usuario: UsuarioFinancieroDep,
     unidad: UnidadDep,
+    sesion: SesionDep,
     periodo: str = PeriodoQuery,
-) -> RespuestaRentabilidadDia:
+    empresa: EmpresaRentabilidad = EmpresaRentabilidadQuery,
+) -> RespuestaRentabilidadDia | RespuestaRentabilidadCarnes:
     del usuario
     if unidad != "grupo-santacruz":
         raise ErrorAutorizacion(
             "Este módulo de rentabilidad está disponible solo en Grupo Santacruz."
         )
+    if empresa == "carnes":
+        return calcular_rentabilidad_carnes_mes(periodo, sesion)
     return calcular_rentabilidad_dia(periodo)
 
 
