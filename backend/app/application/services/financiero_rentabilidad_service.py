@@ -230,12 +230,12 @@ def calcular_rentabilidad_mes(
         (_fila(etiqueta, acumulado, total.venta) for etiqueta, acumulado in clientes.items()),
         key=lambda fila: fila.venta,
         reverse=True,
-    )[:10]
+    )[:20]
     ranking_productos = sorted(
         (_fila(etiqueta, acumulado, total.venta) for etiqueta, acumulado in productos.items()),
         key=lambda fila: fila.venta,
         reverse=True,
-    )[:10]
+    )
 
     return RespuestaRentabilidadMes(
         periodo=periodo,

@@ -180,3 +180,28 @@ def test_rentabilidad_mensual_anida_productos_bajo_su_tipo_comercial() -> None:
     assert [fila.etiqueta for fila in comerciales["SUBPRODUCTO"].productos] == [
         "RES-02 · Producto RES-02"
     ]
+
+
+def test_rentabilidad_mensual_muestra_todos_los_productos_y_20_clientes() -> None:
+    filas = [
+        _linea(
+            tipo_item="0001 - BIENES",
+            especie="RES",
+            tipo_comercial="CORTE",
+            cliente=f"CLIENTE {indice:02d}",
+            referencia=f"RES-{indice:02d}",
+            venta=str(1000 - indice),
+            costo="500",
+            kilos="1",
+        )
+        for indice in range(25)
+    ]
+
+    resultado = calcular_rentabilidad_mes("202609", fuente=_FuenteSimulada(filas))
+
+    assert len(resultado.clientes) == 20
+    assert resultado.clientes[0].etiqueta == "CLIENTE 00"
+    assert resultado.clientes[-1].etiqueta == "CLIENTE 19"
+    assert len(resultado.productos) == 25
+    assert resultado.productos[0].etiqueta == "RES-00 · Producto RES-00"
+    assert resultado.productos[-1].etiqueta == "RES-24 · Producto RES-24"
