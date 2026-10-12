@@ -3966,6 +3966,12 @@ textarea.campo__control {
   min-width: 8rem;
 }
 
+.rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking).rentabilidad-dia__tabla.rentabilidad-carnes__tabla--dia th:nth-child(2),
+.rentabilidad-dia__tabla.rentabilidad-carnes__tabla--dia td:nth-child(2) {
+  width: 6.5rem;
+  min-width: 6.5rem;
+}
+
 .rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking).rentabilidad-dia__tabla th:nth-child(n + 3),
 .rentabilidad-dia__tabla td:nth-child(n + 3) {
   width: 6.5rem;

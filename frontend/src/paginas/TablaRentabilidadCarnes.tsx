@@ -109,7 +109,7 @@ export function TablaRentabilidadCarnes({
         Consolidado de 4, 6 y 7; detalle expandible por compañía, categoría y producto.
       </p>
       <div className="tabla-envoltorio rentabilidad-mes__envoltorio-metricas">
-        <table className={`tabla tabla--compacta rentabilidad-mes__tabla rentabilidad-carnes__tabla rentabilidad-carnes__tabla--${modo}`}>
+        <table className={`tabla tabla--compacta rentabilidad-mes__tabla rentabilidad-carnes__tabla rentabilidad-carnes__tabla--${modo}${modo === "dia" ? " rentabilidad-dia__tabla" : ""}`}>
           <thead>
             <tr>
               <th>Compañía / categoría / producto</th>
