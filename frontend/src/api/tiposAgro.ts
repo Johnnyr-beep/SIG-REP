@@ -673,8 +673,8 @@ export type BloqueDetalleMensual =
   | "agro_distribucion"
   | "nacional";
 
-/** Categorías A–F que se asignan a los vendedores del bloque comercial. */
-export type CategoriaMensual = "A" | "B" | "C" | "D" | "E" | "F";
+/** Categorías A–F y Z que se asignan a los vendedores del bloque comercial. */
+export type CategoriaMensual = "A" | "B" | "C" | "D" | "E" | "F" | "Z";
 
 /** Una fila de presupuesto mensual de un bloque de detalle. */
 export interface DetalleMensual {
@@ -761,6 +761,18 @@ export interface BloqueMensualResumen {
   filas: DetalleMensual[];
 }
 
+export interface ResumenEjecutivoPresupuesto {
+  gerencia_comercial: string;
+  oficina: string;
+  distribucion: string;
+  servicios: string;
+  gran_total: string;
+  negocios_especiales: string;
+  anio: number;
+  total_ppto_anual: string;
+  meses_con_presupuesto: number;
+}
+
 /**
  * El presupuesto mensual completo: los cuatro bloques y el total.
  *
@@ -772,6 +784,7 @@ export interface ResumenPresupuestoMensual {
   bloques: BloqueMensualResumen[];
   total_monto: string;
   total_kilos: string;
+  resumen_ejecutivo: ResumenEjecutivoPresupuesto;
 }
 
 // ── Importación configurable del Excel comercial ──────────────────────────────

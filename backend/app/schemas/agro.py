@@ -640,7 +640,7 @@ class MapeoMensualEntrada(BaseModel):
     )
     vendedor_clave: str | None = Field(default=None, max_length=60)
     cliente_clave: str | None = Field(default=None, max_length=60)
-    categoria: str | None = Field(default=None, pattern=r"^[A-F]$")
+    categoria: str | None = Field(default=None, pattern=r"^[A-FZ]$")
     activo: bool = True
 
 
@@ -672,7 +672,7 @@ class DetalleMensualEntrada(BaseModel):
     )
     cliente_clave: str | None = Field(default=None, max_length=60)
     vendedor_clave: str | None = Field(default=None, max_length=60)
-    categoria: str | None = Field(default=None, pattern=r"^[A-F]$")
+    categoria: str | None = Field(default=None, pattern=r"^[A-FZ]$")
     cliente_etiqueta: str | None = Field(default=None, max_length=200)
     vendedor_etiqueta: str | None = Field(default=None, max_length=200)
     monto: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
@@ -702,6 +702,20 @@ class BloqueMensualSalida(EsquemaBase):
     filas: list[DetalleMensualSalida] = Field(default_factory=list)
 
 
+class ResumenEjecutivoPresupuestoSalida(EsquemaBase):
+    """Estructura ejecutiva mensual y total anual calculados desde los bloques."""
+
+    gerencia_comercial: DecimalStr
+    oficina: DecimalStr
+    distribucion: DecimalStr
+    servicios: DecimalStr
+    gran_total: DecimalStr
+    negocios_especiales: DecimalStr
+    anio: int
+    total_ppto_anual: DecimalStr
+    meses_con_presupuesto: int
+
+
 class ResumenPresupuestoMensualSalida(EsquemaBase):
     """El presupuesto mensual completo: los cuatro bloques y el total.
 
@@ -713,6 +727,7 @@ class ResumenPresupuestoMensualSalida(EsquemaBase):
     bloques: list[BloqueMensualSalida]
     total_monto: DecimalStr
     total_kilos: DecimalStr
+    resumen_ejecutivo: ResumenEjecutivoPresupuestoSalida
 
 
 # ── Importación configurable del Excel comercial ──────────────────────────────
@@ -749,7 +764,7 @@ class CanalMapeoMensualEntrada(BaseModel):
     canal: str = Field(min_length=1, max_length=120, examples=["SUPER MAYORISTA"])
     vendedor_clave: str = Field(min_length=1, max_length=60)
     cliente_clave: str = Field(min_length=1, max_length=60)
-    categoria: str = Field(pattern=r"^[A-F]$")
+    categoria: str = Field(pattern=r"^[A-FZ]$")
     activo: bool = True
 
 

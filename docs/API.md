@@ -512,6 +512,22 @@ meses después.
 es lo mismo que un presupuesto de cero: aquel es una afirmación del negocio y
 este es la ausencia de la parametrización.
 
+### Presupuesto mensual ejecutivo
+
+`GET /agro/presupuesto-mensual?periodo=YYYY-MM` conserva los cuatro bloques
+capturables y añade `resumen_ejecutivo`. Este resumen deriva los renglones de la
+estructura de gerencia: Comercial excluye los vendedores de Oficina; Oficina
+suma esos vendedores y el bloque de Agro Distribución; Distribución suma ambos;
+Gran Total suma Distribución y Servicios. Negocios Especiales suma, dentro del
+bloque Nacional, solo PriceSmart, Sodexo, Éxito e Inversisa.
+
+`total_ppto_anual` suma, para cada mes capturado del año, Gran Total más Negocios
+Especiales. `meses_con_presupuesto` informa cuántos meses de los doce tienen al
+menos una fila mensual; el total anual no supone valores para meses ausentes.
+La categoría `Z` se admite junto con A–F en el bloque Comercial. Ninguno de
+estos cálculos suma las cuatro dimensiones alternativas de
+`/agro/presupuesto`.
+
 ### Calendario
 
 ```

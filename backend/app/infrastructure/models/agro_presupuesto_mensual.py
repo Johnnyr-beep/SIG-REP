@@ -76,8 +76,8 @@ BLOQUES_PRESUPUESTO_MENSUAL: tuple[str, ...] = (
     "nacional",
 )
 
-#: Categorías A–F que se asignan a los vendedores del bloque comercial.
-CATEGORIAS_MENSUAL: tuple[str, ...] = ("A", "B", "C", "D", "E", "F")
+#: Categorías A–F y Z que se asignan a los vendedores del bloque comercial.
+CATEGORIAS_MENSUAL: tuple[str, ...] = ("A", "B", "C", "D", "E", "F", "Z")
 
 _CHECK_BLOQUE = " OR ".join(f"bloque = '{b}'" for b in BLOQUES_PRESUPUESTO_MENSUAL)
 _CHECK_CATEGORIA = " OR ".join(f"categoria = '{c}'" for c in CATEGORIAS_MENSUAL)

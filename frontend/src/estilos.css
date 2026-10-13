@@ -981,6 +981,34 @@ textarea {
   overflow-x: auto;
 }
 
+.agro-presupuesto__tabla-ejecutiva {
+  min-width: 64rem;
+  table-layout: fixed;
+}
+
+.agro-presupuesto__tabla-ejecutiva th:first-child {
+  width: 16rem;
+  text-align: left;
+}
+
+.agro-presupuesto__tabla-ejecutiva th:nth-child(2) {
+  width: 34rem;
+  text-align: left;
+}
+
+.agro-presupuesto__tabla-ejecutiva th:nth-child(3) {
+  width: 14rem;
+}
+
+.agro-presupuesto__tabla-ejecutiva td:nth-child(2) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.agro-presupuesto__tabla-ejecutiva td.numero {
+  white-space: nowrap;
+}
+
 /* La matriz y la tabla de cumplimiento no caben en una pantalla: se desplazan
    dentro de su propio contenedor, nunca arrastrando el cuerpo de la página. */
 .tabla-envoltorio--alta {

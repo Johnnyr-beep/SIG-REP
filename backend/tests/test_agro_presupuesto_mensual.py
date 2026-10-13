@@ -121,6 +121,95 @@ def test_resumen_con_periodo_vacio_devuelve_ceros(
     assert len(resumen.bloques) == 4
 
 
+def test_resumen_ejecutivo_aplica_las_particiones_de_la_imagen(
+    estructura: None,
+    sesion: Session,
+) -> None:
+    svc = _servicio(sesion)
+    comercial = [
+        ("GERENCIA", "GERENCIA COMERCIAL", "A", "100"),
+        ("BELKIS", "BELKIS", "Z", "200"),
+        ("INVERSIONES SERRANO", "INVERSIONES SERRANO", "F", "300"),
+    ]
+    for clave, etiqueta, categoria, monto in comercial:
+        svc.guardar_detalle(
+            PERIODO,
+            DetalleMensualEntrada(
+                bloque="commercial",
+                vendedor_clave=clave,
+                vendedor_etiqueta=etiqueta,
+                cliente_clave=f"CLIENTE-{clave}",
+                categoria=categoria,
+                monto=Decimal(monto),
+                kilos=Decimal("0"),
+            ),
+        )
+    svc.guardar_detalle(
+        PERIODO,
+        DetalleMensualEntrada(
+            bloque="agro_distribucion",
+            cliente_clave="CLIENTE-AGRO",
+            monto=Decimal("400"),
+            kilos=Decimal("0"),
+        ),
+    )
+    svc.guardar_servicio(
+        PERIODO,
+        ServicioMensualEntrada(monto=Decimal("500"), kilos=Decimal("0")),
+    )
+    svc.guardar_detalle(
+        PERIODO,
+        DetalleMensualEntrada(
+            bloque="nacional",
+            cliente_clave="CLIENTE-ESPECIAL",
+            cliente_etiqueta="Almacenes Éxito",
+            monto=Decimal("600"),
+            kilos=Decimal("0"),
+        ),
+    )
+    svc.guardar_detalle(
+        PERIODO,
+        DetalleMensualEntrada(
+            bloque="nacional",
+            cliente_clave="OTRO-CLIENTE",
+            cliente_etiqueta="Otro cliente",
+            monto=Decimal("700"),
+            kilos=Decimal("0"),
+        ),
+    )
+    svc.guardar_detalle(
+        PERIODO_OTRO,
+        DetalleMensualEntrada(
+            bloque="commercial",
+            vendedor_clave="GERENCIA",
+            cliente_clave="CLIENTE-SEP",
+            categoria="A",
+            monto=Decimal("10"),
+            kilos=Decimal("0"),
+        ),
+    )
+    svc.guardar_detalle(
+        PERIODO_OTRO,
+        DetalleMensualEntrada(
+            bloque="nacional",
+            cliente_clave="SODEXO",
+            monto=Decimal("20"),
+            kilos=Decimal("0"),
+        ),
+    )
+
+    ejecutivo = svc.resumen(PERIODO).resumen_ejecutivo
+
+    assert ejecutivo.gerencia_comercial == Decimal("100")
+    assert ejecutivo.oficina == Decimal("900")
+    assert ejecutivo.distribucion == Decimal("1000")
+    assert ejecutivo.servicios == Decimal("500")
+    assert ejecutivo.gran_total == Decimal("1500")
+    assert ejecutivo.negocios_especiales == Decimal("600")
+    assert ejecutivo.total_ppto_anual == Decimal("2130")
+    assert ejecutivo.meses_con_presupuesto == 2
+
+
 # ── Vendedor fijo en agro_distribucion y nacional ─────────────────────────────
 
 
@@ -195,6 +284,22 @@ def test_commercial_requiere_categoria(
                 kilos=Decimal("0"),
             ),
         )
+
+
+def test_commercial_acepta_categoria_z(estructura: None, sesion: Session) -> None:
+    salida = _servicio(sesion).guardar_detalle(
+        PERIODO,
+        DetalleMensualEntrada(
+            bloque="commercial",
+            vendedor_clave="LEON",
+            cliente_clave="CLIENTE-Z",
+            categoria="Z",
+            monto=Decimal("100000"),
+            kilos=Decimal("0"),
+        ),
+    )
+
+    assert salida.categoria == "Z"
 
 
 def test_agro_distribucion_no_admite_categoria(

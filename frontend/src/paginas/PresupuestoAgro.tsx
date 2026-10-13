@@ -50,6 +50,7 @@ import type {
   MapeoMensual,
   MetaAgro,
   MiembroDimensionAgro,
+  ResumenEjecutivoPresupuesto,
   ResultadoImportacionComercial,
 } from "@/api/tiposAgro";
 import {
@@ -106,10 +107,84 @@ const BLOQUES_MENSUAL: readonly {
   { valor: "nacional", etiqueta: "Nacional", esDetalle: true, vendedorFijo: "JUAN SIERRA" },
 ];
 
-const CATEGORIAS_MENSUAL: readonly string[] = ["A", "B", "C", "D", "E", "F"];
+const CATEGORIAS_MENSUAL: readonly string[] = ["A", "B", "C", "D", "E", "F", "Z"];
 
 function etiquetaBloque(bloque: string): string {
   return BLOQUES_MENSUAL.find((b) => b.valor === bloque)?.etiqueta ?? bloque;
+}
+
+function TablaResumenEjecutivo({
+  periodo,
+  resumen,
+}: {
+  periodo: string;
+  resumen: ResumenEjecutivoPresupuesto;
+}) {
+  const mes = periodoLargo(periodo).split(" ")[0]?.toLocaleUpperCase("es-CO") ?? periodo;
+  const filas = [
+    {
+      concepto: "TOTAL GERENCIA COMERCIAL",
+      base: "Ítems BIENES · categorías A–F–Z · excluye AGROPECUARIA, BELKIS e INVERSIONES SERRANO",
+      monto: resumen.gerencia_comercial,
+    },
+    {
+      concepto: "TOTAL OFICINA",
+      base: "Ítems BIENES · vendedores AGROPECUARIA, BELKIS e INVERSIONES SERRANO",
+      monto: resumen.oficina,
+    },
+    {
+      concepto: "TOTAL DISTRIBUCIÓN",
+      base: "Suma de Gerencia Comercial y Oficina",
+      monto: resumen.distribucion,
+    },
+    {
+      concepto: "TOTAL SERVICIOS",
+      base: "Ítem Servicios",
+      monto: resumen.servicios,
+    },
+    {
+      concepto: "GRAN TOTAL",
+      base: "Suma de Distribución y Servicios",
+      monto: resumen.gran_total,
+    },
+    {
+      concepto: "NEGOCIOS ESPECIALES",
+      base: "Juan Sierra · PriceSmart, Sodexo, Éxito e Inversisa",
+      monto: resumen.negocios_especiales,
+    },
+  ];
+
+  return (
+    <Tarjeta titulo={`PPTO ${mes}`} sinRelleno>
+      <div className="tabla-envoltorio">
+        <table className="tabla tabla--compacta agro-presupuesto__tabla-ejecutiva">
+          <thead>
+            <tr>
+              <th scope="col">RUBRO</th>
+              <th scope="col">BASE DE CÁLCULO</th>
+              <th scope="col" className="numero">PPTO {mes}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((fila) => (
+              <tr key={fila.concepto}>
+                <th scope="row">{fila.concepto}</th>
+                <td>{fila.base}</td>
+                <td className="numero">{dinero(fila.monto)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="fila-total">
+              <th scope="row">TOTAL PPTO {resumen.anio}</th>
+              <td>{`Gran Total + Negocios Especiales · ${resumen.meses_con_presupuesto}/12 meses con presupuesto`}</td>
+              <td className="numero">{dinero(resumen.total_ppto_anual)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </Tarjeta>
+  );
 }
 
 // ── Componente principal: pestañas ───────────────────────────────────────────
@@ -562,39 +637,7 @@ function VistaMensual() {
 
       {data ? (
         <>
-          {/* El total mensual es la suma de los cuatro bloques. Es lo que
-              distingue esta vista de la de dimensiones: aquí sumar tiene
-              sentido, porque cada bloque es una meta distinta. */}
-          <Tarjeta
-            titulo={`Total mensual · ${periodoLargo(periodo)}`}
-            descripcion={
-              <>
-                La suma de los cuatro bloques:{" "}
-                <strong>{dinero(data.total_monto)}</strong> ·{" "}
-                {kilos(data.total_kilos)}. Cada bloque es una meta independiente;
-                por eso aquí sí se suman, a diferencia del presupuesto por
-                dimensiones.
-              </>
-            }
-          >
-            <div className="fila fila--envolvente">
-              {data.bloques.map((bloque) => (
-                <div
-                  key={bloque.bloque}
-                  className="tarjeta tarjeta--simple"
-                  style={{ flex: "1 1 200px" }}
-                >
-                  <p className="tenue" style={{ fontWeight: 600 }}>
-                    {etiquetaBloque(bloque.bloque)}
-                  </p>
-                  <p style={{ fontSize: "1.25rem", fontWeight: 700 }}>
-                    {dinero(bloque.total_monto)}
-                  </p>
-                  <p className="tenue">{kilos(bloque.total_kilos)}</p>
-                </div>
-              ))}
-            </div>
-          </Tarjeta>
+          <TablaResumenEjecutivo periodo={periodo} resumen={data.resumen_ejecutivo} />
 
           {/* Cada bloque se captura y se muestra de forma distinta. */}
           {data.bloques.map((bloque) => {

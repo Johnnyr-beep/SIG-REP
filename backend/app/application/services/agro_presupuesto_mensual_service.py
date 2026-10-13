@@ -33,6 +33,7 @@ propias tablas (`agro_ppto_mensual_*`) y sus propias rutas
 
 from __future__ import annotations
 
+import unicodedata
 from collections.abc import Sequence
 from decimal import Decimal
 
@@ -70,6 +71,7 @@ from app.schemas.agro import (
     MapeoMensualEntrada,
     MapeoMensualSalida,
     ResultadoImportacionComercial,
+    ResumenEjecutivoPresupuestoSalida,
     ResumenPresupuestoMensualSalida,
     ServicioMensualEntrada,
     ServicioMensualSalida,
@@ -78,6 +80,8 @@ from app.schemas.agro import (
 logger = obtener_logger(__name__)
 
 CERO = Decimal("0")
+VENDEDORES_OFICINA = ("AGROPECUARIA", "BELKIS", "INVERSIONES SERRANO")
+CLIENTES_NEGOCIOS_ESPECIALES = ("PRICESMART", "SODEXO", "EXITO", "INVERSISA")
 
 #: Vendedor fijo del bloque agro distribución.
 VENDEDOR_AGRO_DISTRIBUCION = "AGROPECUARIA"
@@ -146,12 +150,121 @@ class AgroPresupuestoMensualService:
             total_monto += monto
             total_kilos += kilos
 
+        resumen_ejecutivo = self._resumen_ejecutivo(periodo, bloques)
+
         return ResumenPresupuestoMensualSalida(
             periodo=periodo.codigo,
             bloques=bloques,
             total_monto=total_monto,
             total_kilos=total_kilos,
+            resumen_ejecutivo=resumen_ejecutivo,
         )
+
+    def _resumen_ejecutivo(
+        self, periodo: Periodo, bloques: list[BloqueMensualSalida]
+    ) -> ResumenEjecutivoPresupuestoSalida:
+        """Calcula los rubros del libro sin alterar los cuatro bloques fuente."""
+        por_bloque = {bloque.bloque: bloque for bloque in bloques}
+        comercial = por_bloque["commercial"]
+        oficina = por_bloque["agro_distribucion"]
+        servicio = por_bloque["servicio"]
+        nacional = por_bloque["nacional"]
+
+        filas_gerencia = [fila for fila in comercial.filas if not self._es_vendedor_oficina(fila)]
+        filas_oficina = [fila for fila in comercial.filas if self._es_vendedor_oficina(fila)]
+        negocios_especiales = sum(
+            (Decimal(fila.monto) for fila in nacional.filas if self._es_cliente_especial(fila)),
+            start=CERO,
+        )
+
+        gerencia_comercial = sum((Decimal(fila.monto) for fila in filas_gerencia), start=CERO)
+        total_oficina = sum((Decimal(fila.monto) for fila in filas_oficina), start=CERO) + Decimal(
+            oficina.total_monto
+        )
+        distribucion = gerencia_comercial + total_oficina
+        servicios = Decimal(servicio.total_monto)
+        gran_total = distribucion + servicios
+
+        total_anual, meses_con_presupuesto = self._total_anual(periodo.anio)
+
+        return ResumenEjecutivoPresupuestoSalida(
+            gerencia_comercial=gerencia_comercial,
+            oficina=total_oficina,
+            distribucion=distribucion,
+            servicios=servicios,
+            gran_total=gran_total,
+            negocios_especiales=negocios_especiales,
+            anio=periodo.anio,
+            total_ppto_anual=total_anual,
+            meses_con_presupuesto=meses_con_presupuesto,
+        )
+
+    def _total_anual(self, anio: int) -> tuple[Decimal, int]:
+        periodos = list(
+            self._sesion.execute(
+                select(Periodo.id, Periodo.mes).where(Periodo.anio == anio)
+            ).tuples()
+        )
+        meses_por_periodo = dict(periodos)
+        if not meses_por_periodo:
+            return CERO, 0
+
+        detalles = list(
+            self._sesion.execute(
+                select(AgroPptoMensualDetalle).where(
+                    AgroPptoMensualDetalle.periodo_id.in_(meses_por_periodo)
+                )
+            ).scalars()
+        )
+        servicios = list(
+            self._sesion.execute(
+                select(AgroPptoMensualServicio).where(
+                    AgroPptoMensualServicio.periodo_id.in_(meses_por_periodo)
+                )
+            ).scalars()
+        )
+
+        meses_cargados = {meses_por_periodo[fila.periodo_id] for fila in detalles}
+        meses_cargados.update(meses_por_periodo[fila.periodo_id] for fila in servicios)
+        gerencia = CERO
+        oficina = CERO
+        servicios_total = sum((Decimal(fila.monto) for fila in servicios), start=CERO)
+        especiales = CERO
+
+        for fila in detalles:
+            monto = Decimal(fila.monto)
+            if fila.bloque == "commercial":
+                if self._es_vendedor_oficina(fila):
+                    oficina += monto
+                else:
+                    gerencia += monto
+            elif fila.bloque == "agro_distribucion":
+                oficina += monto
+            elif fila.bloque == "nacional" and self._es_cliente_especial(fila):
+                especiales += monto
+
+        total = gerencia + oficina + servicios_total + especiales
+        return total, len(meses_cargados)
+
+    @classmethod
+    def _es_vendedor_oficina(cls, fila: DetalleMensualSalida | AgroPptoMensualDetalle) -> bool:
+        texto = cls._texto_estructura(fila.vendedor_clave, fila.vendedor_etiqueta)
+        return any(vendedor in texto for vendedor in VENDEDORES_OFICINA)
+
+    @classmethod
+    def _es_cliente_especial(cls, fila: DetalleMensualSalida | AgroPptoMensualDetalle) -> bool:
+        texto = cls._texto_estructura(fila.cliente_clave, fila.cliente_etiqueta)
+        return any(cliente in texto for cliente in CLIENTES_NEGOCIOS_ESPECIALES)
+
+    @staticmethod
+    def _texto_estructura(*valores: str | None) -> str:
+        texto = " ".join(valor for valor in valores if valor)
+        sin_acentos = "".join(
+            caracter
+            for caracter in unicodedata.normalize("NFKD", texto)
+            if not unicodedata.combining(caracter)
+        )
+        return " ".join(sin_acentos.upper().split())
 
     # ── Mapeo de asignaciones ─────────────────────────────────────────────────
 
@@ -402,7 +515,7 @@ class AgroPresupuestoMensualService:
                 )
         elif bloque == "commercial":
             if categoria is None:
-                raise ErrorValidacion("El bloque comercial requiere una categoría (A–F).")
+                raise ErrorValidacion("El bloque comercial requiere una categoría (A–F–Z).")
         else:
             if categoria is not None:
                 raise ErrorValidacion(
@@ -414,7 +527,9 @@ class AgroPresupuestoMensualService:
     def _validar_categoria_bloque(bloque: str, categoria: str | None) -> None:
         """En el detalle, la categoría solo aplica al bloque comercial."""
         if bloque == "commercial" and categoria is None:
-            raise ErrorValidacion("El bloque comercial requiere una categoría (A–F) en cada fila.")
+            raise ErrorValidacion(
+                "El bloque comercial requiere una categoría (A–F–Z) en cada fila."
+            )
         if bloque != "commercial" and categoria is not None:
             raise ErrorValidacion(
                 f"El bloque {bloque!r} no admite categoría: solo el bloque "
