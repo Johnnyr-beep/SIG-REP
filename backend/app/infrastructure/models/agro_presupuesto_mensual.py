@@ -238,6 +238,44 @@ class AgroPptoMensualServicio(Base, TimestampMixin):
         return f"<AgroPptoMensualServicio periodo={self.periodo_id} monto={self.monto}>"
 
 
+class AgroPptoMensualEjecutivo(Base, TimestampMixin):
+    """Captura directa de los cuatro importes de la tabla ejecutiva."""
+
+    __tablename__ = "agro_ppto_mensual_ejecutivo"
+    __table_args__ = (
+        UniqueConstraint("periodo_id", name="uq_agro_ppto_mensual_ejecutivo_periodo"),
+        CheckConstraint(
+            "gerencia_comercial >= 0",
+            name="ck_agro_ppto_mensual_ejecutivo_gerencia_no_negativa",
+        ),
+        CheckConstraint("oficina >= 0", name="ck_agro_ppto_mensual_ejecutivo_oficina_no_negativa"),
+        CheckConstraint(
+            "servicios >= 0", name="ck_agro_ppto_mensual_ejecutivo_servicios_no_negativos"
+        ),
+        CheckConstraint(
+            "negocios_especiales >= 0",
+            name="ck_agro_ppto_mensual_ejecutivo_especiales_no_negativos",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    periodo_id: Mapped[int] = mapped_column(ForeignKey("periodos.id"), nullable=False, index=True)
+    gerencia_comercial: Mapped[Decimal] = mapped_column(
+        Dinero, nullable=False, default=Decimal("0.00")
+    )
+    oficina: Mapped[Decimal] = mapped_column(Dinero, nullable=False, default=Decimal("0.00"))
+    servicios: Mapped[Decimal] = mapped_column(Dinero, nullable=False, default=Decimal("0.00"))
+    negocios_especiales: Mapped[Decimal] = mapped_column(
+        Dinero, nullable=False, default=Decimal("0.00")
+    )
+    actualizado_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
+
+    periodo: Mapped[Periodo] = relationship(lazy="joined")
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<AgroPptoMensualEjecutivo periodo={self.periodo_id}>"
+
+
 class AgroPptoMensualCanalMapeo(Base, TimestampMixin):
     """Mapeo de canal del Excel anual → vendedor / cliente / categoría A–F.
 

@@ -515,11 +515,26 @@ este es la ausencia de la parametrización.
 ### Presupuesto mensual ejecutivo
 
 `GET /agro/presupuesto-mensual?periodo=YYYY-MM` conserva los cuatro bloques
-capturables y añade `resumen_ejecutivo`. Este resumen deriva los renglones de la
-estructura de gerencia: Comercial excluye los vendedores de Oficina; Oficina
+heredados y añade `resumen_ejecutivo`. Si ya existe captura ejecutiva directa,
+esta tiene prioridad; en meses antiguos el resumen deriva los renglones de la
+estructura de gerencia. Comercial excluye los vendedores de Oficina; Oficina
 suma esos vendedores y el bloque de Agro Distribución; Distribución suma ambos;
 Gran Total suma Distribución y Servicios. Negocios Especiales suma, dentro del
 bloque Nacional, solo PriceSmart, Sodexo, Éxito e Inversisa.
+
+La lectura crea el período vacío si aún no existe, para permitir capturar el
+presupuesto sin una ingesta previa. `PUT /agro/presupuesto-mensual/ejecutivo?periodo=YYYY-MM`
+guarda los cuatro importes directamente; repetir la petición actualiza el mismo
+período. Un período cerrado rechaza cambios.
+
+```json
+{
+  "gerencia_comercial": 0,
+  "oficina": 0,
+  "servicios": 0,
+  "negocios_especiales": 0
+}
+```
 
 `total_ppto_anual` suma, para cada mes capturado del año, Gran Total más Negocios
 Especiales. `meses_con_presupuesto` informa cuántos meses de los doce tienen al

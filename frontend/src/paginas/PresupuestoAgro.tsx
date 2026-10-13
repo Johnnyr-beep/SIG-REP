@@ -29,6 +29,7 @@ import {
   useGuardarCanalMapeoMensual,
   useGuardarDetalleMensual,
   useGuardarMapeoMensual,
+  useGuardarPresupuestoEjecutivo,
   useGuardarPresupuestoAgro,
   useGuardarServicioMensual,
   useHistorialAgro,
@@ -47,6 +48,7 @@ import type {
   EntradaDetalleMensual,
   EntradaMapeoMensual,
   EntradaServicioMensual,
+  EntradaPresupuestoEjecutivo,
   MapeoMensual,
   MetaAgro,
   MiembroDimensionAgro,
@@ -113,49 +115,134 @@ function etiquetaBloque(bloque: string): string {
   return BLOQUES_MENSUAL.find((b) => b.valor === bloque)?.etiqueta ?? bloque;
 }
 
+function esMontoValido(valor: string): boolean {
+  const limpio = valor.trim().replace(",", ".");
+  const [entero = "", fraccion = ""] = limpio.split(".");
+  const digitosEnteros = entero.replace(/^0+/, "") || "0";
+  return /^\d+$/.test(entero) && /^\d*$/.test(fraccion) &&
+    fraccion.length <= 2 && digitosEnteros.length + fraccion.length <= 18;
+}
+
+function centavos(valor: string): bigint {
+  if (!esMontoValido(valor)) return 0n;
+  const limpio = valor.trim().replace(",", ".");
+  const [entero = "0", fraccion = ""] = limpio.split(".");
+  if (!/^\d+$/.test(entero)) return 0n;
+  return BigInt(entero) * 100n + BigInt(fraccion.padEnd(2, "0").slice(0, 2) || "0");
+}
+
+function desdeCentavos(valor: bigint): string {
+  const entero = valor / 100n;
+  const fraccion = (valor % 100n).toString().padStart(2, "0");
+  return `${entero}.${fraccion}`;
+}
+
+function sumarMontos(...valores: string[]): string {
+  return desdeCentavos(valores.reduce((suma, valor) => suma + centavos(valor), 0n));
+}
+
 function TablaResumenEjecutivo({
   periodo,
   resumen,
+  valores,
+  alCambiar,
+  guardando,
+  hayCambios,
+  alGuardar,
+  error,
 }: {
   periodo: string;
   resumen: ResumenEjecutivoPresupuesto;
+  valores: EntradaPresupuestoEjecutivo;
+  alCambiar: (campo: keyof EntradaPresupuestoEjecutivo, valor: string) => void;
+  guardando: boolean;
+  hayCambios: boolean;
+  alGuardar: () => void;
+  error: unknown;
 }) {
   const mes = periodoLargo(periodo).split(" ")[0]?.toLocaleUpperCase("es-CO") ?? periodo;
+  const distribucion = sumarMontos(valores.gerencia_comercial, valores.oficina);
+  const granTotal = sumarMontos(distribucion, valores.servicios);
+  const negociosGuardados = sumarMontos(
+    resumen.gerencia_comercial,
+    resumen.oficina,
+    resumen.servicios,
+    resumen.negocios_especiales,
+  );
+  const totalAnual = desdeCentavos(
+    centavos(resumen.total_ppto_anual) +
+      centavos(granTotal) +
+      centavos(valores.negocios_especiales) -
+      centavos(negociosGuardados),
+  );
+  const montosValidos = Object.values(valores).every(esMontoValido);
   const filas = [
     {
       concepto: "TOTAL GERENCIA COMERCIAL",
-      base: "Ítems BIENES · categorías A–F–Z · excluye AGROPECUARIA, BELKIS e INVERSIONES SERRANO",
-      monto: resumen.gerencia_comercial,
+      base: "Captura manual de Gerencia Comercial",
+      campo: "gerencia_comercial" as const,
+      editable: true,
+      monto: valores.gerencia_comercial,
     },
     {
       concepto: "TOTAL OFICINA",
-      base: "Ítems BIENES · vendedores AGROPECUARIA, BELKIS e INVERSIONES SERRANO",
-      monto: resumen.oficina,
+      base: "Captura manual de Oficina",
+      campo: "oficina" as const,
+      editable: true,
+      monto: valores.oficina,
     },
     {
       concepto: "TOTAL DISTRIBUCIÓN",
       base: "Suma de Gerencia Comercial y Oficina",
-      monto: resumen.distribucion,
+      campo: null,
+      editable: false,
+      monto: distribucion,
     },
     {
       concepto: "TOTAL SERVICIOS",
-      base: "Ítem Servicios",
-      monto: resumen.servicios,
+      base: "Captura manual de Servicios",
+      campo: "servicios" as const,
+      editable: true,
+      monto: valores.servicios,
     },
     {
       concepto: "GRAN TOTAL",
       base: "Suma de Distribución y Servicios",
-      monto: resumen.gran_total,
+      campo: null,
+      editable: false,
+      monto: granTotal,
     },
     {
       concepto: "NEGOCIOS ESPECIALES",
-      base: "Juan Sierra · PriceSmart, Sodexo, Éxito e Inversisa",
-      monto: resumen.negocios_especiales,
+      base: "Captura manual de Negocios Especiales",
+      campo: "negocios_especiales" as const,
+      editable: true,
+      monto: valores.negocios_especiales,
     },
   ];
 
   return (
-    <Tarjeta titulo={`PPTO ${mes}`} sinRelleno>
+    <Tarjeta
+      titulo={`PPTO ${mes}`}
+      descripcion="Ingresa los cuatro importes presupuestales; los subtotales se calculan automáticamente."
+      acciones={(
+        <button
+          type="button"
+          className="boton"
+          disabled={!hayCambios || !montosValidos || guardando}
+          onClick={alGuardar}
+        >
+          {guardando ? "Guardando…" : "Guardar presupuesto"}
+        </button>
+      )}
+      sinRelleno
+    >
+      <AvisoError error={error} />
+      {hayCambios && !montosValidos ? (
+        <p className="campo__ayuda" role="alert">
+          Ingresa los cuatro importes con máximo dos decimales.
+        </p>
+      ) : null}
       <div className="tabla-envoltorio">
         <table className="tabla tabla--compacta agro-presupuesto__tabla-ejecutiva">
           <thead>
@@ -170,15 +257,28 @@ function TablaResumenEjecutivo({
               <tr key={fila.concepto}>
                 <th scope="row">{fila.concepto}</th>
                 <td>{fila.base}</td>
-                <td className="numero">{dinero(fila.monto)}</td>
+                <td className="numero">
+                  {fila.editable && fila.campo ? (
+                    <input
+                      className="campo__control agro-presupuesto__monto"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      aria-label={fila.concepto}
+                      aria-invalid={!esMontoValido(fila.monto)}
+                      value={fila.monto}
+                      onChange={(evento) => alCambiar(fila.campo, evento.target.value)}
+                    />
+                  ) : dinero(fila.monto)}
+                </td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr className="fila-total">
               <th scope="row">TOTAL PPTO {resumen.anio}</th>
-              <td>{`Gran Total + Negocios Especiales · ${resumen.meses_con_presupuesto}/12 meses con presupuesto`}</td>
-              <td className="numero">{dinero(resumen.total_ppto_anual)}</td>
+              <td>{`Gran Total + Negocios Especiales · ${resumen.meses_con_presupuesto}/12 meses guardados`}</td>
+              <td className="numero">{dinero(totalAnual)}</td>
             </tr>
           </tfoot>
         </table>
@@ -187,38 +287,80 @@ function TablaResumenEjecutivo({
   );
 }
 
-// ── Componente principal: pestañas ───────────────────────────────────────────
+// ── Captura ejecutiva directa ────────────────────────────────────────────────
 
 export function PresupuestoAgro() {
-  const [parametros, setParametros] = useSearchParams();
-  const vista = parametros.get("vista") === "mensual" ? "mensual" : "dimensiones";
+  return <VistaMensual />;
+}
 
-  function fijar(clave: string, valor: string) {
+export function VistaDimensionesPresupuestoAgro() {
+  return <VistaDimensiones />;
+}
+
+export function VistaMensualDetalladaPresupuestoAgro() {
+  return <VistaMensualDetallada />;
+}
+
+function VistaMensual() {
+  const [parametros, setParametros] = useSearchParams();
+  const [borrador, setBorrador] = useState<EntradaPresupuestoEjecutivo | null>(null);
+  const periodo = parametros.get("periodo") ?? periodoActual();
+  const { data, isLoading, error } = usePresupuestoMensual(periodo);
+  const guardar = useGuardarPresupuestoEjecutivo(periodo);
+
+  useEffect(() => setBorrador(null), [periodo]);
+
+  const resumen = data?.resumen_ejecutivo;
+  const valores: EntradaPresupuestoEjecutivo = borrador ?? {
+    gerencia_comercial: resumen?.gerencia_comercial ?? "0",
+    oficina: resumen?.oficina ?? "0",
+    servicios: resumen?.servicios ?? "0",
+    negocios_especiales: resumen?.negocios_especiales ?? "0",
+  };
+
+  function fijarPeriodo(valor: string) {
     const siguientes = new URLSearchParams(parametros);
-    siguientes.set(clave, valor);
+    siguientes.set("periodo", valor);
     setParametros(siguientes, { replace: true });
+  }
+
+  function cambiar(campo: keyof EntradaPresupuestoEjecutivo, valor: string) {
+    setBorrador({ ...valores, [campo]: valor });
+  }
+
+  function guardarPresupuesto() {
+    guardar.mutate(valores, { onSuccess: () => setBorrador(null) });
   }
 
   return (
     <div className="pila">
-      <nav className="pestanas" aria-label="Vistas del presupuesto">
-        <button
-          type="button"
-          className={`pestana${vista === "dimensiones" ? " pestana--activa" : ""}`}
-          onClick={() => fijar("vista", "dimensiones")}
-        >
-          Metas por dimensión
-        </button>
-        <button
-          type="button"
-          className={`pestana${vista === "mensual" ? " pestana--activa" : ""}`}
-          onClick={() => fijar("vista", "mensual")}
-        >
-          Presupuesto mensual
-        </button>
-      </nav>
-
-      {vista === "dimensiones" ? <VistaDimensiones /> : <VistaMensual />}
+      <section className="filtros" aria-label="Período">
+        <label className="filtros__campo">
+          <span>Período</span>
+          <input
+            className="campo__control"
+            type="month"
+            value={periodo}
+            onChange={(evento) => fijarPeriodo(evento.target.value)}
+            required
+          />
+        </label>
+      </section>
+      <AvisoError error={error} />
+      {guardar.isError ? <AvisoError error={guardar.error} /> : null}
+      {isLoading ? <Cargando texto="Cargando presupuesto…" /> : null}
+      {resumen ? (
+        <TablaResumenEjecutivo
+          periodo={periodo}
+          resumen={resumen}
+          valores={valores}
+          alCambiar={cambiar}
+          guardando={guardar.isPending}
+          hayCambios={borrador !== null}
+          alGuardar={guardarPresupuesto}
+          error={null}
+        />
+      ) : null}
     </div>
   );
 }
@@ -604,7 +746,7 @@ function CargaMasiva({
 // presupuesto por dimensiones de arriba, donde las cuatro descomposiciones
 // describen el mismo dinero y no se suman.
 
-function VistaMensual() {
+function VistaMensualDetallada() {
   const [parametros, setParametros] = useSearchParams();
   const periodo = parametros.get("periodo") ?? periodoActual();
 
@@ -637,8 +779,6 @@ function VistaMensual() {
 
       {data ? (
         <>
-          <TablaResumenEjecutivo periodo={periodo} resumen={data.resumen_ejecutivo} />
-
           {/* Cada bloque se captura y se muestra de forma distinta. */}
           {data.bloques.map((bloque) => {
             const definicion = BLOQUES_MENSUAL.find(

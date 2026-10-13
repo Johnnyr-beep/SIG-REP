@@ -28,7 +28,9 @@ import type {
   EntradaDetalleMensual,
   EntradaMapeoMensual,
   EntradaPresupuestoAgro,
+  EntradaPresupuestoEjecutivo,
   EntradaServicioMensual,
+  ResumenEjecutivoPresupuesto,
   HistorialAgro,
   MapeoMensual,
   MiembroDimensionAgro,
@@ -596,6 +598,26 @@ export function usePresupuestoMensual(
         parametros: { periodo },
       }),
     staleTime: 60_000,
+  });
+}
+
+/** Guarda los importes de entrada de la tabla ejecutiva del período. */
+export function useGuardarPresupuestoEjecutivo(
+  periodo: string,
+): UseMutationResult<ResumenEjecutivoPresupuesto, Error, EntradaPresupuestoEjecutivo> {
+  const cliente = useQueryClient();
+  return useMutation({
+    mutationFn: (datos) =>
+      peticion<ResumenEjecutivoPresupuesto>("/agro/presupuesto-mensual/ejecutivo", {
+        metodo: "PUT",
+        parametros: { periodo },
+        cuerpo: datos,
+      }),
+    onSuccess: () => {
+      void cliente.invalidateQueries({
+        queryKey: clavesAgro.presupuestoMensual(periodo),
+      });
+    },
   });
 }
 

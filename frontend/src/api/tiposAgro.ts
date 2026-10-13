@@ -773,6 +773,13 @@ export interface ResumenEjecutivoPresupuesto {
   meses_con_presupuesto: number;
 }
 
+export interface EntradaPresupuestoEjecutivo {
+  gerencia_comercial: string;
+  oficina: string;
+  servicios: string;
+  negocios_especiales: string;
+}
+
 /**
  * El presupuesto mensual completo: los cuatro bloques y el total.
  *

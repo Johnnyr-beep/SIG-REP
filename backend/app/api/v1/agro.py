@@ -82,6 +82,7 @@ from app.schemas.agro import (
     PresupuestoAgroEntrada,
     PresupuestoAgroSalida,
     PresupuestoDimensionSalida,
+    PresupuestoEjecutivoMensualEntrada,
     RechazoAgroSalida,
     RespuestaComparativoDiarioCruce,
     RespuestaCruceAgro,
@@ -92,6 +93,7 @@ from app.schemas.agro import (
     RespuestaVentasComercialesAgro,
     ResultadoCargaAgro,
     ResultadoImportacionComercial,
+    ResumenEjecutivoPresupuestoSalida,
     ResumenPresupuestoMensualSalida,
     ServicioMensualEntrada,
     ServicioMensualSalida,
@@ -734,6 +736,23 @@ def presupuesto_mensual_resumen(
     los cuatro bloques**, porque cada bloque es una meta independiente.
     """
     return AgroPresupuestoMensualService(sesion).resumen(periodo)
+
+
+@router.put(
+    "/presupuesto-mensual/ejecutivo",
+    response_model=ResumenEjecutivoPresupuestoSalida,
+    summary="Capturar importes del presupuesto ejecutivo mensual",
+)
+def presupuesto_mensual_guardar_ejecutivo(
+    datos: PresupuestoEjecutivoMensualEntrada,
+    usuario: AnalistaDep,
+    sesion: SesionDep,
+    periodo: str = PeriodoQuery,
+) -> ResumenEjecutivoPresupuestoSalida:
+    """Guarda el resumen directamente, sin requerir un catálogo de ingesta."""
+    return AgroPresupuestoMensualService(sesion).guardar_resumen_ejecutivo(
+        periodo, datos, usuario=usuario
+    )
 
 
 @router.get(

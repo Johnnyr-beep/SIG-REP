@@ -51,6 +51,7 @@ from app.infrastructure.models.agro_presupuesto_mensual import (
     BLOQUES_PRESUPUESTO_MENSUAL,
     AgroPptoMensualCanalMapeo,
     AgroPptoMensualDetalle,
+    AgroPptoMensualEjecutivo,
     AgroPptoMensualMapeo,
     AgroPptoMensualServicio,
 )
@@ -70,6 +71,7 @@ from app.schemas.agro import (
     FilaImportacionComercial,
     MapeoMensualEntrada,
     MapeoMensualSalida,
+    PresupuestoEjecutivoMensualEntrada,
     ResultadoImportacionComercial,
     ResumenEjecutivoPresupuestoSalida,
     ResumenPresupuestoMensualSalida,
@@ -116,7 +118,7 @@ class AgroPresupuestoMensualService:
         meta independiente. Esto es lo opuesto al presupuesto por dimensiones,
         donde las cuatro descomposiciones describen el mismo dinero y no se suman.
         """
-        periodo = obtener_periodo(self._sesion, codigo_periodo)
+        periodo = obtener_o_crear_periodo(self._sesion, codigo_periodo)
 
         bloques: list[BloqueMensualSalida] = []
         total_monto = CERO
@@ -163,26 +165,35 @@ class AgroPresupuestoMensualService:
     def _resumen_ejecutivo(
         self, periodo: Periodo, bloques: list[BloqueMensualSalida]
     ) -> ResumenEjecutivoPresupuestoSalida:
-        """Calcula los rubros del libro sin alterar los cuatro bloques fuente."""
-        por_bloque = {bloque.bloque: bloque for bloque in bloques}
-        comercial = por_bloque["commercial"]
-        oficina = por_bloque["agro_distribucion"]
-        servicio = por_bloque["servicio"]
-        nacional = por_bloque["nacional"]
+        """Usa captura directa si existe; de lo contrario deriva el legado."""
+        captura = self._fila_ejecutivo(periodo)
+        if captura is not None:
+            gerencia_comercial = Decimal(captura.gerencia_comercial)
+            total_oficina = Decimal(captura.oficina)
+            servicios = Decimal(captura.servicios)
+            negocios_especiales = Decimal(captura.negocios_especiales)
+        else:
+            por_bloque = {bloque.bloque: bloque for bloque in bloques}
+            comercial = por_bloque["commercial"]
+            oficina = por_bloque["agro_distribucion"]
+            servicio = por_bloque["servicio"]
+            nacional = por_bloque["nacional"]
 
-        filas_gerencia = [fila for fila in comercial.filas if not self._es_vendedor_oficina(fila)]
-        filas_oficina = [fila for fila in comercial.filas if self._es_vendedor_oficina(fila)]
-        negocios_especiales = sum(
-            (Decimal(fila.monto) for fila in nacional.filas if self._es_cliente_especial(fila)),
-            start=CERO,
-        )
+            filas_gerencia = [
+                fila for fila in comercial.filas if not self._es_vendedor_oficina(fila)
+            ]
+            filas_oficina = [fila for fila in comercial.filas if self._es_vendedor_oficina(fila)]
+            gerencia_comercial = sum((Decimal(fila.monto) for fila in filas_gerencia), start=CERO)
+            total_oficina = sum(
+                (Decimal(fila.monto) for fila in filas_oficina), start=CERO
+            ) + Decimal(oficina.total_monto)
+            servicios = Decimal(servicio.total_monto)
+            negocios_especiales = sum(
+                (Decimal(fila.monto) for fila in nacional.filas if self._es_cliente_especial(fila)),
+                start=CERO,
+            )
 
-        gerencia_comercial = sum((Decimal(fila.monto) for fila in filas_gerencia), start=CERO)
-        total_oficina = sum((Decimal(fila.monto) for fila in filas_oficina), start=CERO) + Decimal(
-            oficina.total_monto
-        )
         distribucion = gerencia_comercial + total_oficina
-        servicios = Decimal(servicio.total_monto)
         gran_total = distribucion + servicios
 
         total_anual, meses_con_presupuesto = self._total_anual(periodo.anio)
@@ -199,6 +210,43 @@ class AgroPresupuestoMensualService:
             meses_con_presupuesto=meses_con_presupuesto,
         )
 
+    def guardar_resumen_ejecutivo(
+        self,
+        codigo_periodo: str,
+        datos: PresupuestoEjecutivoMensualEntrada,
+        *,
+        usuario: Usuario | None = None,
+    ) -> ResumenEjecutivoPresupuestoSalida:
+        """Guarda directamente los cuatro importes de la tabla ejecutiva."""
+        periodo = obtener_o_crear_periodo(self._sesion, codigo_periodo)
+        self._exigir_periodo_abierto(periodo)
+
+        fila = self._fila_ejecutivo(periodo)
+        if fila is None:
+            fila = AgroPptoMensualEjecutivo(periodo_id=periodo.id)
+            self._sesion.add(fila)
+
+        fila.gerencia_comercial = datos.gerencia_comercial
+        fila.oficina = datos.oficina
+        fila.servicios = datos.servicios
+        fila.negocios_especiales = datos.negocios_especiales
+        fila.actualizado_por_id = usuario.id if usuario else None
+        self._sesion.flush()
+
+        logger.info(
+            "agro_ppto_mensual_ejecutivo_guardado",
+            periodo=periodo.codigo,
+            actualizado_por_id=fila.actualizado_por_id,
+        )
+        return self.resumen(periodo.codigo).resumen_ejecutivo
+
+    def _fila_ejecutivo(self, periodo: Periodo) -> AgroPptoMensualEjecutivo | None:
+        return self._sesion.execute(
+            select(AgroPptoMensualEjecutivo).where(
+                AgroPptoMensualEjecutivo.periodo_id == periodo.id
+            )
+        ).scalar_one_or_none()
+
     def _total_anual(self, anio: int) -> tuple[Decimal, int]:
         periodos = list(
             self._sesion.execute(
@@ -209,6 +257,14 @@ class AgroPresupuestoMensualService:
         if not meses_por_periodo:
             return CERO, 0
 
+        capturas = list(
+            self._sesion.execute(
+                select(AgroPptoMensualEjecutivo).where(
+                    AgroPptoMensualEjecutivo.periodo_id.in_(meses_por_periodo)
+                )
+            ).scalars()
+        )
+        capturas_por_periodo = {fila.periodo_id: fila for fila in capturas}
         detalles = list(
             self._sesion.execute(
                 select(AgroPptoMensualDetalle).where(
@@ -224,26 +280,59 @@ class AgroPresupuestoMensualService:
             ).scalars()
         )
 
-        meses_cargados = {meses_por_periodo[fila.periodo_id] for fila in detalles}
+        meses_cargados = {meses_por_periodo[fila.periodo_id] for fila in capturas}
+        meses_cargados.update(meses_por_periodo[fila.periodo_id] for fila in detalles)
         meses_cargados.update(meses_por_periodo[fila.periodo_id] for fila in servicios)
-        gerencia = CERO
-        oficina = CERO
-        servicios_total = sum((Decimal(fila.monto) for fila in servicios), start=CERO)
-        especiales = CERO
+        gerencia_por_periodo: dict[int, Decimal] = {}
+        oficina_por_periodo: dict[int, Decimal] = {}
+        servicios_por_periodo: dict[int, Decimal] = {}
+        especiales_por_periodo: dict[int, Decimal] = {}
 
         for fila in detalles:
+            if fila.periodo_id in capturas_por_periodo:
+                continue
             monto = Decimal(fila.monto)
             if fila.bloque == "commercial":
                 if self._es_vendedor_oficina(fila):
-                    oficina += monto
+                    oficina_por_periodo[fila.periodo_id] = (
+                        oficina_por_periodo.get(fila.periodo_id, CERO) + monto
+                    )
                 else:
-                    gerencia += monto
+                    gerencia_por_periodo[fila.periodo_id] = (
+                        gerencia_por_periodo.get(fila.periodo_id, CERO) + monto
+                    )
             elif fila.bloque == "agro_distribucion":
-                oficina += monto
+                oficina_por_periodo[fila.periodo_id] = (
+                    oficina_por_periodo.get(fila.periodo_id, CERO) + monto
+                )
             elif fila.bloque == "nacional" and self._es_cliente_especial(fila):
-                especiales += monto
+                especiales_por_periodo[fila.periodo_id] = (
+                    especiales_por_periodo.get(fila.periodo_id, CERO) + monto
+                )
 
-        total = gerencia + oficina + servicios_total + especiales
+        for fila_servicio in servicios:
+            if fila_servicio.periodo_id not in capturas_por_periodo:
+                servicios_por_periodo[fila_servicio.periodo_id] = Decimal(fila_servicio.monto)
+
+        total = sum(
+            (
+                Decimal(fila.gerencia_comercial)
+                + Decimal(fila.oficina)
+                + Decimal(fila.servicios)
+                + Decimal(fila.negocios_especiales)
+                for fila in capturas
+            ),
+            start=CERO,
+        )
+        for periodo_id in meses_por_periodo:
+            if periodo_id in capturas_por_periodo:
+                continue
+            total += (
+                gerencia_por_periodo.get(periodo_id, CERO)
+                + oficina_por_periodo.get(periodo_id, CERO)
+                + servicios_por_periodo.get(periodo_id, CERO)
+                + especiales_por_periodo.get(periodo_id, CERO)
+            )
         return total, len(meses_cargados)
 
     @classmethod

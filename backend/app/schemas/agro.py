@@ -693,6 +693,15 @@ class ServicioMensualEntrada(BaseModel):
     kilos: Decimal = Field(ge=0, max_digits=18, decimal_places=3)
 
 
+class PresupuestoEjecutivoMensualEntrada(BaseModel):
+    """Importes que se capturan directamente en la tabla ejecutiva."""
+
+    gerencia_comercial: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    oficina: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    servicios: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    negocios_especiales: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+
+
 class BloqueMensualSalida(EsquemaBase):
     """El total de un bloque en el período, con sus filas de detalle."""
 
@@ -703,7 +712,7 @@ class BloqueMensualSalida(EsquemaBase):
 
 
 class ResumenEjecutivoPresupuestoSalida(EsquemaBase):
-    """Estructura ejecutiva mensual y total anual calculados desde los bloques."""
+    """Resumen ejecutivo mensual y total anual directos o heredados."""
 
     gerencia_comercial: DecimalStr
     oficina: DecimalStr

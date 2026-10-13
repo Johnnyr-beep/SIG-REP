@@ -21,6 +21,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.application.services.agro_presupuesto_mensual_service import (
@@ -30,11 +31,13 @@ from app.application.services.periodos import obtener_o_crear_periodo
 from app.core.errors import ErrorPeriodoCerrado, ErrorValidacion
 from app.infrastructure.models.agro_presupuesto_mensual import (
     AgroPptoMensualDetalle,
+    AgroPptoMensualEjecutivo,
     AgroPptoMensualServicio,
 )
 from app.schemas.agro import (
     DetalleMensualEntrada,
     MapeoMensualEntrada,
+    PresupuestoEjecutivoMensualEntrada,
     ServicioMensualEntrada,
 )
 from tests.conftest import PERIODO
@@ -119,6 +122,51 @@ def test_resumen_con_periodo_vacio_devuelve_ceros(
     assert resumen.total_monto == Decimal("0")
     assert resumen.total_kilos == Decimal("0")
     assert len(resumen.bloques) == 4
+
+
+def test_captura_directa_puede_iniciar_sin_ingesta_ni_periodo_previo(
+    estructura: None,
+    sesion: Session,
+) -> None:
+    periodo_nuevo = "2027-01"
+    svc = _servicio(sesion)
+
+    resumen_vacio = svc.resumen(periodo_nuevo)
+    guardado = svc.guardar_resumen_ejecutivo(
+        periodo_nuevo,
+        PresupuestoEjecutivoMensualEntrada(
+            gerencia_comercial=Decimal("100"),
+            oficina=Decimal("200"),
+            servicios=Decimal("300"),
+            negocios_especiales=Decimal("400"),
+        ),
+    )
+
+    assert resumen_vacio.resumen_ejecutivo.total_ppto_anual == Decimal("0")
+    assert guardado.gran_total == Decimal("600")
+    assert guardado.total_ppto_anual == Decimal("1000")
+
+
+def test_api_guarda_presupuesto_ejecutivo_sin_ingesta(
+    cliente_http: TestClient,
+    analista: dict[str, str],
+) -> None:
+    respuesta = cliente_http.put(
+        "/api/v1/agro/presupuesto-mensual/ejecutivo",
+        params={"periodo": "2027-02"},
+        headers=analista,
+        json={
+            "gerencia_comercial": "100",
+            "oficina": "200",
+            "servicios": "300",
+            "negocios_especiales": "400",
+        },
+    )
+
+    assert respuesta.status_code == 200, respuesta.text
+    resultado = respuesta.json()
+    assert Decimal(resultado["gran_total"]) == Decimal("600")
+    assert Decimal(resultado["total_ppto_anual"]) == Decimal("1000")
 
 
 def test_resumen_ejecutivo_aplica_las_particiones_de_la_imagen(
@@ -208,6 +256,62 @@ def test_resumen_ejecutivo_aplica_las_particiones_de_la_imagen(
     assert ejecutivo.negocios_especiales == Decimal("600")
     assert ejecutivo.total_ppto_anual == Decimal("2130")
     assert ejecutivo.meses_con_presupuesto == 2
+
+
+def test_captura_ejecutiva_directa_actualiza_y_reemplaza_el_calculo_heredado(
+    estructura: None,
+    sesion: Session,
+) -> None:
+    svc = _servicio(sesion)
+    svc.guardar_detalle(
+        PERIODO,
+        DetalleMensualEntrada(
+            bloque="commercial",
+            vendedor_clave="GERENCIA",
+            cliente_clave="CLIENTE-LEGADO",
+            categoria="A",
+            monto=Decimal("100"),
+            kilos=Decimal("0"),
+        ),
+    )
+    datos = PresupuestoEjecutivoMensualEntrada(
+        gerencia_comercial=Decimal("1000"),
+        oficina=Decimal("2000"),
+        servicios=Decimal("300"),
+        negocios_especiales=Decimal("400"),
+    )
+
+    primera = svc.guardar_resumen_ejecutivo(PERIODO, datos)
+    actualizada = svc.guardar_resumen_ejecutivo(
+        PERIODO,
+        datos.model_copy(update={"gerencia_comercial": Decimal("1100")}),
+    )
+
+    assert primera.gran_total == Decimal("3300")
+    assert actualizada.gerencia_comercial == Decimal("1100")
+    assert actualizada.total_ppto_anual == Decimal("3800")
+    assert actualizada.meses_con_presupuesto == 1
+    assert sesion.query(AgroPptoMensualEjecutivo).count() == 1
+
+
+def test_periodo_cerrado_bloquea_captura_ejecutiva(
+    estructura: None,
+    sesion: Session,
+) -> None:
+    periodo = obtener_o_crear_periodo(sesion, PERIODO)
+    periodo.cerrado = True
+    sesion.commit()
+
+    with pytest.raises(ErrorPeriodoCerrado):
+        _servicio(sesion).guardar_resumen_ejecutivo(
+            PERIODO,
+            PresupuestoEjecutivoMensualEntrada(
+                gerencia_comercial=Decimal("100"),
+                oficina=Decimal("200"),
+                servicios=Decimal("300"),
+                negocios_especiales=Decimal("400"),
+            ),
+        )
 
 
 # ── Vendedor fijo en agro_distribucion y nacional ─────────────────────────────
