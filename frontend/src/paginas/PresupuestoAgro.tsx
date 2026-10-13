@@ -705,7 +705,7 @@ function BloqueDetalle({
   const [edicion, setEdicion] = useState<DetalleMensual | null>(null);
   const [abrirFormulario, setAbrirFormulario] = useState(false);
 
-  // El bloque comercial usa vendedor libre y categoría A–F; los otros dos
+  // El bloque comercial usa vendedor libre y categoría A–F–Z; los otros dos
   // tienen vendedor fijo y no usan categoría.
   const esComercial = bloque === "commercial";
 
@@ -852,6 +852,18 @@ function FormularioDetalleMensual({
   const [clientesClave, setClientesClave] = useState<string[]>(
     filaExistente?.cliente_clave ? [filaExistente.cliente_clave] : [],
   );
+  const [vendedorClaveManual, setVendedorClaveManual] = useState(
+    filaExistente?.vendedor_clave ?? "",
+  );
+  const [vendedorEtiquetaManual, setVendedorEtiquetaManual] = useState(
+    filaExistente?.vendedor_etiqueta ?? "",
+  );
+  const [clienteClaveManual, setClienteClaveManual] = useState(
+    filaExistente?.cliente_clave ?? "",
+  );
+  const [clienteEtiquetaManual, setClienteEtiquetaManual] = useState(
+    filaExistente?.cliente_etiqueta ?? "",
+  );
   const [categoria, setCategoria] = useState(filaExistente?.categoria ?? "");
   const [monto, setMonto] = useState(filaExistente?.monto ?? "0");
   // La meta en kilos ya no se captura desde el formulario: se conserva el
@@ -867,10 +879,19 @@ function FormularioDetalleMensual({
   function enviar(evento: React.FormEvent) {
     evento.preventDefault();
 
+    const claveVendedorFinal = vendedorClaveManual.trim() || vendedorClave;
     const vendedorSeleccionado = (vendedores ?? []).find(
-      (m) => m.clave === vendedorClave,
+      (m) => m.clave === claveVendedorFinal,
     );
-    const clientesParaGuardar = clientesClave.length ? clientesClave : [null];
+    const clavesClientes = Array.from(
+      new Set([
+        ...clientesClave,
+        ...(clienteClaveManual.trim() ? [clienteClaveManual.trim()] : []),
+      ]),
+    );
+    const clientesParaGuardar: (string | null)[] = clavesClientes.length
+      ? clavesClientes
+      : [null];
     const guardarTodos = async () => {
       for (const clienteClave of clientesParaGuardar) {
         const clienteSeleccionado = (clientes ?? []).find(
@@ -881,11 +902,17 @@ function FormularioDetalleMensual({
           monto,
           kilos: kilosValor,
           cliente_clave: clienteClave,
-          cliente_etiqueta: clienteSeleccionado?.nombre ?? null,
+          cliente_etiqueta:
+            clienteClave === clienteClaveManual.trim() && clienteEtiquetaManual.trim()
+              ? clienteEtiquetaManual.trim()
+              : clienteSeleccionado?.nombre ?? null,
         };
         if (esComercial) {
-          datos.vendedor_clave = vendedorClave || null;
-          datos.vendedor_etiqueta = vendedorSeleccionado?.nombre ?? null;
+          datos.vendedor_clave = claveVendedorFinal || null;
+          datos.vendedor_etiqueta =
+            vendedorClaveManual.trim() && vendedorEtiquetaManual.trim()
+              ? vendedorEtiquetaManual.trim()
+              : vendedorSeleccionado?.nombre ?? null;
           datos.categoria = categoria || null;
         }
         await guardar.mutateAsync(datos);
@@ -943,13 +970,13 @@ function FormularioDetalleMensual({
         ) : (
           <Campo
             etiqueta="Vendedor"
-            ayuda="Sale del catálogo que dejó la ingesta, no se escribe a mano."
+            ayuda="Elija un vendedor del catálogo o escriba abajo la clave si aún no hay ingesta."
           >
             <select
               className="campo__control"
               value={vendedorClave}
               onChange={(evento) => setVendedorClave(evento.target.value)}
-              required
+              required={!vendedorClaveManual.trim()}
             >
               <option value="">Elija uno…</option>
               {(vendedores ?? []).map((m) => (
@@ -961,9 +988,33 @@ function FormularioDetalleMensual({
           </Campo>
         )}
 
+        {esComercial ? (
+          <div className="fila fila--envolvente">
+            <Campo etiqueta="Clave vendedor manual" ayuda="La clave debe coincidir con la que usa SIESA.">
+              <input
+                className="campo__control"
+                type="text"
+                value={vendedorClaveManual}
+                onChange={(evento) => setVendedorClaveManual(evento.target.value)}
+                placeholder="Clave exacta de SIESA"
+                required={!vendedorClave}
+              />
+            </Campo>
+            <Campo etiqueta="Nombre del vendedor manual">
+              <input
+                className="campo__control"
+                type="text"
+                value={vendedorEtiquetaManual}
+                onChange={(evento) => setVendedorEtiquetaManual(evento.target.value)}
+                placeholder="Nombre para mostrar"
+              />
+            </Campo>
+          </div>
+        ) : null}
+
         <Campo
           etiqueta="Clientes"
-          ayuda="Puede escoger varios. Cada cliente queda asignado a un solo vendedor."
+          ayuda="Puede escoger clientes del catálogo o escribir uno abajo sin ingesta."
         >
           <div className="seleccion-multiple" role="group" aria-label="Clientes">
             {(clientes ?? []).map((m) => (
@@ -986,10 +1037,31 @@ function FormularioDetalleMensual({
           </div>
         </Campo>
 
+        <div className="fila fila--envolvente">
+          <Campo etiqueta="Clave cliente manual" ayuda="Use el NIT o la clave exacta de SIESA.">
+            <input
+              className="campo__control"
+              type="text"
+              value={clienteClaveManual}
+              onChange={(evento) => setClienteClaveManual(evento.target.value)}
+              placeholder="NIT o clave SIESA"
+            />
+          </Campo>
+          <Campo etiqueta="Nombre del cliente manual">
+            <input
+              className="campo__control"
+              type="text"
+              value={clienteEtiquetaManual}
+              onChange={(evento) => setClienteEtiquetaManual(evento.target.value)}
+              placeholder="Razón social para mostrar"
+            />
+          </Campo>
+        </div>
+
         {esComercial ? (
           <Campo
             etiqueta="Categoría"
-            ayuda="Categoría A–F asignada al vendedor en función de sus clientes."
+            ayuda="Categoría A–F–Z asignada al vendedor en función de sus clientes."
           >
             <select
               className="campo__control"

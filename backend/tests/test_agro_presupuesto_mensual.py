@@ -302,6 +302,29 @@ def test_commercial_acepta_categoria_z(estructura: None, sesion: Session) -> Non
     assert salida.categoria == "Z"
 
 
+def test_presupuesto_comercial_se_puede_capturar_sin_ingesta(sesion: Session) -> None:
+    salida = _servicio(sesion).guardar_detalle(
+        PERIODO,
+        DetalleMensualEntrada(
+            bloque="commercial",
+            vendedor_clave="VEND-ANTES-INGESTA",
+            vendedor_etiqueta="Vendedor presupuestado",
+            cliente_clave="CLIENTE-ANTES-INGESTA",
+            cliente_etiqueta="Cliente presupuestado",
+            categoria="Z",
+            monto=Decimal("2500000"),
+            kilos=Decimal("0"),
+        ),
+    )
+
+    assert salida.vendedor_clave == "VEND-ANTES-INGESTA"
+    assert salida.vendedor_etiqueta == "Vendedor presupuestado"
+    assert salida.cliente_clave == "CLIENTE-ANTES-INGESTA"
+    assert salida.cliente_etiqueta == "Cliente presupuestado"
+    assert salida.categoria == "Z"
+    assert salida.monto == Decimal("2500000")
+
+
 def test_agro_distribucion_no_admite_categoria(
     estructura: None,
     sesion: Session,
