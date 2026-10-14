@@ -163,18 +163,6 @@ function TablaResumenEjecutivo({
   const mes = periodoLargo(periodo).split(" ")[0]?.toLocaleUpperCase("es-CO") ?? periodo;
   const distribucion = sumarMontos(valores.gerencia_comercial, valores.oficina);
   const granTotal = sumarMontos(distribucion, valores.servicios);
-  const negociosGuardados = sumarMontos(
-    resumen.gerencia_comercial,
-    resumen.oficina,
-    resumen.servicios,
-    resumen.negocios_especiales,
-  );
-  const totalAnual = desdeCentavos(
-    centavos(resumen.total_ppto_anual) +
-      centavos(granTotal) +
-      centavos(valores.negocios_especiales) -
-      centavos(negociosGuardados),
-  );
   const montosValidos = Object.values(valores).every(esMontoValido);
   const filas = [
     {
@@ -278,7 +266,7 @@ function TablaResumenEjecutivo({
             <tr className="fila-total">
               <th scope="row">TOTAL PPTO {resumen.anio}</th>
               <td>{`Gran Total + Negocios Especiales · ${resumen.meses_con_presupuesto}/12 meses guardados`}</td>
-              <td className="numero">{dinero(totalAnual)}</td>
+              <td className="numero">{dinero(resumen.total_ppto_anual)}</td>
             </tr>
           </tfoot>
         </table>
