@@ -1009,6 +1009,27 @@ textarea {
   white-space: nowrap;
 }
 
+.agro-presupuesto__anual {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-4);
+  margin-top: var(--espacio-3);
+  padding: var(--espacio-3) var(--espacio-4);
+  border-top: 1px solid var(--borde);
+}
+
+.agro-presupuesto__anual div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-1);
+}
+
+.agro-presupuesto__anual span {
+  color: var(--texto-tenue);
+  font-size: 0.75rem;
+}
+
 /* La matriz y la tabla de cumplimiento no caben en una pantalla: se desplazan
    dentro de su propio contenedor, nunca arrastrando el cuerpo de la página. */
 .tabla-envoltorio--alta {

@@ -163,6 +163,7 @@ function TablaResumenEjecutivo({
   const mes = periodoLargo(periodo).split(" ")[0]?.toLocaleUpperCase("es-CO") ?? periodo;
   const distribucion = sumarMontos(valores.gerencia_comercial, valores.oficina);
   const granTotal = sumarMontos(distribucion, valores.servicios);
+  const totalMes = sumarMontos(granTotal, valores.negocios_especiales);
   const montosValidos = Object.values(valores).every(esMontoValido);
   const filas = [
     {
@@ -264,12 +265,19 @@ function TablaResumenEjecutivo({
           </tbody>
           <tfoot>
             <tr className="fila-total">
-              <th scope="row" className="columna-ancla">TOTAL PPTO {resumen.anio}</th>
-              <td>{`Gran Total + Negocios Especiales · ${resumen.meses_con_presupuesto}/12 meses guardados`}</td>
-              <td className="numero">{dinero(resumen.total_ppto_anual)}</td>
+              <th scope="row" className="columna-ancla">TOTAL PPTO {mes}</th>
+              <td>Gran Total + Negocios Especiales</td>
+              <td className="numero">{dinero(totalMes)}</td>
             </tr>
           </tfoot>
         </table>
+      </div>
+      <div className="agro-presupuesto__anual" aria-label={`Acumulado anual ${resumen.anio}`}>
+        <div>
+          <strong>ACUMULADO ANUAL {resumen.anio}</strong>
+          <span>{resumen.meses_con_presupuesto}/12 meses guardados</span>
+        </div>
+        <strong className="numero">{dinero(resumen.total_ppto_anual)}</strong>
       </div>
     </Tarjeta>
   );
