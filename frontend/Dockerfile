@@ -3,7 +3,7 @@
 # La imagen final no lleva Node ni node_modules — solo estáticos y el servidor.
 
 # ── Compilación ───────────────────────────────────────────────────────────────
-FROM public.ecr.aws/docker/library/node:22-alpine AS compilacion
+FROM docker.io/library/node:22-alpine AS compilacion
 
 WORKDIR /build
 
@@ -25,7 +25,7 @@ COPY src ./src
 RUN npm run build
 
 # ── Servido ───────────────────────────────────────────────────────────────────
-FROM public.ecr.aws/docker/library/nginx:1.27-alpine AS produccion
+FROM docker.io/library/nginx:1.27-alpine AS produccion
 
 COPY --from=compilacion /build/dist /usr/share/nginx/html
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf

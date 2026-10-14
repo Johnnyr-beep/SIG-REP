@@ -9,7 +9,7 @@
 # cambie `pip install .` por `pip install ".[sqlserver]"`.
 
 # ── Etapa de dependencias ─────────────────────────────────────────────────────
-FROM public.ecr.aws/docker/library/python:3.12-slim-bookworm AS dependencias
+FROM docker.io/library/python:3.12-slim-bookworm AS dependencias
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -44,7 +44,7 @@ RUN pip install --no-cache-dir .
 # Se parte otra vez de la imagen base y solo se copia el entorno virtual ya
 # resuelto: pip, setuptools y las cabeceras de compilación se quedan en la etapa
 # anterior y nunca llegan a producción.
-FROM public.ecr.aws/docker/library/python:3.12-slim-bookworm AS produccion
+FROM docker.io/library/python:3.12-slim-bookworm AS produccion
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
