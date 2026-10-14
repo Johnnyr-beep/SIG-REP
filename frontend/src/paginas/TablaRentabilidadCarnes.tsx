@@ -15,6 +15,18 @@ interface NodoCarnes {
   hijos: NodoCarnes[];
 }
 
+type CampoOrdenCarnes =
+  | "kilos"
+  | "venta"
+  | "margen_bruto"
+  | "rentabilidad"
+  | "costo_unitario_promedio";
+
+interface OrdenCarnes {
+  campo: CampoOrdenCarnes;
+  direccion: "desc" | "asc";
+}
+
 function construirArbol(companias: FilaCompaniaCarnes[]): NodoCarnes[] {
   return companias.map((compania) => ({
     clave: `cia:${compania.compania}`,
@@ -32,6 +44,52 @@ function construirArbol(companias: FilaCompaniaCarnes[]): NodoCarnes[] {
       })),
     })),
   }));
+}
+
+function ordenarArbol(nodos: NodoCarnes[], orden: OrdenCarnes | null): NodoCarnes[] {
+  if (orden === null) return nodos;
+
+  return [...nodos]
+    .sort((primero, segundo) => {
+      const valorPrimero = primero.fila[orden.campo];
+      const valorSegundo = segundo.fila[orden.campo];
+      if (valorPrimero === null || valorSegundo === null) {
+        if (valorPrimero === valorSegundo) return primero.fila.etiqueta.localeCompare(segundo.fila.etiqueta, "es-CO", { numeric: true });
+        return valorPrimero === null ? 1 : -1;
+      }
+
+      const diferencia = Number(valorPrimero) - Number(valorSegundo);
+      if (diferencia === 0) return primero.fila.etiqueta.localeCompare(segundo.fila.etiqueta, "es-CO", { numeric: true });
+      return orden.direccion === "desc" ? -diferencia : diferencia;
+    })
+    .map((nodo) => ({ ...nodo, hijos: ordenarArbol(nodo.hijos, orden) }));
+}
+
+function EncabezadoOrdenableCarnes({
+  etiqueta,
+  campo,
+  orden,
+  alOrdenar,
+}: {
+  etiqueta: string;
+  campo: CampoOrdenCarnes;
+  orden: OrdenCarnes | null;
+  alOrdenar: (campo: CampoOrdenCarnes) => void;
+}) {
+  const direccion = orden?.campo === campo ? orden.direccion : null;
+  const siguiente = direccion === "desc" ? "asc" : "desc";
+  return (
+    <th className="numero" aria-sort={direccion === "desc" ? "descending" : direccion === "asc" ? "ascending" : "none"}>
+      <button
+        type="button"
+        className="rentabilidad-mes__orden-total"
+        aria-label={`Ordenar ${etiqueta} de ${siguiente === "desc" ? "mayor a menor" : "menor a mayor"}`}
+        onClick={() => alOrdenar(campo)}
+      >
+        {etiqueta}<span aria-hidden="true">{direccion === "desc" ? "↓" : direccion === "asc" ? "↑" : "↕"}</span>
+      </button>
+    </th>
+  );
 }
 
 function formatear(valor: string | null, decimales = 2): string {
@@ -79,7 +137,8 @@ export function TablaRentabilidadCarnes({
   modo: "dia" | "mes";
 }) {
   const [abiertas, setAbiertas] = useState<Set<string>>(() => new Set());
-  const arbol = construirArbol(datos.detalle_companias);
+  const [orden, setOrden] = useState<OrdenCarnes | null>(null);
+  const arbol = ordenarArbol(construirArbol(datos.detalle_companias), orden);
   const visibles: NodoCarnes[] = [];
 
   function agregarVisibles(nodos: NodoCarnes[]) {
@@ -96,6 +155,13 @@ export function TablaRentabilidadCarnes({
       else nuevas.add(clave);
       return nuevas;
     });
+  }
+
+  function alternarOrden(campo: CampoOrdenCarnes) {
+    setOrden((actual) => ({
+      campo,
+      direccion: actual?.campo === campo && actual.direccion === "desc" ? "asc" : "desc",
+    }));
   }
 
   agregarVisibles(arbol);
@@ -115,12 +181,12 @@ export function TablaRentabilidadCarnes({
               <th>Compañía / categoría / producto</th>
               {modo === "mes" ? (
                 <>
-                  <th className="numero">Q (KG)</th>
-                  <th className="numero">Ingresos</th>
-                  <th className="numero">UT.</th>
+                  <EncabezadoOrdenableCarnes etiqueta="Q (KG)" campo="kilos" orden={orden} alOrdenar={alternarOrden} />
+                  <EncabezadoOrdenableCarnes etiqueta="Ingresos" campo="venta" orden={orden} alOrdenar={alternarOrden} />
+                  <EncabezadoOrdenableCarnes etiqueta="UT." campo="margen_bruto" orden={orden} alOrdenar={alternarOrden} />
                   <th aria-label="Estado de rentabilidad" />
-                  <th className="numero">% Rent.</th>
-                  <th className="numero">Costo unit. prom.</th>
+                  <EncabezadoOrdenableCarnes etiqueta="% Rent." campo="rentabilidad" orden={orden} alOrdenar={alternarOrden} />
+                  <EncabezadoOrdenableCarnes etiqueta="Costo unit. prom." campo="costo_unitario_promedio" orden={orden} alOrdenar={alternarOrden} />
                 </>
               ) : datos.fechas.map((fecha) => (
                 <th className="numero" key={fecha} title={fecha}>{fecha.slice(8, 10)}</th>
