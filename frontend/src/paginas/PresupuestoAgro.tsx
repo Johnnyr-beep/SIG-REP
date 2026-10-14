@@ -232,10 +232,10 @@ function TablaResumenEjecutivo({
         </p>
       ) : null}
       <div className="tabla-envoltorio">
-        <table className="tabla tabla--compacta agro-presupuesto__tabla-ejecutiva">
+        <table className="tabla tabla--compacta tabla--anclada agro-presupuesto__tabla-ejecutiva">
           <thead>
             <tr>
-              <th scope="col">RUBRO</th>
+              <th scope="col" className="columna-ancla">RUBRO</th>
               <th scope="col">BASE DE CÁLCULO</th>
               <th scope="col" className="numero">PPTO {mes}</th>
             </tr>
@@ -243,7 +243,7 @@ function TablaResumenEjecutivo({
           <tbody>
             {filas.map((fila) => (
               <tr key={fila.concepto}>
-                <th scope="row">{fila.concepto}</th>
+                <th scope="row" className="columna-ancla">{fila.concepto}</th>
                 <td>{fila.base}</td>
                 <td className="numero">
                   {fila.editable && fila.campo ? (
@@ -264,7 +264,7 @@ function TablaResumenEjecutivo({
           </tbody>
           <tfoot>
             <tr className="fila-total">
-              <th scope="row">TOTAL PPTO {resumen.anio}</th>
+              <th scope="row" className="columna-ancla">TOTAL PPTO {resumen.anio}</th>
               <td>{`Gran Total + Negocios Especiales · ${resumen.meses_con_presupuesto}/12 meses guardados`}</td>
               <td className="numero">{dinero(resumen.total_ppto_anual)}</td>
             </tr>
