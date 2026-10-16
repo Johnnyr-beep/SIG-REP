@@ -115,6 +115,12 @@ export interface RespuestaInventarioPdv {
   total: number;
 }
 
+export interface RespuestaExistenciasBodega {
+  columnas: string[];
+  filas: Array<Record<string, string | null>>;
+  total: number;
+}
+
 export interface Categoria {
   id: number;
   codigo: string;

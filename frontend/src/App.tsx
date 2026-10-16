@@ -28,6 +28,7 @@ import { Cumplimiento } from "@/paginas/Cumplimiento";
 import { Costos } from "@/paginas/Costos";
 import { Ingesta } from "@/paginas/Ingesta";
 import { InventarioPdv } from "@/paginas/InventarioPdv";
+import { InventarioBodegaAgro } from "@/paginas/InventarioBodegaAgro";
 import { IngresosCostos } from "@/paginas/IngresosCostos";
 import { RentabilidadMes } from "@/paginas/RentabilidadMes";
 import { RentabilidadDia } from "@/paginas/RentabilidadDia";
@@ -185,6 +186,14 @@ export function App() {
               element={
                 <AccesoModulo permiso="PERMISO_CONSULTAR_FINANCIERO">
                   <RentabilidadDia />
+                </AccesoModulo>
+              }
+            />
+            <Route
+              path="inventario-agropecuaria"
+              element={
+                <AccesoModulo permiso="PERMISO_CONSULTAR_INVENTARIO">
+                  <InventarioBodegaAgro />
                 </AccesoModulo>
               }
             />

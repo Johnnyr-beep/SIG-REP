@@ -5,6 +5,11 @@ import pytest
 from pydantic import SecretStr
 
 from app.api.v1 import inventario as api_inventario
+from app.infrastructure.fuentes.existencias_bodega_agro import (
+    PARAMETROS_EXISTENCIAS_BODEGA,
+    RUTA_EXISTENCIAS_BODEGA,
+    FuenteExistenciasBodegaAgroSiesa,
+)
 from app.infrastructure.fuentes.inventario_siesa import (
     PARAMETROS_INVENTARIO_PDV,
     RUTA_INVENTARIO_PDV,
@@ -79,6 +84,73 @@ def test_descarga_csv_inventario_pdv_sin_filtro_de_compania() -> None:
         "UM": "KG",
         "Cant_Existencia": "2.2",
         "Cant_Comprometida": "0",
+    }
+
+
+def test_descarga_existencias_bodega_agro_usa_cia_3_y_token_en_header() -> None:
+    peticiones: list[httpx.Request] = []
+
+    def responder(peticion: httpx.Request) -> httpx.Response:
+        peticiones.append(peticion)
+        return httpx.Response(
+            200,
+            text=(
+                "cia,bodega,item,referencia,descripcion,unidad,existencia,costo_promedio,costo_total\n"
+                "3,30101,3665,3203,CANUTA DE RES POR KILO,KG,2.2,1000,2200\n"
+            ),
+        )
+
+    configuracion_agro = ConfiguracionSiesa(
+        url_base="https://siesa.pruebas.local",
+        token=SecretStr("token-solo-de-prueba"),
+        companias=(3,),
+        reintentos=1,
+        espera_reintento_seg=0,
+    )
+    with httpx.Client(transport=httpx.MockTransport(responder)) as cliente:
+        resultado = FuenteExistenciasBodegaAgroSiesa(
+            configuracion=configuracion_agro,
+            sesion_http=cliente,
+        ).leer()
+
+    assert len(peticiones) == 1
+    peticion = peticiones[0]
+    assert peticion.url.path == RUTA_EXISTENCIAS_BODEGA
+    assert dict(peticion.url.params) == PARAMETROS_EXISTENCIAS_BODEGA
+    assert "token" not in peticion.url.params
+    assert peticion.headers["X-API-Key"] == "token-solo-de-prueba"
+    assert resultado.filas[0]["cia"] == "3"
+    assert resultado.filas[0]["existencia"] == "2.2"
+
+
+def test_api_entrega_existencias_bodega_agro(
+    cliente_http: httpx.Client,
+    admin: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FuenteFalsa:
+        def leer(self) -> InventarioPdvCrudo:
+            return InventarioPdvCrudo(
+                columnas=("cia", "bodega", "referencia", "existencia"),
+                filas=({"cia": "3", "bodega": "30101", "referencia": "3203", "existencia": "2.2"},),
+            )
+
+        def cerrar(self) -> None:
+            return None
+
+    monkeypatch.setattr(
+        api_inventario,
+        "FuenteExistenciasBodegaAgroSiesa",
+        lambda: FuenteFalsa(),
+    )
+
+    respuesta = cliente_http.get("/api/v1/inventario/bodega-agropecuaria", headers=admin)
+
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json() == {
+        "columnas": ["cia", "bodega", "referencia", "existencia"],
+        "filas": [{"cia": "3", "bodega": "30101", "referencia": "3203", "existencia": "2.2"}],
+        "total": 1,
     }
 
 

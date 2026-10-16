@@ -24,3 +24,11 @@ class RespuestaInventarioPdv(EsquemaBase):
     columnas: list[str]
     filas: list[FilaInventarioPdv]
     total: int = Field(ge=0)
+
+
+class RespuestaExistenciasBodega(EsquemaBase):
+    """CSV de existencias SIESA, conservando sus columnas de origen."""
+
+    columnas: list[str]
+    filas: list[dict[str, str | None]]
+    total: int = Field(ge=0)

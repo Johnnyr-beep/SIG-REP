@@ -36,6 +36,7 @@ import type {
   Periodo,
   PuntoVenta,
   RechazoIngesta,
+  RespuestaExistenciasBodega,
   RespuestaClientes,
   RespuestaCumplimiento,
   RespuestaCostos,
@@ -130,6 +131,7 @@ export const claves = {
     ["presupuesto-historial", periodo, puntoVenta] as const,
   historiaVenta: (periodo: string) => ["historia-venta", periodo] as const,
   inventarioPdv: ["inventario", "pdv"] as const,
+  inventarioBodegaAgro: ["inventario", "bodega", "agropecuaria"] as const,
   periodos: ["periodos"] as const,
   tablero: (filtros: FiltrosReporte) =>
     ["reporte", "tablero", filtros] as const,
@@ -284,6 +286,15 @@ export function useInventarioPdv(): UseQueryResult<RespuestaInventarioPdv> {
   return useQuery({
     queryKey: claves.inventarioPdv,
     queryFn: () => peticion<RespuestaInventarioPdv>("/inventario/pdv"),
+    staleTime: 60_000,
+  });
+}
+
+export function useExistenciasBodegaAgro(): UseQueryResult<RespuestaExistenciasBodega> {
+  return useQuery({
+    queryKey: claves.inventarioBodegaAgro,
+    queryFn: () =>
+      peticion<RespuestaExistenciasBodega>("/inventario/bodega-agropecuaria"),
     staleTime: 60_000,
   });
 }

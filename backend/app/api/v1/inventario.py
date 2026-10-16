@@ -15,11 +15,16 @@ from app.core.deps import (
     alcance_puntos_venta,
     exigir_permiso_consulta,
 )
+from app.infrastructure.fuentes.existencias_bodega_agro import FuenteExistenciasBodegaAgroSiesa
 from app.infrastructure.fuentes.siesa import ErrorFuenteSiesa, clave_descripcion
 from app.infrastructure.models.organizacion import PuntoVenta
 from app.infrastructure.models.usuario import Usuario
 from app.infrastructure.precalentador_inventario import obtener_inventario_pdv
-from app.schemas.inventario import FilaInventarioPdv, RespuestaInventarioPdv
+from app.schemas.inventario import (
+    FilaInventarioPdv,
+    RespuestaExistenciasBodega,
+    RespuestaInventarioPdv,
+)
 
 router = APIRouter(prefix="/inventario", tags=["Inventario"])
 
@@ -417,4 +422,24 @@ def inventario_pdv(
         columnas=columnas_producto + columnas_resumen + columnas_adicionales,
         filas=salida,
         total=len(salida),
+    )
+
+
+@router.get(
+    "/bodega-agropecuaria",
+    response_model=RespuestaExistenciasBodega,
+    summary="Existencias por bodega de Agropecuaria, compañía 3",
+)
+def existencias_bodega_agropecuaria(
+    _: Annotated[Usuario, Depends(exigir_permiso_consulta(PERMISO_CONSULTAR_INVENTARIO))],
+) -> RespuestaExistenciasBodega:
+    fuente = FuenteExistenciasBodegaAgroSiesa()
+    try:
+        inventario = fuente.leer()
+    finally:
+        fuente.cerrar()
+    return RespuestaExistenciasBodega(
+        columnas=list(inventario.columnas),
+        filas=list(inventario.filas),
+        total=len(inventario.filas),
     )
