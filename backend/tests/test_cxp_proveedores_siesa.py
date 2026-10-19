@@ -25,8 +25,8 @@ def test_descarga_saldos_cxp_con_companias_y_token_en_header() -> None:
         return httpx.Response(
             200,
             text=(
-                "compania,proveedor,nit,total,total_corriente,total_vencido\n"
-                "3,PROVEEDOR DE PRUEBA,900123456,1500,1000,500\n"
+                "compania,auxiliar,proveedor,nit,total,total_corriente,total_vencido\n"
+                "3,1330050103,PROVEEDOR DE PRUEBA,900123456,-2000000,-2000000,0\n"
             ),
         )
 
@@ -53,12 +53,14 @@ def test_descarga_saldos_cxp_con_companias_y_token_en_header() -> None:
     assert peticion.headers["Authorization"] == "token-solo-de-prueba"
     assert resultado.columnas == (
         "compania",
+        "auxiliar",
         "proveedor",
         "nit",
         "total",
         "total_corriente",
         "total_vencido",
     )
+    assert resultado.filas[0]["auxiliar"] == "1330050103"
     assert resultado.filas[0]["proveedor"] == "PROVEEDOR DE PRUEBA"
 
 

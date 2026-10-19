@@ -13,7 +13,7 @@ import httpx
 from app.core.config import obtener_settings
 from app.infrastructure.fuentes.siesa import ConfiguracionSiesa, ErrorFuenteSiesa
 
-RUTA_CXP_PROVEEDORES = "/ventas/saldos-cxp-proveedores"
+RUTA_CXP_PROVEEDORES = "/ventas/saldos-abiertos"
 COMPANIAS_CXP_PROVEEDORES = (3, 4, 6, 7)
 
 
