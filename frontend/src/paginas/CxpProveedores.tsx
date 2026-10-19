@@ -27,9 +27,14 @@ function etiquetaColumna(columna: string): string {
     descco: "Centro de operación",
     centrooperacion: "Centro de operación",
     unidadnegocio: "Unidad de negocio",
+    feproveedor: "F.E. proveedor",
+    descfeproveedor: "Descripción F.E. proveedor",
+    desctipoproveedor: "Descripción tipo proveedor",
+    auxiliar: "Auxiliar",
     proveedor: "Proveedor",
     descproveedor: "Proveedor",
     razonsocial: "Razón social",
+    razonsocialsucursal: "Razón social sucursal",
     nit: "NIT",
     tercero: "Tercero",
     sucursal: "Sucursal",
@@ -125,7 +130,7 @@ export function CxpProveedores() {
               <input
                 className="campo__control"
                 type="search"
-                placeholder="Proveedor, NIT o documento…"
+                placeholder="Proveedor, razón social o auxiliar…"
                 value={busqueda}
                 onChange={(evento) => cambiarFiltro(() => setBusqueda(evento.target.value))}
               />
