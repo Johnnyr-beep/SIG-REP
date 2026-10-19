@@ -4,6 +4,14 @@ import { useCxpProveedores } from "@/api/consultasFinanciero";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 
 const FILAS_POR_PAGINA = 50;
+const RANGOS_VENCIDOS = [
+  { desde: 0, hasta: 10, etiqueta: "0–10 días vencidos" },
+  { desde: 11, hasta: 20, etiqueta: "11–20 días vencidos" },
+  { desde: 21, hasta: 30, etiqueta: "21–30 días vencidos" },
+  { desde: 31, hasta: 60, etiqueta: "31–60 días vencidos" },
+  { desde: 61, hasta: 90, etiqueta: "61–90 días vencidos" },
+  { desde: 91, hasta: 9999, etiqueta: "91–9999 días vencidos" },
+];
 
 function fechaLocal(): string {
   const hoy = new Date();
@@ -31,6 +39,7 @@ function etiquetaColumna(columna: string): string {
     descfeproveedor: "Descripción F.E. proveedor",
     desctipoproveedor: "Descripción tipo proveedor",
     auxiliar: "Auxiliar",
+    naturaleza: "Naturaleza",
     proveedor: "Proveedor",
     descproveedor: "Proveedor",
     razonsocial: "Razón social",
@@ -57,9 +66,53 @@ function textoFila(fila: Record<string, string | null>): string {
     .toLocaleLowerCase();
 }
 
+function numeroDiaUtc(año: number, mes: number, dia: number): number | null {
+  const marca = Date.UTC(año, mes - 1, dia);
+  const fecha = new Date(marca);
+  if (
+    fecha.getUTCFullYear() !== año ||
+    fecha.getUTCMonth() !== mes - 1 ||
+    fecha.getUTCDate() !== dia
+  ) {
+    return null;
+  }
+  return marca;
+}
+
+function fechaComoDiaUtc(valor: string): number | null {
+  const iso = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/.exec(valor.trim());
+  if (iso) return numeroDiaUtc(Number(iso[1]), Number(iso[2]), Number(iso[3]));
+
+  const local = /^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})$/.exec(valor.trim());
+  if (local) return numeroDiaUtc(Number(local[3]), Number(local[2]), Number(local[1]));
+  return null;
+}
+
+function diasVencidosDeFila(
+  fila: Record<string, string | null>,
+  columnaDiasVencidos: string | undefined,
+  columnaFechaVencimiento: string | undefined,
+  fechaCorte: string,
+): number | null {
+  if (columnaDiasVencidos) {
+    const valor = fila[columnaDiasVencidos];
+    if (valor === null || valor === undefined || valor.trim() === "") return null;
+    const dias = Number(valor.replace(",", "."));
+    return Number.isFinite(dias) ? Math.trunc(dias) : null;
+  }
+
+  if (!columnaFechaVencimiento || !fila[columnaFechaVencimiento]) return null;
+  const vencimiento = fechaComoDiaUtc(fila[columnaFechaVencimiento]);
+  const corte = fechaComoDiaUtc(fechaCorte);
+  if (vencimiento === null || corte === null) return null;
+  return Math.floor((corte - vencimiento) / 86_400_000);
+}
+
 export function CxpProveedores() {
   const [fechaCorte, setFechaCorte] = useState(fechaLocal);
   const [compania, setCompania] = useState("");
+  const [naturaleza, setNaturaleza] = useState("");
+  const [rangoVencido, setRangoVencido] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [pagina, setPagina] = useState(1);
   const consulta = useCxpProveedores(fechaCorte);
@@ -67,6 +120,14 @@ export function CxpProveedores() {
   const columnas = consulta.data?.columnas ?? [];
   const filas = consulta.data?.filas ?? [];
   const columnaCompania = columnas.find((columna) => ["cia", "compania"].includes(normalizar(columna)));
+  const columnaNaturaleza = columnas.find((columna) => normalizar(columna) === "naturaleza");
+  const columnaDiasVencidos = columnas.find((columna) =>
+    ["diasvencidos", "diasvencido", "diasdemora", "diasmora", "diasdeatraso"].includes(normalizar(columna)),
+  );
+  const columnaFechaVencimiento = columnas.find((columna) =>
+    ["fechavencimiento", "fechavencida", "fechaexigibilidad", "fechavence"].includes(normalizar(columna)),
+  );
+  const fechaCorteEfectiva = consulta.data?.fecha_corte ?? fechaCorte;
   const companias = useMemo(
     () =>
       columnaCompania
@@ -76,13 +137,44 @@ export function CxpProveedores() {
         : [],
     [columnaCompania, filas],
   );
+  const naturalezas = useMemo(
+    () =>
+      columnaNaturaleza
+        ? [...new Set(filas.flatMap((fila) => (fila[columnaNaturaleza] ? [fila[columnaNaturaleza]] : [])))].sort(
+            (primera, segunda) => primera.localeCompare(segunda, "es-CO"),
+          )
+        : [],
+    [columnaNaturaleza, filas],
+  );
   const filasFiltradas = useMemo(() => {
     const termino = busqueda.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
     return filas.filter((fila) => {
       if (compania && columnaCompania && fila[columnaCompania] !== compania) return false;
+      if (naturaleza && columnaNaturaleza && fila[columnaNaturaleza] !== naturaleza) return false;
+      if (rangoVencido) {
+        const rango = RANGOS_VENCIDOS.find(({ etiqueta }) => etiqueta === rangoVencido);
+        const dias = diasVencidosDeFila(
+          fila,
+          columnaDiasVencidos,
+          columnaFechaVencimiento,
+          fechaCorteEfectiva,
+        );
+        if (!rango || dias === null || dias < rango.desde || dias > rango.hasta) return false;
+      }
       return !termino || textoFila(fila).includes(termino);
     });
-  }, [busqueda, compania, columnaCompania, filas]);
+  }, [
+    busqueda,
+    compania,
+    columnaCompania,
+    columnaDiasVencidos,
+    columnaFechaVencimiento,
+    columnaNaturaleza,
+    fechaCorteEfectiva,
+    filas,
+    naturaleza,
+    rangoVencido,
+  ]);
 
   const totalPaginas = Math.max(1, Math.ceil(filasFiltradas.length / FILAS_POR_PAGINA));
   const inicio = (pagina - 1) * FILAS_POR_PAGINA;
@@ -122,6 +214,34 @@ export function CxpProveedores() {
                 >
                   <option value="">Todas</option>
                   {companias.map((opcion) => <option key={opcion} value={opcion}>{opcion}</option>)}
+                </select>
+              </label>
+            ) : null}
+            {columnaNaturaleza ? (
+              <label className="campo">
+                <span>Naturaleza</span>
+                <select
+                  className="campo__control"
+                  value={naturaleza}
+                  onChange={(evento) => cambiarFiltro(() => setNaturaleza(evento.target.value))}
+                >
+                  <option value="">Todas</option>
+                  {naturalezas.map((opcion) => <option key={opcion} value={opcion}>{opcion}</option>)}
+                </select>
+              </label>
+            ) : null}
+            {columnaDiasVencidos || columnaFechaVencimiento ? (
+              <label className="campo">
+                <span>Días vencidos</span>
+                <select
+                  className="campo__control"
+                  value={rangoVencido}
+                  onChange={(evento) => cambiarFiltro(() => setRangoVencido(evento.target.value))}
+                >
+                  <option value="">Todos</option>
+                  {RANGOS_VENCIDOS.map((rango) => (
+                    <option key={rango.etiqueta} value={rango.etiqueta}>{rango.etiqueta}</option>
+                  ))}
                 </select>
               </label>
             ) : null}
