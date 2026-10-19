@@ -14,6 +14,7 @@ conectado a esa base.
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
@@ -40,6 +41,7 @@ from app.core.deps import (
 )
 from app.core.errors import ErrorAutorizacion, ErrorValidacion
 from app.domain.financiero import etiqueta_clase
+from app.infrastructure.fuentes.cxp_proveedores_siesa import FuenteCxpProveedoresSiesa
 from app.infrastructure.fuentes.financiero_siesa import (
     detalle_cuentas_en_vivo,
     situacion_financiera_en_vivo,
@@ -56,6 +58,7 @@ from app.schemas.financiero import (
     RespuestaBalanceComprobacion,
     RespuestaBalanceGeneral,
     RespuestaCartera,
+    RespuestaCxpProveedores,
     RespuestaDetalleCuentas,
     RespuestaDetalleCuentasEnVivo,
     RespuestaEstadoResultados,
@@ -86,6 +89,10 @@ PeriodoQuery = Query(
     description="Año y mes contable AAAAMM, tal como lo entrega SIESA.",
 )
 CiaQuery = Query(default=None, description="Compañía; sin ella se suman todas las cargadas.")
+FechaCorteCxpQuery = Query(
+    default=None,
+    description="Fecha de corte para corriente y vencido.",
+)
 EmpresaRentabilidad = Literal["agropecuaria", "carnes"]
 EmpresaRentabilidadQuery = Query(
     default="agropecuaria",
@@ -225,6 +232,34 @@ def cartera(
         for fila in servicio.cartera_por_cliente(FiltrosFinanciero(periodo=int(periodo), cia=cia))
     ]
     return RespuestaCartera(filas=filas, parametros_calculo=_parametros(periodo, cia))
+
+
+@router.get(
+    "/cxp-proveedores",
+    response_model=RespuestaCxpProveedores,
+    summary="Saldos de cuentas por pagar a proveedores",
+)
+def cxp_proveedores(
+    usuario: UsuarioFinancieroDep,
+    unidad: UnidadDep,
+    fecha_corte: date | None = FechaCorteCxpQuery,
+) -> RespuestaCxpProveedores:
+    del usuario
+    if unidad != "grupo-santacruz":
+        raise ErrorAutorizacion("Este módulo de CxP está disponible solo en Grupo Santacruz.")
+
+    corte = fecha_corte or date.today()
+    fuente = FuenteCxpProveedoresSiesa()
+    try:
+        resultado = fuente.leer(fecha_corte=corte)
+    finally:
+        fuente.cerrar()
+    return RespuestaCxpProveedores(
+        fecha_corte=corte,
+        columnas=list(resultado.columnas),
+        filas=list(resultado.filas),
+        total=len(resultado.filas),
+    )
 
 
 @router.get(

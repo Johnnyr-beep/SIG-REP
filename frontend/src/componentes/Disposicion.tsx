@@ -145,6 +145,7 @@ const MENU_FINANCIERO: GrupoNav[] = [
       { ruta: "/resumen-financiero", etiqueta: "Balance y resultados", icono: "▤", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/detalle-cuentas", etiqueta: "Detalle de cuentas", icono: "▤", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/cartera", etiqueta: "Cartera por cliente", icono: "◈", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
+      { ruta: "/cxp-proveedores", etiqueta: "CXP proveedores", icono: "◈", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
     ],
   },
   {
@@ -246,6 +247,7 @@ const TITULOS: Record<string, string> = {
   "/resumen-financiero": "Balance y resultados",
   "/rentabilidad-mes": "Rentabilidad mes",
   "/cartera": "Cartera por cliente",
+  "/cxp-proveedores": "CXP proveedores",
 };
 
 type Tema = "sistema" | "claro" | "oscuro";

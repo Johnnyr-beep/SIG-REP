@@ -756,6 +756,13 @@ export interface RespuestaCartera {
   parametros_calculo: ParametrosCalculoFinanciero;
 }
 
+export interface RespuestaCxpProveedores {
+  fecha_corte: string;
+  columnas: string[];
+  filas: Array<Record<string, string | null>>;
+  total: number;
+}
+
 export interface RespuestaIndicadoresFinancieros {
   liquidez_corriente?: string | null;
   endeudamiento?: string | null;

@@ -116,6 +116,13 @@ class RespuestaCartera(EsquemaBase):
     parametros_calculo: ParametrosCalculoFinanciero
 
 
+class RespuestaCxpProveedores(EsquemaBase):
+    fecha_corte: date
+    columnas: list[str]
+    filas: list[dict[str, str | None]]
+    total: int = Field(ge=0)
+
+
 class FilaDetalleCuenta(EsquemaBase):
     mayor_iii: str = Field(description="Cuenta PUC de 4 dígitos")
     mayor_iv: str | None = Field(default=None, description="Subcuenta PUC de 6 dígitos")

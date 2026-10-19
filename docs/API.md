@@ -602,6 +602,22 @@ de código para ese eje. Está pedido a la API en `INTEGRACION-SIESA §4.5`.
 
 ---
 
+## Financiero — Grupo Santacruz
+
+```
+GET /financiero/cxp-proveedores[?fecha_corte=2026-10-19]
+  -> {fecha_corte, columnas, filas, total}
+```
+
+Consulta saldos de cuentas por pagar a proveedores desde SIESA para las
+compañías 3, 4, 6 y 7. La fecha de corte controla la clasificación entre saldo
+corriente y vencido; si se omite, se usa la fecha actual. `columnas` y `filas`
+conservan dinámicamente el CSV del origen, y los importes viajan como texto.
+Requiere sesión con `PERMISO_CONSULTAR_FINANCIERO` y solo está disponible en la
+unidad `grupo-santacruz`.
+
+---
+
 ## Salud
 
 ```
