@@ -4,6 +4,28 @@ import { useCxcClientes } from "@/api/consultasFinanciero";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 
 const FILAS_POR_PAGINA = 50;
+const RANGOS_ANTIGUEDAD = [
+  {
+    valor: "1-30",
+    etiqueta: "Vencido 1–30 días",
+    columnas: ["vencido130", "total130", "totalvencido130", "saldo130"],
+  },
+  {
+    valor: "31-60",
+    etiqueta: "Vencido 31–60 días",
+    columnas: ["vencido3160", "total3160", "totalvencido3160", "saldo3160"],
+  },
+  {
+    valor: "61-90",
+    etiqueta: "Vencido 61–90 días",
+    columnas: ["vencido6190", "total6190", "totalvencido6190", "saldo6190"],
+  },
+  {
+    valor: "mas-90",
+    etiqueta: "Vencido más de 90 días",
+    columnas: ["vencidomas90", "vencido90mas", "totalmas90", "totalvencidomas90", "saldo90mas"],
+  },
+] as const;
 
 function fechaLocal(): string {
   const hoy = new Date();
@@ -40,10 +62,15 @@ function etiquetaColumna(columna: string): string {
     total: "Total COP",
     totalcorriente: "Total corriente COP",
     totalvencido: "Total vencido COP",
+    vencido130: "Vencido 1–30 días COP",
     total130: "Vencido 1–30 días COP",
+    vencido3160: "Vencido 31–60 días COP",
     total13160: "Vencido 31–60 días COP",
     total3160: "Vencido 31–60 días COP",
+    vencido6190: "Vencido 61–90 días COP",
     total6190: "Vencido 61–90 días COP",
+    vencidomas90: "Vencido más de 90 días COP",
+    vencido90mas: "Vencido más de 90 días COP",
     totalmas90: "Vencido más de 90 días COP",
   };
   return etiquetas[clave] ?? columna.replace(/[_-]+/g, " ").trim();
@@ -62,6 +89,7 @@ export function CxcClientes() {
   const [fechaCorte, setFechaCorte] = useState(fechaLocal);
   const [compania, setCompania] = useState("");
   const [naturaleza, setNaturaleza] = useState("");
+  const [rangoAntiguedad, setRangoAntiguedad] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [pagina, setPagina] = useState(1);
   const consulta = useCxcClientes(fechaCorte);
@@ -70,6 +98,12 @@ export function CxcClientes() {
   const filas = consulta.data?.filas ?? [];
   const columnaCompania = columnas.find((columna) => ["cia", "compania"].includes(normalizar(columna)));
   const columnaNaturaleza = columnas.find((columna) => normalizar(columna) === "naturaleza");
+  const filtrosAntiguedad = RANGOS_ANTIGUEDAD.flatMap((rango) => {
+    const columna = columnas.find((nombre) =>
+      rango.columnas.some((alias) => alias === normalizar(nombre)),
+    );
+    return columna ? [{ ...rango, columna }] : [];
+  });
   const companias = useMemo(
     () =>
       columnaCompania
@@ -93,9 +127,14 @@ export function CxcClientes() {
     return filas.filter((fila) => {
       if (compania && columnaCompania && fila[columnaCompania] !== compania) return false;
       if (naturaleza && columnaNaturaleza && fila[columnaNaturaleza] !== naturaleza) return false;
+      if (rangoAntiguedad) {
+        const columna = filtrosAntiguedad.find((rango) => rango.valor === rangoAntiguedad)?.columna;
+        const saldo = columna ? Number(fila[columna]?.replace(",", ".") ?? "") : 0;
+        if (!columna || !Number.isFinite(saldo) || saldo === 0) return false;
+      }
       return !termino || textoFila(fila).includes(termino);
     });
-  }, [busqueda, compania, columnaCompania, columnaNaturaleza, filas, naturaleza]);
+  }, [busqueda, compania, columnaCompania, columnaNaturaleza, filas, filtrosAntiguedad, naturaleza, rangoAntiguedad]);
 
   const totalPaginas = Math.max(1, Math.ceil(filasFiltradas.length / FILAS_POR_PAGINA));
   const inicio = (pagina - 1) * FILAS_POR_PAGINA;
@@ -148,6 +187,21 @@ export function CxcClientes() {
                 >
                   <option value="">Todas</option>
                   {naturalezas.map((opcion) => <option key={opcion} value={opcion}>{opcion}</option>)}
+                </select>
+              </label>
+            ) : null}
+            {filtrosAntiguedad.length > 0 ? (
+              <label className="campo">
+                <span>Antigüedad vencida</span>
+                <select
+                  className="campo__control"
+                  value={rangoAntiguedad}
+                  onChange={(evento) => cambiarFiltro(() => setRangoAntiguedad(evento.target.value))}
+                >
+                  <option value="">Todos los rangos</option>
+                  {filtrosAntiguedad.map((rango) => (
+                    <option key={rango.valor} value={rango.valor}>{rango.etiqueta}</option>
+                  ))}
                 </select>
               </label>
             ) : null}
