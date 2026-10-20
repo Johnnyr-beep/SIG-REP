@@ -37,6 +37,7 @@ import { Presupuesto } from "@/paginas/Presupuesto";
 import { Permisos } from "@/paginas/Permisos";
 import { DetalleCuentas } from "@/paginas/DetalleCuentas";
 import { Cartera } from "@/paginas/Cartera";
+import { CxcClientes } from "@/paginas/CxcClientes";
 import { CxpProveedores } from "@/paginas/CxpProveedores";
 import { SelectorMarca } from "@/paginas/SelectorMarca";
 import { Tablero } from "@/paginas/Tablero";
@@ -209,6 +210,7 @@ export function App() {
             <Route path="detalle-cuentas" element={<DetalleCuentas />} />
             <Route path="cartera" element={<Cartera />} />
             <Route path="cxp-proveedores" element={<CxpProveedores />} />
+            <Route path="cxc-clientes" element={<CxcClientes />} />
           </>
         ) : esSoloAcceso ? (
           <Route

@@ -607,6 +607,8 @@ de código para ese eje. Está pedido a la API en `INTEGRACION-SIESA §4.5`.
 ```
 GET /financiero/cxp-proveedores[?fecha_corte=2026-10-19]
   -> {fecha_corte, columnas, filas, total}
+GET /financiero/cxc-clientes[?fecha_corte=2026-10-19]
+  -> {fecha_corte, columnas, filas, total}
 ```
 
 Consulta saldos de cuentas por pagar a proveedores desde SIESA para las
@@ -615,6 +617,12 @@ corriente y vencido; si se omite, se usa la fecha actual. `columnas` y `filas`
 conservan dinámicamente el CSV del origen, y los importes viajan como texto.
 Requiere sesión con `PERMISO_CONSULTAR_FINANCIERO` y solo está disponible en la
 unidad `grupo-santacruz`.
+
+CxC consulta terceros clasificados como clientes en las compañías 3, 4, 6 y 7.
+La respuesta dinámica conserva los totales corriente/vencido y las columnas de
+antigüedad que entrega SIESA (1–30, 31–60, 61–90 y más de 90 días), a la fecha
+de corte indicada u hoy si se omite. Requiere `PERMISO_CONSULTAR_FINANCIERO` y
+solo está disponible en `grupo-santacruz`.
 
 ---
 

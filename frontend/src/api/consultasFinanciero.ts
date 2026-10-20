@@ -7,6 +7,7 @@ import type {
   RespuestaBalanceComprobacion,
   RespuestaBalanceGeneral,
   RespuestaCartera,
+  RespuestaCxcClientes,
   RespuestaCxpProveedores,
   RespuestaDetalleCuentas,
   RespuestaDetalleCuentasEnVivo,
@@ -103,6 +104,18 @@ export function useCxpProveedores(fechaCorte: string, habilitado = true) {
     queryKey: ["financiero", "cxp-proveedores", fechaCorte],
     queryFn: () =>
       peticion<RespuestaCxpProveedores>("/financiero/cxp-proveedores", {
+        parametros: { fecha_corte: fechaCorte },
+      }),
+    enabled: habilitado && /^\d{4}-\d{2}-\d{2}$/.test(fechaCorte),
+    staleTime: 60_000,
+  });
+}
+
+export function useCxcClientes(fechaCorte: string, habilitado = true) {
+  return useQuery({
+    queryKey: ["financiero", "cxc-clientes", fechaCorte],
+    queryFn: () =>
+      peticion<RespuestaCxcClientes>("/financiero/cxc-clientes", {
         parametros: { fecha_corte: fechaCorte },
       }),
     enabled: habilitado && /^\d{4}-\d{2}-\d{2}$/.test(fechaCorte),

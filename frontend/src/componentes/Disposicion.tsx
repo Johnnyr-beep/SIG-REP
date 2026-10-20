@@ -143,6 +143,7 @@ const MENU_FINANCIERO: GrupoNav[] = [
       { ruta: "/rentabilidad-dia", etiqueta: "Rentabilidad día", icono: "▦", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/inventario-agropecuaria", etiqueta: "Inventario Agropecuaria", icono: "▦", permiso: "PERMISO_CONSULTAR_INVENTARIO" },
       { ruta: "/cxp-proveedores", etiqueta: "CXP proveedores", icono: "◈", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
+      { ruta: "/cxc-clientes", etiqueta: "CXC clientes", icono: "◈", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/resumen-financiero", etiqueta: "Balance y resultados", icono: "▤", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/detalle-cuentas", etiqueta: "Detalle de cuentas", icono: "▤", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/cartera", etiqueta: "Cartera por cliente", icono: "◈", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
@@ -248,6 +249,7 @@ const TITULOS: Record<string, string> = {
   "/rentabilidad-mes": "Rentabilidad mes",
   "/cartera": "Cartera por cliente",
   "/cxp-proveedores": "CXP proveedores",
+  "/cxc-clientes": "CXC clientes",
 };
 
 type Tema = "sistema" | "claro" | "oscuro";

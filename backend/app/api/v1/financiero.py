@@ -41,6 +41,7 @@ from app.core.deps import (
 )
 from app.core.errors import ErrorAutorizacion, ErrorValidacion
 from app.domain.financiero import etiqueta_clase
+from app.infrastructure.fuentes.cxc_clientes_siesa import FuenteCxcClientesSiesa
 from app.infrastructure.fuentes.cxp_proveedores_siesa import FuenteCxpProveedoresSiesa
 from app.infrastructure.fuentes.financiero_siesa import (
     detalle_cuentas_en_vivo,
@@ -58,6 +59,7 @@ from app.schemas.financiero import (
     RespuestaBalanceComprobacion,
     RespuestaBalanceGeneral,
     RespuestaCartera,
+    RespuestaCxcClientes,
     RespuestaCxpProveedores,
     RespuestaDetalleCuentas,
     RespuestaDetalleCuentasEnVivo,
@@ -255,6 +257,34 @@ def cxp_proveedores(
     finally:
         fuente.cerrar()
     return RespuestaCxpProveedores(
+        fecha_corte=corte,
+        columnas=list(resultado.columnas),
+        filas=list(resultado.filas),
+        total=len(resultado.filas),
+    )
+
+
+@router.get(
+    "/cxc-clientes",
+    response_model=RespuestaCxcClientes,
+    summary="Saldos y antigüedad de cuentas por cobrar a clientes",
+)
+def cxc_clientes(
+    usuario: UsuarioFinancieroDep,
+    unidad: UnidadDep,
+    fecha_corte: date | None = FechaCorteCxpQuery,
+) -> RespuestaCxcClientes:
+    del usuario
+    if unidad != "grupo-santacruz":
+        raise ErrorAutorizacion("Este módulo de CxC está disponible solo en Grupo Santacruz.")
+
+    corte = fecha_corte or date.today()
+    fuente = FuenteCxcClientesSiesa()
+    try:
+        resultado = fuente.leer(fecha_corte=corte)
+    finally:
+        fuente.cerrar()
+    return RespuestaCxcClientes(
         fecha_corte=corte,
         columnas=list(resultado.columnas),
         filas=list(resultado.filas),
