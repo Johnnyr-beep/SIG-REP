@@ -156,9 +156,9 @@ class AgroVentaLinea(Base):
     #: `TotalCosto`. **Anulable**: `NULL` es «la fuente no lo entregó» y `0` es
     #: «costó cero». Ver el punto 2 del encabezado.
     total_costo: Mapped[Decimal | None] = mapped_column(Dinero)
-    #: `UtilidadBruta` tal como la envía SIESA. **Solo para conciliación**: el
-    #: margen del reporte se recalcula ponderado sobre los totales y jamás sale
-    #: de esta columna (§4.4).
+    #: `UtilidadBruta` tal como la envía SIESA. Sirve para reconstruir
+    #: `TotalCosto` si la API omite esa columna; cuando ambos llegan, se conserva
+    #: `TotalCosto` y esta queda disponible para conciliación (§4.4).
     utilidad_bruta: Mapped[Decimal | None] = mapped_column(Dinero)
     #: `%` de rentabilidad si alguna vez llega. Hoy la fuente no lo trae y viaja
     #: nulo; existe para no tener que migrar la tabla el día que aparezca.
