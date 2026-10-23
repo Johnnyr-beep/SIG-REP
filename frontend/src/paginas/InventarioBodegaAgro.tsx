@@ -113,6 +113,17 @@ function valorFila(fila: Record<string, string | null>, columna: string): string
   return fila[columna] ?? "—";
 }
 
+function valorInventario(fila: Record<string, string | null>, columna: string): string {
+  const valor = valorFila(fila, columna);
+  const clave = normalizar(columna);
+  if (
+    !["costopromediounitario", "costopromedio", "costopromediototal", "costototal"].includes(clave)
+  ) return valor;
+
+  const numero = Number(valor.trim());
+  return Number.isFinite(numero) ? numero.toFixed(2) : valor;
+}
+
 function textoFila(fila: Record<string, string | null>): string {
   return Object.values(fila)
     .filter((valor): valor is string => valor !== null)
@@ -306,7 +317,7 @@ export function InventarioBodegaAgro() {
                           key={columna}
                           className={/exist|cantidad|costo|total|disponible/i.test(normalizar(columna)) ? "numero" : undefined}
                         >
-                          {valorFila(fila, columna)}
+                          {valorInventario(fila, columna)}
                         </td>
                       ))}
                     </tr>
