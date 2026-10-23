@@ -25,6 +25,12 @@ function buscarColumnaBodega(columnas: string[]): string | null {
   }) ?? null;
 }
 
+function buscarColumnaCodigoBodega(columnas: string[]): string | null {
+  return columnas.find((nombre) =>
+    ["bodegacodigo", "codigobodega", "codigoalmacen"].includes(normalizar(nombre)),
+  ) ?? null;
+}
+
 function buscarColumnasCentroOperacion(columnas: string[]): {
   codigo: string | null;
   descripcion: string | null;
@@ -40,6 +46,22 @@ function buscarColumnasCentroOperacion(columnas: string[]): {
     ),
   ) ?? null;
   return { codigo, descripcion };
+}
+
+function valorCentroOperacion(
+  fila: Record<string, string | null>,
+  columnaCodigo: string | null,
+  columnaDescripcion: string | null,
+  columnaCodigoBodega: string | null,
+): string | null {
+  if (columnaCodigo || columnaDescripcion) {
+    return (columnaCodigo ? fila[columnaCodigo] : null)
+      || (columnaDescripcion ? fila[columnaDescripcion] : null)
+      || null;
+  }
+
+  const codigoBodega = columnaCodigoBodega ? fila[columnaCodigoBodega]?.trim() : null;
+  return codigoBodega && /^\d{3}/.test(codigoBodega) ? codigoBodega.slice(0, 3) : null;
 }
 
 function buscarColumnaProducto(columnas: string[]): string | null {
@@ -110,8 +132,11 @@ export function InventarioBodegaAgro() {
   const columnas = consulta.data?.columnas ?? [];
   const filas = consulta.data?.filas ?? [];
   const columnaBodega = buscarColumnaBodega(columnas);
+  const columnaCodigoBodega = buscarColumnaCodigoBodega(columnas);
   const columnasCentroOperacion = buscarColumnasCentroOperacion(columnas);
-  const columnaCentroOperacionFiltro = columnasCentroOperacion.codigo ?? columnasCentroOperacion.descripcion;
+  const hayFiltroCentroOperacion = Boolean(
+    columnasCentroOperacion.codigo || columnasCentroOperacion.descripcion || columnaCodigoBodega,
+  );
   const columnaProducto = buscarColumnaProducto(columnas);
   const bodegas = useMemo(
     () =>
@@ -123,34 +148,60 @@ export function InventarioBodegaAgro() {
     [columnaBodega, filas],
   );
   const centrosOperacion = useMemo(() => {
-    if (!columnaCentroOperacionFiltro) return [];
+    if (!hayFiltroCentroOperacion) return [];
     const opciones = new Map<string, string>();
     for (const fila of filas) {
+      const valor = valorCentroOperacion(
+        fila,
+        columnasCentroOperacion.codigo,
+        columnasCentroOperacion.descripcion,
+        columnaCodigoBodega,
+      );
+      if (!valor) continue;
       const codigo = columnasCentroOperacion.codigo ? fila[columnasCentroOperacion.codigo] : null;
       const descripcion = columnasCentroOperacion.descripcion
         ? fila[columnasCentroOperacion.descripcion]
         : null;
-      const valor = codigo || descripcion;
-      if (!valor) continue;
       const etiqueta = codigo && descripcion ? `${codigo} · ${descripcion}` : valor;
       opciones.set(valor, etiqueta);
     }
     return [...opciones.entries()]
       .map(([valor, etiqueta]) => ({ valor, etiqueta }))
       .sort((primero, segundo) => primero.etiqueta.localeCompare(segundo.etiqueta, "es-CO", { numeric: true }));
-  }, [columnaCentroOperacionFiltro, columnasCentroOperacion.codigo, columnasCentroOperacion.descripcion, filas]);
+  }, [
+    hayFiltroCentroOperacion,
+    columnaCodigoBodega,
+    columnasCentroOperacion.codigo,
+    columnasCentroOperacion.descripcion,
+    filas,
+  ]);
   const filasFiltradas = useMemo(() => {
     const termino = busqueda.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
     return filas.filter((fila) => {
       if (bodega && columnaBodega && fila[columnaBodega] !== bodega) return false;
       if (
         centroOperacion &&
-        columnaCentroOperacionFiltro &&
-        fila[columnaCentroOperacionFiltro] !== centroOperacion
+        hayFiltroCentroOperacion &&
+        valorCentroOperacion(
+          fila,
+          columnasCentroOperacion.codigo,
+          columnasCentroOperacion.descripcion,
+          columnaCodigoBodega,
+        ) !== centroOperacion
       ) return false;
       return !termino || textoFila(fila).includes(termino);
     });
-  }, [bodega, busqueda, centroOperacion, columnaBodega, columnaCentroOperacionFiltro, filas]);
+  }, [
+    bodega,
+    busqueda,
+    centroOperacion,
+    columnaBodega,
+    columnaCodigoBodega,
+    columnasCentroOperacion.codigo,
+    columnasCentroOperacion.descripcion,
+    filas,
+    hayFiltroCentroOperacion,
+  ]);
 
   const totalPaginas = Math.max(1, Math.ceil(filasFiltradas.length / FILAS_POR_PAGINA));
   const inicio = (pagina - 1) * FILAS_POR_PAGINA;
@@ -184,7 +235,7 @@ export function InventarioBodegaAgro() {
                 </select>
               </label>
             ) : null}
-            {columnaCentroOperacionFiltro ? (
+            {hayFiltroCentroOperacion ? (
               <label className="campo">
                 <span>C.O.</span>
                 <select
