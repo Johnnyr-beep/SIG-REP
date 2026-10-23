@@ -125,10 +125,10 @@ variantes de `0006`, que la tabla `mapeo_categorias` resuelve tal cual),
 `CostoPromedio`, `CantidadInv` en kilos limpios, `UtilidadBruta` y
 `PorcRentabilidad`.
 
-Si `TotalCosto` llega vacío pero `TotalNeto` y `UtilidadBruta` sí vienen, SIGREP
-reconstruye el costo como `TotalNeto - UtilidadBruta`. Un `TotalCosto` explícito,
-incluido cero, siempre prevalece; si tampoco llega utilidad bruta, el costo se
-conserva como desconocido.
+Cuando `TotalNeto` y `UtilidadBruta` vienen, SIGREP calcula el costo como
+`TotalNeto - UtilidadBruta`, incluso si también llega `TotalCosto`. Si falta
+`UtilidadBruta`, usa `TotalCosto`; si faltan ambos, el costo se conserva como
+desconocido.
 
 **No trae vendedor.** `vendedor-acumulada` sí entregaba `CodigoVendedor` y
 `NombreVendedor`. Hoy no se pierde nada —SIGREP no persiste todavía el vendedor

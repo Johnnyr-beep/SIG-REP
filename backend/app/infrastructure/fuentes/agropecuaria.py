@@ -183,10 +183,11 @@ class LineaAgro:
     ingesta, igual que en carnes, y vive en
     `app/infrastructure/models/agro_vocabulario.py` con pruebas propias.
 
-    `total_costo` es opcional y los importes de venta no. Si SIESA omite el
-    costo pero entrega `UtilidadBruta`, se reconstruye como `TotalNeto -
-    UtilidadBruta`; si faltan ambos, queda `None` —«no se sabe»—, nunca cero.
-    Un agregado que contenga una sola línea sin costo publica el margen como «—».
+    `total_costo` es opcional y los importes de venta no. Cuando llega
+    `UtilidadBruta`, el costo se calcula como `TotalNeto - UtilidadBruta`; si
+    falta, se usa `TotalCosto`. Si faltan ambos, queda `None` —«no se sabe»—,
+    nunca cero. Un agregado que contenga una sola línea sin costo publica el
+    margen como «—».
     """
 
     fecha: date
@@ -572,7 +573,7 @@ class FuenteVentaAgropecuaria:
                 return None
             valores[campo] = numero_decimal
 
-        if valores["total_costo"] is None and valores["utilidad_bruta"] is not None:
+        if valores["utilidad_bruta"] is not None:
             total_neto = valores["total_neto"]
             utilidad_bruta = valores["utilidad_bruta"]
             if total_neto is not None:

@@ -45,8 +45,12 @@ def test_reconstruye_costo_desde_total_neto_y_utilidad_bruta() -> None:
     assert linea_agro(registro()) == Decimal("600.00")
 
 
-def test_total_costo_explicito_incluso_cero_tiene_prioridad() -> None:
-    assert linea_agro(registro(totalcosto="0")) == Decimal("0.00")
+def test_utilidad_bruta_define_costo_aunque_total_costo_discrepe() -> None:
+    assert linea_agro(registro(totalcosto="100")) == Decimal("600.00")
+
+
+def test_total_costo_explicito_se_usa_si_falta_utilidad_bruta() -> None:
+    assert linea_agro(registro(totalcosto="0", utilidadbruta="")) == Decimal("0.00")
 
 
 def test_costo_sigue_desconocido_si_faltan_total_costo_y_utilidad() -> None:
