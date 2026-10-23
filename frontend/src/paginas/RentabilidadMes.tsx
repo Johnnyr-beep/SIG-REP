@@ -627,6 +627,7 @@ export function RentabilidadMes() {
                         alAlternar={() => setOrdenTipos((actual) => actual === "desc" ? "asc" : "desc")}
                       />
                       <th className="numero">UT.</th>
+                      <th aria-label="Semáforo de utilidad" />
                       <th className="numero">%RENTB.</th>
                       <th aria-label="Semáforo" />
                       <th className="numero">COSTO UNIT. PROM.</th>
@@ -655,6 +656,7 @@ export function RentabilidadMes() {
                       <td className="numero">{cantidad(datos.kilos)}</td>
                       <td className="numero" title={millones(datos.venta)}>{millonesTabla(datos.venta)}</td>
                       <td className="numero">{millonesTabla(datos.margen_bruto)}</td>
+                      <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={datos.rentabilidad} /></td>
                       <td className="numero">{porcentaje(datos.rentabilidad)}</td>
                       <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={datos.rentabilidad} /></td>
                       <td className="numero">{costoPorKiloValores(datos.costo, datos.kilos)}</td>
@@ -768,6 +770,7 @@ function FragmentoTipoItem({
         <td className="numero">{cantidad(fila.kilos)}</td>
         <td className="numero" title={millones(fila.venta)}>{millonesTabla(fila.venta)}</td>
         <td className="numero">{millonesTabla(fila.margen_bruto)}</td>
+        <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={fila.rentabilidad} /></td>
         <td className="numero">{porcentaje(fila.rentabilidad)}</td>
         <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={fila.rentabilidad} /></td>
         <td className="numero">{costoPorKilo(fila)}</td>
@@ -786,6 +789,7 @@ function FragmentoTipoItem({
               <td className="numero">{cantidad(centro.kilos)}</td>
               <td className="numero" title={millones(centro.venta)}>{millonesTabla(centro.venta)}</td>
               <td className="numero">{millonesTabla(centro.margen_bruto)}</td>
+              <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={centro.rentabilidad} /></td>
               <td className="numero">{porcentaje(centro.rentabilidad)}</td>
               <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={centro.rentabilidad} /></td>
               <td className="numero">{costoPorKilo(centro)}</td>
@@ -796,6 +800,7 @@ function FragmentoTipoItem({
                 <td className="numero">{cantidad(producto.kilos)}</td>
                 <td className="numero" title={millones(producto.venta)}>{millonesTabla(producto.venta)}</td>
                 <td className="numero">{millonesTabla(producto.margen_bruto)}</td>
+                <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={producto.rentabilidad} /></td>
                 <td className="numero">{porcentaje(producto.rentabilidad)}</td>
                 <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={producto.rentabilidad} /></td>
                 <td className="numero">{costoPorKilo(producto)}</td>
