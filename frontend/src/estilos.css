@@ -4214,7 +4214,7 @@ textarea.campo__control {
 }
 
 .rentabilidad-mes__tabla--metricas-bienes {
-  min-width: 64rem;
+  min-width: 68rem;
 }
 
 .rentabilidad-mes__tabla--metricas-bienes th:first-child {
@@ -4242,6 +4242,10 @@ textarea.campo__control {
 }
 
 .rentabilidad-mes__tabla--metricas-bienes th:nth-child(7) {
+  width: 2.75rem;
+}
+
+.rentabilidad-mes__tabla--metricas-bienes th:nth-child(8) {
   width: 13rem;
 }
 

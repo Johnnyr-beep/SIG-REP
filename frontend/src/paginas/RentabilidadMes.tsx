@@ -627,8 +627,8 @@ export function RentabilidadMes() {
                         alAlternar={() => setOrdenTipos((actual) => actual === "desc" ? "asc" : "desc")}
                       />
                       <th className="numero">UT.</th>
-                      <th aria-label="Semáforo" />
                       <th className="numero">%RENTB.</th>
+                      <th aria-label="Semáforo" />
                       <th className="numero">COSTO UNIT. PROM.</th>
                     </tr>
                   </thead>
@@ -680,6 +680,7 @@ export function RentabilidadMes() {
                       <th className="numero">UT.</th>
                       <th aria-label="Semáforo" />
                       <th className="numero">%RENTB.</th>
+                      <th aria-label="Semáforo de rentabilidad" />
                       <th className="numero">COSTO UNIT. PROM.</th>
                     </tr>
                   </thead>
@@ -708,6 +709,7 @@ export function RentabilidadMes() {
                       <td className="numero">{millonesTabla(margenBienes === null ? null : String(margenBienes))}</td>
                       <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={rentabilidadBienes} /></td>
                       <td className="numero">{porcentaje(rentabilidadBienes)}</td>
+                      <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={rentabilidadBienes} /></td>
                       <td className="numero">{costoPorKiloValores(costoBienes === null ? null : String(costoBienes), String(kilosBienes))}</td>
                     </tr>
                   </tfoot>
@@ -766,8 +768,8 @@ function FragmentoTipoItem({
         <td className="numero">{cantidad(fila.kilos)}</td>
         <td className="numero" title={millones(fila.venta)}>{millonesTabla(fila.venta)}</td>
         <td className="numero">{millonesTabla(fila.margen_bruto)}</td>
-        <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={fila.rentabilidad} /></td>
         <td className="numero">{porcentaje(fila.rentabilidad)}</td>
+        <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={fila.rentabilidad} /></td>
         <td className="numero">{costoPorKilo(fila)}</td>
       </tr>
       {abierto ? ordenarPorVenta(fila.centros_operacion, orden).map((centro) => {
@@ -834,6 +836,7 @@ function FragmentoEspecie({
         <td className="numero">{millonesTabla(fila.margen_bruto)}</td>
         <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={fila.rentabilidad} /></td>
         <td className="numero">{porcentaje(fila.rentabilidad)}</td>
+        <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={fila.rentabilidad} /></td>
         <td className="numero">{costoPorKilo(fila)}</td>
       </tr>
       {abierto ? ordenarPorVenta(fila.comerciales, orden).map((comercial) => {
@@ -852,6 +855,7 @@ function FragmentoEspecie({
               <td className="numero">{millonesTabla(comercial.margen_bruto)}</td>
               <td className="rentabilidad-mes__celda-semaforo"><EstadoRentabilidadCalculada valor={comercial.rentabilidad} /></td>
               <td className="numero">{porcentaje(comercial.rentabilidad)}</td>
+              <td className="rentabilidad-mes__celda-semaforo"><EstadoRentabilidadCalculada valor={comercial.rentabilidad} /></td>
               <td className="numero">{costoPorKilo(comercial)}</td>
             </tr>
             {expandido ? ordenarPorVenta(comercial.productos, orden).map((producto) => (
@@ -862,6 +866,7 @@ function FragmentoEspecie({
                 <td className="numero">{millonesTabla(producto.margen_bruto)}</td>
                 <td className="rentabilidad-mes__celda-semaforo"><EstadoRentabilidadCalculada valor={producto.rentabilidad} /></td>
                 <td className="numero">{porcentaje(producto.rentabilidad)}</td>
+                <td className="rentabilidad-mes__celda-semaforo"><EstadoRentabilidadCalculada valor={producto.rentabilidad} /></td>
                 <td className="numero">{costoPorKilo(producto)}</td>
               </tr>
             )) : null}
