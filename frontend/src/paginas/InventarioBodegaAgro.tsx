@@ -25,6 +25,23 @@ function buscarColumnaBodega(columnas: string[]): string | null {
   }) ?? null;
 }
 
+function buscarColumnasCentroOperacion(columnas: string[]): {
+  codigo: string | null;
+  descripcion: string | null;
+} {
+  const codigo = columnas.find((nombre) =>
+    ["co", "cocodigo", "coid", "codigocentrooperacion", "centrooperacioncodigo"].includes(
+      normalizar(nombre),
+    ),
+  ) ?? null;
+  const descripcion = columnas.find((nombre) =>
+    ["codescripcion", "centrooperacion", "centrooperaciondescripcion", "descco"].includes(
+      normalizar(nombre),
+    ),
+  ) ?? null;
+  return { codigo, descripcion };
+}
+
 function buscarColumnaProducto(columnas: string[]): string | null {
   const preferidas = ["itemdescripcion", "descripcionitem", "producto", "item"];
   for (const preferida of preferidas) {
@@ -44,6 +61,14 @@ function etiquetaColumna(columna: string): string {
     bodegadescripcion: "Bodega",
     codigobodega: "Código bodega",
     descripcionbodega: "Bodega",
+    co: "Centro de operación",
+    cocodigo: "C.O.",
+    codescripcion: "Centro de operación",
+    coid: "C.O.",
+    centrooperacion: "Centro de operación",
+    centrooperacioncodigo: "C.O.",
+    centrooperaciondescripcion: "Centro de operación",
+    descco: "Centro de operación",
     item: "Item ID",
     itemid: "Item ID",
     iditem: "Item ID",
@@ -78,12 +103,15 @@ function textoFila(fila: Record<string, string | null>): string {
 export function InventarioBodegaAgro() {
   const consulta = useExistenciasBodegaAgro();
   const [bodega, setBodega] = useState("");
+  const [centroOperacion, setCentroOperacion] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [pagina, setPagina] = useState(1);
 
   const columnas = consulta.data?.columnas ?? [];
   const filas = consulta.data?.filas ?? [];
   const columnaBodega = buscarColumnaBodega(columnas);
+  const columnasCentroOperacion = buscarColumnasCentroOperacion(columnas);
+  const columnaCentroOperacionFiltro = columnasCentroOperacion.codigo ?? columnasCentroOperacion.descripcion;
   const columnaProducto = buscarColumnaProducto(columnas);
   const bodegas = useMemo(
     () =>
@@ -94,13 +122,35 @@ export function InventarioBodegaAgro() {
         : [],
     [columnaBodega, filas],
   );
+  const centrosOperacion = useMemo(() => {
+    if (!columnaCentroOperacionFiltro) return [];
+    const opciones = new Map<string, string>();
+    for (const fila of filas) {
+      const codigo = columnasCentroOperacion.codigo ? fila[columnasCentroOperacion.codigo] : null;
+      const descripcion = columnasCentroOperacion.descripcion
+        ? fila[columnasCentroOperacion.descripcion]
+        : null;
+      const valor = codigo || descripcion;
+      if (!valor) continue;
+      const etiqueta = codigo && descripcion ? `${codigo} · ${descripcion}` : valor;
+      opciones.set(valor, etiqueta);
+    }
+    return [...opciones.entries()]
+      .map(([valor, etiqueta]) => ({ valor, etiqueta }))
+      .sort((primero, segundo) => primero.etiqueta.localeCompare(segundo.etiqueta, "es-CO", { numeric: true }));
+  }, [columnaCentroOperacionFiltro, columnasCentroOperacion.codigo, columnasCentroOperacion.descripcion, filas]);
   const filasFiltradas = useMemo(() => {
     const termino = busqueda.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
     return filas.filter((fila) => {
       if (bodega && columnaBodega && fila[columnaBodega] !== bodega) return false;
+      if (
+        centroOperacion &&
+        columnaCentroOperacionFiltro &&
+        fila[columnaCentroOperacionFiltro] !== centroOperacion
+      ) return false;
       return !termino || textoFila(fila).includes(termino);
     });
-  }, [bodega, busqueda, columnaBodega, filas]);
+  }, [bodega, busqueda, centroOperacion, columnaBodega, columnaCentroOperacionFiltro, filas]);
 
   const totalPaginas = Math.max(1, Math.ceil(filasFiltradas.length / FILAS_POR_PAGINA));
   const inicio = (pagina - 1) * FILAS_POR_PAGINA;
@@ -131,6 +181,21 @@ export function InventarioBodegaAgro() {
                 >
                   <option value="">Todas</option>
                   {bodegas.map((opcion) => <option key={opcion} value={opcion}>{opcion}</option>)}
+                </select>
+              </label>
+            ) : null}
+            {columnaCentroOperacionFiltro ? (
+              <label className="campo">
+                <span>C.O.</span>
+                <select
+                  className="campo__control"
+                  value={centroOperacion}
+                  onChange={(evento) => cambiarFiltro(() => setCentroOperacion(evento.target.value))}
+                >
+                  <option value="">Todos</option>
+                  {centrosOperacion.map((opcion) => (
+                    <option key={opcion.valor} value={opcion.valor}>{opcion.etiqueta}</option>
+                  ))}
                 </select>
               </label>
             ) : null}
