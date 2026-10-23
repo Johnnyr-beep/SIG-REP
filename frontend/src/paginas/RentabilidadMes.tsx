@@ -655,8 +655,8 @@ export function RentabilidadMes() {
                       <td className="numero">{cantidad(datos.kilos)}</td>
                       <td className="numero" title={millones(datos.venta)}>{millonesTabla(datos.venta)}</td>
                       <td className="numero">{millonesTabla(datos.margen_bruto)}</td>
-                      <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={datos.rentabilidad} /></td>
                       <td className="numero">{porcentaje(datos.rentabilidad)}</td>
+                      <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={datos.rentabilidad} /></td>
                       <td className="numero">{costoPorKiloValores(datos.costo, datos.kilos)}</td>
                     </tr>
                   </tfoot>
@@ -786,8 +786,8 @@ function FragmentoTipoItem({
               <td className="numero">{cantidad(centro.kilos)}</td>
               <td className="numero" title={millones(centro.venta)}>{millonesTabla(centro.venta)}</td>
               <td className="numero">{millonesTabla(centro.margen_bruto)}</td>
-              <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={centro.rentabilidad} /></td>
               <td className="numero">{porcentaje(centro.rentabilidad)}</td>
+              <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={centro.rentabilidad} /></td>
               <td className="numero">{costoPorKilo(centro)}</td>
             </tr>
             {expandido ? ordenarPorVenta(centro.productos, orden).map((producto) => (
@@ -796,8 +796,8 @@ function FragmentoTipoItem({
                 <td className="numero">{cantidad(producto.kilos)}</td>
                 <td className="numero" title={millones(producto.venta)}>{millonesTabla(producto.venta)}</td>
                 <td className="numero">{millonesTabla(producto.margen_bruto)}</td>
-                <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={producto.rentabilidad} /></td>
                 <td className="numero">{porcentaje(producto.rentabilidad)}</td>
+                <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={producto.rentabilidad} /></td>
                 <td className="numero">{costoPorKilo(producto)}</td>
               </tr>
             )) : null}

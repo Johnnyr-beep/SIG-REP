@@ -3784,8 +3784,8 @@ textarea.campo__control {
 .rentabilidad-mes__tabla--metricas td:nth-child(2),
 .rentabilidad-mes__tabla--metricas th:nth-child(4),
 .rentabilidad-mes__tabla--metricas td:nth-child(4),
-.rentabilidad-mes__tabla--metricas th:nth-child(6),
-.rentabilidad-mes__tabla--metricas td:nth-child(6) {
+.rentabilidad-mes__tabla--metricas th:nth-child(5),
+.rentabilidad-mes__tabla--metricas td:nth-child(5) {
   min-width: 7rem;
 }
 
@@ -3794,8 +3794,8 @@ textarea.campo__control {
   min-width: 9rem;
 }
 
-.rentabilidad-mes__tabla--metricas th:nth-child(5),
-.rentabilidad-mes__tabla--metricas td:nth-child(5) {
+.rentabilidad-mes__tabla--metricas th:nth-child(6),
+.rentabilidad-mes__tabla--metricas td:nth-child(6) {
   min-width: 2.5rem;
 }
 
