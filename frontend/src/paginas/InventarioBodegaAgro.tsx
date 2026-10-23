@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 
 import { useExistenciasBodegaAgro } from "@/api/consultas";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
+import { dinero, dineroMillones } from "@/utilidades/formato";
 
 const FILAS_POR_PAGINA = 50;
 
@@ -104,7 +105,8 @@ function etiquetaColumna(columna: string): string {
     existencia: "Existencia",
     costo: "Costo",
     costopromedio: "Costo promedio unitario",
-    costototal: "Costo total",
+    costopromediototal: "Costo promedio total (millones)",
+    costototal: "Costo total (millones)",
   };
   return etiquetas[clave] ?? columna.replace(/[_-]+/g, " ").trim();
 }
@@ -116,12 +118,9 @@ function valorFila(fila: Record<string, string | null>, columna: string): string
 function valorInventario(fila: Record<string, string | null>, columna: string): string {
   const valor = valorFila(fila, columna);
   const clave = normalizar(columna);
-  if (
-    !["costopromediounitario", "costopromedio", "costopromediototal", "costototal"].includes(clave)
-  ) return valor;
-
-  const numero = Number(valor.trim());
-  return Number.isFinite(numero) ? numero.toFixed(2) : valor;
+  if (["costopromediototal", "costototal"].includes(clave)) return dineroMillones(valor);
+  if (["costopromediounitario", "costopromedio"].includes(clave)) return dinero(valor, 2);
+  return valor;
 }
 
 function textoFila(fila: Record<string, string | null>): string {

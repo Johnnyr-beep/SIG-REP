@@ -463,6 +463,20 @@ export function dineroCorto(valor: string | null | undefined): string {
   return dinero(valor);
 }
 
+/** Pesos expresados en millones, conservando exactamente dos decimales. */
+export function dineroMillones(
+  valor: string | null | undefined,
+  decimales = 2,
+): string {
+  const partes = descomponer(valor);
+  if (!partes) return SIN_DATO;
+
+  const millones = dividirPartes(partes, 1_000_000, decimales);
+  return millones === null
+    ? SIN_DATO
+    : `$${ESPACIO_FIJO}${componer(millones)}${ESPACIO_FIJO}M`;
+}
+
 // ── Porcentajes ──────────────────────────────────────────────────────────────
 
 /**
