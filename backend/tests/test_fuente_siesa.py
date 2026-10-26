@@ -775,6 +775,19 @@ def test_un_5xx_se_reintenta_y_a_la_tercera_carga() -> None:
     assert api.intentos("6") == 1, "las otras compañías no pagan el reintento de la primera"
 
 
+def test_un_502_html_se_registra_sin_exponer_la_pagina_completa() -> None:
+    cuerpo = "<!DOCTYPE html><html lang='en'><body>upstream unavailable</body></html>"
+    api = ApiFalsa().todas((502, cuerpo))
+
+    with pytest.raises(ErrorFuenteSiesa) as error:
+        leer(api)
+
+    assert api.intentos("4") == 3
+    assert "502" in str(error.value)
+    assert "página HTML en lugar de datos CSV" in str(error.value)
+    assert "<!DOCTYPE html>" not in str(error.value)
+
+
 def test_timeout_odbc_de_siesa_no_repite_la_consulta() -> None:
     cuerpo = (
         "[Microsoft][ODBC Driver 18 for SQL Server] TCP Provider: The wait operation "

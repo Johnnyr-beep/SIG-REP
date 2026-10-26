@@ -791,7 +791,14 @@ class FuenteVentaSiesa:
         completo de una página de error solo llenaría la bitácora.
         """
         cuerpo = respuesta.text
-        detalle = " ".join(cuerpo.split())[:200]
+        contenido_html = "text/html" in respuesta.headers.get("content-type", "").lower()
+        cuerpo_inicio = cuerpo.lstrip().lower()
+        contenido_html = contenido_html or cuerpo_inicio.startswith(("<!doctype html", "<html"))
+        detalle = (
+            "página HTML en lugar de datos CSV"
+            if contenido_html
+            else " ".join(cuerpo.split())[:200]
+        )
         timeout_sql = respuesta.status_code >= 500 and any(
             indicador in cuerpo.lower() for indicador in INDICADORES_TIMEOUT_SQL
         )
