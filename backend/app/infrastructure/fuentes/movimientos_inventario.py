@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from datetime import date
 from decimal import Decimal
+from typing import Literal
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -30,7 +31,49 @@ class _PaginaMovimientos(BaseModel):
 
 class FuenteMovimientosInventarioSiesa(FuenteExistenciasBodegaAgroSiesa):
     def leer_pagina(
-        self, desde: date, hasta: date, *, limit: int = 100, offset: int = 0
+        self,
+        desde: date,
+        hasta: date,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+        instalacion: Literal["planta", "monteria"] | None = None,
+    ) -> RespuestaMovimientosInventario:
+        if instalacion is None:
+            return self._leer_pagina_origen(desde, hasta, limit=limit, offset=offset)
+
+        prefijo = "301" if instalacion == "planta" else "302"
+        filas: list[dict[str, str | None]] = []
+        columnas: dict[str, None] = {}
+        total = 0
+        offset_origen = 0
+        while True:
+            pagina = self._leer_pagina_origen(desde, hasta, limit=5000, offset=offset_origen)
+            columnas.update(dict.fromkeys(pagina.columnas))
+            for fila in pagina.filas:
+                codigo_bodega = (fila.get("Bodega") or "").strip()
+                if codigo_bodega[:3] != prefijo:
+                    continue
+                if offset <= total < offset + limit:
+                    filas.append(fila)
+                total += 1
+            if not pagina.has_more or pagina.next_offset is None:
+                break
+            offset_origen = pagina.next_offset
+        siguiente = offset + len(filas)
+        return RespuestaMovimientosInventario(
+            columnas=list(columnas),
+            filas=filas,
+            total=total,
+            limit=limit,
+            offset=offset,
+            count=len(filas),
+            has_more=siguiente < total,
+            next_offset=siguiente if siguiente < total else None,
+        )
+
+    def _leer_pagina_origen(
+        self, desde: date, hasta: date, *, limit: int, offset: int
     ) -> RespuestaMovimientosInventario:
         configuracion = self._configuracion
         parametros = {

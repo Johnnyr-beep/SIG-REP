@@ -37,13 +37,17 @@ export function InventarioHistorico() {
   const hoy = fechaHoy();
   const [desde, setDesde] = useState(`${hoy.slice(0, 7)}-01`);
   const [hasta, setHasta] = useState(hoy);
-  const [rango, setRango] = useState<{ desde: string; hasta: string } | null>(null);
+  const [instalacion, setInstalacion] = useState("");
+  const [rango, setRango] = useState<{ desde: string; hasta: string; instalacion: string } | null>(null);
   const [offsets, setOffsets] = useState([0]);
   const offset = offsets[offsets.length - 1] ?? 0;
   const consulta = useQuery({
     queryKey: ["inventario", "historico", rango, offset],
     queryFn: () => peticion<PaginaInventario>("/inventario/historico", {
-      parametros: { desde: rango!.desde, hasta: rango!.hasta, limit: 100, offset },
+      parametros: {
+        desde: rango!.desde, hasta: rango!.hasta, limit: 100, offset,
+        instalacion: rango!.instalacion || undefined,
+      },
     }),
     enabled: rango !== null,
     retry: false,
@@ -54,10 +58,10 @@ export function InventarioHistorico() {
     evento.preventDefault();
     if (!desde || !hasta || desde > hasta) return;
     setOffsets([0]);
-    if (rango?.desde === desde && rango.hasta === hasta && offset === 0) {
+    if (rango?.desde === desde && rango.hasta === hasta && rango.instalacion === instalacion && offset === 0) {
       void consulta.refetch();
     } else {
-      setRango({ desde, hasta });
+      setRango({ desde, hasta, instalacion });
     }
   }
 
@@ -65,6 +69,19 @@ export function InventarioHistorico() {
     <div className="pila">
       <Tarjeta titulo="Inventario histórico" sinRelleno acciones={(
         <form className="formulario formulario--linea" onSubmit={consultar}>
+          <label className="campo">
+            <span>Instalación</span>
+            <select className="campo__control" value={instalacion} onChange={(evento) => {
+              const valor = evento.target.value;
+              setInstalacion(valor);
+              setOffsets([0]);
+              if (rango) setRango({ ...rango, instalacion: valor });
+            }}>
+              <option value="">Todas</option>
+              <option value="planta">Planta</option>
+              <option value="monteria">Montería</option>
+            </select>
+          </label>
           <label className="campo">
             <span>Desde</span>
             <input className="campo__control" type="date" required value={desde}

@@ -641,6 +641,12 @@ Requiere sesión en `grupo-santacruz` con `PERMISO_CONSULTAR_INVENTARIO`.
 `limit` admite de 1 a 1000 (100 por defecto); `offset` comienza en 0.
 `next_offset` indica la página siguiente y es nulo en la última página.
 
+El filtro opcional `instalacion=planta|monteria` identifica la instalación por
+el prefijo de la bodega: `301` Planta, `302` Montería (no por el C.O. del
+documento). Al filtrar, el servidor recorre las páginas del origen antes de
+calcular el total y paginar las coincidencias; los períodos amplios pueden
+tardar más. Sin filtro mantiene la paginación directa de SIESA.
+
 Consulta `/ventas/movimientos-inventario` con `compania=3` fija desde el
 servidor, usando la credencial SIESA configurada, nunca un token del navegador.
 Conserva las columnas del origen, las cantidades y costos negativos de las

@@ -135,6 +135,7 @@ function textoFila(fila: Record<string, string | null>): string {
 export function InventarioBodegaAgro() {
   const consulta = useExistenciasBodegaAgro();
   const [bodega, setBodega] = useState("");
+  const [instalacion, setInstalacion] = useState("");
   const [centroOperacion, setCentroOperacion] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [pagina, setPagina] = useState(1);
@@ -188,6 +189,10 @@ export function InventarioBodegaAgro() {
   const filasFiltradas = useMemo(() => {
     const termino = busqueda.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
     return filas.filter((fila) => {
+      if (instalacion) {
+        const codigo = columnaCodigoBodega ? fila[columnaCodigoBodega]?.trim() : "";
+        if (!codigo?.startsWith(instalacion)) return false;
+      }
       if (bodega && columnaBodega && fila[columnaBodega] !== bodega) return false;
       if (
         centroOperacion &&
@@ -203,6 +208,7 @@ export function InventarioBodegaAgro() {
     });
   }, [
     bodega,
+    instalacion,
     busqueda,
     centroOperacion,
     columnaBodega,
@@ -232,6 +238,19 @@ export function InventarioBodegaAgro() {
         sinRelleno
         acciones={(
           <form className="formulario formulario--linea" onSubmit={(evento) => evento.preventDefault()}>
+            <label className="campo">
+              <span>Instalación</span>
+              <select className="campo__control" value={instalacion}
+                onChange={(evento) => cambiarFiltro(() => {
+                  setInstalacion(evento.target.value);
+                  setBodega("");
+                  setCentroOperacion("");
+                })}>
+                <option value="">Todas</option>
+                <option value="301">Planta</option>
+                <option value="302">Montería</option>
+              </select>
+            </label>
             {columnaBodega ? (
               <label className="campo">
                 <span>Bodega</span>

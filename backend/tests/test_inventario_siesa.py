@@ -58,6 +58,49 @@ def test_movimientos_inventario_conserva_signos_decimales_y_paginacion() -> None
     assert pagina.filas[0]["Referencia"] == "0014"
 
 
+@pytest.mark.parametrize("instalacion,prefijo", [("planta", "301"), ("monteria", "302")])
+def test_instalacion_filtra_todas_las_paginas_antes_de_paginar(instalacion, prefijo) -> None:
+    peticiones: list[int] = []
+
+    def responder(peticion: httpx.Request) -> httpx.Response:
+        offset = int(peticion.url.params["offset"])
+        peticiones.append(offset)
+        assert peticion.url.params["limit"] == "5000"
+        return httpx.Response(
+            200,
+            json={
+                "total": 4,
+                "limit": 5000,
+                "offset": offset,
+                "count": 2,
+                "has_more": offset == 0,
+                "next_offset": 2 if offset == 0 else None,
+                "data": [
+                    {"Bodega": "30103", "CO_Docto": "302", "Item": offset + 1},
+                    {"Bodega": "30202", "CO_Docto": "301", "Item": offset + 2},
+                ],
+            },
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(responder)) as cliente:
+        fuente = FuenteMovimientosInventarioSiesa(
+            configuracion=configuracion(), sesion_http=cliente
+        )
+        pagina = fuente.leer_pagina(
+            date(2026, 9, 1),
+            date(2026, 9, 30),
+            limit=1,
+            offset=1,
+            instalacion=instalacion,
+        )
+    assert peticiones == [0, 2]
+    assert pagina.total == 2
+    assert pagina.count == 1
+    assert pagina.filas[0]["Bodega"].startswith(prefijo)
+    assert not pagina.has_more
+    assert pagina.next_offset is None
+
+
 @pytest.mark.parametrize(
     "cuerpo",
     [
