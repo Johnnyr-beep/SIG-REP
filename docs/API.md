@@ -626,6 +626,29 @@ solo está disponible en `grupo-santacruz`.
 
 ---
 
+## Inventario — Grupo Santacruz
+
+El menú `Inventario` agrupa los submódulos `Inventario Agropecuaria` e
+`Inventario histórico`. El histórico consulta movimientos, no saldos a una fecha.
+
+```text
+GET /inventario/historico?desde=2026-09-01&hasta=2026-09-30&limit=100&offset=0
+  -> {columnas, filas, total, limit, offset, count, has_more, next_offset}
+```
+
+Requiere sesión en `grupo-santacruz` con `PERMISO_CONSULTAR_INVENTARIO`.
+`desde` y `hasta` son obligatorias; `desde` no puede ser posterior a `hasta`.
+`limit` admite de 1 a 1000 (100 por defecto); `offset` comienza en 0.
+`next_offset` indica la página siguiente y es nulo en la última página.
+
+Consulta `/ventas/movimientos-inventario` con `compania=3` fija desde el
+servidor, usando la credencial SIESA configurada, nunca un token del navegador.
+Conserva las columnas del origen, las cantidades y costos negativos de las
+salidas y los importes como cadenas decimales. La interfaz muestra costos en
+millones con dos decimales; no acumula páginas ni presenta saldos históricos.
+
+---
+
 ## Salud
 
 ```

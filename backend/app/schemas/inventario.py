@@ -26,6 +26,17 @@ class RespuestaInventarioPdv(EsquemaBase):
     total: int = Field(ge=0)
 
 
+class RespuestaMovimientosInventario(EsquemaBase):
+    columnas: list[str]
+    filas: list[dict[str, str | None]]
+    total: int = Field(ge=0)
+    limit: int = Field(ge=1)
+    offset: int = Field(ge=0)
+    count: int = Field(ge=0)
+    has_more: bool
+    next_offset: int | None = Field(default=None, ge=0)
+
+
 class RespuestaExistenciasBodega(EsquemaBase):
     """CSV de existencias SIESA, conservando sus columnas de origen."""
 

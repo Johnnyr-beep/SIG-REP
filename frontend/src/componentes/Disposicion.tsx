@@ -141,12 +141,18 @@ const MENU_FINANCIERO: GrupoNav[] = [
       { ruta: "/", etiqueta: "Resumen financiero", icono: "◱", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/rentabilidad-mes", etiqueta: "Rentabilidad mes", icono: "◷", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/rentabilidad-dia", etiqueta: "Rentabilidad día", icono: "▦", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
-      { ruta: "/inventario-agropecuaria", etiqueta: "Inventario Agropecuaria", icono: "▦", permiso: "PERMISO_CONSULTAR_INVENTARIO" },
       { ruta: "/cxp-proveedores", etiqueta: "CXP proveedores", icono: "◈", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/cxc-clientes", etiqueta: "CXC clientes", icono: "◈", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/resumen-financiero", etiqueta: "Balance y resultados", icono: "▤", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/detalle-cuentas", etiqueta: "Detalle de cuentas", icono: "▤", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/cartera", etiqueta: "Cartera por cliente", icono: "◈", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
+    ],
+  },
+  {
+    titulo: "Inventario",
+    items: [
+      { ruta: "/inventario-agropecuaria", etiqueta: "Inventario Agropecuaria", icono: "▦", permiso: "PERMISO_CONSULTAR_INVENTARIO" },
+      { ruta: "/inventario-historico", etiqueta: "Inventario histórico", icono: "◷", permiso: "PERMISO_CONSULTAR_INVENTARIO" },
     ],
   },
   {
@@ -234,6 +240,7 @@ const TITULOS: Record<string, string> = {
   "/costos": "Costos y margen",
   "/inventario-pdv": "Inventario por punto de venta",
   "/inventario-agropecuaria": "Inventario de Agropecuaria por bodega",
+  "/inventario-historico": "Inventario histórico",
   "/venta-diaria": "Venta diaria",
   "/venta-diaria-asadero": "Venta diaria Asadero",
   "/clientes": "Clientes y vendedores",

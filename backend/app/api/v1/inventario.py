@@ -3,19 +3,23 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 
 from app.core.deps import (
     PERMISO_CONSULTAR_INVENTARIO,
     SesionDep,
+    UnidadDep,
     alcance_puntos_venta,
     exigir_permiso_consulta,
 )
+from app.core.errors import ErrorAutorizacion, ErrorValidacion
 from app.infrastructure.fuentes.existencias_bodega_agro import FuenteExistenciasBodegaAgroSiesa
+from app.infrastructure.fuentes.movimientos_inventario import FuenteMovimientosInventarioSiesa
 from app.infrastructure.fuentes.siesa import ErrorFuenteSiesa, clave_descripcion
 from app.infrastructure.models.organizacion import PuntoVenta
 from app.infrastructure.models.usuario import Usuario
@@ -24,9 +28,31 @@ from app.schemas.inventario import (
     FilaInventarioPdv,
     RespuestaExistenciasBodega,
     RespuestaInventarioPdv,
+    RespuestaMovimientosInventario,
 )
 
 router = APIRouter(prefix="/inventario", tags=["Inventario"])
+
+
+@router.get("/historico", response_model=RespuestaMovimientosInventario)
+def historico_inventario(
+    _: Annotated[Usuario, Depends(exigir_permiso_consulta(PERMISO_CONSULTAR_INVENTARIO))],
+    unidad: UnidadDep,
+    desde: date,
+    hasta: date,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 100,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> RespuestaMovimientosInventario:
+    if unidad != "grupo-santacruz":
+        raise ErrorAutorizacion("El inventario histórico solo está disponible en Grupo Santacruz.")
+    if desde > hasta:
+        raise ErrorValidacion("La fecha inicial no puede ser posterior a la fecha final.")
+    fuente = FuenteMovimientosInventarioSiesa()
+    try:
+        return fuente.leer_pagina(desde, hasta, limit=limit, offset=offset)
+    finally:
+        fuente.cerrar()
+
 
 _ALIAS_CANTIDADES = {
     "existencia": (

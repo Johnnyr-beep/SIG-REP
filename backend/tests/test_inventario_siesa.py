@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from datetime import date
+
 import httpx
 import pytest
 from pydantic import SecretStr
 
 from app.api.v1 import inventario as api_inventario
+from app.core.errors import ErrorAutorizacion, ErrorValidacion
 from app.infrastructure.fuentes.existencias_bodega_agro import (
     PARAMETROS_EXISTENCIAS_BODEGA,
     RUTA_EXISTENCIAS_BODEGA,
@@ -16,8 +19,61 @@ from app.infrastructure.fuentes.inventario_siesa import (
     FuenteInventarioPdvSiesa,
     InventarioPdvCrudo,
 )
+from app.infrastructure.fuentes.movimientos_inventario import FuenteMovimientosInventarioSiesa
 from app.infrastructure.fuentes.siesa import ConfiguracionSiesa, ErrorFuenteSiesa
+from app.infrastructure.models.usuario import Usuario
 from tests.conftest import PUNTO_AJENO, PUNTO_PROPIO
+
+
+def test_movimientos_inventario_conserva_signos_decimales_y_paginacion() -> None:
+    def responder(peticion: httpx.Request) -> httpx.Response:
+        assert peticion.url.path == "/ventas/movimientos-inventario"
+        assert dict(peticion.url.params) == {
+            "fecha_inicio": "2026-09-01",
+            "fecha_fin": "2026-09-30",
+            "compania": "3",
+            "limit": "1",
+            "offset": "0",
+        }
+        assert "token" not in peticion.url.params
+        assert peticion.headers["X-API-Key"] == "token-solo-de-prueba"
+        return httpx.Response(
+            200,
+            text=(
+                '{"total":2,"limit":1,"offset":0,"count":1,"has_more":true,'
+                '"next_offset":1,"data":[{"Compania":3,"Naturaleza":"Salida",'
+                '"Cantidad":-319.4,"Costo_Total":-410438.58,"Referencia":"0014"}]}'
+            ),
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(responder)) as cliente:
+        fuente = FuenteMovimientosInventarioSiesa(
+            configuracion=configuracion(), sesion_http=cliente
+        )
+        pagina = fuente.leer_pagina(date(2026, 9, 1), date(2026, 9, 30), limit=1)
+    assert pagina.total == 2
+    assert pagina.next_offset == 1
+    assert pagina.filas[0]["Cantidad"] == "-319.4"
+    assert pagina.filas[0]["Costo_Total"] == "-410438.58"
+    assert pagina.filas[0]["Referencia"] == "0014"
+
+
+@pytest.mark.parametrize(
+    "cuerpo",
+    [
+        "<html>Bad gateway</html>",
+        '{"total":2,"limit":1,"offset":0,"count":1,"has_more":true,"next_offset":0,"data":[]}',
+    ],
+)
+def test_movimientos_inventario_rechaza_contrato_invalido(cuerpo: str) -> None:
+    with httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, text=cuerpo))
+    ) as cliente:
+        fuente = FuenteMovimientosInventarioSiesa(
+            configuracion=configuracion(), sesion_http=cliente
+        )
+        with pytest.raises(ErrorFuenteSiesa):
+            fuente.leer_pagina(date(2026, 9, 1), date(2026, 9, 30), limit=1)
 
 
 def configuracion() -> ConfiguracionSiesa:
@@ -28,6 +84,71 @@ def configuracion() -> ConfiguracionSiesa:
         reintentos=1,
         espera_reintento_seg=0,
     )
+
+
+def test_historico_restringido_a_grupo_y_rango_valido() -> None:
+    with pytest.raises(ErrorAutorizacion):
+        api_inventario.historico_inventario(
+            Usuario(), "carnes", date(2026, 9, 1), date(2026, 9, 30)
+        )
+    with pytest.raises(ErrorValidacion):
+        api_inventario.historico_inventario(
+            Usuario(), "grupo-santacruz", date(2026, 9, 30), date(2026, 9, 1)
+        )
+
+
+def test_historico_api_no_abre_datos_sin_autenticacion(cliente_http: httpx.Client) -> None:
+    respuesta = cliente_http.get("/api/v1/inventario/historico?desde=2026-09-01&hasta=2026-09-30")
+    assert respuesta.status_code == 401
+
+
+def test_historico_api_no_abre_datos_a_carnes(
+    cliente_http: httpx.Client, admin: dict[str, str]
+) -> None:
+    respuesta = cliente_http.get(
+        "/api/v1/inventario/historico?desde=2026-09-01&hasta=2026-09-30", headers=admin
+    )
+    assert respuesta.status_code == 403
+
+
+def test_movimientos_error_no_expone_respuesta_ni_credencial() -> None:
+    with httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(502, text="detalle privado"))
+    ) as cliente:
+        fuente = FuenteMovimientosInventarioSiesa(
+            configuracion=configuracion(), sesion_http=cliente
+        )
+        with pytest.raises(ErrorFuenteSiesa) as error:
+            fuente.leer_pagina(date(2026, 9, 1), date(2026, 9, 30))
+    assert "502" in str(error.value)
+    assert "detalle privado" not in str(error.value)
+    assert "token-solo-de-prueba" not in str(error.value)
+
+
+def test_movimientos_pagina_vacia_valida() -> None:
+    with httpx.Client(
+        transport=httpx.MockTransport(
+            lambda _: httpx.Response(
+                200,
+                json={
+                    "total": 0,
+                    "limit": 100,
+                    "offset": 0,
+                    "count": 0,
+                    "has_more": False,
+                    "next_offset": None,
+                    "data": [],
+                },
+            )
+        )
+    ) as cliente:
+        fuente = FuenteMovimientosInventarioSiesa(
+            configuracion=configuracion(), sesion_http=cliente
+        )
+        pagina = fuente.leer_pagina(date(2026, 9, 1), date(2026, 9, 30))
+    assert pagina.total == 0
+    assert pagina.filas == []
+    assert pagina.next_offset is None
 
 
 def test_descarga_csv_inventario_pdv_sin_filtro_de_compania() -> None:
