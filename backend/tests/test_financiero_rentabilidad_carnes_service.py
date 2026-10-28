@@ -16,7 +16,7 @@ def _linea(
     fecha: date,
     venta: str,
     kilos: str,
-    costo_unitario: str | None,
+    costo_linea: str | None,
     categoria: str,
     referencia: str,
     producto: str,
@@ -25,7 +25,7 @@ def _linea(
         centro_operacion="402",
         fecha=fecha,
         valor_subtotal=Decimal(venta),
-        costo_promedio=(Decimal(costo_unitario) if costo_unitario is not None else None),
+        costo_promedio=(Decimal(costo_linea) if costo_linea is not None else None),
         cantidad_inv=Decimal(kilos),
         categoria_siesa=categoria,
         referencia=referencia,
@@ -53,7 +53,7 @@ def test_consolida_carnes_con_detalle_por_compania_categoria_y_producto() -> Non
                 fecha=date(2026, 9, 2),
                 venta="100",
                 kilos="10",
-                costo_unitario="6",
+                costo_linea="6",
                 categoria="RES",
                 referencia="R-1",
                 producto="Corte uno",
@@ -62,7 +62,7 @@ def test_consolida_carnes_con_detalle_por_compania_categoria_y_producto() -> Non
                 fecha=date(2026, 9, 20),
                 venta="50",
                 kilos="5",
-                costo_unitario="6",
+                costo_linea="6",
                 categoria="RES",
                 referencia="R-1",
                 producto="Corte uno",
@@ -73,7 +73,7 @@ def test_consolida_carnes_con_detalle_por_compania_categoria_y_producto() -> Non
                 fecha=date(2026, 9, 3),
                 venta="100",
                 kilos="5",
-                costo_unitario=None,
+                costo_linea=None,
                 categoria="CERDO",
                 referencia="C-1",
                 producto="Producto sin costo",
@@ -97,11 +97,15 @@ def test_consolida_carnes_con_detalle_por_compania_categoria_y_producto() -> Non
 
     por_cia = {fila.compania: fila for fila in resultado.detalle_companias}
     assert por_cia[4].venta == Decimal("150")
-    assert por_cia[4].costo == Decimal("90")
-    assert por_cia[4].margen_bruto == Decimal("60")
+    assert por_cia[4].costo == Decimal("12")
+    assert por_cia[4].costo_unitario_promedio == Decimal("0.8")
+    assert por_cia[4].margen_bruto == Decimal("138")
     producto = por_cia[4].categorias[0].productos[0]
     assert producto.referencia == "R-1"
     assert producto.kilos == Decimal("15")
+    assert producto.costo == Decimal("12")
+    assert producto.costo_unitario_promedio == Decimal("0.8")
+    assert producto.margen_bruto == Decimal("138")
     assert producto.ventas_por_dia[1] == Decimal("100")
     assert producto.ventas_por_dia[19] == Decimal("50")
 

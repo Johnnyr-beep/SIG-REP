@@ -51,13 +51,13 @@ class _Dia:
     costo: Decimal = _CERO
     costo_completo: bool = True
 
-    def agregar(self, venta: Decimal, kilos: Decimal, costo_unitario: Decimal | None) -> None:
+    def agregar(self, venta: Decimal, kilos: Decimal, costo_total_linea: Decimal | None) -> None:
         self.venta += venta
         self.kilos += kilos
-        if costo_unitario is None:
+        if costo_total_linea is None:
             self.costo_completo = False
         else:
-            self.costo += costo_unitario * kilos
+            self.costo += costo_total_linea
 
 
 @dataclass(slots=True)
@@ -74,16 +74,16 @@ class _Acumulado:
         fecha: date,
         venta: Decimal,
         kilos: Decimal,
-        costo_unitario: Decimal | None,
+        costo_total_linea: Decimal | None,
     ) -> None:
         self.venta += venta
         self.kilos += kilos
         self.lineas += 1
-        if costo_unitario is None:
+        if costo_total_linea is None:
             self.costo_completo = False
         else:
-            self.costo += costo_unitario * kilos
-        self.por_dia.setdefault(fecha, _Dia()).agregar(venta, kilos, costo_unitario)
+            self.costo += costo_total_linea
+        self.por_dia.setdefault(fecha, _Dia()).agregar(venta, kilos, costo_total_linea)
 
     @property
     def costo_total(self) -> Decimal | None:
