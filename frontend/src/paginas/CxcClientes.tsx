@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 
 import { useCxcClientes } from "@/api/consultasFinanciero";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
+import { numero } from "@/utilidades/formato";
 
 const FILAS_POR_PAGINA = 50;
 const RANGOS_ANTIGUEDAD = [
@@ -83,6 +84,16 @@ function textoFila(fila: Record<string, string | null>): string {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase();
+}
+
+function esImporte(columna: string): boolean {
+  return /total|corriente|vencid|valor|importe|130|3160|6190|mas90/i.test(normalizar(columna));
+}
+
+function valorCelda(columna: string, valor: string | null | undefined): string {
+  if (!esImporte(columna)) return valor ?? "—";
+  const decimales = valor?.trim().split(/[.,]/)[1]?.length ?? 0;
+  return numero(valor, decimales);
 }
 
 export function CxcClientes() {
@@ -255,9 +266,9 @@ export function CxcClientes() {
                       {columnas.map((columna, indiceColumna) => (
                         <td
                           key={`${indiceColumna}-${columna}`}
-                          className={/total|corriente|vencid|valor|importe|130|3160|6190|mas90/i.test(normalizar(columna)) ? "numero" : undefined}
+                          className={esImporte(columna) ? "numero" : undefined}
                         >
-                          {fila[columna] ?? "—"}
+                          {valorCelda(columna, fila[columna])}
                         </td>
                       ))}
                     </tr>
