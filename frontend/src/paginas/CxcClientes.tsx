@@ -92,8 +92,7 @@ function esImporte(columna: string): boolean {
 
 function valorCelda(columna: string, valor: string | null | undefined): string {
   if (!esImporte(columna)) return valor ?? "—";
-  const decimales = valor?.trim().split(/[.,]/)[1]?.length ?? 0;
-  return numero(valor, decimales);
+  return numero(valor, 1);
 }
 
 export function CxcClientes() {
