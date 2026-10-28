@@ -647,6 +647,12 @@ documento). Al filtrar, el servidor recorre las páginas del origen antes de
 calcular el total y paginar las coincidencias; los períodos amplios pueden
 tardar más. Sin filtro mantiene la paginación directa de SIESA.
 
+`producto` admite hasta 200 caracteres y busca por coincidencia parcial en
+`Item`, `Referencia` y `Desc_Item`, sin distinguir mayúsculas ni tildes. Se
+combina con instalación y se aplica sobre todo el rango antes de paginar.
+La respuesta de movimientos actualmente conocida no incluye cliente ni tercero;
+no se deriva esa identidad de la bodega o del número de documento.
+
 Consulta `/ventas/movimientos-inventario` con `compania=3` fija desde el
 servidor, usando la credencial SIESA configurada, nunca un token del navegador.
 Conserva las columnas del origen, las cantidades y costos negativos de las

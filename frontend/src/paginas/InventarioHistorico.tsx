@@ -38,7 +38,10 @@ export function InventarioHistorico() {
   const [desde, setDesde] = useState(`${hoy.slice(0, 7)}-01`);
   const [hasta, setHasta] = useState(hoy);
   const [instalacion, setInstalacion] = useState("");
-  const [rango, setRango] = useState<{ desde: string; hasta: string; instalacion: string } | null>(null);
+  const [producto, setProducto] = useState("");
+  const [rango, setRango] = useState<{
+    desde: string; hasta: string; instalacion: string; producto: string;
+  } | null>(null);
   const [offsets, setOffsets] = useState([0]);
   const offset = offsets[offsets.length - 1] ?? 0;
   const consulta = useQuery({
@@ -47,6 +50,7 @@ export function InventarioHistorico() {
       parametros: {
         desde: rango!.desde, hasta: rango!.hasta, limit: 100, offset,
         instalacion: rango!.instalacion || undefined,
+        producto: rango!.producto || undefined,
       },
     }),
     enabled: rango !== null,
@@ -58,10 +62,11 @@ export function InventarioHistorico() {
     evento.preventDefault();
     if (!desde || !hasta || desde > hasta) return;
     setOffsets([0]);
-    if (rango?.desde === desde && rango.hasta === hasta && rango.instalacion === instalacion && offset === 0) {
+    if (rango?.desde === desde && rango.hasta === hasta && rango.instalacion === instalacion
+      && rango.producto === producto.trim() && offset === 0) {
       void consulta.refetch();
     } else {
-      setRango({ desde, hasta, instalacion });
+      setRango({ desde, hasta, instalacion, producto: producto.trim() });
     }
   }
 
@@ -81,6 +86,12 @@ export function InventarioHistorico() {
               <option value="planta">Planta</option>
               <option value="monteria">Montería</option>
             </select>
+          </label>
+          <label className="campo">
+            <span>Producto</span>
+            <input className="campo__control" type="search" value={producto} maxLength={200}
+              placeholder="ID, referencia o nombre"
+              onChange={(evento) => setProducto(evento.target.value)} />
           </label>
           <label className="campo">
             <span>Desde</span>

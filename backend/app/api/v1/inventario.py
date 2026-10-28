@@ -43,6 +43,7 @@ def historico_inventario(
     limit: Annotated[int, Query(ge=1, le=1000)] = 100,
     offset: Annotated[int, Query(ge=0)] = 0,
     instalacion: Literal["planta", "monteria"] | None = None,
+    producto: Annotated[str | None, Query(max_length=200)] = None,
 ) -> RespuestaMovimientosInventario:
     if unidad != "grupo-santacruz":
         raise ErrorAutorizacion("El inventario histórico solo está disponible en Grupo Santacruz.")
@@ -50,7 +51,9 @@ def historico_inventario(
         raise ErrorValidacion("La fecha inicial no puede ser posterior a la fecha final.")
     fuente = FuenteMovimientosInventarioSiesa()
     try:
-        return fuente.leer_pagina(desde, hasta, limit=limit, offset=offset, instalacion=instalacion)
+        return fuente.leer_pagina(
+            desde, hasta, limit=limit, offset=offset, instalacion=instalacion, producto=producto
+        )
     finally:
         fuente.cerrar()
 

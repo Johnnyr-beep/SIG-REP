@@ -119,6 +119,43 @@ def test_movimientos_inventario_rechaza_contrato_invalido(cuerpo: str) -> None:
             fuente.leer_pagina(date(2026, 9, 1), date(2026, 9, 30), limit=1)
 
 
+@pytest.mark.parametrize("producto", ["espinazo", "2018", "114", "ESPINÁZO"])
+def test_producto_filtra_coincidencias_fuera_de_la_primera_pagina(producto: str) -> None:
+    def responder(peticion: httpx.Request) -> httpx.Response:
+        offset = int(peticion.url.params["offset"])
+        return httpx.Response(
+            200,
+            json={
+                "total": 2,
+                "limit": 5000,
+                "offset": offset,
+                "count": 1,
+                "has_more": offset == 0,
+                "next_offset": 1 if offset == 0 else None,
+                "data": [
+                    {
+                        "Bodega": "30103",
+                        "Item": 17 if offset == 0 else 114,
+                        "Referencia": "1027" if offset == 0 else "2018",
+                        "Desc_Item": "MOLIDA" if offset == 0 else "ESPINAZO DE CERDO",
+                    }
+                ],
+            },
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(responder)) as cliente:
+        fuente = FuenteMovimientosInventarioSiesa(
+            configuracion=configuracion(), sesion_http=cliente
+        )
+        pagina = fuente.leer_pagina(
+            date(2026, 9, 1), date(2026, 9, 30), producto=producto, instalacion="planta"
+        )
+    assert pagina.total == 1
+    assert pagina.count == 1
+    assert pagina.filas[0]["Item"] == "114"
+    assert not pagina.has_more
+
+
 def configuracion() -> ConfiguracionSiesa:
     return ConfiguracionSiesa(
         url_base="https://siesa.pruebas.local",

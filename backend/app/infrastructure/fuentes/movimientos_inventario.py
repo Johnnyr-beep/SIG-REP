@@ -6,6 +6,7 @@ import json
 from datetime import date
 from decimal import Decimal
 from typing import Literal
+from unicodedata import normalize
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -15,6 +16,14 @@ from app.infrastructure.fuentes.siesa import ESTADOS_REINTENTABLES, ErrorFuenteS
 from app.schemas.inventario import RespuestaMovimientosInventario
 
 RUTA_MOVIMIENTOS = "/ventas/movimientos-inventario"
+
+
+def _texto_busqueda(valor: str) -> str:
+    return "".join(
+        caracter
+        for caracter in normalize("NFD", valor.strip().casefold())
+        if not 0x300 <= ord(caracter) <= 0x36F
+    )
 
 
 class _PaginaMovimientos(BaseModel):
@@ -38,11 +47,13 @@ class FuenteMovimientosInventarioSiesa(FuenteExistenciasBodegaAgroSiesa):
         limit: int = 100,
         offset: int = 0,
         instalacion: Literal["planta", "monteria"] | None = None,
+        producto: str | None = None,
     ) -> RespuestaMovimientosInventario:
-        if instalacion is None:
+        termino = _texto_busqueda(producto or "")
+        if instalacion is None and not termino:
             return self._leer_pagina_origen(desde, hasta, limit=limit, offset=offset)
 
-        prefijo = "301" if instalacion == "planta" else "302"
+        prefijo = {"planta": "301", "monteria": "302"}.get(instalacion or "")
         filas: list[dict[str, str | None]] = []
         columnas: dict[str, None] = {}
         total = 0
@@ -52,7 +63,12 @@ class FuenteMovimientosInventarioSiesa(FuenteExistenciasBodegaAgroSiesa):
             columnas.update(dict.fromkeys(pagina.columnas))
             for fila in pagina.filas:
                 codigo_bodega = (fila.get("Bodega") or "").strip()
-                if codigo_bodega[:3] != prefijo:
+                if prefijo and codigo_bodega[:3] != prefijo:
+                    continue
+                texto_producto = _texto_busqueda(
+                    " ".join(fila.get(campo) or "" for campo in ("Item", "Referencia", "Desc_Item"))
+                )
+                if termino and termino not in texto_producto:
                     continue
                 if offset <= total < offset + limit:
                     filas.append(fila)
