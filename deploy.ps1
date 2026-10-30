@@ -9,7 +9,11 @@ function Invoke-Native {
     $previousPreference = $ErrorActionPreference
     try {
         $ErrorActionPreference = 'Continue'
-        & $Program @Arguments
+        if ($Program -eq 'ssh') {
+            & $Program -n -T @Arguments
+        } else {
+            & $Program @Arguments
+        }
         $exitCode = $LASTEXITCODE
     } finally {
         $ErrorActionPreference = $previousPreference
@@ -45,7 +49,8 @@ if ($publicUri.Scheme -ne 'https' -or $domain -notmatch '^[a-zA-Z0-9.-]+$') {
     throw 'APP_URL debe ser una URL HTTPS valida.'
 }
 if ($service -notmatch '^[a-zA-Z0-9_-]+$') { throw 'SERVICE_NAME invalido.' }
-$sshArgs = @('-i', $sshKey, '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes')
+$sshArgs = @('-i', $sshKey, '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes',
+    '-o', 'ConnectTimeout=15', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=3')
 $remote = '/tmp/sigrep-deploy-' + [guid]::NewGuid().ToString('N')
 
 if (-not $SoloLabels) {
