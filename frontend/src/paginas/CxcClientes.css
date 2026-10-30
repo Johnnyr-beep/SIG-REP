@@ -1,0 +1,240 @@
+.cxc {
+  gap: var(--espacio-4);
+}
+
+.cxc__intro {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--espacio-4);
+}
+
+.cxc__intro h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.cxc__intro p {
+  margin: var(--espacio-1) 0 0;
+  color: var(--texto-suave);
+  font-size: 0.78rem;
+}
+
+.cxc__filtros {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(9rem, 1fr)) minmax(13rem, 1.5fr) auto;
+  align-items: end;
+  gap: var(--espacio-3);
+  padding: var(--espacio-4);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-sm);
+}
+
+.cxc__resumen {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--espacio-3);
+}
+
+.cxc__metrica {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  min-height: 6rem;
+  gap: var(--espacio-1);
+  padding: var(--espacio-4);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-sm);
+}
+
+.cxc__metrica-etiqueta {
+  color: var(--texto-suave);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.cxc__metrica-valor {
+  overflow: hidden;
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cxc__metrica-valor--aviso {
+  color: var(--aviso);
+}
+
+.cxc__metrica-valor--critico {
+  color: var(--peligro);
+}
+
+.cxc__metrica small {
+  color: var(--texto-tenue);
+  font-size: 0.65rem;
+}
+
+.cxc__tabla-panel {
+  min-width: 0;
+  overflow: hidden;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-sm);
+}
+
+.cxc__tabla-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-3);
+  padding: var(--espacio-4);
+  border-bottom: 1px solid var(--borde);
+}
+
+.cxc__tabla-cabecera h3 {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.cxc__tabla-cabecera p {
+  margin: var(--espacio-1) 0 0;
+  color: var(--texto-tenue);
+  font-size: 0.65rem;
+}
+
+.cxc__tabla-scroll {
+  max-height: min(58vh, 38rem);
+}
+
+.cxc__tabla {
+  min-width: 72rem;
+}
+
+.cxc__tabla thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--superficie-2);
+}
+
+.cxc__tabla tbody tr:hover td {
+  background: var(--superficie-hover);
+}
+
+.cxc__tabla tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.cxc__importe-negativo {
+  color: var(--peligro);
+}
+
+.cxc__celda-naturaleza {
+  color: var(--texto-suave);
+}
+
+.cxc__naturaleza {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.4rem;
+  color: var(--exito);
+  background: color-mix(in srgb, var(--exito) 9%, var(--superficie));
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+
+.cxc__naturaleza--credito {
+  color: var(--info);
+  background: color-mix(in srgb, var(--info) 8%, var(--superficie));
+}
+
+.cxc__tabla-pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-3);
+  padding: var(--espacio-3) var(--espacio-4);
+  border-top: 1px solid var(--borde);
+}
+
+.cxc__nota {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  margin: 0;
+  color: var(--texto-tenue);
+  font-size: 0.67rem;
+}
+
+.cxc__nota span {
+  display: grid;
+  flex: 0 0 1rem;
+  height: 1rem;
+  place-items: center;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: 50%;
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+@media (max-width: 75rem) {
+  .cxc__filtros {
+    grid-template-columns: repeat(3, minmax(9rem, 1fr));
+  }
+}
+
+@media (max-width: 52rem) {
+  .cxc__resumen {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cxc__filtros {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cxc__buscar {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 34rem) {
+  .cxc__intro {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .cxc__intro .boton {
+    width: 100%;
+  }
+
+  .cxc__filtros {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cxc__buscar {
+    grid-column: auto;
+  }
+
+  .cxc__metrica {
+    padding: var(--espacio-3);
+  }
+
+  .cxc__metrica-valor {
+    font-size: 1.05rem;
+  }
+
+  .cxc__tabla-cabecera,
+  .cxc__tabla-pie {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .cxc__tabla-pie > .fila {
+    align-self: flex-end;
+  }
+}
