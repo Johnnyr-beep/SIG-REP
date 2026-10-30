@@ -352,19 +352,29 @@ jobs:
           # rechaza con {"message":"Branch Not Match"}, así que hay que enviar el
           # `ref` explícitamente. En un disparo manual GITHUB_REF ya vale
           # `refs/heads/main`, que es la rama configurada en el servicio.
-          codigo=$(curl --silent --show-error --location \
-                        --request POST "$WEBHOOK" \
-                        --header 'Content-Type: application/json' \
-                        --header 'X-GitHub-Event: push' \
-                        --data "{\"ref\":\"${GITHUB_REF}\"}" \
-                        --max-time 60 \
-                        --write-out '%{http_code}' \
-                        --output /tmp/respuesta.txt)
+          curl_exit=0
+          resultado=$(curl --silent --show-error --location \
+                           --request POST "$WEBHOOK" \
+                           --header 'Content-Type: application/json' \
+                           --header 'X-GitHub-Event: push' \
+                           --data "{\"ref\":\"${GITHUB_REF}\"}" \
+                           --connect-timeout 15 \
+                           --max-time 180 \
+                           --write-out '%{http_code} %{time_connect} %{time_starttransfer} %{time_total}' \
+                           --output /tmp/respuesta.txt) || curl_exit=$?
+          read -r codigo tiempo_conexion tiempo_respuesta tiempo_total <<< "$resultado"
+          codigo=${codigo:-000}
 
           echo "Rama enviada: ${GITHUB_REF}"
           echo "Respuesta de Dokploy (HTTP $codigo):"
+          echo "Tiempos curl: conexión ${tiempo_conexion:-desconocida}s, primera respuesta ${tiempo_respuesta:-desconocida}s, total ${tiempo_total:-desconocido}s."
           cat /tmp/respuesta.txt || true
           echo
+
+          if [ "$curl_exit" -ne 0 ]; then
+            echo "::error::La solicitud al webhook de Dokploy no se completó (curl $curl_exit)."
+            exit 1
+          fi
 
           # Un rechazo sí es un fallo real: la URL existe, el servicio contestó,
           # y contestó que no. Eso se tumba.
