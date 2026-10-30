@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f1f3f5" />
+    <title>CXC clientes · Vista de alta fidelidad</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --page: #f1f3f5;
+        --surface: #fff;
+        --surface-soft: #f8fafb;
+        --ink: #1d2935;
+        --muted: #64717c;
+        --faint: #89949e;
+        --line: #dfe4e8;
+        --line-strong: #cbd3d9;
+        --brand: #344b63;
+        --brand-deep: #24384d;
+        --brand-soft: #edf1f4;
+        --green: #35775c;
+        --amber: #a76b18;
+        --red: #b94d48;
+        --blue: #577998;
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+        color: var(--ink);
+        background: var(--page);
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-width: 320px; background: var(--page); }
+      button, input, select { font: inherit; }
+      button { color: inherit; }
+      .shell { display: grid; grid-template-columns: 228px minmax(0, 1fr); min-height: 100vh; }
+      .sidebar { position: sticky; top: 0; display: flex; flex-direction: column; height: 100vh; padding: 20px 12px 14px; background: var(--surface); border-right: 1px solid var(--line); }
+      .brand { display: flex; align-items: center; gap: 11px; padding: 0 10px 24px; }
+      .brand-mark { display: grid; width: 36px; height: 36px; place-items: center; color: #fff; background: var(--brand); border-radius: 5px; font-size: 11px; font-weight: 750; }
+      .brand-name { font-size: 15px; font-weight: 700; line-height: 1.2; }
+      .brand-note { margin-top: 3px; color: var(--faint); font-size: 10px; }
+      .nav-title { padding: 14px 11px 7px; color: var(--faint); font-size: 10px; font-weight: 700; text-transform: uppercase; }
+      .nav { display: grid; gap: 3px; }
+      .nav-item { display: flex; align-items: center; gap: 11px; min-height: 38px; padding: 0 11px; color: var(--muted); border-radius: 5px; font-size: 12px; font-weight: 500; text-decoration: none; }
+      .nav-item.active { color: var(--brand-deep); background: var(--brand-soft); font-weight: 650; }
+      .glyph { width: 15px; text-align: center; color: currentColor; font-size: 13px; }
+      .user { display: flex; align-items: center; gap: 9px; margin-top: auto; padding: 13px 10px 3px; border-top: 1px solid var(--line); }
+      .avatar { display: grid; width: 30px; height: 30px; place-items: center; color: var(--brand); background: var(--brand-soft); border-radius: 50%; font-size: 10px; font-weight: 700; }
+      .user-name { font-size: 11px; font-weight: 650; }.user-role { margin-top: 2px; color: var(--faint); font-size: 10px; }
+      .workspace { min-width: 0; }
+      .topbar { display: flex; height: 58px; align-items: center; justify-content: space-between; padding: 0 32px; background: var(--surface); border-bottom: 1px solid var(--line); }
+      .crumb { color: var(--muted); font-size: 11px; }.crumb strong { color: var(--ink); font-weight: 600; }
+      .cut { color: var(--faint); font-size: 10px; }
+      .badge { padding: 5px 9px; color: #80632a; background: #f7f1e5; border: 1px solid #eadbbc; border-radius: 999px; font-size: 9px; font-weight: 700; letter-spacing: .04em; }
+      main { width: min(1540px, 100%); margin: 0 auto; padding: 25px 32px 32px; }
+      .title-row { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+      h1 { margin: 0; font-size: 22px; font-weight: 650; line-height: 1.25; }
+      .subtitle { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
+      .actions { display: flex; gap: 8px; align-items: center; }
+      .button { display: inline-flex; height: 34px; align-items: center; justify-content: center; gap: 7px; padding: 0 11px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 5px; font-size: 11px; font-weight: 550; cursor: pointer; }
+      .button:hover { background: var(--surface-soft); }.button:focus-visible, .control:focus-visible { outline: 2px solid #7192b1; outline-offset: 2px; }
+      .button.primary { color: #fff; background: var(--brand); border-color: var(--brand); }.button.primary:hover { background: var(--brand-deep); }
+      .button:disabled { color: #9aa3aa; background: #f5f6f7; cursor: not-allowed; }
+      .filters { display: grid; grid-template-columns: repeat(5, minmax(120px, 1fr)) minmax(190px, 1.35fr) auto; align-items: end; gap: 10px; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+      .field { display: grid; min-width: 0; gap: 5px; }
+      .field span { color: var(--muted); font-size: 10px; font-weight: 650; }
+      .control { width: 100%; height: 34px; padding: 0 10px; color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 5px; font-size: 11px; }
+      .search-wrap { position: relative; }.search-wrap .control { padding-left: 29px; }.search-icon { position: absolute; top: 8px; left: 10px; color: var(--faint); font-size: 13px; pointer-events: none; }
+      .summary { display: grid; grid-template-columns: 1.25fr 1fr 1fr 1fr; gap: 12px; margin: 15px 0; }
+      .metric { min-width: 0; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+      .metric-label { color: var(--muted); font-size: 10px; font-weight: 600; }.metric-value { margin-top: 6px; font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .metric-sub { margin-top: 4px; color: var(--faint); font-size: 10px; }.metric-sub strong { color: var(--ink); font-weight: 600; }
+      .positive { color: var(--green)!important; }.negative { color: var(--red)!important; }
+      .table-panel { overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+      .table-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+      .table-title { margin: 0; font-size: 12px; font-weight: 650; }.table-note { margin-top: 3px; color: var(--muted); font-size: 10px; }
+      .table-tools { display: flex; gap: 8px; align-items: center; }.count { color: var(--faint); font-size: 10px; white-space: nowrap; }
+      .table-scroll { overflow: auto; max-height: min(58vh, 590px); }
+      table { width: 100%; min-width: 1100px; border-collapse: separate; border-spacing: 0; font-size: 11px; }
+      thead th { position: sticky; top: 0; z-index: 1; padding: 10px 12px; color: #526170; background: #f7f9fa; border-bottom: 1px solid var(--line); font-size: 9px; font-weight: 700; text-align: left; text-transform: uppercase; white-space: nowrap; }
+      th.numeric, td.numeric { text-align: right; font-variant-numeric: tabular-nums; }
+      tbody td { height: 43px; padding: 8px 12px; border-bottom: 1px solid #edf0f2; white-space: nowrap; }
+      tbody tr:hover { background: #f8fafb; }
+      td.client { min-width: 210px; font-weight: 600; }
+      .client-main { color: var(--ink); }.client-id { margin-top: 2px; color: var(--faint); font-size: 9px; font-weight: 450; }
+      .company-pill { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 10px; }
+      .company-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); }
+      .nature { display: inline-flex; padding: 3px 7px; color: var(--green); background: #edf5f0; border-radius: 4px; font-size: 9px; font-weight: 650; }
+      .nature.credit { color: var(--blue); background: #eef3f8; }
+      .amount-negative { color: var(--red); }
+      .aging { display: inline-flex; align-items: center; min-width: 50px; justify-content: flex-end; gap: 5px; }
+      .aging-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); }
+      .aging-dot.critical { background: var(--red); }.aging-dot.clear { background: #b8c5ce; }
+      .empty-row { padding: 34px 16px; color: var(--muted); text-align: center; }
+      .table-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 11px 14px; border-top: 1px solid var(--line); }
+      .foot-note { color: var(--faint); font-size: 10px; }.pager { display: flex; align-items: center; gap: 7px; }.page-label { min-width: 72px; color: var(--muted); font-size: 10px; text-align: center; }
+      .disclaimer { display: flex; align-items: center; gap: 7px; margin-top: 11px; color: var(--faint); font-size: 9px; }.disclaimer-mark { display: grid; width: 15px; height: 15px; place-items: center; border: 1px solid var(--line-strong); border-radius: 50%; font-size: 9px; font-weight: 700; }
+      .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+      @media (max-width: 1180px) { .filters { grid-template-columns: repeat(4, minmax(120px, 1fr)); }.filters .search-field { grid-column: span 2; }.summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      @media (max-width: 850px) { .shell { display: block; }.sidebar { position: relative; width: 100%; height: auto; padding: 10px 14px; border-right: 0; border-bottom: 1px solid var(--line); }.brand { padding: 0 3px 8px; }.nav-title,.user { display: none; }.nav { display: flex; max-width: 100%; overflow-x: auto; gap: 3px; }.nav-item { min-width: max-content; min-height: 32px; padding-inline: 9px; }.glyph { display: none; }.topbar { height: 46px; padding: 0 14px; }main { padding: 20px 14px 26px; }.filters { grid-template-columns: repeat(3,minmax(0,1fr)); }.filters .search-field { grid-column: span 2; }.table-head { align-items: flex-start; }.summary { gap: 8px; } }
+      @media (max-width: 560px) { .topbar { padding: 0 11px; }.cut { font-size: 9px; }.badge { padding: 4px 7px; font-size: 8px; }main { padding: 17px 10px 22px; }.title-row { align-items: flex-start; flex-direction: column; gap: 10px; margin-bottom: 14px; }h1 { font-size: 20px; }.actions { width: 100%; }.filters { grid-template-columns: repeat(2,minmax(0,1fr)); padding: 11px; gap: 9px; }.filters .search-field { grid-column: span 2; }.filters .submit { grid-column: span 2; }.filters .submit .button { width: 100%; }.summary { grid-template-columns: repeat(2,minmax(0,1fr)); }.metric { padding: 12px; }.metric:first-child { grid-column: span 2; }.metric-value { font-size: 17px; }.table-head { flex-direction: column; }.table-tools { width: 100%; justify-content: space-between; }.table-scroll { max-height: 56vh; }.table-foot { align-items: flex-start; flex-direction: column; }.pager { align-self: flex-end; }.disclaimer { align-items: flex-start; line-height: 1.4; } }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar" aria-label="Navegación de muestra">
+        <div class="brand"><div class="brand-mark" aria-hidden="true">GS</div><div><div class="brand-name">SIGREP</div><div class="brand-note">Grupo Santacruz</div></div></div>
+        <div class="nav-title">Gerencia</div>
+        <nav class="nav" aria-label="Gerencia">
+          <a class="nav-item" href="#"><span class="glyph" aria-hidden="true">◱</span>Resumen financiero</a>
+          <a class="nav-item" href="#"><span class="glyph" aria-hidden="true">◷</span>Rentabilidad mes</a>
+          <a class="nav-item" href="#"><span class="glyph" aria-hidden="true">▦</span>Rentabilidad día</a>
+          <a class="nav-item" href="#"><span class="glyph" aria-hidden="true">◈</span>CXP proveedores</a>
+        </nav>
+        <div class="nav-title">Inventario</div>
+        <nav class="nav" aria-label="Inventario">
+          <a class="nav-item" href="#"><span class="glyph" aria-hidden="true">▦</span>Inventario Agropecuaria</a>
+          <a class="nav-item active" href="#" aria-current="page"><span class="glyph" aria-hidden="true">◷</span>Inventario histórico</a>
+        </nav>
+        <div class="user"><div class="avatar" aria-hidden="true">DS</div><div><div class="user-name">Datos de muestra</div><div class="user-role">Vista previa local</div></div></div>
+      </aside>
+
+      <div class="workspace">
+        <header class="topbar">
+          <div class="crumb">Grupo Santacruz <span aria-hidden="true">/</span> <strong>Financiero</strong></div>
+          <div class="cut">Corte: <strong>miércoles, 28 de octubre de 2026</strong></div>
+          <span class="badge">PROTOTIPO · DATOS FICTICIOS</span>
+        </header>
+
+        <main>
+          <section class="title-row" aria-labelledby="page-title">
+            <div><h1 id="page-title">CXC clientes</h1><p class="subtitle">Saldos, vencimientos y antigüedad de cartera a la fecha de corte.</p></div>
+            <div class="actions"><button class="button" id="export" type="button"><span aria-hidden="true">↓</span>Exportar CSV</button></div>
+          </section>
+
+          <form class="filters" id="filters">
+            <label class="field"><span>Fecha de corte</span><input id="cutoff" class="control" type="date" value="2026-10-28" /></label>
+            <label class="field"><span>Compañía</span><select id="company" class="control"><option value="">Todas</option><option>Agropecuaria</option><option>Carnes Santacruz</option><option>Cristian Serrano</option><option>Serueda</option></select></label>
+            <label class="field"><span>Naturaleza</span><select id="nature" class="control"><option value="">Todas</option><option>Débito</option><option>Crédito</option></select></label>
+            <label class="field"><span>Antigüedad vencida</span><select id="aging" class="control"><option value="">Todos los rangos</option><option value="1-30">1–30 días</option><option value="31-60">31–60 días</option><option value="61-90">61–90 días</option><option value="90+">Más de 90 días</option><option value="current">Al día</option></select></label>
+            <label class="field search-field"><span>Buscar cliente</span><div class="search-wrap"><span class="search-icon" aria-hidden="true">⌕</span><input id="search" class="control" type="search" placeholder="Razón social, NIT o sucursal…" /></div></label>
+            <div class="submit"><button class="button primary" type="submit"><span aria-hidden="true">↻</span>Aplicar filtros</button></div>
+          </form>
+
+          <section class="summary" aria-label="Resumen de cartera">
+            <article class="metric"><div class="metric-label">Saldo total CxC</div><div class="metric-value" id="total-value">$ 0,0</div><div class="metric-sub"><strong id="row-count">0 clientes</strong> en el corte seleccionado</div></article>
+            <article class="metric"><div class="metric-label">Saldo corriente</div><div class="metric-value" id="current-value">$ 0,0</div><div class="metric-sub">Aún no vencido</div></article>
+            <article class="metric"><div class="metric-label">Saldo vencido</div><div class="metric-value negative" id="overdue-value">$ 0,0</div><div class="metric-sub">Distribuido por antigüedad</div></article>
+            <article class="metric"><div class="metric-label">Vencido más de 90 días</div><div class="metric-value" id="late-value">$ 0,0</div><div class="metric-sub">Requiere seguimiento</div></article>
+          </section>
+
+          <section class="table-panel" aria-labelledby="table-title">
+            <div class="table-head">
+              <div><h2 class="table-title" id="table-title">Saldos por cliente</h2><div class="table-note">Valores en COP · un decimal · datos ficticios para vista previa</div></div>
+              <div class="table-tools"><span class="count" id="result-count">0 resultados</span><button class="button" id="refresh" type="button"><span aria-hidden="true">↻</span>Actualizar</button></div>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead><tr>
+                  <th>Cliente / NIT</th><th>Sucursal</th><th>Compañía</th><th>Vendedor</th><th>C.O.</th><th>Unidad de negocio</th>
+                  <th class="numeric">Total COP</th><th class="numeric">Corriente COP</th><th class="numeric">Vencido COP</th>
+                  <th class="numeric">1–30 días</th><th class="numeric">31–60 días</th><th class="numeric">61–90 días</th><th class="numeric">Más de 90 días</th><th>Estado</th>
+                </tr></thead>
+                <tbody id="rows"></tbody>
+              </table>
+              <div class="empty-row" id="empty" hidden>No hay saldos que coincidan con los filtros seleccionados.</div>
+            </div>
+            <div class="table-foot"><span class="foot-note" id="foot-note">Datos ficticios para revisión visual; no consultan SIESA.</span><div class="pager"><button class="button" id="previous" type="button">Anterior</button><span class="page-label" id="page-label">Página 1 de 1</span><button class="button" id="next" type="button">Siguiente</button></div></div>
+          </section>
+          <div class="disclaimer"><span class="disclaimer-mark" aria-hidden="true">i</span><span>Las cifras son datos de muestra. La conexión y las columnas reales se conservan como están en SIGREP.</span></div>
+        </main>
+      </div>
+    </div>
+
+    <script>
+      (() => {
+        const rows = [
+          { client: "Comercializadora del Norte S.A.S.", nit: "900.384.721-6", branch: "Principal · Barranquilla", company: "Agropecuaria", seller: "019 · Luis Hurtado", co: "301", unit: "003 · Agropecuaria", total: 1883500.0, current: 0, overdue: 1883500, d30: 1883500, d60: 0, d90: 0, d90p: 0, aging: "1-30", nature: "Débito" },
+          { client: "Distribuciones San Martín Ltda.", nit: "802.116.034-2", branch: "Sucursal · Soledad", company: "Carnes Santacruz", seller: "014 · Andrea Pardo", co: "402", unit: "001 · Carnes", total: 24187520.6, current: 18430000.0, overdue: 5757520.6, d30: 2350000, d60: 1800000, d90: 900000, d90p: 707520.6, aging: "90+", nature: "Débito" },
+          { client: "Restaurante El Fogón del Valle", nit: "901.027.511-8", branch: "Norte · Cartagena", company: "Carnes Santacruz", seller: "022 · Mateo Ríos", co: "403", unit: "001 · Carnes", total: 9854432.4, current: 7450000, overdue: 2404432.4, d30: 2404432.4, d60: 0, d90: 0, d90p: 0, aging: "1-30", nature: "Débito" },
+          { client: "Servicios Integrales del Caribe S.A.S.", nit: "900.662.105-1", branch: "Administrativa · Malambo", company: "Serueda", seller: "008 · Camila Torres", co: "701", unit: "006 · Transporte", total: -445200.0, current: 0, overdue: -445200, d30: 0, d60: -445200, d90: 0, d90p: 0, aging: "31-60", nature: "Crédito" },
+          { client: "Almacenes La 14 S.A.S.", nit: "890.302.115-4", branch: "Centro · Montería", company: "Agropecuaria", seller: "031 · Paula Acosta", co: "302", unit: "003 · Agropecuaria", total: 56213800.2, current: 50820000, overdue: 5393800.2, d30: 1600000, d60: 1500000, d90: 1100000, d90p: 1193800.2, aging: "90+", nature: "Débito" },
+          { client: "Carnes y Cortes del Atlántico", nit: "901.188.746-0", branch: "Sur · Barranquilla", company: "Carnes Santacruz", seller: "019 · Luis Hurtado", co: "405", unit: "001 · Carnes", total: 0, current: 0, overdue: 0, d30: 0, d60: 0, d90: 0, d90p: 0, aging: "current", nature: "Débito" },
+          { client: "Mercados Unidos del Caribe", nit: "800.146.918-3", branch: "Principal · Sincelejo", company: "Cristian Serrano", seller: "026 · Juan Pérez", co: "601", unit: "004 · Retail", total: 14607180.8, current: 9630000, overdue: 4977180.8, d30: 1450000, d60: 1200000, d90: 950000, d90p: 1377180.8, aging: "90+", nature: "Débito" },
+          { client: "Inversiones Palmar S.A.S.", nit: "900.768.993-5", branch: "Bodega · Malambo", company: "Agropecuaria", seller: "011 · Diana León", co: "301", unit: "003 · Agropecuaria", total: 7234660.5, current: 7234660.5, overdue: 0, d30: 0, d60: 0, d90: 0, d90p: 0, aging: "current", nature: "Débito" },
+          { client: "Hotel Bahía Azul S.A.S.", nit: "890.115.202-9", branch: "Bocagrande · Cartagena", company: "Carnes Santacruz", seller: "017 · Sofía Mora", co: "409", unit: "001 · Carnes", total: 13440890.3, current: 8910000, overdue: 4530890.3, d30: 0, d60: 1500000, d90: 1000000, d90p: 2030890.3, aging: "90+", nature: "Débito" },
+          { client: "Transportes y Suministros Varela", nit: "900.477.817-2", branch: "Principal · Valledupar", company: "Serueda", seller: "009 · Esteban Gil", co: "702", unit: "006 · Transporte", total: 3380440.7, current: 2880440.7, overdue: 500000, d30: 500000, d60: 0, d90: 0, d90p: 0, aging: "1-30", nature: "Débito" },
+          { client: "Frigorífico San Jorge S.A.S.", nit: "900.235.609-7", branch: "Planta · Montería", company: "Agropecuaria", seller: "003 · Óscar Guerra", co: "302", unit: "003 · Agropecuaria", total: 46930672.1, current: 38100000, overdue: 8830672.1, d30: 1800000, d60: 2100000, d90: 1900000, d90p: 3030672.1, aging: "90+", nature: "Débito" },
+          { client: "Provisiones del Caribe S.A.S.", nit: "901.405.816-1", branch: "Principal · Santa Marta", company: "Carnes Santacruz", seller: "021 · Valeria Cruz", co: "407", unit: "001 · Carnes", total: 17580640.9, current: 17580640.9, overdue: 0, d30: 0, d60: 0, d90: 0, d90p: 0, aging: "current", nature: "Débito" },
+          { client: "Comercializadora San Rafael", nit: "800.913.442-6", branch: "Centro · Montería", company: "Agropecuaria", seller: "019 · Luis Hurtado", co: "302", unit: "003 · Agropecuaria", total: 6345120.2, current: 0, overdue: 6345120.2, d30: 1300000, d60: 1400000, d90: 1200000, d90p: 2445120.2, aging: "90+", nature: "Débito" },
+        ];
+        const columns = [
+          ["Total", "total"], ["Corriente", "current"], ["Vencido", "overdue"],
+          ["1–30 días", "d30"], ["31–60 días", "d60"], ["61–90 días", "d90"], ["Más de 90 días", "d90p"],
+        ];
+        const pageSize = 8;
+        let page = 1;
+        const money = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 1, maximumFractionDigits: 1 });
+        const amount = new Intl.NumberFormat("es-CO", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+        const formatMoney = (value) => money.format(value).replace("COP", "").trim();
+        const search = document.getElementById("search");
+        const company = document.getElementById("company");
+        const nature = document.getElementById("nature");
+        const aging = document.getElementById("aging");
+        const rowsNode = document.getElementById("rows");
+        const numberNode = (id, value) => { document.getElementById(id).textContent = formatMoney(value); };
+
+        function filteredRows() {
+          const term = search.value.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
+          return rows.filter((row) => {
+            if (company.value && row.company !== company.value) return false;
+            if (nature.value && row.nature !== nature.value) return false;
+            if (aging.value && row.aging !== aging.value) return false;
+            const haystack = `${row.client} ${row.nit} ${row.branch} ${row.seller} ${row.co}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
+            return !term || haystack.includes(term);
+          });
+        }
+
+        function render() {
+          const filtered = filteredRows();
+          const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+          page = Math.min(page, pageCount);
+          const start = (page - 1) * pageSize;
+          const visible = filtered.slice(start, start + pageSize);
+          const sum = (field) => filtered.reduce((total, row) => total + row[field], 0);
+          numberNode("total-value", sum("total"));
+          numberNode("current-value", sum("current"));
+          numberNode("overdue-value", sum("overdue"));
+          numberNode("late-value", sum("d90p"));
+          document.getElementById("row-count").textContent = `${filtered.length} ${filtered.length === 1 ? "cliente" : "clientes"}`;
+          document.getElementById("result-count").textContent = `${filtered.length} resultados`;
+          document.getElementById("page-label").textContent = `Página ${page} de ${pageCount}`;
+          document.getElementById("previous").disabled = page <= 1;
+          document.getElementById("next").disabled = page >= pageCount;
+          document.getElementById("empty").hidden = filtered.length !== 0;
+          rowsNode.innerHTML = visible.map((row) => `<tr>
+            <td class="client"><div class="client-main">${row.client}</div><div class="client-id">NIT ${row.nit}</div></td>
+            <td>${row.branch}</td>
+            <td><span class="company-pill"><i class="company-dot"></i>${row.company}</span></td>
+            <td>${row.seller}</td><td>${row.co}</td><td>${row.unit}</td>
+            ${columns.map(([, key]) => `<td class="numeric ${row[key] < 0 ? "amount-negative" : ""}">${formatMoney(row[key])}</td>`).join("")}
+            <td><span class="aging"><i class="aging-dot ${row.aging === "90+" ? "critical" : row.aging === "current" ? "clear" : ""}"></i>${row.aging === "current" ? "Al día" : row.aging === "90+" ? "> 90 días" : `${row.aging} días`}</span></td>
+          </tr>`).join("");
+          document.getElementById("foot-note").textContent = `Mostrando ${visible.length ? start + 1 : 0}–${start + visible.length} de ${filtered.length} clientes · Corte ${document.getElementById("cutoff").value.split("-").reverse().join("/")}`;
+        }
+
+        [search, company, nature, aging].forEach((control) => control.addEventListener("input", () => { page = 1; render(); }));
+        document.getElementById("filters").addEventListener("submit", (event) => { event.preventDefault(); page = 1; render(); });
+        document.getElementById("cutoff").addEventListener("change", render);
+        document.getElementById("previous").addEventListener("click", () => { page -= 1; render(); });
+        document.getElementById("next").addEventListener("click", () => { page += 1; render(); });
+        document.getElementById("refresh").addEventListener("click", render);
+        document.getElementById("export").addEventListener("click", () => {
+          const headers = ["Cliente", "NIT", "Sucursal", "Compañía", "Vendedor", "C.O.", ...columns.map(([label]) => label)];
+          const csvRows = filteredRows().map((row) => [row.client, row.nit, row.branch, row.company, row.seller, row.co, ...columns.map(([, key]) => row[key])]);
+          const csv = [headers, ...csvRows].map((line) => line.join(";")).join("\r\n");
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" }));
+          link.download = "cxc-clientes-muestra.csv";
+          link.click();
+          URL.revokeObjectURL(link.href);
+        });
+        render();
+      })();
+    </script>
+  </body>
+</html>

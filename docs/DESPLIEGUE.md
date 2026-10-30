@@ -3,6 +3,32 @@
 Destino: **Dokploy** (Docker Swarm), el mismo servidor donde ya corre GSC ONE.
 Base de datos: **PostgreSQL**, servicio administrado por la plataforma.
 
+## Despliegue directo desde Git con un Dockerfile unificado
+
+El [`Dockerfile`](../Dockerfile) de la raíz compila el frontend React y la API
+FastAPI en una sola imagen. Nginx sirve la interfaz y hace proxy a Uvicorn; un
+supervisor ejecuta ambos procesos y las migraciones. No requiere Docker Desktop
+para desplegar: Dokploy construye la imagen desde el repositorio.
+
+Para usar esta modalidad, crea una **Application** en Dokploy (no un servicio
+Compose/Stack), conectada al repositorio `Johnnyr-beep/SIG-REP`, rama `main`, con:
+
+- Build type: **Dockerfile**.
+- Dockerfile path y build context: raíz del repositorio (`Dockerfile` y `.`).
+- Puerto HTTP interno: `8080`; configura allí el dominio y TLS.
+- Conecta la Application a la red `dokploy-network` para alcanzar PostgreSQL.
+- Para Grupo Santacruz define `SIGREP_UNIDAD=grupo-santacruz` y
+  `SIGREP_DB_URL_GRUPO_SANTACRUZ`; configura también `SIGREP_SECRET_KEY`, el
+  dominio/CORS y las demás variables de `§3`. Los secretos se ingresan solo en
+  el panel de Dokploy, nunca en el repositorio ni en el chat.
+- Habilita Auto Deploy de la Application al actualizar `main` y prueba primero
+  con un dominio temporal. Mueve el dominio de producción y retira el Stack
+  anterior solo después de comprobar `/api/v1/salud` y `/version.txt`.
+
+El Stack de abajo sigue siendo el despliegue actual de respaldo: `docker stack
+deploy` no construye `build:` y consume las dos imágenes GHCR. No mantengas el
+Stack y la Application anunciando el mismo dominio a la vez.
+
 Este documento cubre el despliegue de producción. Para levantar el sistema en
 una máquina de desarrollo, el [README](../README.md) es más corto y suficiente.
 

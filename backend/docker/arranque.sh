@@ -39,10 +39,11 @@ done
 # calculan al consultarlos. Escalar workers o réplicas es seguro; no hay estado
 # en memoria que se duplique.
 WORKERS="${SIGREP_WORKERS:-2}"
+API_HOST="${SIGREP_API_HOST:-0.0.0.0}"
 
-echo "[SIGREP] Iniciando API con ${WORKERS} worker(s)…"
+echo "[SIGREP] Iniciando API en ${API_HOST}:8000 con ${WORKERS} worker(s)…"
 exec uvicorn app.main:app \
-    --host 0.0.0.0 \
+    --host "${API_HOST}" \
     --port 8000 \
     --workers "${WORKERS}" \
     --proxy-headers \
