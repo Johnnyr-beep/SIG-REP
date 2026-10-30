@@ -294,7 +294,7 @@ jobs:
     # integración continua no validó. `imagenes` está además en la lista porque
     # de ahí sale la versión que hay que verificar en producción.
     needs: [backend, frontend, imagenes]
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.SIGREP_DESPLIEGUE == 'stack'
     # Con un `environment` protegido en la configuración del repositorio,
     # GitHub puede exigir aprobación manual antes de este paso.
     environment: produccion

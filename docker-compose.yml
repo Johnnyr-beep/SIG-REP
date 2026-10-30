@@ -72,6 +72,10 @@ services:
       SIGREP_DB_SERVIDOR: postgres
       SIGREP_DB_PUERTO: "5432"
       SIGREP_DB_NOMBRE: ${SIGREP_DB_NOMBRE:-sigrep}
+      DB_AGROPECUARIA:
+      DB_CARNES_SANTACRUZ:
+      DB_CARNES_FRIAS_SANTACRUZ:
+      DB_GRUPO_SANTACRUZ:
       # Base propia de Agropecuaria. Vacio = las dos unidades comparten base.
       SIGREP_DB_URL_AGRO: ${SIGREP_DB_URL_AGRO:-}
       SIGREP_DB_URL_CARNES_FRIAS: ${SIGREP_DB_URL_CARNES_FRIAS:-}

@@ -64,6 +64,10 @@ services:
       # Instancia lógica que sirve este Stack. La corporativa usa
       # `grupo-santacruz`; sin reenviarla la aplicación usaría `todas`.
       SIGREP_UNIDAD: ${SIGREP_UNIDAD:-todas}
+      DB_AGROPECUARIA:
+      DB_CARNES_SANTACRUZ:
+      DB_CARNES_FRIAS_SANTACRUZ:
+      DB_GRUPO_SANTACRUZ:
       # `SIGREP_DB_URL_OVERRIDE` admite la cadena tal cual la entrega el panel
       # de Dokploy, incluido el esquema `postgres://` heredado: la aplicación lo
       # normaliza al driver correcto.
@@ -189,16 +193,18 @@ services:
         # (`gsc.grupo-santacruz.com`); no es un dominio confirmado.
         - "traefik.http.routers.sigrep.rule=Host(`${SIGREP_DOMINIO:-sigrep.grupo-santacruz.com}`)"
         - "traefik.http.routers.sigrep.entrypoints=websecure"
+        - "traefik.http.routers.sigrep.service=sigrep"
+        - "traefik.http.routers.sigrep.tls=true"
         - "traefik.http.routers.sigrep.tls.certresolver=letsencrypt"
         - "traefik.http.services.sigrep.loadbalancer.server.port=8080"
 
-        # El puerto 80 solo redirige: la aplicación envía HSTS y no debe
-        # servirse en claro. `@file` porque `redirect-to-https` lo define
-        # `dynamic/middlewares.yml`, que carga el proveedor de archivos; sin el
-        # sufijo del proveedor, Traefik descarta el router entero.
+        # Redireccion propia: no depende de middlewares externos de Dokploy.
         - "traefik.http.routers.sigrep-http.rule=Host(`${SIGREP_DOMINIO:-sigrep.grupo-santacruz.com}`)"
         - "traefik.http.routers.sigrep-http.entrypoints=web"
-        - "traefik.http.routers.sigrep-http.middlewares=redirect-to-https@file"
+        - "traefik.http.routers.sigrep-http.service=sigrep"
+        - "traefik.http.routers.sigrep-http.middlewares=sigrep-redirect-https"
+        - "traefik.http.middlewares.sigrep-redirect-https.redirectscheme.scheme=https"
+        - "traefik.http.middlewares.sigrep-redirect-https.redirectscheme.permanent=true"
 
 networks:
   # Solo para que los dos procesos se hablen entre sí. `api` no es alcanzable

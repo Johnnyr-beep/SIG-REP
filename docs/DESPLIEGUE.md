@@ -3,6 +3,66 @@
 Destino: **Dokploy** (Docker Swarm), el mismo servidor donde ya corre GSC ONE.
 Base de datos: **PostgreSQL**, servicio administrado por la plataforma.
 
+## Despliegue PowerShell como SIGNOM (Application)
+
+El script [deploy.ps1](../deploy.ps1) usa por defecto la Application Git
+existente: comprueba el push, fija el commit como argumento de construccion,
+dispara Dokploy y repone los labels del servicio Swarm despues de que termine
+el despliegue. Verifica HTTPS,
+`/api/v1/salud` y que `/version.txt` y la API correspondan al commit enviado.
+No modifica bases, claves ni usuarios en el panel y no hace commits ni push.
+
+Preparacion de una sola vez:
+
+1. Use la **Application SIGREP** existente, proveedor **GitHub**, rama `main`,
+  construccion **Dockerfile** en la raiz, puerto `8080`. Configure
+  `DEPLOY_SOURCE=git`. El script desactiva Auto Deploy para que el webhook no
+  compita con el despliegue manual y la reposicion de labels. Como alternativa,
+  `DEPLOY_SOURCE=docker` conserva el flujo de registro de SIGNOM: proveedor
+  Docker e `IMAGE` coincidente en panel y script; requiere ese registro.
+2. Configure las cuatro URLs PostgreSQL completas en **Environment**:
+  `DB_AGROPECUARIA`, `DB_CARNES_SANTACRUZ`, `DB_CARNES_FRIAS_SANTACRUZ`,
+  `DB_GRUPO_SANTACRUZ`. Tienen prioridad sobre las conexiones antiguas
+  `SIGREP_DB_URL_*`. Cada login, renovacion de token, consulta y migracion usa
+  la conexion de su unidad; las URLs no se envian al navegador.
+3. Configure `SIGREP_UNIDAD=todas` para el portal de las cuatro unidades,
+  `SIGREP_SECRET_KEY`, `SIGREP_HOSTS_PERMITIDOS` y `SIGREP_CORS_ORIGENES`.
+  Para una instancia exclusivamente corporativa use `grupo-santacruz`.
+4. Las cuatro bases deben ser alcanzables por `dokploy-network`. No reutilice
+  la conexion de una unidad para otra ni cree bases vacias con estos nombres.
+5. Cree `.deploy-secrets` a partir de [.deploy-secrets.example](../.deploy-secrets.example)
+  y complete localmente clave SSH, host, token, endpoint tRPC e ID de la
+  **Application SIGREP**, nunca los de SIGNOM. El archivo esta ignorado por Git.
+  Tambien puede suministrar estas variables por el entorno del proceso, sin
+  crear otro archivo de secretos. Registre previamente la huella SSH verificada
+  del servidor en `known_hosts`;
+  el script no desactiva la verificacion de identidad.
+
+Desde la raiz de SIG-REP, despues del commit:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\deploy.ps1
+```
+
+Para recuperar solamente labels y red, sin reconstruir ni desplegar imagen:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\deploy.ps1 -SoloLabels
+```
+
+`-SoloLabels` requiere solo `SSH_KEY`, `SSH_HOST`, `SERVICE_NAME` y `APP_URL`.
+El script requiere OpenSSH, Git y acceso SSH sin interaccion. Falla si hay
+cambios sin commit, comandos remotos fallidos, despliegue con error o una
+version diferente. Las credenciales y URLs reales nunca se empaquetan desde
+archivos locales: se usa `git archive HEAD`.
+
+Este flujo es alternativo al Dockerfile conectado directamente a Git y al
+Stack GHCR descritos abajo. No active ambos flujos para la misma aplicacion.
+El trabajo de despliegue del CI solo dispara el webhook del Stack cuando la
+variable de repositorio `SIGREP_DESPLIEGUE=stack` esta definida. Para la
+Application Git dejela sin definir: CI valida y publica las imagenes de
+respaldo, pero no compite con `deploy.ps1`.
+
 ## Despliegue directo desde Git con un Dockerfile unificado
 
 El [`Dockerfile`](../Dockerfile) de la raíz compila el frontend React y la API

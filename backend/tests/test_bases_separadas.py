@@ -23,7 +23,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.core.config import obtener_settings
+from app.core.config import Settings, obtener_settings
 from app.core.db import Base, fabrica_de, motor_de, reiniciar_motores, urls_por_unidad
 from app.core.security import decodificar_token, hashear_password
 from app.infrastructure.models.usuario import Usuario
@@ -31,6 +31,25 @@ from app.main import app
 from tests.conftest import CLAVE
 
 CABECERA = "X-SIGREP-Unidad"
+
+
+def test_variables_db_dokploy_tienen_prioridad(monkeypatch: pytest.MonkeyPatch) -> None:
+    variables = {
+        "carnes": ("DB_CARNES_SANTACRUZ", "SIGREP_DB_URL_OVERRIDE"),
+        "agropecuaria": ("DB_AGROPECUARIA", "SIGREP_DB_URL_AGRO"),
+        "carnes-frias": ("DB_CARNES_FRIAS_SANTACRUZ", "SIGREP_DB_URL_CARNES_FRIAS"),
+        "grupo-santacruz": ("DB_GRUPO_SANTACRUZ", "SIGREP_DB_URL_GRUPO_SANTACRUZ"),
+    }
+    for unidad, (actual, anterior) in variables.items():
+        monkeypatch.setenv(actual, f"postgres://usuario:clave@{unidad}:5432/sigrep")
+        monkeypatch.setenv(anterior, "sqlite:///base-anterior.db")
+
+    settings = Settings(_env_file=None)
+    for unidad in variables:
+        assert settings.url_de_unidad(unidad) == (
+            f"postgresql+psycopg://usuario:clave@{unidad}:5432/sigrep"
+        )
+    assert settings.bases_separadas is True
 
 
 def _crear_usuario(unidad: str, nombre: str) -> None:
@@ -49,8 +68,10 @@ def _crear_usuario(unidad: str, nombre: str) -> None:
         sesion.commit()
 
 
-@pytest.fixture
-def dos_bases(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+@pytest.fixture(params=["legacy", "dokploy"])
+def dos_bases(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
+) -> Iterator[TestClient]:
     """Dos bases distintas, cada una con **su propio** usuario.
 
     Que los usuarios sean distintos no es un detalle de la prueba: es la
@@ -61,9 +82,13 @@ def dos_bases(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestC
     agro = tmp_path / "agro.db"
     carnes_frias = tmp_path / "carnes_frias.db"
 
-    monkeypatch.setenv("SIGREP_DB_URL_OVERRIDE", f"sqlite:///{carnes}")
-    monkeypatch.setenv("SIGREP_DB_URL_AGRO", f"sqlite:///{agro}")
-    monkeypatch.setenv("SIGREP_DB_URL_CARNES_FRIAS", f"sqlite:///{carnes_frias}")
+    nombres = (
+        ("DB_CARNES_SANTACRUZ", "DB_AGROPECUARIA", "DB_CARNES_FRIAS_SANTACRUZ")
+        if request.param == "dokploy"
+        else ("SIGREP_DB_URL_OVERRIDE", "SIGREP_DB_URL_AGRO", "SIGREP_DB_URL_CARNES_FRIAS")
+    )
+    for nombre, archivo in zip(nombres, (carnes, agro, carnes_frias), strict=True):
+        monkeypatch.setenv(nombre, f"sqlite:///{archivo}")
     obtener_settings.cache_clear()
     reiniciar_motores()
 

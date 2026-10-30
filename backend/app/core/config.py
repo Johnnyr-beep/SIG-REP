@@ -15,7 +15,7 @@ from decimal import Decimal
 from functools import lru_cache
 from typing import Any, Literal
 
-from pydantic import Field, SecretStr, computed_field, field_validator
+from pydantic import AliasChoices, Field, SecretStr, computed_field, field_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic_settings.sources.providers.env import EnvSettingsSource
@@ -118,6 +118,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         env_prefix="SIGREP_",
+        populate_by_name=True,
         extra="ignore",
         frozen=True,
     )
@@ -178,7 +179,10 @@ class Settings(BaseSettings):
     db_echo: bool = False
 
     # Permite apuntar a SQLite en pruebas sin tocar el resto de la configuración.
-    db_url_override: str | None = None
+    db_url_override: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("DB_CARNES_SANTACRUZ", "SIGREP_DB_URL_OVERRIDE"),
+    )
 
     # ── Reglas de negocio parametrizables ─────────────────────────────────────
     #: Umbral del semáforo (§4.1). El verde es `cumplimiento >= ideal`; el
@@ -204,14 +208,23 @@ class Settings(BaseSettings):
     #: Ponerla es lo que separa de verdad las dos compañías, porque a partir de
     #: ahí un token de carnes no puede leer agropecuaria aunque alguien escriba
     #: la ruta a mano: no está conectado a esa base.
-    db_url_agro: str | None = None
+    db_url_agro: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("DB_AGROPECUARIA", "SIGREP_DB_URL_AGRO"),
+    )
     #: Base exclusiva de Carnes Frías. No puede caer a la base de Carnes: una
     #: omisión debe fallar antes de que una carga de la compañía 8 se mezcle.
-    db_url_carnes_frias: str | None = None
+    db_url_carnes_frias: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("DB_CARNES_FRIAS_SANTACRUZ", "SIGREP_DB_URL_CARNES_FRIAS"),
+    )
     #: Base exclusiva de la instancia corporativa. El consolidado financiero
     #: debe partir de fuentes homologadas y nunca de una conexión reutilizada
     #: de un negocio operativo.
-    db_url_grupo_santacruz: str | None = None
+    db_url_grupo_santacruz: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("DB_GRUPO_SANTACRUZ", "SIGREP_DB_URL_GRUPO_SANTACRUZ"),
+    )
     #: Bases de las dos unidades financieras nuevas, mismo patrón que Grupo
     #: Santacruz: sin URL propia, `url_de_unidad` se niega a arrancar la sesión
     #: en lugar de caer a la base de otra compañía.
