@@ -96,6 +96,8 @@ if (-not $SoloLabels) {
             -Headers $headers -TimeoutSec 20).result.data.json
         if ($application.appName -ne $service) { throw 'APP_ID no corresponde a SERVICE_NAME.' }
         if ($application.applicationStatus -eq 'running') { throw 'Dokploy ya tiene un despliegue activo.' }
+        $deploymentEnv = [regex]::Replace([string]$application.env, '(?m)^SIGREP_VERSION=.*\r?\n?', '')
+        $updateValues = @{ applicationId = $secrets['APP_ID']; autoDeploy = $false; env = $deploymentEnv }
         if ($gitProvider) {
             if ($application.sourceType -eq 'docker' -or $application.buildType -ne 'dockerfile' `
                 -or $application.branch -ne $branch) {
@@ -103,11 +105,11 @@ if (-not $SoloLabels) {
             }
             $buildArgs = [regex]::Replace([string]$application.buildArgs, '(?m)^SIGREP_VERSION=.*\r?\n?', '')
             $buildArgs = $buildArgs.TrimEnd() + "`nSIGREP_VERSION=$commit"
-            $update = @{ json = @{ applicationId = $secrets['APP_ID']; buildArgs = $buildArgs; autoDeploy = $false } } |
-                ConvertTo-Json -Compress
-            Invoke-RestMethod -Method Post -Uri "$base/application.update" -Headers $headers `
-                -ContentType 'application/json' -Body $update -TimeoutSec 20 | Out-Null
+            $updateValues['buildArgs'] = $buildArgs
         }
+        $update = @{ json = $updateValues } | ConvertTo-Json -Compress
+        Invoke-RestMethod -Method Post -Uri "$base/application.update" -Headers $headers `
+            -ContentType 'application/json' -Body $update -TimeoutSec 20 | Out-Null
         Invoke-RestMethod -Method Post -Uri "$base/application.deploy" -Headers $headers `
             -ContentType 'application/json' -Body $body -TimeoutSec 30 | Out-Null
         $done = $false

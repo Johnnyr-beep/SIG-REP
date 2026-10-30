@@ -10,7 +10,9 @@ existente: comprueba el push, fija el commit como argumento de construccion,
 dispara Dokploy y repone los labels del servicio Swarm despues de que termine
 el despliegue. Verifica HTTPS,
 `/api/v1/salud` y que `/version.txt` y la API correspondan al commit enviado.
-No modifica bases, claves ni usuarios en el panel y no hace commits ni push.
+Retira `SIGREP_VERSION` del entorno del panel para que no tape la identidad
+incorporada en la imagen. No modifica conexiones, claves ni usuarios y no
+hace commits ni push.
 
 Preparacion de una sola vez:
 
