@@ -171,6 +171,17 @@ export function Presupuesto() {
     );
   }
 
+  function descargarPlantilla() {
+    const contenido = "\ufeffpunto_venta,categoria,monto,kilos\r\n";
+    const enlace = document.createElement("a");
+    enlace.href = URL.createObjectURL(
+      new Blob([contenido], { type: "text/csv;charset=utf-8" }),
+    );
+    enlace.download = `plantilla-presupuesto-${filtros.periodo}.csv`;
+    enlace.click();
+    window.setTimeout(() => URL.revokeObjectURL(enlace.href), 0);
+  }
+
   return (
     <div className="pila">
       <section
@@ -345,6 +356,13 @@ export function Presupuesto() {
             if (archivo) cargaMasiva.mutate(archivo);
           }}
         >
+          <button
+            type="button"
+            className="boton boton--pequeno"
+            onClick={descargarPlantilla}
+          >
+            Descargar plantilla CSV
+          </button>
           <input
             className="campo__control"
             type="file"
