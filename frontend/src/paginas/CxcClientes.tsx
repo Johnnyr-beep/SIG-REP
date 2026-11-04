@@ -122,6 +122,9 @@ export function CxcClientes() {
   const consulta = useCxcClientes(fechaCorte);
 
   const columnas = consulta.data?.columnas ?? [];
+  const columnasVisibles = columnas.filter(
+    (columna) => !["vendedor", "co"].includes(normalizar(columna)),
+  );
   const filas = consulta.data?.filas ?? [];
   const columnaCompania = columnas.find((columna) => ["cia", "compania"].includes(normalizar(columna)));
   const columnaNaturaleza = columnas.find((columna) => normalizar(columna) === "naturaleza");
@@ -240,10 +243,10 @@ export function CxcClientes() {
           <div className="tabla-envoltorio tabla-envoltorio--alta cxc__tabla-scroll">
             <table className="tabla tabla--anclada cxc__tabla" aria-busy={consulta.isFetching}>
               <caption className="solo-lectores">Saldos y antigüedad de cuentas por cobrar a clientes al {consulta.data.fecha_corte}.</caption>
-              <thead><tr>{columnas.map((columna, indice) => <th key={`${indice}-${columna}`} scope="col" className={`${indice === 0 ? "columna-ancla " : ""}${esImporte(columna) ? "numero" : ""}`}>{etiquetaColumna(columna)}</th>)}</tr></thead>
+              <thead><tr>{columnasVisibles.map((columna, indice) => <th key={`${indice}-${columna}`} scope="col" className={`${indice === 0 ? "columna-ancla " : ""}${esImporte(columna) ? "numero" : ""}`}>{etiquetaColumna(columna)}</th>)}</tr></thead>
               <tbody>{filasPagina.map((fila, indice) => (
                 <tr key={`${inicio + indice}-${Object.values(fila).slice(0, 3).join("-")}`}>
-                  {columnas.map((columna, indiceColumna) => {
+                  {columnasVisibles.map((columna, indiceColumna) => {
                     const clave = normalizar(columna);
                     const importe = esImporte(columna);
                     const negativo = importe && Number((fila[columna] ?? "0").replace(",", ".")) < 0;
