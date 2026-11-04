@@ -129,8 +129,8 @@ export function CxcClientes() {
   const columnaCompania = columnas.find((columna) => ["cia", "compania"].includes(normalizar(columna)));
   const columnaNaturaleza = columnas.find((columna) => normalizar(columna) === "naturaleza");
   const columnaTotal = buscarColumna(columnas, ["total", "saldototal", "totalcop"]);
-  const columnaCorriente = buscarColumna(columnas, ["totalcorriente", "saldocorriente", "corrientecop"]);
-  const columnaVencido = buscarColumna(columnas, ["totalvencido", "saldovencido", "vencidocop"]);
+  const columnaCorriente = buscarColumna(columnas, ["totalcorrientecop", "totalcorriente", "saldocorriente", "corrientecop"]);
+  const columnaVencido = buscarColumna(columnas, ["totalvencidocop", "totalvencido", "saldovencido", "vencidocop"]);
   const filtrosAntiguedad = RANGOS_ANTIGUEDAD.flatMap((rango) => {
     const columna = columnas.find((nombre) =>
       rango.columnas.some((alias) => alias === normalizar(nombre)),
