@@ -52,7 +52,7 @@ D = Decimal
 CORTE = date(2026, 8, 15)
 
 #: PEREIRA: el punto sin costo en el origen. MALAMBO: uno cualquiera con costo.
-SIN_COSTO = "409"
+SIN_COSTO = "411"
 CON_COSTO = "402"
 
 

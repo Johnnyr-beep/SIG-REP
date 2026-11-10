@@ -152,7 +152,7 @@ const PDVS: DefinicionPdv[] = [
   },
   {
     id: 6,
-    codigo_co: "409",
+    codigo_co: "411",
     nombre: "PEREIRA",
     grupo: "002",
     zona: ZONA_PEI,

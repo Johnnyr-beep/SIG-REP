@@ -79,7 +79,7 @@ PUNTOS_VENTA: list[tuple[str, str, str, str]] = [
     ("403", "LAGRANJA", "PDV LA GRANJA", "001"),
     ("406", "SIMON", "PDV SIMON", "001"),
     ("412", "BUCARAMANGA", "PDV BUCARMANGA", "002"),
-    ("409", "PEREIRA", "PDV PEREIRA", "002"),
+    ("411", "PEREIRA", "PDV PEREIRA DOSQUEBRADAS", "002"),
     ("415", "CARTAGENA", "PDV CARTAGENA", "002"),
     ("414", "CENTRO", "PDV CENTRO", "003"),
     ("701", "SANFELIPE", "SAN FELIPE", "003"),
@@ -170,7 +170,7 @@ MAPEO_CATEGORIAS: list[tuple[str, str]] = [
 ZONAS: list[tuple[str, list[str], Decimal | None]] = [
     ("BUCARAMANGA Y CENTRO", ["412", "414"], Decimal("27.5")),
     ("CARTAGENA", ["415"], Decimal("24")),
-    ("PEREIRA", ["409"], Decimal("27.5")),
+    ("PEREIRA", ["411"], Decimal("27.5")),
     ("LA 70 / LA 43 / SIMON / LA GRANJA", ["407", "405", "406", "403"], Decimal("28.5")),
     # ── SUPUESTO: días hábiles pendientes de confirmar con el usuario ──────────
     # Se siembran como zonas independientes para que el negocio pueda fijarles

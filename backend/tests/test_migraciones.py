@@ -27,6 +27,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
+
+from app.infrastructure.models.organizacion import PuntoVenta
+from app.infrastructure.semilla import sembrar_calendario, sembrar_estructura
+from tests.conftest import PERIODO, dar_presupuesto, dar_venta
+
 #: `backend/`, que es donde viven `alembic.ini` y el paquete `app`.
 RAIZ = Path(__file__).resolve().parents[1]
 
@@ -86,7 +93,7 @@ def test_alembic_upgrade_head_recorre_todas_las_migraciones_sobre_sqlite(tmp_pat
 
     # Se recorrieron **todas** las revisiones, no solo la primera.
     aplicadas = proceso.stderr + proceso.stdout
-    for revision in ("0001", "0002", "0003", "0004", "0005", "0009"):
+    for revision in ("0001", "0002", "0003", "0004", "0005", "0009", "0019"):
         assert f"-> {revision}" in aplicadas, f"la revisión {revision} no llegó a ejecutarse"
 
     actual = _alembic(entorno, "current")
@@ -283,3 +290,90 @@ def test_la_revision_0005_borra_la_categoria_cuando_ya_no_tiene_presupuesto(
     assert len(historial) == 1, "el historial se borró: §3.3 exige que el rastro sobreviva"
     assert historial[0][0] is None, "el vínculo con la categoría borrada no se anuló"
     assert "Reparto proporcional" in historial[0][1], "el motivo del cambio se perdió"
+
+
+def _base_con_pereira_409(tmp_path: Path) -> tuple[Path, dict[str, str]]:
+    archivo = tmp_path / "pereira.db"
+    entorno = dict(os.environ)
+    entorno["SIGREP_DB_URL_OVERRIDE"] = f"sqlite:///{archivo.as_posix()}"
+    proceso = _alembic(entorno, "upgrade", "0018")
+    assert proceso.returncode == 0, proceso.stderr[-4000:]
+
+    motor = create_engine(entorno["SIGREP_DB_URL_OVERRIDE"])
+    try:
+        with Session(motor) as sesion:
+            sembrar_estructura(sesion)
+            sembrar_calendario(sesion, PERIODO)
+            pereira = sesion.scalars(select(PuntoVenta).where(PuntoVenta.codigo_co == "411")).one()
+            pereira.codigo_co = "409"
+            pereira.descripcion_siesa = "PDV PEREIRA"
+            sesion.commit()
+            dar_presupuesto(sesion, "409", "RES", "1200000")
+            dar_venta(sesion, "409", "RES", 1, "200", costo=None)
+    finally:
+        motor.dispose()
+    return archivo, entorno
+
+
+def test_revision_0019_conserva_pereira_y_sus_relaciones(tmp_path: Path) -> None:
+    archivo, entorno = _base_con_pereira_409(tmp_path)
+    with sqlite3.connect(archivo) as conexion:
+        anterior = conexion.execute(
+            "SELECT id, grupo_id, zona_id, activo, presupuestado "
+            "FROM puntos_venta WHERE codigo_co = '409'"
+        ).fetchone()
+
+    proceso = _alembic(entorno, "upgrade", "head")
+    assert proceso.returncode == 0, proceso.stderr[-4000:]
+
+    # La semilla posterior al despliegue no puede crear un segundo Pereira.
+    motor = create_engine(entorno["SIGREP_DB_URL_OVERRIDE"])
+    try:
+        with Session(motor) as sesion:
+            sembrar_estructura(sesion)
+            sesion.commit()
+    finally:
+        motor.dispose()
+
+    with sqlite3.connect(archivo) as conexion:
+        actual = conexion.execute(
+            "SELECT id, grupo_id, zona_id, activo, presupuestado "
+            "FROM puntos_venta WHERE codigo_co = '411'"
+        ).fetchone()
+        assert actual == anterior
+        assert conexion.execute(
+            "SELECT codigo_co, descripcion_siesa FROM puntos_venta WHERE nombre = 'PEREIRA'"
+        ).fetchall() == [("411", "PDV PEREIRA DOSQUEBRADAS")]
+        assert conexion.execute("SELECT punto_venta_id, monto FROM presupuestos").fetchall() == [
+            (anterior[0], 1200000)
+        ]
+        assert conexion.execute(
+            "SELECT punto_venta_id, valor_subtotal, costo_promedio FROM venta_lineas"
+        ).fetchall() == [(anterior[0], 200, None)]
+        assert not conexion.execute("PRAGMA foreign_key_check").fetchall()
+
+    proceso = _alembic(entorno, "downgrade", "0018")
+    assert proceso.returncode == 0, proceso.stderr[-4000:]
+    with sqlite3.connect(archivo) as conexion:
+        assert conexion.execute(
+            "SELECT id, descripcion_siesa FROM puntos_venta WHERE codigo_co = '409'"
+        ).fetchone() == (anterior[0], "PDV PEREIRA")
+
+
+def test_revision_0019_no_fusiona_un_destino_ocupado(tmp_path: Path) -> None:
+    archivo, entorno = _base_con_pereira_409(tmp_path)
+    with sqlite3.connect(archivo) as conexion:
+        conexion.execute(
+            "INSERT INTO puntos_venta (codigo_co, nombre, activo, presupuestado, "
+            "creado_en, actualizado_en) VALUES ('411', 'OTRO PUNTO', 1, 1, "
+            "'2026-11-01 00:00:00', '2026-11-01 00:00:00')"
+        )
+
+    proceso = _alembic(entorno, "upgrade", "head")
+    assert proceso.returncode != 0
+    assert "el C.O. de destino ya existe" in proceso.stderr
+    with sqlite3.connect(archivo) as conexion:
+        assert conexion.execute(
+            "SELECT codigo_co, descripcion_siesa FROM puntos_venta WHERE nombre = 'PEREIRA'"
+        ).fetchone() == ("409", "PDV PEREIRA")
+        assert conexion.execute("SELECT version_num FROM alembic_version").fetchone() == ("0018",)

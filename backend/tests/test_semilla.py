@@ -31,4 +31,9 @@ def test_semilla_grupo_carga_y_completa_descripciones_siesa(sesion: Session, mon
     por_codigo = {punto.codigo_co: punto for punto in puntos}
     assert por_codigo["402"].descripcion_siesa == "PDV MALAMBO"
     assert por_codigo["603"].descripcion_siesa == "CONCORD"
+    assert por_codigo["411"].nombre == "PEREIRA"
+    assert por_codigo["411"].descripcion_siesa == "PDV PEREIRA DOSQUEBRADAS"
+    assert por_codigo["411"].zona.nombre == "PEREIRA"
+    assert por_codigo["411"].grupo.codigo == "002"
+    assert "409" not in por_codigo
     assert len(puntos) == len(semilla.PUNTOS_VENTA) + 1

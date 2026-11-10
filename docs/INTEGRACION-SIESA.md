@@ -22,6 +22,25 @@ de 2026. Documento para llevar a quien administra la API.
 | **Pendiente** | El módulo `SIN ACUMULAR` —PEREIRA— no entrega costo, así que su margen es «—» |
 | **Pendiente** | Ningún endpoint entrega el **número de documentos**; el indicador no se publica (§4.4) |
 
+### Traslado de Pereira al C.O. 411 (noviembre de 2026)
+
+Verificado el 10 de noviembre contra la venta del 9: la compañía 4 devuelve
+20 filas con `DescCO = PDV PEREIRA DOSQUEBRADAS`. La API ya entrega la venta;
+no necesita cambios para resolver esta ausencia en SIGREP.
+
+La migración `0019` cambia el C.O. 409 a **411** y actualiza la descripción
+**sobre el mismo punto de venta**: conserva su ID, ventas, presupuestos,
+grupo, zona de calendario y permisos. Si el destino ya existe, aborta con un
+mensaje para conciliarlo sin fusionar importes. La semilla usa los nuevos
+valores para instalaciones nuevas. La descripción anterior `PDV PEREIRA`
+sigue resolviendo al mismo punto al reconsultar fechas históricas.
+
+Al desplegar, ejecutar `alembic upgrade head` (el contenedor lo hace al
+arrancar) y volver a ingerir desde la fecha del traslado hasta el corte.
+La migración no descarga ventas: la ingesta recupera las filas que se habían
+rechazado por descripción desconocida y reemplaza los días de forma idempotente.
+Las cifras de agosto que siguen abajo conservan el C.O. histórico 409.
+
 ---
 
 ## 1. El token

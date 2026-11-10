@@ -80,7 +80,7 @@ DESCRIPCIONES = {
     "CONCORD": "603",
     "PDV LA GRANJA": "403",
     "PDV BUCARMANGA": "412",  # la errata es de SIESA y se conserva
-    "PDV PEREIRA": "409",
+    "PDV PEREIRA DOSQUEBRADAS": "411",
     "ALAMEDA 1": "605",
 }
 
@@ -260,7 +260,7 @@ def test_los_dos_origenes_se_suman_y_no_se_descarta_ninguno() -> None:
     )
     _, lineas = leer(api)
 
-    assert {linea.centro_operacion for linea in lineas} == {"402", "603", "409"}  # type: ignore[attr-defined]
+    assert {linea.centro_operacion for linea in lineas} == {"402", "603", "411"}  # type: ignore[attr-defined]
     assert sum(linea.valor_subtotal for linea in lineas) == D("600.00")  # type: ignore[attr-defined]
 
 
@@ -288,11 +288,11 @@ def test_sin_acumular_no_tiene_costo_aunque_llegue_un_cero() -> None:
         "en `ACUMULADO` el cero es un costo afirmado y se conserva: convertirlo en NULL "
         "borraría el margen de una venta que sí lo tiene"
     )
-    assert por_centro["409"].costo_promedio is None, (
+    assert por_centro["411"].costo_promedio is None, (
         "en `SIN ACUMULAR` el cero es la ausencia del dato escrita como número; dejarlo "
         "pasar publicaría un 100 % de margen que nadie ha ganado (§4.4)"
     )
-    assert por_centro["409"].valor_subtotal == D("200.00"), "la venta de PEREIRA sí se carga"
+    assert por_centro["411"].valor_subtotal == D("200.00"), "la venta de PEREIRA sí se carga"
 
 
 def test_sin_acumular_ignora_el_costo_aunque_traiga_un_importe_de_verdad() -> None:
@@ -324,11 +324,11 @@ def test_una_fila_sin_costo_entra_anotada_y_no_toca_el_margen_de_los_demas() -> 
 
     por_centro = {linea.centro_operacion: linea for linea in lineas}  # type: ignore[attr-defined]
     assert por_centro["402"].costo_promedio == D("76853.80"), "el margen de los demás intacto"
-    assert por_centro["409"].costo_promedio is None
+    assert por_centro["411"].costo_promedio is None
 
     aviso = [a for a in fuente.anotaciones if a.campo == "CostoPromedio"]
     assert len(aviso) == 1
-    assert aviso[0].valor == "409"
+    assert aviso[0].valor == "411"
     assert "no tiene margen calculable" in aviso[0].motivo
 
 
@@ -865,6 +865,36 @@ def test_una_respuesta_vacia_no_sacrifica_a_las_demas_companias() -> None:
 # ── Integración con la ingesta (§5, §7) ───────────────────────────────────────
 
 
+@pytest.mark.parametrize("descripcion", ["PDV PEREIRA DOSQUEBRADAS", "PDV PEREIRA"])
+def test_pereira_411_desde_el_catalogo_real_conserva_la_ingesta_idempotente(
+    sesion: Session,
+    estructura: None,
+    monkeypatch: pytest.MonkeyPatch,
+    descripcion: str,
+) -> None:
+    corte = date(2026, 11, 9)
+    api = ApiFalsa().ventas(fila(descripcion, fecha=corte.isoformat(), subtotal="200", costo="100"))
+    settings = Settings(secret_key="c" * 40, siesa_token=TOKEN_PELADO)
+    monkeypatch.setattr(ingesta_service, "obtener_settings", lambda: settings)
+    monkeypatch.setattr(IngestaService, "_sincronizar_documentos_si_aplica", lambda *_args: None)
+
+    with api.cliente() as cliente:
+        monkeypatch.setattr(FuenteVentaSiesa, "_cliente", lambda _self: cliente)
+        for _ in range(2):
+            salida = IngestaService(sesion).ejecutar(corte, corte, FuenteIngesta.SIESA)
+            sesion.commit()
+            assert salida.estado == EstadoCorrida.COMPLETADA
+            assert salida.aceptadas == 1
+            assert salida.rechazadas == 0
+
+    lineas = sesion.scalars(select(VentaLinea)).all()
+    assert len(lineas) == 1
+    assert lineas[0].punto_venta_id == id_punto_venta(sesion, "411")
+    assert lineas[0].fecha == corte
+    assert lineas[0].valor_subtotal == D("200.00")
+    assert lineas[0].costo_promedio == D("100.00")
+
+
 @pytest.fixture
 def ingesta_desde(monkeypatch: pytest.MonkeyPatch):  # type: ignore[no-untyped-def]
     """Enchufa una `FuenteVentaSiesa` con API simulada al servicio de ingesta."""
@@ -910,7 +940,7 @@ def test_la_ingesta_carga_la_venta_de_los_dos_origenes(
     embutidos = sesion.scalars(select(Categoria).where(Categoria.codigo == "EMBUTIDOS")).one()
     assert malambo.categoria_id == embutidos.id, "la resuelve `mapeo_categorias`, no el código"
 
-    pereira = por_punto[id_punto_venta(sesion, "409")]
+    pereira = por_punto[id_punto_venta(sesion, "411")]
     assert pereira.valor_subtotal == D("200.00"), "la venta de PEREIRA se carga entera"
     assert pereira.costo_promedio is None, (
         "el cero de `SIN ACUMULAR` se persiste como NULL; guardarlo como cero es lo que "

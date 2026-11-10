@@ -869,7 +869,7 @@ def test_la_carga_masiva_lee_la_hoja_cumplimiento_ppto_sin_duplicar_totales(
 def test_todos_los_puntos_de_venta_del_archivo_existen_en_el_catalogo(
     estructura: None, sesion: Session
 ) -> None:
-    """Los 16 C.O. medidos en la hoja `VENTA` del archivo real.
+    """Los 16 C.O. del catálogo vigente, incluido el traslado de Pereira a 411.
 
     Si mañana SIESA abre un punto nuevo, esta prueba no falla —la ingesta lo
     rechaza con su motivo, que es lo correcto— pero el día que alguien borre un
@@ -881,7 +881,7 @@ def test_todos_los_puntos_de_venta_del_archivo_existen_en_el_catalogo(
         "405",
         "406",
         "407",
-        "409",
+        "411",
         "412",
         "413",
         "414",

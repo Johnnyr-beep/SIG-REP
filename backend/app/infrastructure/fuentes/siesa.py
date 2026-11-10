@@ -401,6 +401,9 @@ def indexar_descripciones(descripciones: Mapping[str, str]) -> dict[str, str]:
         clave = clave_descripcion(descripcion)
         if clave:
             indice[clave] = str(codigo).strip().zfill(3)
+    # Las consultas anteriores al traslado conservan la descripción del C.O. 409.
+    if indice.get("PDV PEREIRA DOSQUEBRADAS") == "411":
+        indice.setdefault("PDV PEREIRA", "411")
     return indice
 
 
