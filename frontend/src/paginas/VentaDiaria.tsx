@@ -391,12 +391,33 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
                                   : porcentaje(String(fila.cumplimiento))}
                               </td>
                               <td className="numero">
-                                {fila.documentos ?? SIN_DATO}
+                                <span
+                                  title={`${fila.diasConDocumentos} de ${fila.diasRango} días con conteo`}
+                                >
+                                  {fila.documentos ?? SIN_DATO}
+                                  {fila.documentos !== null &&
+                                  fila.diasConDocumentos < fila.diasRango ? (
+                                    <small className="tenue">
+                                      {` · ${fila.diasConDocumentos}/${fila.diasRango} días`}
+                                    </small>
+                                  ) : null}
+                                </span>
                               </td>
                               <td className="numero">
                                 {fila.ticketPromedio === null
                                   ? SIN_DATO
-                                  : formatear(String(fila.ticketPromedio))}
+                                  : (
+                                      <span
+                                        title={`${fila.diasConTicket} de ${fila.diasRango} días con venta y conteo`}
+                                      >
+                                        {formatear(String(fila.ticketPromedio))}
+                                        {fila.diasConTicket < fila.diasRango ? (
+                                          <small className="tenue">
+                                            {` · ${fila.diasConTicket}/${fila.diasRango} días`}
+                                          </small>
+                                        ) : null}
+                                      </span>
+                                    )}
                               </td>
                             </tr>
                           );
