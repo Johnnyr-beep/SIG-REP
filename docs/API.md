@@ -220,6 +220,15 @@ rango se cierra en hoy.
 que la respuesta es autodescriptiva y la pantalla no necesita saber cuál se
 usó. `fecha_corte` coincide siempre con `hasta`.
 
+El **Resumen del corte** de Venta diaria y de Venta diaria de Asadero muestra
+la venta acumulada de todas las fechas de la respuesta, no solo el último día.
+El presupuesto del rango suma la referencia diaria de cada fecha usando su
+propio mes; el cumplimiento es venta acumulada / presupuesto del rango.
+Los documentos se suman únicamente si hay conteo para todos los días; de lo
+contrario, documentos y ticket promedio quedan en «—» para no publicar un
+conteo parcial como si estuviera completo. Un rango sin venta registrada
+conserva «—», distinto de una venta registrada con importe cero.
+
 **El presupuesto es mensual (§3.3), y el rango puede no serlo.** Un rango del
 25 de julio al 5 de agosto tiene **dos** líneas de referencia distintas y las
 dos son correctas:

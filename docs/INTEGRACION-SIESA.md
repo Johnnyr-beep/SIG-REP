@@ -41,6 +41,19 @@ La migración no descarga ventas: la ingesta recupera las filas que se habían
 rechazado por descripción desconocida y reemplaza los días de forma idempotente.
 Las cifras de agosto que siguen abajo conservan el C.O. histórico 409.
 
+La misma ingesta alimenta **Cumplimiento por PDV**, **Venta diaria** y
+**Venta diaria de Asadero**; este último filtra la categoría `ASADERO`
+(`0010 - RESTAURANTE` en SIESA). No hay que configurar otro C.O. por reporte.
+La prueba de integración verifica los tres endpoints, sin filtro y con
+`punto_venta=411`, usando las dos descripciones y recargando sin duplicar.
+
+Si todavía aparece 409 después de un deploy, comprobar primero que el commit
+con la migración esté publicado en Git y comparar la versión de
+`/api/v1/salud` con el commit construido por Dokploy. Repetir un deploy de una
+versión anterior no aplica la corrección. Una vez desplegada y migrada,
+reingerir el rango afectado: cambiar el catálogo no recupera por sí solo las
+ventas rechazadas anteriormente.
+
 ---
 
 ## 1. El token

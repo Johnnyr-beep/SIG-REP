@@ -50,6 +50,7 @@ import {
 import { ColumnasDiarias } from "@/componentes/graficos";
 import { PieCalculo } from "@/componentes/indicadores";
 import { FORMULAS } from "@/utilidades/dominio";
+import { resumirRangoDiario } from "@/utilidades/resumenVentaDiaria";
 import {
   SIN_DATO,
   esDomingo,
@@ -59,41 +60,13 @@ import {
   porcentaje,
 } from "@/utilidades/formato";
 
-/** Una fila del resumen del corte: PDV, presupuesto del día, venta del día,
+/** Una fila del resumen del corte: PDV, presupuesto del rango, venta del rango,
  * cumplimiento (fracción, para poder ordenar) y documentos. `cumplimiento`
  * es `null` sin presupuesto —432 EVENTOS BUCARAMANGA, por ejemplo— y esas
  * filas se quedan al final, nunca se ordenan como si fueran un 0%. */
-interface FilaResumenCorte {
+interface FilaResumenCorte extends ReturnType<typeof resumirRangoDiario> {
   codigo: string | null;
   nombre: string;
-  pptoDia: string | null;
-  venta: string | null;
-  documentos: number | null;
-  cumplimiento: number | null;
-  ticketPromedio: number | null;
-}
-
-/** Venta entre número de documentos; `null` sin documentos (evita dividir por 0). */
-function ticketPromedioDe(
-  venta: string | null,
-  documentos: number | null,
-): number | null {
-  return venta !== null && documentos
-    ? Number(venta) / documentos
-    : null;
-}
-
-function filaResumenDe(
-  codigo: string | null,
-  nombre: string,
-  pptoDia: string | null,
-  venta: string | null,
-): Omit<FilaResumenCorte, "documentos" | "ticketPromedio"> {
-  const cumplimiento =
-    pptoDia && venta !== null && Number(pptoDia) !== 0
-      ? Number(venta) / Number(pptoDia)
-      : null;
-  return { codigo, nombre, pptoDia, venta, cumplimiento };
 }
 
 export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
@@ -172,6 +145,11 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
 
   const filaSeleccionada =
     data?.filas.find((fila) => fila.punto_venta === seleccionado) ?? null;
+  const descripcionRango = data
+    ? data.fechas.length === 1
+      ? `del ${formatearFecha(data.fechas[0] ?? data.desde)}`
+      : `del ${formatearFecha(data.desde)} al ${formatearFecha(data.hasta)} (${data.fechas.length} días)`
+    : "";
 
   return (
     <div className="pila">
@@ -283,7 +261,7 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
 
           <Tarjeta
             titulo="Resumen del corte"
-            descripcion={`Venta del ${formatearFecha(data.hasta ?? data.fecha_corte)} por punto de venta, de mayor a menor cumplimiento. Pulse un punto de venta para ver su serie del período.`}
+            descripcion={`Venta acumulada ${descripcionRango} por punto de venta, de mayor a menor cumplimiento. Pulse un punto de venta para ver su serie del rango.`}
             sinRelleno
             pie={
               <PieCalculo
@@ -291,7 +269,8 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
                 medida={medida}
                 extra={
                   <p className="pie-calculo__formulas">
-                    {FORMULAS.presupuesto_diario}
+                    {FORMULAS.presupuesto_diario}. Presupuesto del rango: suma
+                    de las referencias diarias de las fechas seleccionadas.
                   </p>
                 }
               />
@@ -304,24 +283,17 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
               />
             ) : (
               (() => {
-                const ultimoIndice = data.fechas.length - 1;
-                const ultimaFecha = data.fechas[ultimoIndice] ?? "";
-
                 const filasResumen: FilaResumenCorte[] = data.filas.map(
-                  (fila) => {
-                    const venta = fila.valores[ultimoIndice] ?? null;
-                    const documentos = fila.documentos?.[ultimoIndice] ?? null;
-                    return {
-                      ...filaResumenDe(
-                        fila.punto_venta,
-                        fila.nombre,
-                        referenciaDeCelda(data, fila.punto_venta, ultimaFecha),
-                        venta,
+                  (fila) => ({
+                    codigo: fila.punto_venta,
+                    nombre: fila.nombre,
+                    ...resumirRangoDiario(
+                      fila,
+                      data.fechas.map((fecha) =>
+                        referenciaDeCelda(data, fila.punto_venta, fecha),
                       ),
-                      documentos,
-                      ticketPromedio: ticketPromedioDe(venta, documentos),
-                    };
-                  },
+                    ),
+                  }),
                 );
 
                 // Sin presupuesto al final, nunca como si fuera 0 %: un punto sin
@@ -336,28 +308,23 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
                 });
 
                 const totalResumen = data.totales
-                  ? (() => {
-                      const venta = data.totales.valores?.[ultimoIndice] ?? null;
-                      const documentos =
-                        data.totales.documentos?.[ultimoIndice] ?? null;
-                      return {
-                        ...filaResumenDe(
-                          null,
-                          "Total",
-                          referenciaDeTotales(data, ultimaFecha),
-                          venta,
+                  ? {
+                      codigo: null,
+                      nombre: "Total",
+                      ...resumirRangoDiario(
+                        data.totales,
+                        data.fechas.map((fecha) =>
+                          referenciaDeTotales(data, fecha),
                         ),
-                        documentos,
-                        ticketPromedio: ticketPromedioDe(venta, documentos),
-                      };
-                    })()
+                      ),
+                    }
                   : null;
 
                 return (
                   <div className="tabla-envoltorio tabla-envoltorio--alta">
                     <table className="tabla tabla--anclada tabla--resumen-corte">
                       <caption className="solo-lectores">
-                        Resumen de venta del {formatearFecha(ultimaFecha)} por
+                        Resumen de venta acumulada {descripcionRango} por
                         punto de venta, ordenado de mayor a menor
                         cumplimiento. La última fila es el total de los puntos
                         de venta que publica la respuesta.
@@ -369,7 +336,7 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
                             PDV
                           </th>
                           <th scope="col" className="numero">
-                            Ppto día
+                            {data.fechas.length === 1 ? "Ppto día" : "Ppto rango"}
                           </th>
                           <th scope="col" className="numero">
                             Venta
@@ -413,7 +380,7 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
                                 </button>
                               </th>
                               <td className="numero">
-                                {formatear(fila.pptoDia)}
+                                {formatear(fila.presupuesto)}
                               </td>
                               <td className="numero">
                                 {formatear(fila.venta)}
@@ -449,7 +416,7 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
                               </span>
                             </th>
                             <td className="numero">
-                              {formatear(totalResumen.pptoDia)}
+                              {formatear(totalResumen.presupuesto)}
                             </td>
                             <td className="numero">
                               {formatear(totalResumen.venta)}

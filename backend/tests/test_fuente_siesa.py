@@ -43,6 +43,7 @@ from decimal import Decimal
 
 import httpx
 import pytest
+from fastapi.testclient import TestClient
 from pydantic import SecretStr
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -871,9 +872,20 @@ def test_pereira_411_desde_el_catalogo_real_conserva_la_ingesta_idempotente(
     estructura: None,
     monkeypatch: pytest.MonkeyPatch,
     descripcion: str,
+    cliente_http: TestClient,
+    admin: dict[str, str],
 ) -> None:
     corte = date(2026, 11, 9)
-    api = ApiFalsa().ventas(fila(descripcion, fecha=corte.isoformat(), subtotal="200", costo="100"))
+    api = ApiFalsa().ventas(
+        fila(descripcion, fecha=corte.isoformat(), subtotal="200", costo="100"),
+        fila(
+            descripcion,
+            fecha=corte.isoformat(),
+            subtotal="50",
+            costo="30",
+            categoria="0010 - RESTAURANTE",
+        ),
+    )
     settings = Settings(secret_key="c" * 40, siesa_token=TOKEN_PELADO)
     monkeypatch.setattr(ingesta_service, "obtener_settings", lambda: settings)
     monkeypatch.setattr(IngestaService, "_sincronizar_documentos_si_aplica", lambda *_args: None)
@@ -884,15 +896,44 @@ def test_pereira_411_desde_el_catalogo_real_conserva_la_ingesta_idempotente(
             salida = IngestaService(sesion).ejecutar(corte, corte, FuenteIngesta.SIESA)
             sesion.commit()
             assert salida.estado == EstadoCorrida.COMPLETADA
-            assert salida.aceptadas == 1
+            assert salida.aceptadas == 2
             assert salida.rechazadas == 0
 
     lineas = sesion.scalars(select(VentaLinea)).all()
-    assert len(lineas) == 1
-    assert lineas[0].punto_venta_id == id_punto_venta(sesion, "411")
-    assert lineas[0].fecha == corte
-    assert lineas[0].valor_subtotal == D("200.00")
-    assert lineas[0].costo_promedio == D("100.00")
+    assert len(lineas) == 2
+    assert {linea.punto_venta_id for linea in lineas} == {id_punto_venta(sesion, "411")}
+    assert {linea.fecha for linea in lineas} == {corte}
+    assert sum(linea.valor_subtotal for linea in lineas) == D("250.00")
+    assert {linea.costo_promedio for linea in lineas} == {D("100.00"), D("30.00")}
+
+    for punto_venta in (None, "411"):
+        parametros = {"periodo": "2026-11", "hasta": corte.isoformat()}
+        if punto_venta is not None:
+            parametros["punto_venta"] = punto_venta
+        for reporte, campo, esperado in (
+            ("cumplimiento", "venta", "250.00"),
+            ("venta-diaria", "total", "250.00"),
+            ("venta-diaria-asadero", "total", "50.00"),
+        ):
+            respuesta = cliente_http.get(
+                f"/api/v1/reportes/{reporte}", params=parametros, headers=admin
+            )
+            assert respuesta.status_code == 200, respuesta.text
+            datos = respuesta.json()
+            pereira = [fila for fila in datos["filas"] if fila["nombre"] == "PEREIRA"]
+            assert len(pereira) == 1
+            assert pereira[0]["punto_venta"] == "411"
+            assert pereira[0][campo] == esperado
+            assert all(fila["punto_venta"] != "409" for fila in datos["filas"])
+            if reporte != "cumplimiento":
+                assert pereira[0]["valores"][-1] == esperado
+            if punto_venta is not None:
+                total = (
+                    datos["consolidado"]["venta"]
+                    if reporte == "cumplimiento"
+                    else (datos["totales"]["total"])
+                )
+                assert total == esperado
 
 
 @pytest.fixture
