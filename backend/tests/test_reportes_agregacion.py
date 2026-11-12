@@ -630,24 +630,24 @@ def test_ventas_anuales_muestra_meses_y_totaliza_con_historia_de_respaldo(
     dar_presupuesto(sesion, "403", "RES", "1000")
     dar_venta(sesion, "402", "RES", 5, "200", kilos="6")
 
-    ventas = ReportesService(sesion).tablero(
-        FiltrosReporte(
-            periodo=PERIODO,
-            hasta=CORTE,
-            medida=medida,
-            alcance=_ids(sesion, "402", "403"),
+    ventas = (
+        ReportesService(sesion)
+        .tablero(
+            FiltrosReporte(
+                periodo=PERIODO,
+                hasta=CORTE,
+                medida=medida,
+                alcance=_ids(sesion, "402", "403"),
+            )
         )
-    ).ventas_anuales
+        .ventas_anuales
+    )
 
     fila_402 = next(fila for fila in ventas.filas if fila.punto_venta == "402")
     fila_403 = next(fila for fila in ventas.filas if fila.punto_venta == "403")
     assert ventas.anio == 2026
-    assert fila_402.valores[0] == (
-        D("100") if medida is Medida.VALOR else D("4")
-    )
-    assert fila_403.valores[0] == esperado_enero - (
-        D("100") if medida is Medida.VALOR else D("4")
-    )
+    assert fila_402.valores[0] == (D("100") if medida is Medida.VALOR else D("4"))
+    assert fila_403.valores[0] == esperado_enero - (D("100") if medida is Medida.VALOR else D("4"))
     assert ventas.totales_mensuales[0] == esperado_enero
     assert ventas.totales_mensuales[7] == esperado_agosto
     assert ventas.total == esperado_anual
