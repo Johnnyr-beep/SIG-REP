@@ -72,6 +72,7 @@ from app.schemas.reportes import (
     FilaGrupo,
     FilaIndicadores,
     FilaPuntoVenta,
+    FilaVentaAnual,
     FilaVentaDiaria,
     ParametrosCalculo,
     PuntoVentaSinPresupuesto,
@@ -80,6 +81,7 @@ from app.schemas.reportes import (
     RespuestaCumplimiento,
     RespuestaTablero,
     RespuestaVentaDiaria,
+    ResumenVentasAnuales,
     TotalesVentaDiaria,
 )
 
@@ -348,8 +350,77 @@ class ReportesService:
             medida=ctx.medida,
             consolidado=consolidado,
             grupos=grupos,
+            ventas_anuales=self._ventas_anuales(ctx),
             sin_presupuesto=self._filas_sin_presupuesto(ctx),
             parametros_calculo=self._parametros(ctx, consolidado),
+        )
+
+    def _ventas_anuales(self, ctx: _Contexto) -> ResumenVentasAnuales:
+        """Venta mensual por PDV del año seleccionado, con historia manual de respaldo."""
+        puntos = list(self._sesion.execute(self._consulta_alcance(ctx.filtros)).scalars())
+        ids_puntos = [punto.id for punto in puntos]
+        acumulados = {punto.id: [CERO for _ in range(12)] for punto in puntos}
+        con_transacciones: set[tuple[int, int]] = set()
+
+        consulta = (
+            select(
+                VentaLinea.punto_venta_id,
+                Periodo.mes,
+                func.sum(
+                    VentaLinea.valor_subtotal
+                    if ctx.medida is Medida.VALOR
+                    else VentaLinea.cantidad_inv
+                ),
+            )
+            .join(Periodo, VentaLinea.periodo_id == Periodo.id)
+            .where(Periodo.anio == ctx.periodo.anio)
+            .where(VentaLinea.punto_venta_id.in_(ids_puntos or [-1]))
+            .group_by(VentaLinea.punto_venta_id, Periodo.mes)
+        )
+        if ctx.categoria_id is not None:
+            consulta = consulta.where(VentaLinea.categoria_id == ctx.categoria_id)
+
+        for punto_id, mes, valor in self._sesion.execute(consulta):
+            acumulados[punto_id][mes - 1] = Decimal(valor or 0)
+            con_transacciones.add((punto_id, mes))
+
+        if ctx.categoria_id is None:
+            consulta_historia = (
+                select(
+                    HistoriaVentaManual.punto_venta_id,
+                    Periodo.mes,
+                    HistoriaVentaManual.monto
+                    if ctx.medida is Medida.VALOR
+                    else HistoriaVentaManual.kilos,
+                )
+                .join(Periodo, HistoriaVentaManual.periodo_id == Periodo.id)
+                .where(Periodo.anio == ctx.periodo.anio)
+                .where(HistoriaVentaManual.punto_venta_id.in_(ids_puntos or [-1]))
+            )
+            for punto_id, mes, valor in self._sesion.execute(consulta_historia):
+                if (punto_id, mes) not in con_transacciones:
+                    acumulados[punto_id][mes - 1] = Decimal(valor)
+
+        totales_mensuales = [CERO for _ in range(12)]
+        filas = []
+        for punto in sorted(puntos, key=lambda fila: fila.codigo_co):
+            valores = acumulados[punto.id]
+            for indice, valor in enumerate(valores):
+                totales_mensuales[indice] += valor
+            filas.append(
+                FilaVentaAnual(
+                    punto_venta=punto.codigo_co,
+                    nombre=punto.nombre,
+                    valores=valores,
+                    total=sum(valores, CERO),
+                )
+            )
+
+        return ResumenVentasAnuales(
+            anio=ctx.periodo.anio,
+            filas=filas,
+            totales_mensuales=totales_mensuales,
+            total=sum(totales_mensuales, CERO),
         )
 
     # ── Cumplimiento por punto de venta ───────────────────────────────────────

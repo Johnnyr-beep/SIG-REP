@@ -25,10 +25,13 @@ import { FORMULAS } from "@/utilidades/dominio";
 import {
   dineroCorto,
   kilos,
+  mesCorto,
   porMedida,
   porcentaje,
   puntos,
 } from "@/utilidades/formato";
+
+const MESES = Array.from({ length: 12 }, (_, indice) => indice + 1);
 
 export function Tablero() {
   const control = useFiltros();
@@ -228,6 +231,71 @@ export function Tablero() {
                   </li>
                 ))}
               </ul>
+            )}
+          </Tarjeta>
+
+          <Tarjeta
+            titulo={`Venta por punto de venta · ${data.ventas_anuales.anio}`}
+            descripcion={`Ventas de enero a diciembre de ${data.ventas_anuales.anio}, consolidadas por punto de venta y totalizadas por mes.`}
+            sinRelleno
+          >
+            {data.ventas_anuales.filas.length === 0 ? (
+              <Vacio
+                titulo="Sin puntos de venta"
+                detalle="Ningún punto coincide con el alcance o los filtros seleccionados."
+              />
+            ) : (
+              <div className="tabla-envoltorio tabla-envoltorio--alta">
+                <table className="tabla tabla--anclada">
+                  <caption className="solo-lectores">
+                    Venta por punto de venta, desglosada por mes en
+                    {" "}{data.ventas_anuales.anio}, en {medida === "kilos" ? "kilos" : "pesos"}.
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col" className="columna-ancla">Punto de venta</th>
+                      {MESES.map((mes) => (
+                        <th key={mes} scope="col" className="numero">
+                          {mesCorto(`${data.ventas_anuales.anio}-${String(mes).padStart(2, "0")}`)}
+                        </th>
+                      ))}
+                      <th scope="col" className="numero">Total año</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.ventas_anuales.filas.map((fila) => (
+                      <tr key={fila.punto_venta}>
+                        <th scope="row" className="columna-ancla">
+                          <span className="mono">{fila.punto_venta}</span> · {fila.nombre}
+                        </th>
+                        {MESES.map((mes, indice) => (
+                          <td key={mes} className="numero">
+                            {porMedida(fila.valores[indice], medida)}
+                          </td>
+                        ))}
+                        <td className="numero">
+                          <strong>{porMedida(fila.total, medida)}</strong>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <th scope="row" className="columna-ancla">
+                        <span className="fila-totales__nombre">Total compañía</span>
+                      </th>
+                      {MESES.map((mes, indice) => (
+                        <td key={mes} className="numero">
+                          {porMedida(data.ventas_anuales.totales_mensuales[indice], medida)}
+                        </td>
+                      ))}
+                      <td className="numero">
+                        <strong>{porMedida(data.ventas_anuales.total, medida)}</strong>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             )}
           </Tarjeta>
         </>

@@ -316,9 +316,24 @@ export interface RespuestaTablero {
   medida: Medida;
   consolidado: FilaIndicadores;
   grupos: FilaGrupo[];
+  ventas_anuales: ResumenVentasAnuales;
   /** Venta de PDV no presupuestados: se reporta aparte, nunca se descarta. */
   sin_presupuesto: VentaSinPresupuesto[];
   parametros_calculo?: ParametrosCalculo | null;
+}
+
+export interface FilaVentaAnual {
+  punto_venta: string;
+  nombre: string;
+  valores: string[];
+  total: string;
+}
+
+export interface ResumenVentasAnuales {
+  anio: number;
+  filas: FilaVentaAnual[];
+  totales_mensuales: string[];
+  total: string;
 }
 
 export interface FilaCategoriaReporte extends FilaIndicadores {

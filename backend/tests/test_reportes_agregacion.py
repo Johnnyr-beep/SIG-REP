@@ -26,6 +26,7 @@ from app.application.services.reportes_service import FiltrosReporte, ReportesSe
 from app.domain import indicadores as ind
 from app.domain.enums import AgrupacionClientes, Medida
 from app.domain.semaforo import UmbralesSemaforo
+from app.infrastructure.models.historia_venta import HistoriaVentaManual
 from app.infrastructure.models.organizacion import Grupo, PuntoVenta
 from app.infrastructure.models.periodo import CalendarioZona
 from app.infrastructure.models.venta import Cliente, VentaLinea
@@ -584,3 +585,70 @@ def test_el_tablero_cuadra_en_las_dos_medidas(
         tablero.consolidado.presupuesto
     )
     assert [f.codigo_co for f in tablero.sin_presupuesto] == ["432"]
+
+
+@pytest.mark.parametrize(
+    ("medida", "esperado_enero", "esperado_agosto", "esperado_anual"),
+    [
+        (Medida.VALOR, D("150"), D("200"), D("350")),
+        (Medida.KILOS, D("6"), D("6"), D("12")),
+    ],
+)
+def test_ventas_anuales_muestra_meses_y_totaliza_con_historia_de_respaldo(
+    sesion: Session,
+    estructura: None,
+    medida: Medida,
+    esperado_enero: Decimal,
+    esperado_agosto: Decimal,
+    esperado_anual: Decimal,
+) -> None:
+    """La matriz anual suma ventas reales y usa la historia solo si falta detalle."""
+    from app.application.services.periodos import obtener_o_crear_periodo
+
+    enero = obtener_o_crear_periodo(sesion, "2026-01")
+    sesion.add(
+        VentaLinea(
+            periodo_id=enero.id,
+            fecha=date(2026, 1, 5),
+            punto_venta_id=id_punto_venta(sesion, "402"),
+            categoria_id=id_categoria(sesion, "RES"),
+            valor_subtotal=D("100"),
+            costo_promedio=D("0"),
+            cantidad_inv=D("4"),
+        )
+    )
+    sesion.add(
+        HistoriaVentaManual(
+            periodo_id=enero.id,
+            punto_venta_id=id_punto_venta(sesion, "403"),
+            monto=D("50"),
+            kilos=D("2"),
+            motivo="historia sin detalle",
+        )
+    )
+    dar_presupuesto(sesion, "402", "RES", "1000")
+    dar_presupuesto(sesion, "403", "RES", "1000")
+    dar_venta(sesion, "402", "RES", 5, "200", kilos="6")
+
+    ventas = ReportesService(sesion).tablero(
+        FiltrosReporte(
+            periodo=PERIODO,
+            hasta=CORTE,
+            medida=medida,
+            alcance=_ids(sesion, "402", "403"),
+        )
+    ).ventas_anuales
+
+    fila_402 = next(fila for fila in ventas.filas if fila.punto_venta == "402")
+    fila_403 = next(fila for fila in ventas.filas if fila.punto_venta == "403")
+    assert ventas.anio == 2026
+    assert fila_402.valores[0] == (
+        D("100") if medida is Medida.VALOR else D("4")
+    )
+    assert fila_403.valores[0] == esperado_enero - (
+        D("100") if medida is Medida.VALOR else D("4")
+    )
+    assert ventas.totales_mensuales[0] == esperado_enero
+    assert ventas.totales_mensuales[7] == esperado_agosto
+    assert ventas.total == esperado_anual
+    assert sum(fila.total for fila in ventas.filas) == esperado_anual

@@ -120,9 +120,24 @@ GET /reportes/tablero?periodo=2026-08
     "dias_trabajados": "7.5"
   },
   "grupos": [ { "codigo": "001", "nombre": "GRUPO 1", ...mismos campos } ],
+  "ventas_anuales": {
+    "anio": 2026,
+    "filas": [
+      { "punto_venta": "402", "nombre": "MALAMBO",
+        "valores": ["100.00", "0.00", "... doce meses"], "total": "100.00" }
+    ],
+    "totales_mensuales": ["100.00", "0.00", "... doce meses"],
+    "total": "100.00"
+  },
   "sin_presupuesto": [ { "codigo_co": "432", "nombre": "EVENTOS BUCARAMANGA", "venta": "..." } ]
 }
 ```
+
+`ventas_anuales` presenta los doce meses del año de `periodo`, en la medida
+solicitada (`valor` o `kilos`). Cada fila incluye el total del punto y el bloque
+incluye el total de cada mes y el total anual. Respeta los filtros de grupo,
+punto de venta y categoría, además del alcance del usuario; usa la historia
+manual solo cuando ese punto no tiene transacciones en el mes.
 
 El bloque de indicadores de `consolidado` se llama **`FilaIndicadores`** y se
 repite idéntico en todos los niveles. Backend: un solo esquema Pydantic.

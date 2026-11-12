@@ -194,8 +194,23 @@ class RespuestaTablero(BaseModel):
     medida: Medida
     consolidado: FilaIndicadores
     grupos: list[FilaGrupo]
+    ventas_anuales: ResumenVentasAnuales
     sin_presupuesto: list[PuntoVentaSinPresupuesto]
     parametros_calculo: ParametrosCalculo
+
+
+class FilaVentaAnual(BaseModel):
+    punto_venta: str
+    nombre: str
+    valores: list[DecimalStr]
+    total: DecimalStr
+
+
+class ResumenVentasAnuales(BaseModel):
+    anio: int
+    filas: list[FilaVentaAnual]
+    totales_mensuales: list[DecimalStr]
+    total: DecimalStr
 
 
 class RespuestaCumplimiento(BaseModel):

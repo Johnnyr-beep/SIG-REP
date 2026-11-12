@@ -37,6 +37,7 @@ import type {
   FilaIndicadores,
   FilaPresupuesto,
   FilaPuntoVentaReporte,
+  FilaVentaAnual,
   FilaVentaDiaria,
   Grupo,
   MapeoCategoria,
@@ -535,6 +536,33 @@ function tablero(opciones: Opciones): RespuestaTablero {
   );
   const ventaEventos =
     medida === "kilos" ? 3_180_000 / PRECIO_KILO : 68_400_000;
+  const filasAnuales: FilaVentaAnual[] = PDVS.filter(
+    (pdv) => codigos === undefined || codigos.has(pdv.codigo_co),
+  ).map((pdv) => {
+    const base = pdv.presupuesto > 0 ? pdv.presupuesto * pdv.factor : 5_700_000;
+    const valores = Array.from({ length: 12 }, (_, indice) =>
+      cadena(
+        ((base * (0.7 + (indice + 1) * 0.05)) /
+          (medida === "kilos" ? PRECIO_KILO : 1)),
+        2,
+      ),
+    );
+    return {
+      punto_venta: pdv.codigo_co,
+      nombre: pdv.nombre,
+      valores,
+      total: cadena(valores.reduce((suma, valor) => suma + Number(valor), 0), 2),
+    };
+  });
+  const totalesMensuales = Array.from({ length: 12 }, (_, indice) =>
+    cadena(
+      filasAnuales.reduce(
+        (suma, fila) => suma + Number(fila.valores[indice] ?? 0),
+        0,
+      ),
+      2,
+    ),
+  );
 
   return {
     periodo: PERIODO,
@@ -542,6 +570,15 @@ function tablero(opciones: Opciones): RespuestaTablero {
     medida,
     consolidado: agregar(pdvsPresupuestados(undefined, codigos), medida, 1),
     grupos,
+    ventas_anuales: {
+      anio: Number(PERIODO.slice(0, 4)),
+      filas: filasAnuales,
+      totales_mensuales: totalesMensuales,
+      total: cadena(
+        filasAnuales.reduce((suma, fila) => suma + Number(fila.total), 0),
+        2,
+      ),
+    },
     sin_presupuesto: eventos
       ? [
           {
