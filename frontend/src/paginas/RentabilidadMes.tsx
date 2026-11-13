@@ -101,6 +101,13 @@ function costoPorKiloValores(costo: string | null, kilos: string): string {
   return pesos(Number(costo) / cantidadKilos);
 }
 
+function rentabilidadSobreCosto(costo: string | null, utilidad: string | null): string | null {
+  if (costo === null || utilidad === null || Number(costo) === 0) {
+    return null;
+  }
+  return String(Number(utilidad) / Number(costo));
+}
+
 function etiquetaEspecie(etiqueta: string): string {
   return etiqueta.replace(/^\d+\s*-\s*/, "").trim();
 }
@@ -480,6 +487,10 @@ export function RentabilidadMes() {
   const margenBienes = costoBienes === null ? null : ventaBienes - costoBienes;
   const rentabilidadBienes =
     margenBienes === null || ventaBienes === 0 ? null : String(margenBienes / ventaBienes);
+  const rentabilidadInventarioBienes = rentabilidadSobreCosto(
+    costoBienes === null ? null : String(costoBienes),
+    margenBienes === null ? null : String(margenBienes),
+  );
 
   function alternarGrupo(clave: string) {
     setGruposColapsados((actuales) => {
@@ -667,7 +678,10 @@ export function RentabilidadMes() {
             </section>
 
             <section className="rentabilidad-mes__panel">
-              <h2 className="rentabilidad-mes__titulo-panel">Facturación BIENES</h2>
+              <div>
+                <h2 className="rentabilidad-mes__titulo-panel">Facturación BIENES</h2>
+                <p className="tenue">La rentabilidad de cada línea se calcula sobre el costo del inventario.</p>
+              </div>
               <div className="tabla-envoltorio">
                 <table className="tabla tabla--compacta rentabilidad-mes__tabla rentabilidad-mes__tabla--metricas-bienes">
                   <thead>
@@ -684,6 +698,10 @@ export function RentabilidadMes() {
                       <th className="numero">%RENTB.</th>
                       <th aria-label="Semáforo de rentabilidad" />
                       <th className="numero">COSTO UNIT. PROM.</th>
+                      <th className="numero">COSTO TOTAL LÍNEA</th>
+                      <th className="numero">COSTO UNITARIO LÍNEA</th>
+                      <th className="numero">UTILIDAD LÍNEA</th>
+                      <th className="numero" title="Utilidad de la línea ÷ costo del inventario">RENTABILIDAD LÍNEA</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -713,6 +731,10 @@ export function RentabilidadMes() {
                       <td className="numero">{porcentaje(rentabilidadBienes)}</td>
                       <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={rentabilidadBienes} /></td>
                       <td className="numero">{costoPorKiloValores(costoBienes === null ? null : String(costoBienes), String(kilosBienes))}</td>
+                      <td className="numero">{millonesTabla(costoBienes === null ? null : String(costoBienes))}</td>
+                      <td className="numero">{costoPorKiloValores(costoBienes === null ? null : String(costoBienes), String(kilosBienes))}</td>
+                      <td className="numero">{millonesTabla(margenBienes === null ? null : String(margenBienes))}</td>
+                      <td className="numero">{porcentaje(rentabilidadInventarioBienes)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -843,6 +865,10 @@ function FragmentoEspecie({
         <td className="numero">{porcentaje(fila.rentabilidad)}</td>
         <td className="rentabilidad-mes__celda-semaforo"><SemaforoRentabilidad valor={fila.rentabilidad} /></td>
         <td className="numero">{costoPorKilo(fila)}</td>
+        <td className="numero">{millonesTabla(fila.costo)}</td>
+        <td className="numero">{costoPorKilo(fila)}</td>
+        <td className="numero">{millonesTabla(fila.margen_bruto)}</td>
+        <td className="numero">{porcentaje(rentabilidadSobreCosto(fila.costo, fila.margen_bruto))}</td>
       </tr>
       {abierto ? ordenarPorVenta(fila.comerciales, orden).map((comercial) => {
         const clave = `comercial:${fila.etiqueta}:${comercial.etiqueta}`;
@@ -862,6 +888,10 @@ function FragmentoEspecie({
               <td className="numero">{porcentaje(comercial.rentabilidad)}</td>
               <td className="rentabilidad-mes__celda-semaforo"><EstadoRentabilidadCalculada valor={comercial.rentabilidad} /></td>
               <td className="numero">{costoPorKilo(comercial)}</td>
+              <td className="numero">{millonesTabla(comercial.costo)}</td>
+              <td className="numero">{costoPorKilo(comercial)}</td>
+              <td className="numero">{millonesTabla(comercial.margen_bruto)}</td>
+              <td className="numero">{porcentaje(rentabilidadSobreCosto(comercial.costo, comercial.margen_bruto))}</td>
             </tr>
             {expandido ? ordenarPorVenta(comercial.productos, orden).map((producto) => (
               <tr className="rentabilidad-mes__producto" key={`${clave}:${producto.etiqueta}`}>
@@ -873,6 +903,10 @@ function FragmentoEspecie({
                 <td className="numero">{porcentaje(producto.rentabilidad)}</td>
                 <td className="rentabilidad-mes__celda-semaforo"><EstadoRentabilidadCalculada valor={producto.rentabilidad} /></td>
                 <td className="numero">{costoPorKilo(producto)}</td>
+                <td className="numero">{millonesTabla(producto.costo)}</td>
+                <td className="numero">{costoPorKilo(producto)}</td>
+                <td className="numero">{millonesTabla(producto.margen_bruto)}</td>
+                <td className="numero">{porcentaje(rentabilidadSobreCosto(producto.costo, producto.margen_bruto))}</td>
               </tr>
             )) : null}
           </Fragment>

@@ -4216,7 +4216,7 @@ textarea.campo__control {
 }
 
 .rentabilidad-mes__tabla--metricas-bienes {
-  min-width: 68rem;
+  min-width: 118rem;
 }
 
 .rentabilidad-mes__tabla--metricas-bienes th:first-child {
@@ -4249,6 +4249,19 @@ textarea.campo__control {
 
 .rentabilidad-mes__tabla--metricas-bienes th:nth-child(8) {
   width: 13rem;
+}
+
+.rentabilidad-mes__tabla--metricas-bienes th:nth-child(9),
+.rentabilidad-mes__tabla--metricas-bienes th:nth-child(11) {
+  width: 12rem;
+}
+
+.rentabilidad-mes__tabla--metricas-bienes th:nth-child(10) {
+  width: 12rem;
+}
+
+.rentabilidad-mes__tabla--metricas-bienes th:nth-child(12) {
+  width: 15rem;
 }
 
 .rentabilidad-mes__tabla:not(.rentabilidad-mes__tabla--ranking) tbody th {
