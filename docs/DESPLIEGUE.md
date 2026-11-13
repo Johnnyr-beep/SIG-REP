@@ -91,6 +91,22 @@ El Stack de abajo sigue siendo el despliegue actual de respaldo: `docker stack
 deploy` no construye `build:` y consume las dos imágenes GHCR. No mantengas el
 Stack y la Application anunciando el mismo dominio a la vez.
 
+Si Dokploy no conserva los labels de Traefik, copia [deploy.ssh](../deploy.ssh)
+al manager Swarm y ejecuta por SSH, despues de terminar el despliegue:
+
+```bash
+bash deploy.ssh SERVICIO_APP DOMINIO_REAL SERVICIO_POSTGRES
+```
+
+Usa el servicio unificado de la Application, no PostgreSQL ni la API del Stack
+anterior. El tercer argumento es el servicio PostgreSQL real de Dokploy. Ambos
+deben compartir `dokploy-network`; el script agrega la Application a esa red si
+le falta y se detiene si la base no está conectada. La URL de base en Dokploy
+debe usar el nombre del servicio PostgreSQL como host. El script aplica HTTPS,
+redirección HTTP y puerto interno `8080`; no construye ni despliega la imagen.
+Si omites el dominio, usa `sigrep.grupo-santacruz.com`. Dokploy puede reemplazar
+estos labels en cada despliegue, por lo que puede ser necesario reaplicarlos.
+
 Este documento cubre el despliegue de producción. Para levantar el sistema en
 una máquina de desarrollo, el [README](../README.md) es más corto y suficiente.
 

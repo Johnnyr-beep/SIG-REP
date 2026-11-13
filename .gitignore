@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 .deploy-secrets
+CRENDENCIALES-SERVIDORES/
 
 # Python
 __pycache__/
