@@ -294,6 +294,15 @@ class _ReferenciaDiaria:
     total: Decimal | None
 
 
+@dataclass(frozen=True, slots=True)
+class _ComparativoMesAnterior:
+    fecha_corte: date | None = None
+    venta_al_corte: Decimal | None = None
+    variacion_al_corte: Decimal | None = None
+    venta_cierre: Decimal | None = None
+    variacion_proyeccion: Decimal | None = None
+
+
 @dataclass
 class _Contexto:
     """Todo lo que hace falta para armar cualquier reporte del período."""
@@ -336,8 +345,8 @@ class ReportesService:
 
         por_pdv = self._totales_por_punto_venta(ctx)
         consolidado = self._fila_agregada(ctx, list(por_pdv))
-        fecha_corte_mes_anterior, venta_mes_anterior, variacion_venta_mes_anterior = (
-            self._comparativo_mes_anterior(ctx, por_pdv)
+        comparativo_mes_anterior = self._comparativo_mes_anterior(
+            ctx, por_pdv, consolidado.proyeccion
         )
 
         grupos: list[FilaGrupo] = []
@@ -352,9 +361,11 @@ class ReportesService:
             periodo=ctx.periodo.codigo,
             fecha_corte=ctx.fecha_corte,
             medida=ctx.medida,
-            fecha_corte_mes_anterior=fecha_corte_mes_anterior,
-            venta_mes_anterior=venta_mes_anterior,
-            variacion_venta_mes_anterior=variacion_venta_mes_anterior,
+            fecha_corte_mes_anterior=comparativo_mes_anterior.fecha_corte,
+            venta_mes_anterior=comparativo_mes_anterior.venta_al_corte,
+            variacion_venta_mes_anterior=comparativo_mes_anterior.variacion_al_corte,
+            venta_cierre_mes_anterior=comparativo_mes_anterior.venta_cierre,
+            variacion_proyeccion_mes_anterior=comparativo_mes_anterior.variacion_proyeccion,
             consolidado=consolidado,
             grupos=grupos,
             ventas_anuales=self._ventas_anuales(ctx),
@@ -363,12 +374,15 @@ class ReportesService:
         )
 
     def _comparativo_mes_anterior(
-        self, ctx: _Contexto, venta_actual: dict[int, Totales]
-    ) -> tuple[date | None, Decimal | None, Decimal | None]:
-        """Venta previa al mismo corte, sobre los mismos PDV y filtros visibles."""
+        self,
+        ctx: _Contexto,
+        venta_actual: dict[int, Totales],
+        proyeccion_actual: Decimal | None,
+    ) -> _ComparativoMesAnterior:
+        """Cortes y cierre previo, con los mismos PDV y filtros visibles."""
         anterior = buscar_periodo(self._sesion, periodo_mes_anterior(ctx.periodo.codigo))
         if anterior is None:
-            return None, None, None
+            return _ComparativoMesAnterior()
 
         fecha_corte = _corte_equivalente(anterior, ctx.fecha_corte)
         ventas_previas = self._agregar_venta(anterior, fecha_corte, ctx, ctx.categoria_id)
@@ -381,13 +395,42 @@ class ReportesService:
             ),
             Decimal(0),
         )
+        from app.domain.calendario import dias_del_mes
+
+        fecha_cierre = date(
+            anterior.anio,
+            anterior.mes,
+            dias_del_mes(anterior.anio, anterior.mes),
+        )
+        ventas_cierre = self._agregar_venta(anterior, fecha_cierre, ctx, ctx.categoria_id)
+        venta_cierre = sum(
+            (
+                totales.medida(ctx.medida)
+                for (punto_id, _categoria_id), totales in ventas_cierre.items()
+                if punto_id in puntos_ids
+            ),
+            Decimal(0),
+        )
         total_actual = sum(
             (totales.medida(ctx.medida) for totales in venta_actual.values()),
             Decimal(0),
         )
-        variacion = redondear_porcentaje(dividir(total_actual - venta_previa, venta_previa))
+        variacion_al_corte = redondear_porcentaje(
+            dividir(total_actual - venta_previa, venta_previa)
+        )
+        variacion_proyeccion = (
+            redondear_porcentaje(dividir(proyeccion_actual - venta_cierre, venta_cierre))
+            if proyeccion_actual is not None
+            else None
+        )
 
-        return fecha_corte, redondear_no_nulo(venta_previa, 2), variacion
+        return _ComparativoMesAnterior(
+            fecha_corte=fecha_corte,
+            venta_al_corte=redondear_no_nulo(venta_previa, 2),
+            variacion_al_corte=variacion_al_corte,
+            venta_cierre=redondear_no_nulo(venta_cierre, 2),
+            variacion_proyeccion=variacion_proyeccion,
+        )
 
     def _ventas_anuales(self, ctx: _Contexto) -> ResumenVentasAnuales:
         """Venta mensual por PDV del año seleccionado, con historia manual de respaldo."""

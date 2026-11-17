@@ -104,6 +104,8 @@ GET /reportes/tablero?periodo=2026-08
   "medida": "valor",
   "venta_mes_anterior": "4900000000.00",
   "variacion_venta_mes_anterior": "0.1012",
+  "venta_cierre_mes_anterior": "15000000000.00",
+  "variacion_proyeccion_mes_anterior": "0.3185",
   "consolidado": {
     "presupuesto": "20000000000.00",
     "venta": "5396105548.00",
@@ -142,6 +144,11 @@ visibles. Si ese período no existe, los tres campos del comparativo son `null`.
 `variacion_venta_mes_anterior` es
 `(venta actual - venta anterior) / venta anterior`; es `null` cuando la venta
 anterior es cero.
+`venta_cierre_mes_anterior` contiene el cierre completo del período anterior y
+`variacion_proyeccion_mes_anterior` compara la proyección del período actual
+con ese cierre: `(proyección actual - cierre anterior) / cierre anterior`.
+La variación es `null` si no existe el período anterior, el cierre es cero o no
+se puede calcular la proyección.
 
 `ventas_anuales` presenta los doce meses del año de `periodo`, en la medida
 solicitada (`valor` o `kilos`). Cada fila incluye el total del punto y el bloque

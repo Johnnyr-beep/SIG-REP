@@ -254,6 +254,12 @@ def test_tablero_compara_mes_anterior_al_mismo_corte_y_sobre_los_mismos_pdv(
     assert tablero.fecha_corte_mes_anterior == date(2026, 7, 15)
     assert tablero.venta_mes_anterior == D("1200.00")
     assert tablero.variacion_venta_mes_anterior == D("-0.1667")
+    assert tablero.venta_cierre_mes_anterior == D("1700.00")
+    assert tablero.consolidado.proyeccion is not None
+    variacion_proyeccion = (
+        (tablero.consolidado.proyeccion - D("1700")) / D("1700")
+    ).quantize(D("0.0001"))
+    assert tablero.variacion_proyeccion_mes_anterior == variacion_proyeccion
 
 
 def test_tablero_sin_venta_previa_muestra_cero_y_variacion_indefinida(
@@ -268,6 +274,8 @@ def test_tablero_sin_venta_previa_muestra_cero_y_variacion_indefinida(
 
     assert tablero.venta_mes_anterior == D("0.00")
     assert tablero.variacion_venta_mes_anterior is None
+    assert tablero.venta_cierre_mes_anterior == D("0.00")
+    assert tablero.variacion_proyeccion_mes_anterior is None
 
 
 def test_tablero_sin_periodo_anterior_no_inventa_el_comparativo(
@@ -278,6 +286,8 @@ def test_tablero_sin_periodo_anterior_no_inventa_el_comparativo(
     assert tablero.fecha_corte_mes_anterior is None
     assert tablero.venta_mes_anterior is None
     assert tablero.variacion_venta_mes_anterior is None
+    assert tablero.venta_cierre_mes_anterior is None
+    assert tablero.variacion_proyeccion_mes_anterior is None
 
 
 # ── §7 Alcance: el bloque `sin_presupuesto` no es tierra de nadie ─────────────

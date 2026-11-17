@@ -63,6 +63,12 @@ export function Tablero() {
       : data.consolidado.crecimiento.trim().startsWith("-")
         ? "peligro"
         : "exito";
+  const tonoProyeccionMesAnterior =
+    data?.variacion_proyeccion_mes_anterior == null
+      ? undefined
+      : data.variacion_proyeccion_mes_anterior.trim().startsWith("-")
+        ? "peligro"
+        : "exito";
 
   return (
     <div className="pila">
@@ -164,6 +170,30 @@ export function Tablero() {
                 nota={`${porcentaje(data.consolidado.cumplimiento_proyectado)} del presupuesto`}
                 pista={<p className="formula">{FORMULAS.proyeccion}</p>}
                 tono={tonoSemaforo}
+              />
+              <Indicador
+                etiqueta="Proyección al cierre vs. mes anterior"
+                valor={grande(data.consolidado.proyeccion)}
+                nota={
+                  <>
+                    <span>
+                      Cierre mes anterior: {porMedida(data.venta_cierre_mes_anterior, medida)}
+                    </span>
+                    <span
+                      className={`consolidado__variacion-mensual${tonoProyeccionMesAnterior ? ` consolidado__variacion-mensual--${tonoProyeccionMesAnterior}` : ""}`}
+                    >
+                      {data.variacion_proyeccion_mes_anterior === null
+                        ? "Variación vs. cierre anterior: —"
+                        : `${data.variacion_proyeccion_mes_anterior.trim().startsWith("-") ? "▼ " : "▲ "}${porcentaje(data.variacion_proyeccion_mes_anterior)} vs. cierre anterior`}
+                    </span>
+                  </>
+                }
+                pista={
+                  <p className="formula">
+                    (proyección actual - cierre del mes anterior) / cierre del mes anterior
+                  </p>
+                }
+                tono={tonoProyeccionMesAnterior}
               />
               <Indicador
                 etiqueta="Venta diaria requerida"

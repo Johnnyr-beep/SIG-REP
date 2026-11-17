@@ -565,6 +565,7 @@ function tablero(opciones: Opciones): RespuestaTablero {
   );
   const consolidado = agregar(pdvsPresupuestados(undefined, codigos), medida, 1);
   const ventaMesAnterior = Number(consolidado.venta) / 0.905;
+  const ventaCierreMesAnterior = Number(consolidado.proyeccion) / 1.082;
 
   return {
     periodo: PERIODO,
@@ -573,6 +574,8 @@ function tablero(opciones: Opciones): RespuestaTablero {
     medida,
     venta_mes_anterior: cadena(ventaMesAnterior),
     variacion_venta_mes_anterior: "-0.0950",
+    venta_cierre_mes_anterior: cadena(ventaCierreMesAnterior),
+    variacion_proyeccion_mes_anterior: "0.0820",
     consolidado,
     grupos,
     ventas_anuales: {
