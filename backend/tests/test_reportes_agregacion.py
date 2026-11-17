@@ -256,9 +256,9 @@ def test_tablero_compara_mes_anterior_al_mismo_corte_y_sobre_los_mismos_pdv(
     assert tablero.variacion_venta_mes_anterior == D("-0.1667")
     assert tablero.venta_cierre_mes_anterior == D("1700.00")
     assert tablero.consolidado.proyeccion is not None
-    variacion_proyeccion = (
-        (tablero.consolidado.proyeccion - D("1700")) / D("1700")
-    ).quantize(D("0.0001"))
+    variacion_proyeccion = ((tablero.consolidado.proyeccion - D("1700")) / D("1700")).quantize(
+        D("0.0001")
+    )
     assert tablero.variacion_proyeccion_mes_anterior == variacion_proyeccion
 
 
