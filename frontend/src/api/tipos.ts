@@ -319,6 +319,9 @@ export interface RespuestaTablero {
   variacion_venta_mes_anterior: string | null;
   venta_cierre_mes_anterior: string | null;
   variacion_proyeccion_mes_anterior: string | null;
+  venta_promedio_desde_mayo: string | null;
+  venta_promedio_desde_mayo_anio_anterior: string | null;
+  variacion_venta_promedio_desde_mayo: string | null;
   consolidado: FilaIndicadores;
   grupos: FilaGrupo[];
   ventas_anuales: ResumenVentasAnuales;

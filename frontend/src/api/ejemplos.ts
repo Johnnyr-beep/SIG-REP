@@ -566,6 +566,17 @@ function tablero(opciones: Opciones): RespuestaTablero {
   const consolidado = agregar(pdvsPresupuestados(undefined, codigos), medida, 1);
   const ventaMesAnterior = Number(consolidado.venta) / 0.905;
   const ventaCierreMesAnterior = Number(consolidado.proyeccion) / 1.082;
+  const mesCorte = Number(PERIODO.slice(5, 7));
+  const mesesDesdeMayo = totalesMensuales.slice(4, mesCorte);
+  const promedioDesdeMayo = mesesDesdeMayo.length
+    ? mesesDesdeMayo.reduce((suma, valor) => suma + Number(valor), 0) / mesesDesdeMayo.length
+    : null;
+  const promedioDesdeMayoAnterior =
+    promedioDesdeMayo === null ? null : promedioDesdeMayo / 0.9;
+  const variacionPromedioDesdeMayo =
+    promedioDesdeMayo === null || promedioDesdeMayoAnterior === null
+      ? null
+      : (promedioDesdeMayo - promedioDesdeMayoAnterior) / promedioDesdeMayoAnterior;
 
   return {
     periodo: PERIODO,
@@ -576,6 +587,12 @@ function tablero(opciones: Opciones): RespuestaTablero {
     variacion_venta_mes_anterior: "-0.0950",
     venta_cierre_mes_anterior: cadena(ventaCierreMesAnterior),
     variacion_proyeccion_mes_anterior: "0.0820",
+    venta_promedio_desde_mayo:
+      promedioDesdeMayo === null ? null : cadena(promedioDesdeMayo),
+    venta_promedio_desde_mayo_anio_anterior:
+      promedioDesdeMayoAnterior === null ? null : cadena(promedioDesdeMayoAnterior),
+    variacion_venta_promedio_desde_mayo:
+      variacionPromedioDesdeMayo === null ? null : cadena(variacionPromedioDesdeMayo, 4),
     consolidado,
     grupos,
     ventas_anuales: {

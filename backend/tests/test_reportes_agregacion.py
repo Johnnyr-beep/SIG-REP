@@ -288,6 +288,67 @@ def test_tablero_sin_periodo_anterior_no_inventa_el_comparativo(
     assert tablero.variacion_venta_mes_anterior is None
     assert tablero.venta_cierre_mes_anterior is None
     assert tablero.variacion_proyeccion_mes_anterior is None
+    assert tablero.venta_promedio_desde_mayo == D("0.00")
+    assert tablero.venta_promedio_desde_mayo_anio_anterior is None
+    assert tablero.variacion_venta_promedio_desde_mayo is None
+
+
+def test_promedio_desde_mayo_excluye_enero_abril_y_compara_corte_equivalente(
+    sesion: Session, estructura: None
+) -> None:
+    dar_presupuesto(sesion, "402", "RES", "10000")
+    ids_periodos = {(2026, 8): id_periodo(sesion)}
+    for anio, mes in (
+        (2026, 1),
+        (2026, 2),
+        (2026, 3),
+        (2026, 4),
+        (2026, 5),
+        (2026, 6),
+        (2026, 7),
+        (2025, 5),
+        (2025, 6),
+        (2025, 7),
+        (2025, 8),
+    ):
+        periodo = Periodo(anio=anio, mes=mes)
+        sesion.add(periodo)
+        sesion.flush()
+        ids_periodos[(anio, mes)] = periodo.id
+
+    punto = id_punto_venta(sesion, "402")
+    categoria = id_categoria(sesion, "RES")
+
+    def agregar_linea(anio: int, mes: int, dia: int, valor: str) -> None:
+        sesion.add(
+            VentaLinea(
+                periodo_id=ids_periodos[(anio, mes)],
+                fecha=date(anio, mes, dia),
+                punto_venta_id=punto,
+                categoria_id=categoria,
+                valor_subtotal=D(valor),
+                costo_promedio=D("0"),
+                cantidad_inv=D("0"),
+            )
+        )
+
+    for mes in range(1, 5):
+        agregar_linea(2026, mes, 1, "9000")
+    for mes, valor in ((5, "100"), (6, "200"), (7, "300")):
+        agregar_linea(2026, mes, 15, valor)
+    agregar_linea(2026, 8, 15, "400")
+    agregar_linea(2026, 8, 16, "9000")
+    for mes, valor in ((5, "200"), (6, "400"), (7, "600")):
+        agregar_linea(2025, mes, 15, valor)
+    agregar_linea(2025, 8, 15, "800")
+    agregar_linea(2025, 8, 16, "9000")
+    sesion.commit()
+
+    tablero = _tablero(sesion)
+
+    assert tablero.venta_promedio_desde_mayo == D("250.00")
+    assert tablero.venta_promedio_desde_mayo_anio_anterior == D("500.00")
+    assert tablero.variacion_venta_promedio_desde_mayo == D("-0.5000")
 
 
 # ── §7 Alcance: el bloque `sin_presupuesto` no es tierra de nadie ─────────────

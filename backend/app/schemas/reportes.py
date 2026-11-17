@@ -197,6 +197,9 @@ class RespuestaTablero(BaseModel):
     variacion_venta_mes_anterior: DecimalStr | None = None
     venta_cierre_mes_anterior: DecimalStr | None = None
     variacion_proyeccion_mes_anterior: DecimalStr | None = None
+    venta_promedio_desde_mayo: DecimalStr | None = None
+    venta_promedio_desde_mayo_anio_anterior: DecimalStr | None = None
+    variacion_venta_promedio_desde_mayo: DecimalStr | None = None
     consolidado: FilaIndicadores
     grupos: list[FilaGrupo]
     ventas_anuales: ResumenVentasAnuales

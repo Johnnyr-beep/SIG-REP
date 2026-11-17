@@ -106,6 +106,9 @@ GET /reportes/tablero?periodo=2026-08
   "variacion_venta_mes_anterior": "0.1012",
   "venta_cierre_mes_anterior": "15000000000.00",
   "variacion_proyeccion_mes_anterior": "0.3185",
+  "venta_promedio_desde_mayo": "4200000000.00",
+  "venta_promedio_desde_mayo_anio_anterior": "4700000000.00",
+  "variacion_venta_promedio_desde_mayo": "-0.1064",
   "consolidado": {
     "presupuesto": "20000000000.00",
     "venta": "5396105548.00",
@@ -149,6 +152,12 @@ anterior es cero.
 con ese cierre: `(proyección actual - cierre anterior) / cierre anterior`.
 La variación es `null` si no existe el período anterior, el cierre es cero o no
 se puede calcular la proyección.
+`venta_promedio_desde_mayo` calcula el promedio mensual desde mayo hasta el
+corte del período; `venta_promedio_desde_mayo_anio_anterior` usa los mismos
+meses y el corte equivalente del año anterior. Enero–abril no se incluyen en
+ninguno de los dos promedios. `variacion_venta_promedio_desde_mayo` compara
+ambos promedios y es `null` si no existe el período anterior o su promedio es
+cero.
 
 `ventas_anuales` presenta los doce meses del año de `periodo`, en la medida
 solicitada (`valor` o `kilos`). Cada fila incluye el total del punto y el bloque

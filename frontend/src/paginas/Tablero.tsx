@@ -69,6 +69,12 @@ export function Tablero() {
       : data.variacion_proyeccion_mes_anterior.trim().startsWith("-")
         ? "peligro"
         : "exito";
+  const tonoPromedioDesdeMayo =
+    data?.variacion_venta_promedio_desde_mayo == null
+      ? undefined
+      : data.variacion_venta_promedio_desde_mayo.trim().startsWith("-")
+        ? "peligro"
+        : "exito";
 
   return (
     <div className="pila">
@@ -219,6 +225,30 @@ export function Tablero() {
                 nota={`Año anterior: ${porMedida(data.consolidado.venta_anio_anterior, medida)}`}
                 pista={<p className="formula">{FORMULAS.crecimiento}</p>}
                 tono={tonoCrecimiento}
+              />
+              <Indicador
+                etiqueta="Venta promedio mensual desde mayo"
+                valor={grande(data.venta_promedio_desde_mayo)}
+                nota={
+                  <>
+                    <span>
+                      Prom. mayo–{mesCorto(data.periodo)} {Number(data.periodo.slice(0, 4)) - 1}: {grande(data.venta_promedio_desde_mayo_anio_anterior)}
+                    </span>
+                    <span
+                      className={`consolidado__variacion-mensual${tonoPromedioDesdeMayo ? ` consolidado__variacion-mensual--${tonoPromedioDesdeMayo}` : ""}`}
+                    >
+                      {data.variacion_venta_promedio_desde_mayo === null
+                        ? "Variación vs. mismo período 2025: —"
+                        : `${data.variacion_venta_promedio_desde_mayo.trim().startsWith("-") ? "▼ " : "▲ "}${porcentaje(data.variacion_venta_promedio_desde_mayo)} vs. mismo período 2025`}
+                    </span>
+                  </>
+                }
+                pista={
+                  <p className="formula">
+                    Promedio mensual de mayo al corte actual frente al promedio de los mismos meses de 2025.
+                  </p>
+                }
+                tono={tonoPromedioDesdeMayo}
               />
               <Indicador
                 etiqueta="Margen"
