@@ -303,6 +303,15 @@ class _ComparativoMesAnterior:
     variacion_proyeccion: Decimal | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class _PromedioVentaDesdeMayo:
+    mes_ultimo_cerrado: int | None = None
+    promedio: Decimal | None = None
+    venta_mayo: Decimal | None = None
+    venta_ultimo_mes: Decimal | None = None
+    variacion_mayo_a_ultimo_mes: Decimal | None = None
+
+
 @dataclass
 class _Contexto:
     """Todo lo que hace falta para armar cualquier reporte del período."""
@@ -367,9 +376,11 @@ class ReportesService:
             variacion_venta_mes_anterior=comparativo_mes_anterior.variacion_al_corte,
             venta_cierre_mes_anterior=comparativo_mes_anterior.venta_cierre,
             variacion_proyeccion_mes_anterior=comparativo_mes_anterior.variacion_proyeccion,
-            venta_promedio_desde_mayo=promedio_venta_desde_mayo[0],
-            venta_promedio_desde_mayo_anio_anterior=promedio_venta_desde_mayo[1],
-            variacion_venta_promedio_desde_mayo=promedio_venta_desde_mayo[2],
+            mes_ultimo_cerrado_promedio=promedio_venta_desde_mayo.mes_ultimo_cerrado,
+            venta_promedio_desde_mayo=promedio_venta_desde_mayo.promedio,
+            venta_mayo=promedio_venta_desde_mayo.venta_mayo,
+            venta_ultimo_mes_cerrado=promedio_venta_desde_mayo.venta_ultimo_mes,
+            variacion_venta_mayo_a_ultimo_mes=promedio_venta_desde_mayo.variacion_mayo_a_ultimo_mes,
             consolidado=consolidado,
             grupos=grupos,
             ventas_anuales=self._ventas_anuales(ctx),
@@ -438,64 +449,61 @@ class ReportesService:
 
     def _promedio_venta_desde_mayo(
         self, ctx: _Contexto, puntos_ids: set[int]
-    ) -> tuple[Decimal | None, Decimal | None, Decimal | None]:
-        """Promedio mensual desde mayo y variación frente al mismo lapso previo."""
-        if ctx.periodo.mes < 5:
-            return None, None, None
+    ) -> _PromedioVentaDesdeMayo:
+        """Promedia mayo–último mes cerrado y compara ese mes contra mayo."""
+        mes_ultimo_cerrado = ctx.periodo.mes - 1
+        if mes_ultimo_cerrado < 5:
+            return _PromedioVentaDesdeMayo()
 
-        meses = Decimal(ctx.periodo.mes - 4)
-        total_actual, hay_periodos_actuales = self._venta_total_desde_mayo(
-            ctx, ctx.periodo.anio, ctx.fecha_corte, puntos_ids
+        ventas_por_mes = self._ventas_mensuales_desde_mayo(
+            ctx, ctx.periodo.anio, mes_ultimo_cerrado, puntos_ids
         )
-        promedio_actual = (
-            redondear_no_nulo(total_actual / meses, 2) if hay_periodos_actuales else None
-        )
+        if ventas_por_mes is None:
+            return _PromedioVentaDesdeMayo(mes_ultimo_cerrado=mes_ultimo_cerrado)
 
-        anio_anterior = ctx.periodo.anio - 1
-        from app.domain.calendario import dias_del_mes
-
-        corte_anterior = date(
-            anio_anterior,
-            ctx.periodo.mes,
-            min(ctx.fecha_corte.day, dias_del_mes(anio_anterior, ctx.periodo.mes)),
-        )
-        total_anterior, hay_periodos_anteriores = self._venta_total_desde_mayo(
-            ctx, anio_anterior, corte_anterior, puntos_ids
-        )
-        promedio_anterior = (
-            redondear_no_nulo(total_anterior / meses, 2) if hay_periodos_anteriores else None
-        )
+        cantidad_meses = Decimal(mes_ultimo_cerrado - 4)
+        total = sum(ventas_por_mes.values(), CERO)
+        promedio = redondear_no_nulo(total / cantidad_meses, 2)
+        venta_mayo = ventas_por_mes[5]
+        venta_ultimo_mes = ventas_por_mes[mes_ultimo_cerrado]
         variacion = (
-            redondear_porcentaje(dividir(promedio_actual - promedio_anterior, promedio_anterior))
-            if promedio_actual is not None and promedio_anterior is not None
+            redondear_porcentaje(dividir(venta_ultimo_mes - venta_mayo, venta_mayo))
+            if mes_ultimo_cerrado > 5
             else None
         )
+        return _PromedioVentaDesdeMayo(
+            mes_ultimo_cerrado=mes_ultimo_cerrado,
+            promedio=promedio,
+            venta_mayo=redondear_no_nulo(venta_mayo, 2),
+            venta_ultimo_mes=redondear_no_nulo(venta_ultimo_mes, 2),
+            variacion_mayo_a_ultimo_mes=variacion,
+        )
 
-        return promedio_actual, promedio_anterior, variacion
-
-    def _venta_total_desde_mayo(
+    def _ventas_mensuales_desde_mayo(
         self,
         ctx: _Contexto,
         anio: int,
-        corte: date,
+        mes_ultimo_cerrado: int,
         puntos_ids: set[int],
-    ) -> tuple[Decimal, bool]:
-        """Agrega mayo–corte; usa historia manual solo en meses ya cerrados."""
+    ) -> dict[int, Decimal] | None:
+        """Agrega meses completos desde mayo hasta el último mes cerrado."""
+        from app.domain.calendario import dias_del_mes
+
         periodos = self._sesion.execute(
             select(Periodo.id, Periodo.mes).where(
                 Periodo.anio == anio,
                 Periodo.mes >= 5,
-                Periodo.mes <= ctx.periodo.mes,
+                Periodo.mes <= mes_ultimo_cerrado,
             )
         ).all()
         if not periodos:
-            return CERO, False
+            return None
 
         mes_por_periodo: dict[int, int] = {}
         for periodo_id, mes in periodos:
             mes_por_periodo[periodo_id] = mes
         ids_periodos = list(mes_por_periodo)
-        venta_por_mes = dict.fromkeys(range(5, ctx.periodo.mes + 1), CERO)
+        venta_por_mes = dict.fromkeys(range(5, mes_ultimo_cerrado + 1), CERO)
         columna_venta = (
             VentaLinea.valor_subtotal if ctx.medida is Medida.VALOR else VentaLinea.cantidad_inv
         )
@@ -508,7 +516,8 @@ class ReportesService:
             .where(
                 VentaLinea.periodo_id.in_(ids_periodos),
                 VentaLinea.fecha >= date(anio, 5, 1),
-                VentaLinea.fecha <= corte,
+                VentaLinea.fecha
+                <= date(anio, mes_ultimo_cerrado, dias_del_mes(anio, mes_ultimo_cerrado)),
                 VentaLinea.punto_venta_id.in_(sorted(puntos_ids) or [-1]),
             )
             .group_by(VentaLinea.punto_venta_id, VentaLinea.periodo_id)
@@ -537,10 +546,10 @@ class ReportesService:
             )
             for periodo_id, punto_id, valor in self._sesion.execute(consulta_historia):
                 mes = mes_por_periodo[periodo_id]
-                if mes < ctx.periodo.mes and (periodo_id, punto_id) not in con_transacciones:
+                if (periodo_id, punto_id) not in con_transacciones:
                     venta_por_mes[mes] += Decimal(valor)
 
-        return sum(venta_por_mes.values(), CERO), True
+        return venta_por_mes
 
     def _ventas_anuales(self, ctx: _Contexto) -> ResumenVentasAnuales:
         """Venta mensual por PDV del año seleccionado, con historia manual de respaldo."""

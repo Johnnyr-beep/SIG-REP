@@ -70,9 +70,9 @@ export function Tablero() {
         ? "peligro"
         : "exito";
   const tonoPromedioDesdeMayo =
-    data?.variacion_venta_promedio_desde_mayo == null
+    data?.variacion_venta_mayo_a_ultimo_mes == null
       ? undefined
-      : data.variacion_venta_promedio_desde_mayo.trim().startsWith("-")
+      : data.variacion_venta_mayo_a_ultimo_mes.trim().startsWith("-")
         ? "peligro"
         : "exito";
 
@@ -232,20 +232,25 @@ export function Tablero() {
                 nota={
                   <>
                     <span>
-                      Prom. mayo–{mesCorto(data.periodo)} {Number(data.periodo.slice(0, 4)) - 1}: {grande(data.venta_promedio_desde_mayo_anio_anterior)}
+                      {data.mes_ultimo_cerrado_promedio === null
+                        ? "Sin meses completos desde mayo"
+                        : `Promedio mayo–${mesCorto(`${data.periodo.slice(0, 4)}-${String(data.mes_ultimo_cerrado_promedio).padStart(2, "0")}`)} ${data.periodo.slice(0, 4)}`}
+                    </span>
+                    <span>
+                      Mayo: {grande(data.venta_mayo)} · Último mes cerrado: {grande(data.venta_ultimo_mes_cerrado)}
                     </span>
                     <span
                       className={`consolidado__variacion-mensual${tonoPromedioDesdeMayo ? ` consolidado__variacion-mensual--${tonoPromedioDesdeMayo}` : ""}`}
                     >
-                      {data.variacion_venta_promedio_desde_mayo === null
-                        ? "Variación vs. mismo período 2025: —"
-                        : `${data.variacion_venta_promedio_desde_mayo.trim().startsWith("-") ? "▼ " : "▲ "}${porcentaje(data.variacion_venta_promedio_desde_mayo)} vs. mismo período 2025`}
+                      {data.variacion_venta_mayo_a_ultimo_mes === null
+                        ? "Variación mayo vs. último mes cerrado: —"
+                        : `${data.variacion_venta_mayo_a_ultimo_mes.trim().startsWith("-") ? "▼ " : "▲ "}${porcentaje(data.variacion_venta_mayo_a_ultimo_mes)} último mes vs. mayo`}
                     </span>
                   </>
                 }
                 pista={
                   <p className="formula">
-                    Promedio mensual de mayo al corte actual frente al promedio de los mismos meses de 2025.
+                    Promedio mensual desde mayo hasta el último mes completo. Variación: (venta último mes cerrado − venta mayo) / venta mayo.
                   </p>
                 }
                 tono={tonoPromedioDesdeMayo}

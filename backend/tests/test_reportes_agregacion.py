@@ -31,6 +31,7 @@ from app.infrastructure.models.historia_venta import HistoriaVentaManual
 from app.infrastructure.models.organizacion import Grupo, PuntoVenta
 from app.infrastructure.models.periodo import CalendarioZona, Periodo
 from app.infrastructure.models.venta import Cliente, VentaLinea
+from app.infrastructure.semilla import sembrar_calendario
 from app.schemas.reportes import RespuestaTablero
 from tests.conftest import (
     PERIODO,
@@ -75,10 +76,12 @@ def _tablero(
     alcance: list[int] | None = None,
     grupo: str | None = None,
     medida: Medida = Medida.VALOR,
+    periodo: str = PERIODO,
+    hasta: date = CORTE,
 ) -> RespuestaTablero:
-    """El tablero del período de pruebas, con el corte fijo en el día 15."""
+    """El tablero de prueba, con período y fecha de corte ajustables."""
     return ReportesService(sesion).tablero(
-        FiltrosReporte(periodo=PERIODO, hasta=CORTE, alcance=alcance, grupo=grupo, medida=medida)
+        FiltrosReporte(periodo=periodo, hasta=hasta, alcance=alcance, grupo=grupo, medida=medida)
     )
 
 
@@ -288,33 +291,31 @@ def test_tablero_sin_periodo_anterior_no_inventa_el_comparativo(
     assert tablero.variacion_venta_mes_anterior is None
     assert tablero.venta_cierre_mes_anterior is None
     assert tablero.variacion_proyeccion_mes_anterior is None
-    assert tablero.venta_promedio_desde_mayo == D("0.00")
-    assert tablero.venta_promedio_desde_mayo_anio_anterior is None
-    assert tablero.variacion_venta_promedio_desde_mayo is None
+    assert tablero.mes_ultimo_cerrado_promedio == 7
+    assert tablero.venta_promedio_desde_mayo is None
+    assert tablero.venta_mayo is None
+    assert tablero.venta_ultimo_mes_cerrado is None
+    assert tablero.variacion_venta_mayo_a_ultimo_mes is None
 
 
-def test_promedio_desde_mayo_excluye_enero_abril_y_compara_corte_equivalente(
+def test_promedio_2026_usa_mayo_hasta_octubre_y_excluye_2025_y_noviembre(
     sesion: Session, estructura: None
 ) -> None:
     dar_presupuesto(sesion, "402", "RES", "10000")
     ids_periodos = {(2026, 8): id_periodo(sesion)}
-    for anio, mes in (
-        (2026, 1),
-        (2026, 2),
-        (2026, 3),
-        (2026, 4),
-        (2026, 5),
-        (2026, 6),
-        (2026, 7),
-        (2025, 5),
-        (2025, 6),
-        (2025, 7),
-        (2025, 8),
-    ):
+    periodos = [
+        *((2026, mes) for mes in range(1, 8)),
+        (2026, 9),
+        (2026, 10),
+        (2026, 11),
+        *((2025, mes) for mes in range(5, 11)),
+    ]
+    for anio, mes in periodos:
         periodo = Periodo(anio=anio, mes=mes)
         sesion.add(periodo)
         sesion.flush()
         ids_periodos[(anio, mes)] = periodo.id
+    sembrar_calendario(sesion, "2026-11")
 
     punto = id_punto_venta(sesion, "402")
     categoria = id_categoria(sesion, "RES")
@@ -334,21 +335,21 @@ def test_promedio_desde_mayo_excluye_enero_abril_y_compara_corte_equivalente(
 
     for mes in range(1, 5):
         agregar_linea(2026, mes, 1, "9000")
-    for mes, valor in ((5, "100"), (6, "200"), (7, "300")):
+    for mes, valor in ((5, "600"), (6, "500"), (7, "400"), (8, "300"), (9, "200"), (10, "100")):
         agregar_linea(2026, mes, 15, valor)
-    agregar_linea(2026, 8, 15, "400")
-    agregar_linea(2026, 8, 16, "9000")
-    for mes, valor in ((5, "200"), (6, "400"), (7, "600")):
-        agregar_linea(2025, mes, 15, valor)
-    agregar_linea(2025, 8, 15, "800")
-    agregar_linea(2025, 8, 16, "9000")
+    agregar_linea(2026, 11, 1, "9000")
+    agregar_linea(2026, 11, 17, "9000")
+    for mes in range(5, 11):
+        agregar_linea(2025, mes, 15, "50000")
     sesion.commit()
 
-    tablero = _tablero(sesion)
+    tablero = _tablero(sesion, periodo="2026-11", hasta=date(2026, 11, 17))
 
-    assert tablero.venta_promedio_desde_mayo == D("250.00")
-    assert tablero.venta_promedio_desde_mayo_anio_anterior == D("500.00")
-    assert tablero.variacion_venta_promedio_desde_mayo == D("-0.5000")
+    assert tablero.mes_ultimo_cerrado_promedio == 10
+    assert tablero.venta_promedio_desde_mayo == D("350.00")
+    assert tablero.venta_mayo == D("600.00")
+    assert tablero.venta_ultimo_mes_cerrado == D("100.00")
+    assert tablero.variacion_venta_mayo_a_ultimo_mes == D("-0.8333")
 
 
 # ── §7 Alcance: el bloque `sin_presupuesto` no es tierra de nadie ─────────────

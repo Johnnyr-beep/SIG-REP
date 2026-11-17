@@ -59,8 +59,8 @@ import type {
 } from "./tipos";
 import { MAXIMO_DIAS_VENTA_DIARIA } from "./tipos";
 
-const PERIODO = "2026-08";
-const FECHA_CORTE = "2026-08-09";
+const PERIODO = "2026-11";
+const FECHA_CORTE = "2026-11-17";
 
 /** Umbral del semáforo de §4.1 (supuesto de §8.3, pendiente de confirmar). */
 const UMBRAL_AMARILLO = 0.9;
@@ -567,16 +567,18 @@ function tablero(opciones: Opciones): RespuestaTablero {
   const ventaMesAnterior = Number(consolidado.venta) / 0.905;
   const ventaCierreMesAnterior = Number(consolidado.proyeccion) / 1.082;
   const mesCorte = Number(PERIODO.slice(5, 7));
-  const mesesDesdeMayo = totalesMensuales.slice(4, mesCorte);
+  const mesUltimoCerrado = mesCorte - 1;
+  const mesesDesdeMayo = totalesMensuales.slice(4, mesUltimoCerrado);
   const promedioDesdeMayo = mesesDesdeMayo.length
     ? mesesDesdeMayo.reduce((suma, valor) => suma + Number(valor), 0) / mesesDesdeMayo.length
     : null;
-  const promedioDesdeMayoAnterior =
-    promedioDesdeMayo === null ? null : promedioDesdeMayo / 0.9;
-  const variacionPromedioDesdeMayo =
-    promedioDesdeMayo === null || promedioDesdeMayoAnterior === null
+  const ventaMayo = mesUltimoCerrado >= 5 ? Number(totalesMensuales[4]) : null;
+  const ventaUltimoMesCerrado =
+    mesUltimoCerrado >= 5 ? Number(totalesMensuales[mesUltimoCerrado - 1]) : null;
+  const variacionMayoAUltimoMes =
+    ventaMayo === null || ventaMayo === 0 || ventaUltimoMesCerrado === null || mesUltimoCerrado === 5
       ? null
-      : (promedioDesdeMayo - promedioDesdeMayoAnterior) / promedioDesdeMayoAnterior;
+      : (ventaUltimoMesCerrado - ventaMayo) / ventaMayo;
 
   return {
     periodo: PERIODO,
@@ -589,10 +591,12 @@ function tablero(opciones: Opciones): RespuestaTablero {
     variacion_proyeccion_mes_anterior: "0.0820",
     venta_promedio_desde_mayo:
       promedioDesdeMayo === null ? null : cadena(promedioDesdeMayo),
-    venta_promedio_desde_mayo_anio_anterior:
-      promedioDesdeMayoAnterior === null ? null : cadena(promedioDesdeMayoAnterior),
-    variacion_venta_promedio_desde_mayo:
-      variacionPromedioDesdeMayo === null ? null : cadena(variacionPromedioDesdeMayo, 4),
+    mes_ultimo_cerrado_promedio: mesUltimoCerrado >= 5 ? mesUltimoCerrado : null,
+    venta_mayo: ventaMayo === null ? null : cadena(ventaMayo),
+    venta_ultimo_mes_cerrado:
+      ventaUltimoMesCerrado === null ? null : cadena(ventaUltimoMesCerrado),
+    variacion_venta_mayo_a_ultimo_mes:
+      variacionMayoAUltimoMes === null ? null : cadena(variacionMayoAUltimoMes, 4),
     consolidado,
     grupos,
     ventas_anuales: {
