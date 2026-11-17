@@ -191,7 +191,10 @@ class RespuestaTablero(BaseModel):
 
     periodo: str
     fecha_corte: date
+    fecha_corte_mes_anterior: date | None = None
     medida: Medida
+    venta_mes_anterior: DecimalStr | None = None
+    variacion_venta_mes_anterior: DecimalStr | None = None
     consolidado: FilaIndicadores
     grupos: list[FilaGrupo]
     ventas_anuales: ResumenVentasAnuales

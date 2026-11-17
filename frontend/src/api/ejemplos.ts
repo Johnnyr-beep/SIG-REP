@@ -563,12 +563,17 @@ function tablero(opciones: Opciones): RespuestaTablero {
       2,
     ),
   );
+  const consolidado = agregar(pdvsPresupuestados(undefined, codigos), medida, 1);
+  const ventaMesAnterior = Number(consolidado.venta) / 0.905;
 
   return {
     periodo: PERIODO,
     fecha_corte: FECHA_CORTE,
+    fecha_corte_mes_anterior: "2026-07-09",
     medida,
-    consolidado: agregar(pdvsPresupuestados(undefined, codigos), medida, 1),
+    venta_mes_anterior: cadena(ventaMesAnterior),
+    variacion_venta_mes_anterior: "-0.0950",
+    consolidado,
     grupos,
     ventas_anuales: {
       anio: Number(PERIODO.slice(0, 4)),

@@ -313,7 +313,10 @@ export interface VentaSinPresupuesto {
 export interface RespuestaTablero {
   periodo: string;
   fecha_corte: string;
+  fecha_corte_mes_anterior: string | null;
   medida: Medida;
+  venta_mes_anterior: string | null;
+  variacion_venta_mes_anterior: string | null;
   consolidado: FilaIndicadores;
   grupos: FilaGrupo[];
   ventas_anuales: ResumenVentasAnuales;

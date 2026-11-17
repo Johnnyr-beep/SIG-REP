@@ -22,13 +22,14 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.application.services.periodos import periodo_mes_anterior
 from app.application.services.reportes_service import FiltrosReporte, ReportesService
 from app.domain import indicadores as ind
 from app.domain.enums import AgrupacionClientes, Medida
 from app.domain.semaforo import UmbralesSemaforo
 from app.infrastructure.models.historia_venta import HistoriaVentaManual
 from app.infrastructure.models.organizacion import Grupo, PuntoVenta
-from app.infrastructure.models.periodo import CalendarioZona
+from app.infrastructure.models.periodo import CalendarioZona, Periodo
 from app.infrastructure.models.venta import Cliente, VentaLinea
 from app.schemas.reportes import RespuestaTablero
 from tests.conftest import (
@@ -199,6 +200,84 @@ def test_sin_historia_el_crecimiento_es_vacio_y_no_cero() -> None:
     )
 
     assert resultado.crecimiento is None
+
+
+def test_periodo_mes_anterior_cruza_el_cambio_de_anio() -> None:
+    assert periodo_mes_anterior("2026-01") == "2025-12"
+
+
+def test_corte_equivalente_se_limita_al_ultimo_dia_del_mes() -> None:
+    from app.application.services.reportes_service import _corte_equivalente
+
+    febrero = Periodo(anio=2026, mes=2)
+
+    assert _corte_equivalente(febrero, date(2026, 3, 31)) == date(2026, 2, 28)
+
+
+def test_tablero_compara_mes_anterior_al_mismo_corte_y_sobre_los_mismos_pdv(
+    sesion: Session, estructura: None
+) -> None:
+    dar_presupuesto(sesion, "402", "RES", "2000")
+    dar_venta(sesion, "402", "RES", 15, "1000")
+    periodo_julio = Periodo(anio=2026, mes=7)
+    sesion.add(periodo_julio)
+    sesion.flush()
+    venta_julio = id_periodo(sesion, "2026-07")
+    punto = id_punto_venta(sesion, "402")
+    categoria = id_categoria(sesion, "RES")
+    sesion.add_all(
+        [
+            VentaLinea(
+                periodo_id=venta_julio,
+                fecha=date(2026, 7, 15),
+                punto_venta_id=punto,
+                categoria_id=categoria,
+                valor_subtotal=D("1200"),
+                costo_promedio=D("0"),
+                cantidad_inv=D("0"),
+            ),
+            VentaLinea(
+                periodo_id=venta_julio,
+                fecha=date(2026, 7, 16),
+                punto_venta_id=punto,
+                categoria_id=categoria,
+                valor_subtotal=D("500"),
+                costo_promedio=D("0"),
+                cantidad_inv=D("0"),
+            ),
+        ]
+    )
+    sesion.commit()
+
+    tablero = _tablero(sesion)
+
+    assert tablero.fecha_corte_mes_anterior == date(2026, 7, 15)
+    assert tablero.venta_mes_anterior == D("1200.00")
+    assert tablero.variacion_venta_mes_anterior == D("-0.1667")
+
+
+def test_tablero_sin_venta_previa_muestra_cero_y_variacion_indefinida(
+    sesion: Session, estructura: None
+) -> None:
+    dar_presupuesto(sesion, "402", "RES", "2000")
+    dar_venta(sesion, "402", "RES", 15, "1000")
+    sesion.add(Periodo(anio=2026, mes=7))
+    sesion.commit()
+
+    tablero = _tablero(sesion)
+
+    assert tablero.venta_mes_anterior == D("0.00")
+    assert tablero.variacion_venta_mes_anterior is None
+
+
+def test_tablero_sin_periodo_anterior_no_inventa_el_comparativo(
+    sesion: Session, estructura: None
+) -> None:
+    tablero = _tablero(sesion)
+
+    assert tablero.fecha_corte_mes_anterior is None
+    assert tablero.venta_mes_anterior is None
+    assert tablero.variacion_venta_mes_anterior is None
 
 
 # ── §7 Alcance: el bloque `sin_presupuesto` no es tierra de nadie ─────────────

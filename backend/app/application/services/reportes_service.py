@@ -37,6 +37,7 @@ from app.application.services.periodos import (
     fecha_corte_efectiva,
     obtener_periodo,
     periodo_anterior,
+    periodo_mes_anterior,
 )
 from app.core.config import obtener_settings
 from app.core.errors import ErrorValidacion
@@ -335,6 +336,9 @@ class ReportesService:
 
         por_pdv = self._totales_por_punto_venta(ctx)
         consolidado = self._fila_agregada(ctx, list(por_pdv))
+        fecha_corte_mes_anterior, venta_mes_anterior, variacion_venta_mes_anterior = (
+            self._comparativo_mes_anterior(ctx, por_pdv)
+        )
 
         grupos: list[FilaGrupo] = []
         for grupo in self._grupos_ordenados():
@@ -348,12 +352,42 @@ class ReportesService:
             periodo=ctx.periodo.codigo,
             fecha_corte=ctx.fecha_corte,
             medida=ctx.medida,
+            fecha_corte_mes_anterior=fecha_corte_mes_anterior,
+            venta_mes_anterior=venta_mes_anterior,
+            variacion_venta_mes_anterior=variacion_venta_mes_anterior,
             consolidado=consolidado,
             grupos=grupos,
             ventas_anuales=self._ventas_anuales(ctx),
             sin_presupuesto=self._filas_sin_presupuesto(ctx),
             parametros_calculo=self._parametros(ctx, consolidado),
         )
+
+    def _comparativo_mes_anterior(
+        self, ctx: _Contexto, venta_actual: dict[int, Totales]
+    ) -> tuple[date | None, Decimal | None, Decimal | None]:
+        """Venta previa al mismo corte, sobre los mismos PDV y filtros visibles."""
+        anterior = buscar_periodo(self._sesion, periodo_mes_anterior(ctx.periodo.codigo))
+        if anterior is None:
+            return None, None, None
+
+        fecha_corte = _corte_equivalente(anterior, ctx.fecha_corte)
+        ventas_previas = self._agregar_venta(anterior, fecha_corte, ctx, ctx.categoria_id)
+        puntos_ids = set(venta_actual)
+        venta_previa = sum(
+            (
+                totales.medida(ctx.medida)
+                for (punto_id, _categoria_id), totales in ventas_previas.items()
+                if punto_id in puntos_ids
+            ),
+            Decimal(0),
+        )
+        total_actual = sum(
+            (totales.medida(ctx.medida) for totales in venta_actual.values()),
+            Decimal(0),
+        )
+        variacion = redondear_porcentaje(dividir(total_actual - venta_previa, venta_previa))
+
+        return fecha_corte, redondear_no_nulo(venta_previa, 2), variacion
 
     def _ventas_anuales(self, ctx: _Contexto) -> ResumenVentasAnuales:
         """Venta mensual por PDV del año seleccionado, con historia manual de respaldo."""
@@ -1457,12 +1491,10 @@ def _redondear_mapa(
 
 
 def _corte_equivalente(periodo: Periodo, corte: date) -> date:
-    """Mismo día del mes en el período del año anterior.
+    """Mismo día de corte en otro período, limitado a su último día.
 
-    SUPUESTO: el crecimiento compara lo comparable, es decir la venta del año
-    pasado **hasta el mismo día del mes**. Comparar los nueve primeros días de
-    agosto de 2026 contra los treinta y uno de agosto de 2025 daría un
-    decrecimiento del 70 % que no significaría nada.
+    La comparación acumulada usa el mismo día de corte. Si el período anterior
+    es más corto, se usa su último día disponible.
     """
     from app.domain.calendario import dias_del_mes
 

@@ -100,7 +100,10 @@ GET /reportes/tablero?periodo=2026-08
 {
   "periodo": "2026-08",
   "fecha_corte": "2026-08-09",
+  "fecha_corte_mes_anterior": "2026-07-09",
   "medida": "valor",
+  "venta_mes_anterior": "4900000000.00",
+  "variacion_venta_mes_anterior": "0.1012",
   "consolidado": {
     "presupuesto": "20000000000.00",
     "venta": "5396105548.00",
@@ -132,6 +135,13 @@ GET /reportes/tablero?periodo=2026-08
   "sin_presupuesto": [ { "codigo_co": "432", "nombre": "EVENTOS BUCARAMANGA", "venta": "..." } ]
 }
 ```
+
+`fecha_corte_mes_anterior` y `venta_mes_anterior` comparan el consolidado con
+el mismo día del mes inmediatamente anterior, usando los mismos filtros y PDV
+visibles. Si ese período no existe, los tres campos del comparativo son `null`.
+`variacion_venta_mes_anterior` es
+`(venta actual - venta anterior) / venta anterior`; es `null` cuando la venta
+anterior es cero.
 
 `ventas_anuales` presenta los doce meses del año de `periodo`, en la medida
 solicitada (`valor` o `kilos`). Cada fila incluye el total del punto y el bloque

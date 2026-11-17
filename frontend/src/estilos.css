@@ -694,6 +694,12 @@ textarea {
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 
+@media (min-width: 1560px) {
+  .rejilla--indicadores {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+}
+
 .rejilla--grupos {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
@@ -866,6 +872,20 @@ textarea {
   color: var(--texto-suave);
   font-size: 0.76rem;
   line-height: 1.35;
+}
+
+.consolidado__variacion-mensual {
+  display: block;
+  margin-top: 0.15rem;
+  font-weight: 700;
+}
+
+.consolidado__variacion-mensual--baja {
+  color: var(--peligro);
+}
+
+.consolidado__variacion-mensual--alza {
+  color: var(--exito);
 }
 
 /* ── Consolidado del tablero ─────────────────────────────────────────────── */

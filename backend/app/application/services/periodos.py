@@ -67,6 +67,14 @@ def periodo_anterior(codigo: str) -> str:
     return f"{anio - 1:04d}-{mes:02d}"
 
 
+def periodo_mes_anterior(codigo: str) -> str:
+    """Período calendario inmediatamente anterior."""
+    anio, mes = parsear_periodo(codigo)
+    if mes == 1:
+        return f"{anio - 1:04d}-12"
+    return f"{anio:04d}-{mes - 1:02d}"
+
+
 def fecha_corte_efectiva(periodo: Periodo, hasta: date | None) -> date:
     """Fecha de corte saneada contra el período.
 

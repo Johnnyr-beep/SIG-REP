@@ -139,6 +139,26 @@ export function Tablero() {
                 tono="exito"
               />
               <Indicador
+                etiqueta="Venta acumulada al corte del mes anterior"
+                valor={grande(data.venta_mes_anterior)}
+                nota={
+                  <>
+                    <span>
+                      {data.fecha_corte_mes_anterior
+                        ? `Al corte ${data.fecha_corte_mes_anterior}`
+                        : "Corte anterior sin dato"}
+                    </span>
+                    <span
+                      className={`consolidado__variacion-mensual${data.variacion_venta_mes_anterior === null ? "" : data.variacion_venta_mes_anterior.trim().startsWith("-") ? " consolidado__variacion-mensual--baja" : " consolidado__variacion-mensual--alza"}`}
+                    >
+                      {data.variacion_venta_mes_anterior === null
+                        ? "Variación vs. mes anterior: —"
+                        : `${data.variacion_venta_mes_anterior.trim().startsWith("-") ? "▼ " : "▲ "}${porcentaje(data.variacion_venta_mes_anterior)} vs. mes anterior`}
+                    </span>
+                  </>
+                }
+              />
+              <Indicador
                 etiqueta="Proyección al cierre"
                 valor={grande(data.consolidado.proyeccion)}
                 nota={`${porcentaje(data.consolidado.cumplimiento_proyectado)} del presupuesto`}
