@@ -9,15 +9,19 @@ recibe la lista de puntos permitidos y no vuelve a preguntarse quién consulta.
 
 from __future__ import annotations
 
+from calendar import monthrange
 from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
+from sqlalchemy import select
 
 from app.api.v1 import LecturaDep
 from app.application.services import exportacion_service
 from app.application.services.reportes_service import FiltrosReporte, ReportesService
+from app.application.services.tpv_service import RespuestaTpv, resumir_tpv
+from app.core.config import obtener_settings
 from app.core.deps import (
     PERMISO_CONSULTAR_CLIENTES,
     PERMISO_CONSULTAR_COSTOS,
@@ -39,13 +43,16 @@ from app.core.deps import (
     PERMISO_FILTRAR_PDV,
     PERMISO_FILTRAR_PERIODO,
     SesionDep,
+    UnidadDep,
     alcance_puntos_venta,
     exigir_permiso_consulta,
     exigir_permiso_descarga,
     exigir_venta_diaria_asadero,
 )
-from app.core.errors import ErrorAutorizacion
+from app.core.errors import ErrorAutorizacion, ErrorValidacion
 from app.domain.enums import AgrupacionClientes, Medida
+from app.infrastructure.fuentes.tpv import consultar_registros_tpv
+from app.infrastructure.models.organizacion import PuntoVenta
 from app.infrastructure.models.usuario import Usuario
 from app.schemas.reportes import (
     RespuestaClientes,
@@ -205,6 +212,43 @@ def costos(
     if permisos_granulares and not usuario.tiene_permiso(PERMISO_COSTO_POR_PRODUCTO):
         respuesta.productos = []
     return respuesta
+
+
+@router.get("/costos/tpv", response_model=RespuestaTpv, summary="Acumulación y cierre de TPV")
+def costos_tpv(
+    usuario: Annotated[Usuario, Depends(exigir_permiso_consulta(PERMISO_CONSULTAR_COSTOS))],
+    _permiso_pdv: Annotated[Usuario, Depends(exigir_permiso_consulta(PERMISO_COSTO_POR_PDV))],
+    sesion: SesionDep,
+    unidad: UnidadDep,
+    periodo: str = PeriodoQuery,
+    hasta: date | None = None,
+    punto_venta: str | None = PuntoVentaQuery,
+) -> RespuestaTpv:
+    filtros = _filtros(usuario, periodo, hasta, None, punto_venta, None, Medida.VALOR)
+    hoy = date.today()
+    if (
+        periodo != hoy.strftime("%Y-%m")
+        and usuario.rol == "CONSULTA"
+        and usuario.permisos
+        and not usuario.tiene_permiso(PERMISO_FILTRAR_PERIODO)
+    ):
+        raise ErrorAutorizacion("No tiene permiso para filtrar por período.")
+    inicio = date.fromisoformat(f"{periodo}-01")
+    fin_mes = inicio.replace(day=monthrange(inicio.year, inicio.month)[1])
+    corte = hasta or min(hoy, fin_mes)
+    if not inicio <= corte <= min(hoy, fin_mes):
+        raise ErrorValidacion("El corte de TPV debe pertenecer al período y no ser futuro.")
+
+    consulta = select(PuntoVenta.codigo_co, PuntoVenta.nombre)
+    if filtros.alcance is not None:
+        consulta = consulta.where(PuntoVenta.id.in_(filtros.alcance))
+    if filtros.puntos_venta is not None:
+        consulta = consulta.where(PuntoVenta.codigo_co.in_(filtros.puntos_venta))
+    nombres = dict(sesion.execute(consulta).tuples().all())
+    registros = (
+        consultar_registros_tpv(obtener_settings(), unidad, inicio, corte) if nombres else []
+    )
+    return resumir_tpv(registros, nombres, inicio, corte)
 
 
 @router.get("/venta-diaria", response_model=RespuestaVentaDiaria, summary="Venta día por día")

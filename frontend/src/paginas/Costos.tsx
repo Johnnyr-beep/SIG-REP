@@ -9,10 +9,11 @@ import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import { BarraFiltros, useFiltros } from "@/componentes/filtros";
 import { Indicador, PieCalculo } from "@/componentes/indicadores";
 import { dinero, numero, porcentaje } from "@/utilidades/formato";
-import { AcumulacionTpvDemo } from "./AcumulacionTpvDemo";
+import { AcumulacionTpv } from "./AcumulacionTpv";
 
 export function Costos() {
   const [parametros, fijarParametros] = useSearchParams();
+  const { tienePermiso } = useAuth();
   const vistaTpv = parametros.get("vista_costos") === "tpv";
 
   function cambiarVista(tpv: boolean) {
@@ -22,7 +23,7 @@ export function Costos() {
     fijarParametros(siguientes);
   }
 
-  if (!MODO_EJEMPLOS) return <CostosMargen />;
+  if (!MODO_EJEMPLOS && !tienePermiso("PERMISO_COSTO_POR_PDV")) return <CostosMargen />;
 
   return (
     <div className="pila">
@@ -39,7 +40,7 @@ export function Costos() {
           </label>
         </fieldset>
       </section>
-      {vistaTpv ? <AcumulacionTpvDemo /> : <CostosMargen />}
+      {vistaTpv ? <AcumulacionTpv /> : <CostosMargen />}
     </div>
   );
 }
