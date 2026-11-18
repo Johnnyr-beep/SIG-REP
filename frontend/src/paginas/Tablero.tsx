@@ -86,7 +86,7 @@ export function Tablero() {
     <div className="pila">
       <BarraFiltros
         control={control}
-        mostrar={{ grupo: false, puntoVenta: false, categoria: true }}
+        mostrar={{ grupo: false, puntoVenta: true, categoria: true }}
         acciones={tienePermiso("PERMISO_DESCARGAR_TABLERO") ? (
           <button
             type="button"
