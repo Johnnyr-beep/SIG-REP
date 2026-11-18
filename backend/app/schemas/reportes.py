@@ -191,6 +191,7 @@ class RespuestaTablero(BaseModel):
 
     periodo: str
     fecha_corte: date
+    variacion_proyeccion_presupuesto: DecimalStr | None = None
     fecha_corte_mes_anterior: date | None = None
     medida: Medida
     venta_mes_anterior: DecimalStr | None = None

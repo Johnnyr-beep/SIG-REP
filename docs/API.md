@@ -100,6 +100,7 @@ GET /reportes/tablero?periodo=2026-08
 {
   "periodo": "2026-08",
   "fecha_corte": "2026-08-09",
+  "variacion_proyeccion_presupuesto": "-0.0107",
   "fecha_corte_mes_anterior": "2026-07-09",
   "medida": "valor",
   "venta_mes_anterior": "4900000000.00",
@@ -154,6 +155,9 @@ anterior es cero.
 con ese cierre: `(proyección actual - cierre anterior) / cierre anterior`.
 La variación es `null` si no existe el período anterior, el cierre es cero o no
 se puede calcular la proyección.
+`variacion_proyeccion_presupuesto` es el cumplimiento proyectado menos uno y se
+publica como decimal (`-0.1980` equivale a `-19,80 %`). Es `null` si la
+proyección no se puede calcular.
 `venta_promedio_desde_mayo` calcula el promedio mensual de mayo al último mes
 completo anterior al período consultado. Enero–abril, el mes en curso y años
 anteriores quedan excluidos. `mes_ultimo_cerrado_promedio` identifica ese mes;

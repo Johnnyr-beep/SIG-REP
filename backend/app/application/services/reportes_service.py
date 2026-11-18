@@ -354,6 +354,11 @@ class ReportesService:
 
         por_pdv = self._totales_por_punto_venta(ctx)
         consolidado = self._fila_agregada(ctx, list(por_pdv))
+        variacion_proyeccion_presupuesto = (
+            redondear_porcentaje(consolidado.cumplimiento_proyectado - Decimal(1))
+            if consolidado.cumplimiento_proyectado is not None
+            else None
+        )
         comparativo_mes_anterior = self._comparativo_mes_anterior(
             ctx, por_pdv, consolidado.proyeccion
         )
@@ -371,6 +376,7 @@ class ReportesService:
             periodo=ctx.periodo.codigo,
             fecha_corte=ctx.fecha_corte,
             medida=ctx.medida,
+            variacion_proyeccion_presupuesto=variacion_proyeccion_presupuesto,
             fecha_corte_mes_anterior=comparativo_mes_anterior.fecha_corte,
             venta_mes_anterior=comparativo_mes_anterior.venta_al_corte,
             variacion_venta_mes_anterior=comparativo_mes_anterior.variacion_al_corte,

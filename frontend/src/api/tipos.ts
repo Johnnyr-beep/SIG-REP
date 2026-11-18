@@ -313,6 +313,7 @@ export interface VentaSinPresupuesto {
 export interface RespuestaTablero {
   periodo: string;
   fecha_corte: string;
+  variacion_proyeccion_presupuesto: string | null;
   fecha_corte_mes_anterior: string | null;
   medida: Medida;
   venta_mes_anterior: string | null;

@@ -69,6 +69,12 @@ export function Tablero() {
       : data.variacion_proyeccion_mes_anterior.trim().startsWith("-")
         ? "peligro"
         : "exito";
+  const tonoVariacionProyeccionPresupuesto =
+    data?.variacion_proyeccion_presupuesto == null
+      ? undefined
+      : data.variacion_proyeccion_presupuesto.trim().startsWith("-")
+        ? "peligro"
+        : "exito";
   const tonoPromedioDesdeMayo =
     data?.variacion_venta_mayo_a_ultimo_mes == null
       ? undefined
@@ -173,8 +179,26 @@ export function Tablero() {
               <Indicador
                 etiqueta="Proyección al cierre"
                 valor={grande(data.consolidado.proyeccion)}
-                nota={`${porcentaje(data.consolidado.cumplimiento_proyectado)} del presupuesto`}
-                pista={<p className="formula">{FORMULAS.proyeccion}</p>}
+                nota={
+                  <>
+                    <span>{porcentaje(data.consolidado.cumplimiento_proyectado)} del presupuesto</span>
+                    <span
+                      className={`consolidado__variacion-mensual${tonoVariacionProyeccionPresupuesto ? ` consolidado__variacion-mensual--${tonoVariacionProyeccionPresupuesto}` : ""}`}
+                    >
+                      {data.variacion_proyeccion_presupuesto === null
+                        ? "Variación vs. presupuesto: —"
+                        : `${data.variacion_proyeccion_presupuesto.trim().startsWith("-") ? "▼ " : "▲ "}${porcentaje(data.variacion_proyeccion_presupuesto)} vs. presupuesto`}
+                    </span>
+                  </>
+                }
+                pista={
+                  <>
+                    <p className="formula">{FORMULAS.proyeccion}</p>
+                    <p className="formula">
+                      Variación vs. presupuesto = (proyección / presupuesto − 1) × 100
+                    </p>
+                  </>
+                }
                 tono={tonoSemaforo}
               />
               <Indicador

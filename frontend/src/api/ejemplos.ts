@@ -564,6 +564,10 @@ function tablero(opciones: Opciones): RespuestaTablero {
     ),
   );
   const consolidado = agregar(pdvsPresupuestados(undefined, codigos), medida, 1);
+  const variacionProyeccionPresupuesto =
+    consolidado.cumplimiento_proyectado === null
+      ? null
+      : cadena(Number(consolidado.cumplimiento_proyectado) - 1, 4);
   const ventaMesAnterior = Number(consolidado.venta) / 0.905;
   const ventaCierreMesAnterior = Number(consolidado.proyeccion) / 1.082;
   const mesCorte = Number(PERIODO.slice(5, 7));
@@ -583,6 +587,7 @@ function tablero(opciones: Opciones): RespuestaTablero {
   return {
     periodo: PERIODO,
     fecha_corte: FECHA_CORTE,
+    variacion_proyeccion_presupuesto: variacionProyeccionPresupuesto,
     fecha_corte_mes_anterior: "2026-07-09",
     medida,
     venta_mes_anterior: cadena(ventaMesAnterior),

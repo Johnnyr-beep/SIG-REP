@@ -298,6 +298,21 @@ def test_tablero_sin_periodo_anterior_no_inventa_el_comparativo(
     assert tablero.variacion_venta_mayo_a_ultimo_mes is None
 
 
+def test_tablero_variacion_proyeccion_presupuesto_es_proyeccion_sobre_presupuesto_menos_uno(
+    sesion: Session, estructura: None
+) -> None:
+    dar_presupuesto(sesion, "402", "RES", "1000")
+    dar_venta(sesion, "402", "RES", 15, "500")
+
+    tablero = _tablero(sesion)
+    cumplimiento_proyectado = tablero.consolidado.cumplimiento_proyectado
+
+    assert cumplimiento_proyectado is not None
+    assert tablero.variacion_proyeccion_presupuesto == (cumplimiento_proyectado - D("1")).quantize(
+        D("0.0001")
+    )
+
+
 def test_promedio_2026_usa_mayo_hasta_octubre_y_excluye_2025_y_noviembre(
     sesion: Session, estructura: None
 ) -> None:
