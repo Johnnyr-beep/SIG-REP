@@ -22,10 +22,16 @@ def leer_paginas_tpv(
         offset = 0
         while True:
             try:
-                respuesta = cliente.get("/ventas/tpv-no-acumuladas", params={
-                    "cia": compania, "fecha_inicio": inicio.isoformat(),
-                    "fecha_fin": corte.isoformat(), "limit": 5000, "offset": offset,
-                })
+                respuesta = cliente.get(
+                    "/ventas/tpv-no-acumuladas",
+                    params={
+                        "cia": compania,
+                        "fecha_inicio": inicio.isoformat(),
+                        "fecha_fin": corte.isoformat(),
+                        "limit": 5000,
+                        "offset": offset,
+                    },
+                )
                 respuesta.raise_for_status()
                 pagina = PaginaTpv.model_validate_json(respuesta.content)
             except (httpx.HTTPError, ValueError):

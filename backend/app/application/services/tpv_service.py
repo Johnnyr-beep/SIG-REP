@@ -64,18 +64,22 @@ def resumir_tpv(
     puntos = []
     for codigo, estados in dias.items():
         cerrados = [fecha for fecha, cerrado in estados.items() if cerrado]
-        puntos.append(PuntoTpv(
-            codigo_co=codigo,
-            nombre=nombres[codigo],
-            fecha_acumulada=max(cerrados, default=None),
-            dias_acumulados=len(cerrados),
-            dias_sin_acumulacion=total - len(cerrados),
-            dias_sin_registros=total - len(estados),
-        ))
+        puntos.append(
+            PuntoTpv(
+                codigo_co=codigo,
+                nombre=nombres[codigo],
+                fecha_acumulada=max(cerrados, default=None),
+                dias_acumulados=len(cerrados),
+                dias_sin_acumulacion=total - len(cerrados),
+                dias_sin_registros=total - len(estados),
+            )
+        )
 
     return RespuestaTpv(
         fecha_corte=corte,
         puntos=sorted(puntos, key=lambda punto: (-punto.dias_acumulados, punto.nombre)),
-        abiertas=sorted(abiertas.values(), key=lambda fila: (-fila.fecha.toordinal(),
-                                                             fila.punto_venta, fila.tpv)),
+        abiertas=sorted(
+            abiertas.values(),
+            key=lambda fila: (-fila.fecha.toordinal(), fila.punto_venta, fila.tpv),
+        ),
     )
