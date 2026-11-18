@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "react-router-dom";
 import { MODO_EJEMPLOS } from "@/api/cliente";
+import { useState } from "react";
 import { useCostos } from "@/api/consultas";
 import type { FilaCostos } from "@/api/tipos";
 import { useAuth } from "@/auth/ContextoAuth";
@@ -104,11 +105,92 @@ function CostosMargen() {
   );
 }
 
-function TablaCostos({ titulo, etiqueta, filas, alta = false, variante }: { titulo: string; etiqueta: string; filas: (FilaCostos & { nombre: string })[]; alta?: boolean; variante?: string }) {
+function TablaCostos({ titulo, etiqueta, filas, alta = false, variante }: { titulo: string; etiqueta: string; filas: (FilaCostos & { nombre: string; referencia?: string | null })[]; alta?: boolean; variante?: string }) {
+  const [busqueda, setBusqueda] = useState("");
+  const [filtroCosto, setFiltroCosto] = useState("todos");
+  const esProducto = variante === "productos";
+  const patron = busqueda.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es");
+  const filasVisibles = filas.filter((fila) => {
+    const texto = `${fila.referencia ?? ""} ${fila.nombre}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es");
+    const coincideBusqueda = !esProducto || patron === "" || texto.includes(patron);
+    const coincideCosto = !esProducto || filtroCosto === "todos" || (filtroCosto === "con-costo" ? fila.costo != null : fila.costo == null);
+    return coincideBusqueda && coincideCosto;
+  });
+
   return (
     <Tarjeta titulo={titulo} sinRelleno>
-      {filas.length === 0 ? <Vacio titulo="Sin costo en el corte" detalle="Ninguna línea coincide con los filtros seleccionados." /> : (
-        <div className={alta ? "tabla-envoltorio tabla-envoltorio--alta" : "tabla-envoltorio"}><table className={variante ? `tabla tabla--costos tabla--costos--${variante}` : "tabla tabla--costos"}><colgroup><col className="tabla--costos__nombre" /><col className="tabla--costos__importe" /><col className="tabla--costos__importe" /><col className="tabla--costos__importe" /><col className="tabla--costos__importe" /><col className="tabla--costos__porcentaje" /><col className="tabla--costos__importe" /><col className="tabla--costos__porcentaje" /></colgroup><thead><tr><th scope="col">{etiqueta}</th><th scope="col" className="numero">Venta</th><th scope="col" className="numero">Kilos</th><th scope="col" className="numero">Venta kilo</th><th scope="col" className="numero">Costo</th><th scope="col" className="numero">Costo %</th><th scope="col" className="numero">Margen</th><th scope="col" className="numero">Margen %</th></tr></thead><tbody>{filas.map((fila) => <tr key={fila.nombre}><th scope="row" title={fila.nombre}>{fila.nombre}</th><td className="numero">{dinero(fila.venta)}</td><td className="numero">{numero(fila.kilos)}</td><td className="numero">{dinero(fila.venta_por_kilo)}</td><td className="numero">{dinero(fila.costo)}</td><td className="numero">{porcentaje(fila.costo_porcentaje)}</td><td className="numero">{dinero(fila.margen_valor)}</td><td className="numero">{porcentaje(fila.margen_porcentaje)}</td></tr>)}</tbody></table></div>
+      {filas.length === 0 ? (
+        <Vacio titulo="Sin costo en el corte" detalle="Ninguna línea coincide con los filtros seleccionados." />
+      ) : (
+        <>
+          {esProducto ? (
+            <section className="filtros" aria-label="Buscar y filtrar productos">
+              <label className="filtros__campo">
+                <span>Buscar producto</span>
+                <input
+                  className="campo__control"
+                  type="search"
+                  placeholder="Referencia o nombre…"
+                  value={busqueda}
+                  onChange={(evento) => setBusqueda(evento.target.value)}
+                />
+              </label>
+              <label className="filtros__campo">
+                <span>Disponibilidad de costo</span>
+                <select className="campo__control" value={filtroCosto} onChange={(evento) => setFiltroCosto(evento.target.value)}>
+                  <option value="todos">Todos los productos</option>
+                  <option value="con-costo">Con costo</option>
+                  <option value="sin-costo">Sin costo</option>
+                </select>
+              </label>
+              <span className="tenue" role="status" aria-live="polite">
+                {numero(String(filasVisibles.length))} de {numero(String(filas.length))} productos
+              </span>
+            </section>
+          ) : null}
+          {filasVisibles.length === 0 ? (
+            <Vacio titulo="Sin productos que coincidan" detalle="Cambia la búsqueda o el filtro de disponibilidad de costo." />
+          ) : (
+            <div className={alta ? "tabla-envoltorio tabla-envoltorio--alta" : "tabla-envoltorio"}>
+              <table className={variante ? `tabla tabla--costos tabla--costos--${variante}` : "tabla tabla--costos"}>
+                <colgroup>
+                  <col className="tabla--costos__nombre" />
+                  <col className="tabla--costos__importe" />
+                  <col className="tabla--costos__importe" />
+                  <col className="tabla--costos__importe" />
+                  <col className="tabla--costos__importe" />
+                  <col className="tabla--costos__porcentaje" />
+                  <col className="tabla--costos__importe" />
+                  <col className="tabla--costos__porcentaje" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th scope="col">{etiqueta}</th>
+                    <th scope="col" className="numero">Venta</th>
+                    <th scope="col" className="numero">Kilos</th>
+                    <th scope="col" className="numero">Venta kilo</th>
+                    <th scope="col" className="numero">Costo</th>
+                    <th scope="col" className="numero">Costo %</th>
+                    <th scope="col" className="numero">Margen</th>
+                    <th scope="col" className="numero">Margen %</th>
+                  </tr>
+                </thead>
+                <tbody>{filasVisibles.map((fila) => (
+                  <tr key={fila.nombre}>
+                    <th scope="row" title={fila.nombre}>{fila.nombre}</th>
+                    <td className="numero">{dinero(fila.venta)}</td>
+                    <td className="numero">{numero(fila.kilos)}</td>
+                    <td className="numero">{dinero(fila.venta_por_kilo)}</td>
+                    <td className="numero">{dinero(fila.costo)}</td>
+                    <td className="numero">{porcentaje(fila.costo_porcentaje)}</td>
+                    <td className="numero">{dinero(fila.margen_valor)}</td>
+                    <td className="numero">{porcentaje(fila.margen_porcentaje)}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </Tarjeta>
   );
