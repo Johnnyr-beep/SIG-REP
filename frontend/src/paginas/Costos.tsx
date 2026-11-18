@@ -1,5 +1,7 @@
 /** Costos y margen de Carnes Santacruz, calculados sobre la venta cargada. */
 
+import { useSearchParams } from "react-router-dom";
+import { MODO_EJEMPLOS } from "@/api/cliente";
 import { useCostos } from "@/api/consultas";
 import type { FilaCostos } from "@/api/tipos";
 import { useAuth } from "@/auth/ContextoAuth";
@@ -7,8 +9,42 @@ import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import { BarraFiltros, useFiltros } from "@/componentes/filtros";
 import { Indicador, PieCalculo } from "@/componentes/indicadores";
 import { dinero, numero, porcentaje } from "@/utilidades/formato";
+import { AcumulacionTpvDemo } from "./AcumulacionTpvDemo";
 
 export function Costos() {
+  const [parametros, fijarParametros] = useSearchParams();
+  const vistaTpv = parametros.get("vista_costos") === "tpv";
+
+  function cambiarVista(tpv: boolean) {
+    const siguientes = new URLSearchParams(parametros);
+    if (tpv) siguientes.set("vista_costos", "tpv");
+    else siguientes.delete("vista_costos");
+    fijarParametros(siguientes);
+  }
+
+  if (!MODO_EJEMPLOS) return <CostosMargen />;
+
+  return (
+    <div className="pila">
+      <section className="filtros" aria-label="Vistas de costos">
+        <fieldset className="segmentado">
+          <legend className="solo-lectores">Vista de costos</legend>
+          <label className={`segmentado__opcion${!vistaTpv ? " segmentado__opcion--activa" : ""}`}>
+            <input type="radio" name="vista-costos" checked={!vistaTpv} onChange={() => cambiarVista(false)} />
+            Costos y margen
+          </label>
+          <label className={`segmentado__opcion${vistaTpv ? " segmentado__opcion--activa" : ""}`}>
+            <input type="radio" name="vista-costos" checked={vistaTpv} onChange={() => cambiarVista(true)} />
+            Acumulación y cierre de TPV
+          </label>
+        </fieldset>
+      </section>
+      {vistaTpv ? <AcumulacionTpvDemo /> : <CostosMargen />}
+    </div>
+  );
+}
+
+function CostosMargen() {
   const control = useFiltros();
   const { filtros } = control;
   const { data, isLoading, error } = useCostos(filtros);
