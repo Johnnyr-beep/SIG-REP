@@ -38,6 +38,7 @@ import type {
   RechazoIngesta,
   RespuestaExistenciasBodega,
   RespuestaClientes,
+  RespuestaCanalesFacturados,
   RespuestaCumplimiento,
   RespuestaCostos,
   RespuestaTablero,
@@ -356,6 +357,7 @@ export function useExportarVentaDiariaAsadero(): UseMutationResult<
 export function useClientes(
   filtros: FiltrosReporte,
   por: CorteClientes,
+  habilitado = true,
 ): UseQueryResult<RespuestaClientes> {
   return useQuery({
     queryKey: claves.clientes(filtros, por),
@@ -363,6 +365,22 @@ export function useClientes(
       peticion<RespuestaClientes>("/reportes/clientes", {
         parametros: { ...comoParametros(filtros), por },
       }),
+    enabled: habilitado,
+    staleTime: 60_000,
+  });
+}
+
+export function useVentasFacturadasPorCanal(
+  periodo: string,
+  habilitado = true,
+): UseQueryResult<RespuestaCanalesFacturados> {
+  return useQuery({
+    queryKey: ["reporte", "ventas-facturadas-canal", periodo],
+    queryFn: () =>
+      peticion<RespuestaCanalesFacturados>("/reportes/clientes/canales-facturados", {
+        parametros: { periodo },
+      }),
+    enabled: habilitado,
     staleTime: 60_000,
   });
 }

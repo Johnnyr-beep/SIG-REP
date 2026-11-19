@@ -8,7 +8,7 @@
 
 import { useSearchParams } from "react-router-dom";
 
-import { useClientes, useExportar } from "@/api/consultas";
+import { useClientes, useExportar, useVentasFacturadasPorCanal } from "@/api/consultas";
 import { useAuth } from "@/auth/ContextoAuth";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import { BarraFiltros, useFiltros } from "@/componentes/filtros";
@@ -25,7 +25,12 @@ export function Clientes() {
   const porParametro = parametros.get("por");
   const por = esCorteClientes(porParametro) ? porParametro : "cliente";
 
-  const { data, isLoading, error } = useClientes(filtros, por);
+  const esCanalFacturado = por === "canal";
+  const { data, isLoading, error } = useClientes(filtros, por, !esCanalFacturado);
+  const canalesFacturados = useVentasFacturadasPorCanal(
+    filtros.periodo,
+    esCanalFacturado,
+  );
   const exportar = useExportar();
   const { tienePermiso } = useAuth();
 
@@ -44,8 +49,10 @@ export function Clientes() {
     <div className="pila">
       <BarraFiltros
         control={control}
-        mostrar={{ categoria: true }}
-        acciones={tienePermiso("PERMISO_DESCARGAR_CLIENTES") ? (
+        mostrar={esCanalFacturado
+          ? { corte: false, grupo: false, puntoVenta: false, categoria: false, medida: false }
+          : { categoria: true }}
+        acciones={!esCanalFacturado && tienePermiso("PERMISO_DESCARGAR_CLIENTES") ? (
           <button
             type="button"
             className="boton boton--pequeno"
@@ -83,12 +90,62 @@ export function Clientes() {
         </div>
       </section>
 
-      <AvisoError error={error} />
-      <AvisoError error={exportar.error} />
+      <AvisoError error={esCanalFacturado ? canalesFacturados.error : error} />
+      {!esCanalFacturado ? <AvisoError error={exportar.error} /> : null}
 
-      {isLoading ? <Cargando texto="Agrupando la venta…" /> : null}
+      {(esCanalFacturado ? canalesFacturados.isLoading : isLoading) ? (
+        <Cargando texto={esCanalFacturado ? "Consultando facturación por canal…" : "Agrupando la venta…"} />
+      ) : null}
 
-      {data ? (
+      {esCanalFacturado && canalesFacturados.data ? (
+        <Tarjeta
+          titulo="Venta facturada por canal"
+          descripcion={`Mes completo ${canalesFacturados.data.periodo} · Fuente: facturación SIESA. No aplica corte diario, punto de venta ni categoría.`}
+          sinRelleno
+        >
+          {canalesFacturados.data.filas.length === 0 ? (
+            <Vacio
+              titulo="Sin ventas facturadas por canal en este mes"
+              detalle="La fuente SIESA no reporta filas para el período seleccionado."
+            />
+          ) : (
+            <div className="tabla-envoltorio">
+              <table className="tabla">
+                <thead>
+                  <tr>
+                    <th scope="col">Canal</th>
+                    <th scope="col" className="numero">Venta neta</th>
+                    <th scope="col" className="columna-participacion">Participación</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {canalesFacturados.data.filas.map((fila) => (
+                    <tr key={fila.canal}>
+                      <th scope="row">{fila.canal}</th>
+                      <td className="numero">{dinero(fila.venta)}</td>
+                      <td className="columna-participacion">
+                        <div className="participacion">
+                          <span className="participacion__cifra">{porcentaje(fila.participacion)}</span>
+                          <BarraParticipacion valor={fila.participacion} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <th scope="row">Total facturado</th>
+                    <td className="numero">{dinero(canalesFacturados.data.total_venta)}</td>
+                    <td className="numero">{porcentaje("1")}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </Tarjeta>
+      ) : null}
+
+      {!esCanalFacturado && data ? (
         <Tarjeta
           titulo={`Venta por ${CORTES_CLIENTES.find((opcion) => opcion.valor === por)?.etiqueta.toLowerCase() ?? "cliente"}`}
           descripcion="Ordenado por participación en la venta del período."

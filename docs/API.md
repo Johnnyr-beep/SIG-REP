@@ -78,7 +78,8 @@ Todos aceptan los mismos filtros:
 `?punto_venta=402,405,603` — códigos C.O. separados por coma. Vale en los
 **cuatro** reportes (tablero, cumplimiento, venta diaria y clientes) y en
 `/exportar`: es el mismo control de la misma barra de filtros, y sería raro que
-se comportara distinto según la pantalla.
+se comportara distinto según la pantalla. La venta facturada por canal se
+documenta aparte: es mensual y no admite estos filtros POS.
 
 - **Un solo código y la ausencia se comportan exactamente como antes.**
   `?punto_venta=405` es la lista de uno. `?punto_venta=` y `?punto_venta=,,`
@@ -187,14 +188,21 @@ GET /reportes/venta-diaria?periodo=2026-08[&desde=2026-07-25&hasta=2026-08-05]
 GET /reportes/clientes?periodo=2026-08&por=cliente|vendedor|canal|condicion_pago
     -> { filas: [ {clave, nombre, venta, kilos, margen_porcentaje, participacion} ] }
 
+GET /reportes/clientes/canales-facturados?periodo=2026-09
+  -> { periodo, total_venta,
+     filas: [ {canal, venta, participacion} ] }
+
 GET /reportes/{cualquiera}/exportar?...   -> .xlsx (mismos filtros)
 ```
 
 `semaforo`: `VERDE` | `AMARILLO` | `ROJO` | `SIN_PRESUPUESTO`.
 
-Toda respuesta de reporte incluye `parametros_calculo` con `dias_habiles`,
+Las respuestas de reportes POS incluyen `parametros_calculo` con `dias_habiles`,
 `dias_trabajados`, `fecha_corte` y `umbrales` — para que la pantalla pueda
-mostrar de dónde sale cada número (§4.2 de la especificación).
+mostrar de dónde sale cada número (§4.2 de la especificación). El reporte
+facturado por canal consulta el mes completo en SIESA y no tiene corte diario,
+filtros por grupo, punto de venta, categoría ni medida. No se ofrece a usuarios
+con alcance restringido por PDV porque la fuente no identifica el punto POS.
 
 ### Venta diaria
 

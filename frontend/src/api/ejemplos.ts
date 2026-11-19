@@ -47,6 +47,7 @@ import type {
   PuntoVenta,
   RechazoIngesta,
   RespuestaClientes,
+  RespuestaCanalesFacturados,
   RespuestaCumplimiento,
   RespuestaTablero,
   RespuestaVentaDiaria,
@@ -1045,6 +1046,23 @@ function clientes(opciones: Opciones): RespuestaClientes {
   };
 }
 
+function ventasFacturadasPorCanal(opciones: Opciones): RespuestaCanalesFacturados {
+  const periodo =
+    typeof opciones.parametros?.periodo === "string"
+      ? opciones.parametros.periodo
+      : "2026-09";
+  return {
+    periodo,
+    total_venta: "8426135900.00",
+    filas: [
+      { canal: "HORECA", venta: "4621084300.00", participacion: "0.5483" },
+      { canal: "CLIENTES NACIONALES", venta: "2145500000.00", participacion: "0.2545" },
+      { canal: "CONSUMIDOR FINAL", venta: "1464051600.00", participacion: "0.1738" },
+      { canal: "SIN CLASE", venta: "19550000.00", participacion: "0.0023" },
+    ],
+  };
+}
+
 function calendario(): FilaCalendario[] {
   return ZONAS.map((zona) => ({
     zona: { id: zona.id, nombre: zona.nombre },
@@ -1390,6 +1408,7 @@ export async function responder<T>(
     "/reportes/cumplimiento": () => cumplimiento(opciones),
     "/reportes/venta-diaria": () => ventaDiaria(opciones),
     "/reportes/clientes": () => clientes(opciones),
+    "/reportes/clientes/canales-facturados": () => ventasFacturadasPorCanal(opciones),
     "/ingesta/corridas": () => CORRIDAS,
   };
 

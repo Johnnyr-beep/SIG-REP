@@ -19,6 +19,7 @@ from sqlalchemy import select
 
 from app.api.v1 import LecturaDep
 from app.application.services import exportacion_service
+from app.application.services.canales_facturados_service import ventas_facturadas_por_canal
 from app.application.services.reportes_service import FiltrosReporte, ReportesService
 from app.application.services.tpv_service import RespuestaTpv, resumir_tpv
 from app.core.config import obtener_settings
@@ -55,6 +56,7 @@ from app.infrastructure.fuentes.tpv import consultar_registros_tpv
 from app.infrastructure.models.organizacion import PuntoVenta
 from app.infrastructure.models.usuario import Usuario
 from app.schemas.reportes import (
+    RespuestaCanalesFacturados,
     RespuestaClientes,
     RespuestaCostos,
     RespuestaCumplimiento,
@@ -362,6 +364,30 @@ def clientes(
     """RBAC: cualquier rol autenticado; JEFE_PDV solo ve sus puntos."""
     return ReportesService(sesion).clientes(
         _filtros(usuario, periodo, hasta, grupo, punto_venta, categoria, Medida.VALOR), por
+    )
+
+
+@router.get(
+    "/clientes/canales-facturados",
+    response_model=RespuestaCanalesFacturados,
+    summary="Ventas facturadas por canal",
+)
+def canales_facturados(
+    usuario: Annotated[Usuario, Depends(exigir_permiso_consulta(PERMISO_CONSULTAR_CLIENTES))],
+    unidad: UnidadDep,
+    periodo: str = PeriodoQuery,
+) -> RespuestaCanalesFacturados:
+    """Consulta el mes completo; la fuente facturada no admite corte ni PDV."""
+    if alcance_puntos_venta(usuario) is not None:
+        raise ErrorAutorizacion(
+            "El reporte facturado por canal no admite alcance por punto de venta: "
+            "la fuente no identifica el punto de venta POS."
+        )
+    settings = obtener_settings()
+    return ventas_facturadas_por_canal(
+        periodo,
+        settings.companias_siesa_de(unidad),
+        settings=settings,
     )
 
 

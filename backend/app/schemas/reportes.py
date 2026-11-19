@@ -358,3 +358,17 @@ class RespuestaClientes(BaseModel):
     por: str
     filas: list[FilaClientes]
     parametros_calculo: ParametrosCalculo
+
+
+class FilaCanalFacturado(BaseModel):
+    canal: str
+    venta: DecimalStr
+    participacion: DecimalStr | None = None
+
+
+class RespuestaCanalesFacturados(BaseModel):
+    """Venta neta facturada por canal para el mes completo consultado en SIESA."""
+
+    periodo: str
+    total_venta: DecimalStr
+    filas: list[FilaCanalFacturado]

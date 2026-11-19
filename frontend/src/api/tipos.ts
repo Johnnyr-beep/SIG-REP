@@ -523,6 +523,18 @@ export interface RespuestaClientes {
   parametros_calculo?: ParametrosCalculo | null;
 }
 
+export interface FilaCanalFacturado {
+  canal: string;
+  venta: string;
+  participacion: string | null;
+}
+
+export interface RespuestaCanalesFacturados {
+  periodo: string;
+  total_venta: string;
+  filas: FilaCanalFacturado[];
+}
+
 // ── Ingesta ──────────────────────────────────────────────────────────────────
 
 export type FuenteIngesta = "siesa" | "excel";
