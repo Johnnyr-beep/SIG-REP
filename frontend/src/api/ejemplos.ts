@@ -1047,12 +1047,14 @@ function clientes(opciones: Opciones): RespuestaClientes {
 }
 
 function ventasFacturadasPorCanal(opciones: Opciones): RespuestaCanalesFacturados {
-  const periodo =
+  const periodoSolicitado =
     typeof opciones.parametros?.periodo === "string"
       ? opciones.parametros.periodo
       : "2026-09";
+  const periodo = periodoSolicitado > "2026-09" ? "2026-09" : periodoSolicitado;
   return {
     periodo,
+    periodo_solicitado: periodoSolicitado,
     total_venta: "8426135900.00",
     filas: [
       { canal: "HORECA", venta: "4621084300.00", participacion: "0.5483" },

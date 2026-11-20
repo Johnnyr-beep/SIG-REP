@@ -16,6 +16,14 @@ from app.schemas.reportes import RespuestaCanalesFacturados
 
 _CENTAVO = Decimal("0.01")
 _FRACCION = Decimal("0.000001")
+_MESES_BUSQUEDA = 12
+
+
+def _periodo_anterior(periodo: str, meses: int) -> str:
+    anio, mes = (int(parte) for parte in periodo.split("-"))
+    indice = anio * 12 + mes - 1 - meses
+    anio_encontrado, mes_cero = divmod(indice, 12)
+    return f"{anio_encontrado:04d}-{mes_cero + 1:02d}"
 
 
 def ventas_facturadas_por_canal(
@@ -25,12 +33,21 @@ def ventas_facturadas_por_canal(
     settings: Settings,
     cliente: httpx.Client | None = None,
 ) -> RespuestaCanalesFacturados:
-    registros = consultar_ventas_por_canal(
-        periodo.replace("-", ""),
-        companias,
-        configuracion=ConfiguracionVentasCanal.desde_settings(settings),
-        cliente=cliente,
-    )
+    configuracion = ConfiguracionVentasCanal.desde_settings(settings)
+    periodo_encontrado = periodo
+    registros = []
+    for diferencia in range(_MESES_BUSQUEDA):
+        periodo_encontrado = _periodo_anterior(periodo, diferencia)
+        registros = consultar_ventas_por_canal(
+            periodo_encontrado.replace("-", ""),
+            companias,
+            configuracion=configuracion,
+            cliente=cliente,
+        )
+        if registros:
+            break
+    else:
+        periodo_encontrado = periodo
     ventas: dict[str, Decimal] = defaultdict(Decimal)
     for registro in registros:
         ventas[registro.canal] += registro.venta_neta
@@ -50,7 +67,8 @@ def ventas_facturadas_por_canal(
     ]
     total_texto = format(total.quantize(_CENTAVO, rounding=ROUND_HALF_UP), "f")
     return RespuestaCanalesFacturados(
-        periodo=periodo,
+        periodo=periodo_encontrado,
+        periodo_solicitado=periodo,
         total_venta=total_texto,
         filas=filas,
     )

@@ -531,6 +531,7 @@ export interface FilaCanalFacturado {
 
 export interface RespuestaCanalesFacturados {
   periodo: string;
+  periodo_solicitado: string;
   total_venta: string;
   filas: FilaCanalFacturado[];
 }

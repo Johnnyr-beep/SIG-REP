@@ -91,6 +91,52 @@ def test_ventas_facturadas_por_canal_agrega_y_calcula_participacion(
     ]
 
 
+def test_si_el_mes_no_tiene_filas_usa_el_mes_disponible_mas_reciente(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    periodos: list[str] = []
+
+    def consultar(periodo: str, *_args, **_kwargs):
+        periodos.append(periodo)
+        if periodo == "202609":
+            return [RegistroVentaCanal("HORECA", Decimal("100"))]
+        return []
+
+    monkeypatch.setattr(canales_facturados_service, "consultar_ventas_por_canal", consultar)
+    settings = Settings(siesa_token=SecretStr("token-de-prueba"))
+
+    respuesta = canales_facturados_service.ventas_facturadas_por_canal(
+        "2026-11", (4,), settings=settings
+    )
+
+    assert periodos == ["202611", "202610", "202609"]
+    assert respuesta.periodo_solicitado == "2026-11"
+    assert respuesta.periodo == "2026-09"
+    assert respuesta.total_venta == Decimal("100.00")
+
+
+def test_si_no_hay_datos_en_12_meses_mantiene_el_periodo_solicitado(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    periodos: list[str] = []
+
+    def sin_datos(periodo: str, *_args, **_kwargs):
+        periodos.append(periodo)
+        return []
+
+    monkeypatch.setattr(canales_facturados_service, "consultar_ventas_por_canal", sin_datos)
+    settings = Settings(siesa_token=SecretStr("token-de-prueba"))
+
+    respuesta = canales_facturados_service.ventas_facturadas_por_canal(
+        "2026-11", (4,), settings=settings
+    )
+
+    assert len(periodos) == 12
+    assert respuesta.periodo_solicitado == "2026-11"
+    assert respuesta.periodo == "2026-11"
+    assert respuesta.filas == []
+
+
 def test_api_ventas_facturadas_por_canal_y_alcance_pdv(
     cliente_http: httpx.Client,
     gerente: dict[str, str],
@@ -103,6 +149,7 @@ def test_api_ventas_facturadas_por_canal_y_alcance_pdv(
         llamadas.append((periodo, companias))
         return RespuestaCanalesFacturados(
             periodo=periodo,
+            periodo_solicitado=periodo,
             total_venta="100.00",
             filas=[{"canal": "HORECA", "venta": "100.00", "participacion": "1.000000"}],
         )

@@ -370,5 +370,6 @@ class RespuestaCanalesFacturados(BaseModel):
     """Venta neta facturada por canal para el mes completo consultado en SIESA."""
 
     periodo: str
+    periodo_solicitado: str
     total_venta: DecimalStr
     filas: list[FilaCanalFacturado]

@@ -189,7 +189,7 @@ GET /reportes/clientes?periodo=2026-08&por=cliente|vendedor|canal|condicion_pago
     -> { filas: [ {clave, nombre, venta, kilos, margen_porcentaje, participacion} ] }
 
 GET /reportes/clientes/canales-facturados?periodo=2026-09
-  -> { periodo, total_venta,
+  -> { periodo, periodo_solicitado, total_venta,
      filas: [ {canal, venta, participacion} ] }
 
 GET /reportes/{cualquiera}/exportar?...   -> .xlsx (mismos filtros)
@@ -202,7 +202,9 @@ Las respuestas de reportes POS incluyen `parametros_calculo` con `dias_habiles`,
 mostrar de dónde sale cada número (§4.2 de la especificación). El reporte
 facturado por canal consulta el mes completo en SIESA y no tiene corte diario,
 filtros por grupo, punto de venta, categoría ni medida. No se ofrece a usuarios
-con alcance restringido por PDV porque la fuente no identifica el punto POS.
+con alcance restringido por PDV porque la fuente no identifica el punto POS. Si
+el mes solicitado no tiene filas, retrocede hasta 12 meses y devuelve el último
+mes disponible en `periodo`; `periodo_solicitado` conserva la elección original.
 
 ### Venta diaria
 

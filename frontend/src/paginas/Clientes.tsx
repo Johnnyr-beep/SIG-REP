@@ -15,7 +15,7 @@ import { BarraFiltros, useFiltros } from "@/componentes/filtros";
 import { BarraParticipacion } from "@/componentes/graficos";
 import { PieCalculo } from "@/componentes/indicadores";
 import { CORTES_CLIENTES, esCorteClientes } from "@/utilidades/dominio";
-import { dinero, kilos, porcentaje } from "@/utilidades/formato";
+import { dinero, kilos, periodoLargo, porcentaje } from "@/utilidades/formato";
 
 export function Clientes() {
   const control = useFiltros();
@@ -100,7 +100,9 @@ export function Clientes() {
       {esCanalFacturado && canalesFacturados.data ? (
         <Tarjeta
           titulo="Venta facturada por canal"
-          descripcion={`Mes completo ${canalesFacturados.data.periodo} · Fuente: facturación SIESA. No aplica corte diario, punto de venta ni categoría.`}
+          descripcion={canalesFacturados.data.periodo !== canalesFacturados.data.periodo_solicitado
+            ? `Sin datos para ${periodoLargo(canalesFacturados.data.periodo_solicitado)}. Se muestra el último mes disponible: ${periodoLargo(canalesFacturados.data.periodo)} · Fuente: facturación SIESA.`
+            : `Mes completo ${periodoLargo(canalesFacturados.data.periodo)} · Fuente: facturación SIESA. No aplica corte diario, punto de venta ni categoría.`}
           sinRelleno
         >
           {canalesFacturados.data.filas.length === 0 ? (
