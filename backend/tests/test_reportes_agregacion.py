@@ -296,6 +296,7 @@ def test_tablero_sin_periodo_anterior_no_inventa_el_comparativo(
     assert tablero.venta_mayo is None
     assert tablero.venta_ultimo_mes_cerrado is None
     assert tablero.variacion_venta_mayo_a_ultimo_mes is None
+    assert tablero.variacion_proyeccion_vs_promedio_desde_mayo is None
 
 
 def test_tablero_variacion_proyeccion_presupuesto_es_proyeccion_sobre_presupuesto_menos_uno(
@@ -365,6 +366,9 @@ def test_promedio_2026_usa_mayo_hasta_octubre_y_excluye_2025_y_noviembre(
     assert tablero.venta_mayo == D("600.00")
     assert tablero.venta_ultimo_mes_cerrado == D("100.00")
     assert tablero.variacion_venta_mayo_a_ultimo_mes == D("-0.8333")
+    assert tablero.variacion_proyeccion_vs_promedio_desde_mayo == (
+        tablero.consolidado.proyeccion / tablero.venta_promedio_desde_mayo - D("1")
+    ).quantize(D("0.0001"))
 
 
 # ── §7 Alcance: el bloque `sin_presupuesto` no es tierra de nadie ─────────────

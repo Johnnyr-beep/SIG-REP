@@ -584,6 +584,10 @@ function tablero(opciones: Opciones): RespuestaTablero {
     ventaMayo === null || ventaMayo === 0 || ventaUltimoMesCerrado === null || mesUltimoCerrado === 5
       ? null
       : (ventaUltimoMesCerrado - ventaMayo) / ventaMayo;
+  const variacionProyeccionVsPromedioDesdeMayo =
+    promedioDesdeMayo === null || promedioDesdeMayo === 0 || consolidado.proyeccion === null
+      ? null
+      : Number(consolidado.proyeccion) / promedioDesdeMayo - 1;
 
   return {
     periodo: PERIODO,
@@ -603,6 +607,10 @@ function tablero(opciones: Opciones): RespuestaTablero {
       ventaUltimoMesCerrado === null ? null : cadena(ventaUltimoMesCerrado),
     variacion_venta_mayo_a_ultimo_mes:
       variacionMayoAUltimoMes === null ? null : cadena(variacionMayoAUltimoMes, 4),
+    variacion_proyeccion_vs_promedio_desde_mayo:
+      variacionProyeccionVsPromedioDesdeMayo === null
+        ? null
+        : cadena(variacionProyeccionVsPromedioDesdeMayo, 4),
     consolidado,
     grupos,
     ventas_anuales: {

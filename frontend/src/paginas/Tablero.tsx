@@ -69,10 +69,10 @@ export function Tablero() {
       : data.variacion_proyeccion_mes_anterior.trim().startsWith("-")
         ? "peligro"
         : "exito";
-  const tonoPromedioDesdeMayo =
-    data?.variacion_venta_mayo_a_ultimo_mes == null
+  const tonoProyeccionVsPromedioDesdeMayo =
+    data?.variacion_proyeccion_vs_promedio_desde_mayo == null
       ? undefined
-      : data.variacion_venta_mayo_a_ultimo_mes.trim().startsWith("-")
+      : data.variacion_proyeccion_vs_promedio_desde_mayo.trim().startsWith("-")
         ? "peligro"
         : "exito";
 
@@ -235,25 +235,23 @@ export function Tablero() {
                       {data.mes_ultimo_cerrado_promedio === null
                         ? "Sin meses completos desde mayo"
                         : `Promedio mayo–${mesCorto(`${data.periodo.slice(0, 4)}-${String(data.mes_ultimo_cerrado_promedio).padStart(2, "0")}`)} ${data.periodo.slice(0, 4)}`}
-                    </span>
-                    <span>
-                      Mayo: {grande(data.venta_mayo)} · Último mes cerrado: {grande(data.venta_ultimo_mes_cerrado)}
+                      {" · "}Proyección al cierre: {grande(data.consolidado.proyeccion)}
                     </span>
                     <span
-                      className={`consolidado__variacion-mensual${tonoPromedioDesdeMayo ? ` consolidado__variacion-mensual--${tonoPromedioDesdeMayo}` : ""}`}
+                      className={`consolidado__variacion-mensual${tonoProyeccionVsPromedioDesdeMayo ? ` consolidado__variacion-mensual--${tonoProyeccionVsPromedioDesdeMayo}` : ""}`}
                     >
-                      {data.variacion_venta_mayo_a_ultimo_mes === null
-                        ? "Variación mayo vs. último mes cerrado: —"
-                        : `${data.variacion_venta_mayo_a_ultimo_mes.trim().startsWith("-") ? "▼ " : "▲ "}${porcentaje(data.variacion_venta_mayo_a_ultimo_mes)} último mes vs. mayo`}
+                      {data.variacion_proyeccion_vs_promedio_desde_mayo === null
+                        ? "Variación proyección vs. promedio mensual: —"
+                        : `${data.variacion_proyeccion_vs_promedio_desde_mayo.trim().startsWith("-") ? "▼ " : "▲ "}${porcentaje(data.variacion_proyeccion_vs_promedio_desde_mayo)} proyección vs. promedio mensual`}
                     </span>
                   </>
                 }
                 pista={
                   <p className="formula">
-                    Promedio mensual desde mayo hasta el último mes completo. Variación: (venta último mes cerrado − venta mayo) / venta mayo.
+                    Promedio mensual desde mayo hasta el último mes completo. {FORMULAS.proyeccion_vs_promedio_desde_mayo}
                   </p>
                 }
-                tono={tonoPromedioDesdeMayo}
+                tono={tonoProyeccionVsPromedioDesdeMayo}
               />
               <Indicador
                 etiqueta="Margen"

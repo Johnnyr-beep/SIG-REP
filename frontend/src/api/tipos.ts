@@ -325,6 +325,7 @@ export interface RespuestaTablero {
   venta_mayo: string | null;
   venta_ultimo_mes_cerrado: string | null;
   variacion_venta_mayo_a_ultimo_mes: string | null;
+  variacion_proyeccion_vs_promedio_desde_mayo: string | null;
   consolidado: FilaIndicadores;
   grupos: FilaGrupo[];
   ventas_anuales: ResumenVentasAnuales;

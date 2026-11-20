@@ -113,6 +113,7 @@ GET /reportes/tablero?periodo=2026-08
   "venta_mayo": "5000000000.00",
   "venta_ultimo_mes_cerrado": "4000000000.00",
   "variacion_venta_mayo_a_ultimo_mes": "-0.2000",
+  "variacion_proyeccion_vs_promedio_desde_mayo": "3.7112",
   "consolidado": {
     "presupuesto": "20000000000.00",
     "venta": "5396105548.00",
@@ -166,6 +167,10 @@ anteriores quedan excluidos. `mes_ultimo_cerrado_promedio` identifica ese mes;
 `variacion_venta_mayo_a_ultimo_mes` es
 `(venta último mes cerrado - venta mayo) / venta mayo`; es `null` si falta la
 base de mayo o no hay dos meses cerrados para comparar.
+`variacion_proyeccion_vs_promedio_desde_mayo` compara la proyección al cierre
+con el promedio mensual desde mayo: `(proyección / promedio) - 1`; se publica
+como decimal, que la interfaz muestra como porcentaje, y es `null` si falta
+alguna base o el promedio es cero.
 
 `ventas_anuales` presenta los doce meses del año de `periodo`, en la medida
 solicitada (`valor` o `kilos`). Cada fila incluye el total del punto y el bloque

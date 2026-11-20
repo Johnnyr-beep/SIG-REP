@@ -363,6 +363,15 @@ class ReportesService:
             ctx, por_pdv, consolidado.proyeccion
         )
         promedio_venta_desde_mayo = self._promedio_venta_desde_mayo(ctx, set(por_pdv))
+        razon_proyeccion_promedio = dividir(
+            consolidado.proyeccion,
+            promedio_venta_desde_mayo.promedio,
+        )
+        variacion_proyeccion_vs_promedio_desde_mayo = redondear_porcentaje(
+            razon_proyeccion_promedio - Decimal(1)
+            if razon_proyeccion_promedio is not None
+            else None
+        )
 
         grupos: list[FilaGrupo] = []
         for grupo in self._grupos_ordenados():
@@ -387,6 +396,7 @@ class ReportesService:
             venta_mayo=promedio_venta_desde_mayo.venta_mayo,
             venta_ultimo_mes_cerrado=promedio_venta_desde_mayo.venta_ultimo_mes,
             variacion_venta_mayo_a_ultimo_mes=promedio_venta_desde_mayo.variacion_mayo_a_ultimo_mes,
+            variacion_proyeccion_vs_promedio_desde_mayo=variacion_proyeccion_vs_promedio_desde_mayo,
             consolidado=consolidado,
             grupos=grupos,
             ventas_anuales=self._ventas_anuales(ctx),
