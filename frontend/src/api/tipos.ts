@@ -328,6 +328,11 @@ export interface RespuestaTablero {
   variacion_proyeccion_vs_promedio_desde_mayo: string | null;
   numero_documentos: number | null;
   ticket_promedio: string | null;
+  margen_parcial_valor: string | null;
+  margen_parcial_porcentaje: string | null;
+  cobertura_costo_parcial: string | null;
+  lineas_con_costo: number;
+  lineas_totales: number;
   consolidado: FilaIndicadores;
   grupos: FilaGrupo[];
   ventas_anuales: ResumenVentasAnuales;

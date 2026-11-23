@@ -117,6 +117,12 @@ def test_una_linea_sin_costo_deja_el_margen_en_none_y_no_en_uno(
     )
     assert fila.margen_porcentaje is None
     assert fila.margen_valor is None
+    tablero = _tablero(sesion, SIN_COSTO)
+    assert tablero.margen_parcial_porcentaje is None
+    assert tablero.margen_parcial_valor is None
+    assert tablero.lineas_con_costo == 0
+    assert tablero.lineas_totales == 1
+    assert tablero.cobertura_costo_parcial == D("0.0000")
 
 
 def test_la_linea_sin_costo_se_persiste_nula_no_en_cero(sesion: Session, estructura: None) -> None:
@@ -219,10 +225,16 @@ def test_el_consolidado_calcula_el_margen_sin_pereira_cuando_pereira_no_tiene_co
 
     con_pereira = _tablero(sesion, CON_COSTO, SIN_COSTO).consolidado
     sin_pereira = _tablero(sesion, CON_COSTO).consolidado
+    tablero = _tablero(sesion, CON_COSTO, SIN_COSTO)
 
     assert con_pereira.margen_porcentaje == D("0.4000")
     assert con_pereira.venta == D("510000.00"), "la venta consolidada no pierde PEREIRA"
     assert con_pereira.cumplimiento == D("0.5000"), "510 000 / 1 020 000"
+    assert tablero.margen_parcial_porcentaje == D("0.4000")
+    assert tablero.margen_parcial_valor == D("4000.00")
+    assert tablero.lineas_con_costo == 1
+    assert tablero.lineas_totales == 2
+    assert tablero.cobertura_costo_parcial == D("0.5000")
 
     assert sin_pereira.margen_porcentaje == D("0.4000"), (
         "sin PEREIRA dentro, el margen del resto de la compañía se calcula igual que siempre"

@@ -270,6 +270,30 @@ export function Tablero() {
                 }
               />
               <Indicador
+                etiqueta="Margen parcial · líneas con costo"
+                valor={porcentaje(data.margen_parcial_porcentaje)}
+                nota={
+                  <>
+                    <span>{porMedida(data.margen_parcial_valor, "valor")}</span>
+                    <span>
+                      Cobertura: {porcentaje(data.cobertura_costo_parcial)} · {numero(String(data.lineas_con_costo))} / {numero(String(data.lineas_totales))} líneas
+                    </span>
+                  </>
+                }
+                pista={
+                  <p className="formula">
+                    Margen calculado solo con líneas que tienen costo informado; no representa las líneas sin costo.
+                  </p>
+                }
+                tono={
+                  data.margen_parcial_porcentaje == null
+                    ? undefined
+                    : data.margen_parcial_porcentaje.trim().startsWith("-")
+                      ? "peligro"
+                      : "exito"
+                }
+              />
+              <Indicador
                 etiqueta="Margen"
                 valor={porcentaje(data.consolidado.margen_porcentaje)}
                 nota={porMedida(data.consolidado.margen_valor, "valor")}

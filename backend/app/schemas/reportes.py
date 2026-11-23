@@ -206,6 +206,11 @@ class RespuestaTablero(BaseModel):
     variacion_proyeccion_vs_promedio_desde_mayo: DecimalStr | None = None
     numero_documentos: int | None = None
     ticket_promedio: DecimalStr | None = None
+    margen_parcial_valor: DecimalStr | None = None
+    margen_parcial_porcentaje: DecimalStr | None = None
+    cobertura_costo_parcial: DecimalStr | None = None
+    lineas_con_costo: int = 0
+    lineas_totales: int = 0
     consolidado: FilaIndicadores
     grupos: list[FilaGrupo]
     ventas_anuales: ResumenVentasAnuales

@@ -114,6 +114,11 @@ GET /reportes/tablero?periodo=2026-08
   "venta_ultimo_mes_cerrado": "4000000000.00",
   "variacion_venta_mayo_a_ultimo_mes": "-0.2000",
   "variacion_proyeccion_vs_promedio_desde_mayo": "3.7112",
+  "margen_parcial_valor": "1830000000.00",
+  "margen_parcial_porcentaje": "0.3391",
+  "cobertura_costo_parcial": "0.8743",
+  "lineas_con_costo": 30439,
+  "lineas_totales": 34825,
   "consolidado": {
     "presupuesto": "20000000000.00",
     "venta": "5396105548.00",
@@ -171,6 +176,10 @@ base de mayo o no hay dos meses cerrados para comparar.
 con el promedio mensual desde mayo: `(proyección / promedio) - 1`; se publica
 como decimal, que la interfaz muestra como porcentaje, y es `null` si falta
 alguna base o el promedio es cero.
+`margen_parcial_valor` y `margen_parcial_porcentaje` se calculan solo con las
+líneas que traen costo. No sustituyen el margen total: `cobertura_costo_parcial`
+es la fracción de líneas con costo sobre `lineas_totales`, y ambos conteos se
+devuelven para que la tarjeta identifique claramente el alcance del margen.
 
 `ventas_anuales` presenta los doce meses del año de `periodo`, en la medida
 solicitada (`valor` o `kilos`). Cada fila incluye el total del punto y el bloque

@@ -384,6 +384,24 @@ class ReportesService:
             and numero_documentos is not None
             else None
         )
+        venta_con_costo, costo_conocido = self._venta_y_costo_conocidos(ctx)
+        lineas_totales = sum(totales.lineas for totales in ctx.venta.values())
+        lineas_con_costo = sum(totales.lineas_con_costo for totales in ctx.venta.values())
+        margen_parcial_valor = (
+            redondear(margen_valor(venta_con_costo, costo_conocido), 2)
+            if lineas_con_costo > 0
+            else None
+        )
+        margen_parcial_porcentaje = (
+            redondear_porcentaje(margen_porcentaje(venta_con_costo, costo_conocido))
+            if lineas_con_costo > 0
+            else None
+        )
+        cobertura_costo_parcial = redondear_porcentaje(
+            dividir(Decimal(lineas_con_costo), Decimal(lineas_totales))
+            if lineas_totales > 0
+            else None
+        )
 
         razon_proyeccion_promedio = dividir(
             consolidado.proyeccion,
@@ -421,6 +439,11 @@ class ReportesService:
             variacion_proyeccion_vs_promedio_desde_mayo=variacion_proyeccion_vs_promedio_desde_mayo,
             numero_documentos=numero_documentos,
             ticket_promedio=ticket_promedio,
+            margen_parcial_valor=margen_parcial_valor,
+            margen_parcial_porcentaje=margen_parcial_porcentaje,
+            cobertura_costo_parcial=cobertura_costo_parcial,
+            lineas_con_costo=lineas_con_costo,
+            lineas_totales=lineas_totales,
             consolidado=consolidado,
             grupos=grupos,
             ventas_anuales=self._ventas_anuales(ctx),
@@ -1315,6 +1338,22 @@ class ReportesService:
     def _aplicar_filtro_puntos(self, consulta: Select, ctx: _Contexto) -> Select:  # type: ignore[type-arg]
         """Restringe la consulta a los puntos visibles del contexto."""
         return consulta.where(VentaLinea.punto_venta_id.in_(list(ctx.puntos) or [-1]))
+
+    def _venta_y_costo_conocidos(self, ctx: _Contexto) -> tuple[Decimal, Decimal]:
+        """Suma venta y costo solo de líneas cuyo costo fue informado."""
+        consulta = select(
+            func.sum(VentaLinea.valor_subtotal),
+            func.sum(VentaLinea.costo_promedio),
+        ).where(
+            VentaLinea.periodo_id == ctx.periodo.id,
+            VentaLinea.fecha <= ctx.fecha_corte,
+            VentaLinea.costo_promedio.is_not(None),
+        )
+        consulta = self._aplicar_filtro_puntos(consulta, ctx)
+        if ctx.categoria_id is not None:
+            consulta = consulta.where(VentaLinea.categoria_id == ctx.categoria_id)
+        venta, costo = self._sesion.execute(consulta).one()
+        return Decimal(venta or 0), Decimal(costo or 0)
 
     # ── Armado de filas ───────────────────────────────────────────────────────
 

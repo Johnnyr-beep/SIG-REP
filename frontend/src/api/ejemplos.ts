@@ -614,6 +614,11 @@ function tablero(opciones: Opciones): RespuestaTablero {
     numero_documentos: 28_420,
     ticket_promedio:
       cadena(Number(consolidado.venta) / 28_420, 2),
+    margen_parcial_valor: consolidado.margen_valor,
+    margen_parcial_porcentaje: consolidado.margen_porcentaje,
+    cobertura_costo_parcial: "0.8740",
+    lineas_con_costo: 30_439,
+    lineas_totales: 34_825,
     consolidado,
     grupos,
     ventas_anuales: {
