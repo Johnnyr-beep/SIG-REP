@@ -135,6 +135,12 @@ def test_crecimiento_contra_el_anio_anterior() -> None:
     assert ind.redondear_porcentaje(resultado) == D("-0.6551")
 
 
+def test_crecimiento_con_los_valores_confirmados() -> None:
+    resultado = ind.crecimiento(D("14213376076"), D("14815551934"))
+    assert resultado is not None
+    assert ind.redondear_porcentaje(resultado) == D("-0.0406")
+
+
 def test_crecimiento_sin_historia_es_none_no_cero() -> None:
     """Sin 2025 cargado el indicador viaja vacío (§4.3).
 

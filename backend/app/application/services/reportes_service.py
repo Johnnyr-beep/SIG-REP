@@ -1386,7 +1386,6 @@ class ReportesService:
                 costo_completo=venta.costo_completo,
                 presupuesto=presu.medida(ctx.medida),
                 venta_anio_anterior=anterior.medida(ctx.medida) if hay_anterior else None,
-                venta_comparable=comparable.medida(ctx.medida) if hay_anterior else None,
                 dias_habiles=habiles,
                 dias_trabajados=trabajados,
                 ideal_agregado=ideal_ponderado,

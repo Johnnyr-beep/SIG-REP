@@ -189,7 +189,7 @@ export const FORMULAS: Record<string, string> = {
   venta_diaria_requerida:
     "venta diaria requerida = (presupuesto − venta) ÷ (días hábiles − días trabajados)",
   crecimiento:
-    "crecimiento % = ((proyección de venta comparable ÷ venta del año anterior) − 1) × 100 · solo sobre los puntos con historia del año anterior",
+    "crecimiento % = ((proyección de venta total ÷ venta del año anterior) − 1) × 100",
   proyeccion_vs_promedio_desde_mayo:
     "variación % = ((proyección de venta ÷ venta promedio mensual desde mayo) − 1) × 100",
   margen_valor: "margen = Σ valor subtotal − Σ costo promedio",

@@ -85,7 +85,7 @@ def _tablero(
     )
 
 
-# ── §4 Dominio: ideal agregado, días exactos y venta comparable ───────────────
+# ── §4 Dominio: ideal agregado, días exactos y crecimiento anual ──────────────
 
 
 def test_el_ideal_agregado_sustituye_a_t_sobre_h() -> None:
@@ -159,28 +159,25 @@ def test_los_dias_se_publican_redondeados_pero_proyectan_exactos() -> None:
     ).quantize(D("0.01"))
 
 
-def test_el_crecimiento_se_mide_sobre_la_proyeccion_comparable() -> None:
-    """Los dos lados de la división hablan del mismo universo y mes completo.
-
-    2 000 M vendidos en 2026, de los cuales 1 000 M vienen de puntos con
-    historia; 1 000 M en 2025. El crecimiento de lo comparable es 0 %, no 100 %.
-    """
+def test_el_crecimiento_se_mide_sobre_la_proyeccion_total() -> None:
+    """La proyección total se compara con el total cargado de 2025."""
     resultado = ind.calcular_indicadores(
         ind.InsumosIndicadores(
             venta=D("2000000000"),
             costo=D(0),
-            venta_comparable=D("1000000000"),
             venta_anio_anterior=D("1000000000"),
+            dias_habiles=D("20"),
+            dias_trabajados=D("10"),
         ),
         UMBRALES,
     )
 
-    assert resultado.crecimiento is None
+    assert resultado.crecimiento == D("3.0000")
     assert resultado.venta == D("2000000000.00"), "la venta publicada no se recorta"
 
 
-def test_sin_venta_comparable_el_crecimiento_proyecta_la_venta_completa() -> None:
-    """Cuando todo el corte es comparable, se proyecta la venta completa."""
+def test_el_crecimiento_proyecta_la_venta_total() -> None:
+    """La proyección total se compara con el total cargado de 2025."""
     resultado = ind.calcular_indicadores(
         ind.InsumosIndicadores(
             venta=D("1500000000"),
@@ -592,7 +589,7 @@ def test_la_proyeccion_del_consolidado_usa_dias_sin_redondear(
     assert consolidado.dias_habiles == D("26.67"), "publicado con dos decimales, calculado exacto"
 
 
-# ── §4.3 Crecimiento comparable ───────────────────────────────────────────────
+# ── §4.3 Crecimiento anual con proyección total ──────────────────────────────
 
 
 def _venta_2025(sesion: Session, codigo_co: str, valor: str) -> None:
@@ -613,14 +610,10 @@ def _venta_2025(sesion: Session, codigo_co: str, valor: str) -> None:
     sesion.commit()
 
 
-def test_el_crecimiento_consolidado_proyecta_solo_los_puntos_con_historia(
+def test_el_crecimiento_consolidado_usa_la_proyeccion_total(
     sesion: Session, estructura: None
 ) -> None:
-    """Historia parcial: MALAMBO tiene historia y LAGRANJA no.
-
-    El consolidado proyecta la venta de MALAMBO al cierre y la compara contra
-    2025. LAGRANJA no entra en el numerador: no tiene historia comparable.
-    """
+    """La proyección total se compara con el total disponible de 2025."""
     for codigo in ("402", "403"):
         dar_presupuesto(sesion, codigo, "RES", "1000000000")
     dar_venta(sesion, "402", "RES", 5, "1200000000")
@@ -630,7 +623,7 @@ def test_el_crecimiento_consolidado_proyecta_solo_los_puntos_con_historia(
     consolidado = _tablero(sesion, alcance=_ids(sesion, "402", "403")).consolidado
 
     assert consolidado.venta == D("2200000000.00"), "la venta publicada es la de todos los puntos"
-    assert consolidado.crecimiento == D("1.4835")
+    assert consolidado.crecimiento == D("3.5531")
 
 
 def test_sin_ningun_punto_con_historia_el_crecimiento_consolidado_es_vacio(

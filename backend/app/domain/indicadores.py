@@ -286,7 +286,6 @@ class InsumosIndicadores:
     #: cumplimiento. Es el *same-store sales* del comercio: comparar 2026 con
     #: 2025 exige que los dos lados hablen del mismo universo de puntos, o dos
     #: puntos nuevos publican un crecimiento inventado. `None` = todo comparable.
-    venta_comparable: Decimal | None = None
     #: `ideal` ya ponderado por presupuesto para un agregado multizona. Cuando
     #: viene, sustituye a `T / H`. Ver `calcular_indicadores`.
     ideal_agregado: Decimal | None = None
@@ -295,11 +294,6 @@ class InsumosIndicadores:
     def base_margen(self) -> Decimal:
         """Venta en pesos contra la que se pondera el margen."""
         return self.venta if self.venta_valor is None else self.venta_valor
-
-    @property
-    def base_crecimiento(self) -> Decimal:
-        """Venta comparable que se proyecta para medir el crecimiento anual."""
-        return self.venta if self.venta_comparable is None else self.venta_comparable
 
 
 @dataclass(frozen=True, slots=True)
@@ -367,10 +361,6 @@ def calcular_indicadores(
     )
     promedio_diario = venta_diaria_promedio(insumos.venta, insumos.dias_trabajados)
     valor_proyeccion = proyeccion(promedio_diario, insumos.dias_habiles)
-    proyeccion_comparable = proyeccion(
-        venta_diaria_promedio(insumos.base_crecimiento, insumos.dias_trabajados),
-        insumos.dias_habiles,
-    )
 
     return ResultadoIndicadores(
         presupuesto=redondear(insumos.presupuesto, decimales_medida),
@@ -394,11 +384,10 @@ def calcular_indicadores(
             decimales_medida,
         ),
         venta_anio_anterior=redondear(insumos.venta_anio_anterior, decimales_medida),
-        # Contra la proyección de la venta **comparable**, no contra la venta
-        # parcial ni contra la venta total: los dos lados hablan del mismo
-        # universo de puntos y del mes completo.
+        # La variación anual usa la proyección total contra el total cargado
+        # de 2025: (proyección / venta anterior) - 1.
         crecimiento=redondear_porcentaje(
-            crecimiento(proyeccion_comparable, insumos.venta_anio_anterior)
+            crecimiento(valor_proyeccion, insumos.venta_anio_anterior)
         ),
         # El margen siempre es dinero: 2 decimales, y ponderado sobre la venta
         # en pesos aunque el reporte se esté mirando en kilos. Si al agregado le

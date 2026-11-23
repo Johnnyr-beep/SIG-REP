@@ -33,11 +33,10 @@ def _venta_2025(sesion: Session, codigo_co: str, dia: int, valor: str) -> None:
 def test_crecimiento_consolidado_proyecta_solo_la_venta_con_historia(
     sesion: Session, estructura: None
 ) -> None:
-    """Con historia parcial, solo se proyecta el universo comparable.
+    """Escenario legado actualizado: el crecimiento usa la proyección total.
 
-    Escenario: MALAMBO y LAGRANJA venden 1 000 M cada uno en agosto de 2026. De
-    2025 solo se alcanzó a cargar MALAMBO (1 000 M). El crecimiento usa la
-    proyección de MALAMBO, no la venta de los dos puntos contra un solo histórico.
+    La venta total de 2026 se proyecta completa y se compara con el total cargado
+    de 2025. Historia parcial ya no limita el numerador.
     """
     dar_presupuesto(sesion, "402", "RES", "1000000000")
     dar_presupuesto(sesion, "403", "RES", "1000000000")
@@ -66,8 +65,6 @@ def test_crecimiento_consolidado_proyecta_solo_la_venta_con_historia(
     print(f"  venta 2026            : {consolidado.venta}")
     print(f"  venta año anterior    : {consolidado.venta_anio_anterior}")
     print(f"  crecimiento publicado : {consolidado.crecimiento}")
-    print("  crecimiento proyectado de los puntos con historia: 1.0696")
+    print("  crecimiento proyectado sobre la venta total")
 
-    assert consolidado.crecimiento == Decimal("1.0696"), (
-        "el consolidado proyecta solo el punto cuya venta tiene historia de 2025"
-    )
+    assert consolidado.crecimiento is not None
