@@ -44,6 +44,7 @@ import { SelectorMarca } from "@/paginas/SelectorMarca";
 import { Tablero } from "@/paginas/Tablero";
 import { Usuarios } from "@/paginas/Usuarios";
 import { VentaDiaria } from "@/paginas/VentaDiaria";
+import { VentaPerCapita } from "@/paginas/VentaPerCapita";
 
 // Carga diferida a prop\u00f3sito: es la \u00fanica pantalla que usa Recharts, y
 // cargarla est\u00e1tica meter\u00eda esa librer\u00eda entera en el paquete de todas las
@@ -283,6 +284,10 @@ export function App() {
             <Route
               path="cumplimiento"
               element={<AccesoModulo permiso="PERMISO_CONSULTAR_CUMPLIMIENTO"><Cumplimiento /></AccesoModulo>}
+            />
+            <Route
+              path="venta-per-capita"
+              element={<AccesoModulo permiso="PERMISO_CONSULTAR_CUMPLIMIENTO"><VentaPerCapita /></AccesoModulo>}
             />
             <Route path="costos" element={<AccesoModulo permiso="PERMISO_CONSULTAR_COSTOS"><Costos /></AccesoModulo>} />
             <Route path="inventario-pdv" element={<AccesoModulo permiso="PERMISO_CONSULTAR_INVENTARIO"><InventarioPdv /></AccesoModulo>} />

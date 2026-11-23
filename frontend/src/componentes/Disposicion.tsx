@@ -48,6 +48,7 @@ const MENU_CARNES: GrupoNav[] = [
     items: [
       { ruta: "/", etiqueta: "Tablero", icono: "◱", permiso: "PERMISO_CONSULTAR_TABLERO" },
       { ruta: "/cumplimiento", etiqueta: "Cumplimiento por PDV", icono: "▤", permiso: "PERMISO_CONSULTAR_CUMPLIMIENTO" },
+      { ruta: "/venta-per-capita", etiqueta: "Venta per cápita", icono: "÷", permiso: "PERMISO_CONSULTAR_CUMPLIMIENTO" },
       { ruta: "/costos", etiqueta: "Costos y margen", icono: "◒", permiso: "PERMISO_CONSULTAR_COSTOS" },
       { ruta: "/inventario-pdv", etiqueta: "Inventario por punto de venta", icono: "▦", permiso: "PERMISO_CONSULTAR_INVENTARIO" },
       { ruta: "/venta-diaria", etiqueta: "Venta diaria acumulada", icono: "▦", permiso: "PERMISO_CONSULTAR_VENTA_DIARIA" },
@@ -237,6 +238,7 @@ const TITULOS: Record<string, string> = {
   "/frias/ingesta": "Ingesta de Carnes Frías",
   "/": "Tablero gerencial",
   "/cumplimiento": "Cumplimiento por punto de venta",
+  "/venta-per-capita": "Venta per cápita",
   "/costos": "Costos y margen",
   "/inventario-pdv": "Inventario por punto de venta",
   "/inventario-agropecuaria": "Inventario de Agropecuaria por bodega",
