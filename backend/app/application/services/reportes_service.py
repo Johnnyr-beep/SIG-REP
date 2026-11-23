@@ -28,7 +28,7 @@ from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
 from decimal import Decimal
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, case, func, select
 from sqlalchemy.orm import Session
 
 from app.application.services.calendario_service import CalendarioService, DiasZona
@@ -155,6 +155,7 @@ class Totales:
     """Sumas de un corte. Mutable a propósito: se acumula sobre él."""
 
     valor: Decimal = CERO
+    valor_con_costo: Decimal = CERO
     kilos: Decimal = CERO
     costo: Decimal = CERO
     lineas: int = 0
@@ -171,6 +172,7 @@ class Totales:
 
     def sumar(self, otro: Totales) -> None:
         self.valor += otro.valor
+        self.valor_con_costo += otro.valor_con_costo
         self.kilos += otro.kilos
         self.costo += otro.costo
         self.lineas += otro.lineas
@@ -192,6 +194,7 @@ class Totales:
 #: que es más de lo que se puede decir de `FILTER (WHERE ...)`.
 COLUMNAS_TOTALES = (
     func.sum(VentaLinea.valor_subtotal),
+    func.sum(case((VentaLinea.costo_promedio.is_not(None), VentaLinea.valor_subtotal), else_=CERO)),
     func.sum(VentaLinea.cantidad_inv),
     func.sum(VentaLinea.costo_promedio),
     func.count(),
@@ -201,6 +204,7 @@ COLUMNAS_TOTALES = (
 
 def _totales_de(
     valor: Decimal | None,
+    valor_con_costo: Decimal | None,
     kilos: Decimal | None,
     costo: Decimal | None,
     lineas: int | None,
@@ -209,6 +213,7 @@ def _totales_de(
     """Una fila de `COLUMNAS_TOTALES` a `Totales`."""
     return Totales(
         valor=Decimal(valor or 0),
+        valor_con_costo=Decimal(valor_con_costo or 0),
         kilos=Decimal(kilos or 0),
         costo=Decimal(costo or 0),
         lineas=lineas or 0,
@@ -857,18 +862,19 @@ class ReportesService:
     @staticmethod
     def _fila_costos(totales: Totales) -> FilaCostos:
         cobertura = dividir(Decimal(totales.lineas_con_costo), Decimal(totales.lineas))
-        costo = totales.costo if totales.costo_completo else None
+        costo = totales.costo if totales.lineas_con_costo > 0 else None
+        venta_margen = totales.valor if totales.costo_completo else totales.valor_con_costo
         return FilaCostos(
             venta=redondear_no_nulo(totales.valor, 2),
             kilos=redondear_no_nulo(totales.kilos, 2),
             venta_por_kilo=redondear(dividir(totales.valor, totales.kilos), 2),
             costo=redondear(costo, 2),
-            costo_porcentaje=redondear_porcentaje(dividir(costo, totales.valor)),
+            costo_porcentaje=redondear_porcentaje(dividir(costo, venta_margen)),
             margen_valor=redondear(
-                margen_valor(totales.valor, costo, costo_completo=totales.costo_completo), 2
+                margen_valor(venta_margen, costo, costo_completo=costo is not None), 2
             ),
             margen_porcentaje=redondear_porcentaje(
-                margen_porcentaje(totales.valor, costo, costo_completo=totales.costo_completo)
+                margen_porcentaje(venta_margen, costo, costo_completo=costo is not None)
             ),
             cobertura_costo=redondear_porcentaje(cobertura),
             lineas=totales.lineas,
@@ -920,10 +926,12 @@ class ReportesService:
             consulta = consulta.where(VentaLinea.categoria_id == ctx.categoria_id)
 
         return {
-            referencia: (nombre, _totales_de(valor, kilos, costo, lineas, con_costo))
-            for referencia, nombre, valor, kilos, costo, lineas, con_costo in self._sesion.execute(
-                consulta
+            referencia: (
+                nombre,
+                _totales_de(valor, valor_con_costo, kilos, costo, lineas, con_costo),
             )
+            for referencia, nombre, valor, valor_con_costo, kilos, costo, lineas, con_costo
+            in self._sesion.execute(consulta)
         }
 
     # ── Venta diaria ──────────────────────────────────────────────────────────
@@ -1184,8 +1192,17 @@ class ReportesService:
         )
 
         filas: list[FilaClientes] = []
-        for valor_clave, valor_nombre, venta, kilos, costo, lineas, con_costo in crudas:
-            totales = _totales_de(venta, kilos, costo, lineas, con_costo)
+        for (
+            valor_clave,
+            valor_nombre,
+            venta,
+            valor_con_costo,
+            kilos,
+            costo,
+            lineas,
+            con_costo,
+        ) in crudas:
+            totales = _totales_de(venta, valor_con_costo, kilos, costo, lineas, con_costo)
             filas.append(
                 FilaClientes(
                     clave=str(valor_clave) if valor_clave is not None else "SIN DATO",
@@ -1344,10 +1361,11 @@ class ReportesService:
             consulta = consulta.where(VentaLinea.categoria_id == categoria_id)
 
         return {
-            (punto_id, cat_id): _totales_de(valor, kilos, costo, lineas, con_costo)
-            for punto_id, cat_id, valor, kilos, costo, lineas, con_costo in self._sesion.execute(
-                consulta
+            (punto_id, cat_id): _totales_de(
+                valor, valor_con_costo, kilos, costo, lineas, con_costo
             )
+            for punto_id, cat_id, valor, valor_con_costo, kilos, costo, lineas, con_costo
+            in self._sesion.execute(consulta)
         }
 
     def _agregar_presupuesto(
@@ -1408,8 +1426,11 @@ class ReportesService:
         if ctx.categoria_id is not None:
             consulta = consulta.where(VentaLinea.categoria_id == ctx.categoria_id)
         return {
-            punto_id: _totales_de(valor, kilos, costo, lineas, con_costo)
-            for punto_id, valor, kilos, costo, lineas, con_costo in self._sesion.execute(consulta)
+            punto_id: _totales_de(
+                valor, valor_con_costo, kilos, costo, lineas, con_costo
+            )
+            for punto_id, valor, valor_con_costo, kilos, costo, lineas, con_costo
+            in self._sesion.execute(consulta)
         }
 
     def _aplicar_filtro_puntos(self, consulta: Select, ctx: _Contexto) -> Select:  # type: ignore[type-arg]

@@ -113,7 +113,7 @@ def test_el_costo_porcentaje_es_el_complemento_del_margen(
     assert D(consolidado.margen_porcentaje) + D(consolidado.costo_porcentaje) == D("1.0000")
 
 
-def test_una_linea_sin_costo_tumba_el_costo_porcentaje_del_conjunto(
+def test_una_linea_sin_costo_muestra_costo_y_margen_parciales_con_cobertura(
     sesion: Session, estructura: None
 ) -> None:
     """La misma regla del margen (§4.4): costo incompleto ⇒ «—», no una cifra a medias."""
@@ -123,9 +123,10 @@ def test_una_linea_sin_costo_tumba_el_costo_porcentaje_del_conjunto(
     respuesta = _costos(sesion)
 
     consolidado = respuesta.consolidado
-    assert consolidado.costo is None
-    assert consolidado.costo_porcentaje is None
-    assert consolidado.margen_porcentaje is None
+    assert D(consolidado.costo) == D("70000")
+    assert D(consolidado.costo_porcentaje) == D("0.7000")
+    assert D(consolidado.margen_porcentaje) == D("0.3000")
+    assert D(consolidado.cobertura_costo) == D("0.5000")
     assert D(consolidado.kilos) == D("12.00"), (
         "el costo se pierde; los kilos y la venta por kilo, no"
     )

@@ -161,10 +161,10 @@ def test_la_venta_sin_item_se_agrupa_en_sin_producto_a_la_vista(
     )
 
 
-def test_un_producto_con_lineas_sin_costo_no_tiene_margen(
+def test_un_producto_con_lineas_sin_costo_muestra_margen_parcial(
     sesion: Session, estructura: None
 ) -> None:
-    """§4.4 por ítem: basta una línea sin costo y el margen del producto es «—»."""
+    """Por ítem se publica el margen solo sobre la venta que sí tiene costo."""
     dar_venta(
         sesion,
         "402",
@@ -190,10 +190,13 @@ def test_un_producto_con_lineas_sin_costo_no_tiene_margen(
 
     assert len(respuesta.productos) == 1
     producto = respuesta.productos[0]
-    assert producto.costo is None
-    assert producto.margen_valor is None
-    assert producto.margen_porcentaje is None
-    assert D(producto.venta) == D("150"), "el margen se pierde; la venta, no"
+    assert D(producto.costo) == D("60.00")
+    assert D(producto.margen_valor) == D("40.00")
+    assert D(producto.margen_porcentaje) == D("0.4000")
+    assert D(producto.cobertura_costo) == D("0.5000")
+    assert D(producto.venta) == D("150"), (
+        "la venta total se conserva; el margen usa solo 100 con costo"
+    )
 
 
 def test_el_desglose_respeta_el_filtro_de_categoria(sesion: Session, estructura: None) -> None:

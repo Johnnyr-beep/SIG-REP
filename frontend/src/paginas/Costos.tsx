@@ -51,6 +51,10 @@ function CostosMargen() {
   const { filtros } = control;
   const { data, isLoading, error } = useCostos(filtros);
   const { tienePermiso } = useAuth();
+  const coberturaConsolidada = data?.consolidado.cobertura_costo == null
+    ? null
+    : Number(data.consolidado.cobertura_costo);
+  const costoEsParcial = coberturaConsolidada != null && coberturaConsolidada < 1;
   const tonoMargen =
     data?.consolidado.margen_porcentaje == null
       ? undefined
@@ -72,8 +76,18 @@ function CostosMargen() {
           >
             <div className="rejilla rejilla--indicadores">
               <Indicador etiqueta="Venta acumulada" valor={dinero(data.consolidado.venta)} tono="exito" />
-              <Indicador etiqueta="Costo acumulado" valor={dinero(data.consolidado.costo)} tono="aviso" />
-              <Indicador etiqueta="Margen" valor={porcentaje(data.consolidado.margen_porcentaje)} nota={dinero(data.consolidado.margen_valor)} tono={tonoMargen} />
+              <Indicador
+                etiqueta={costoEsParcial ? "Costo parcial acumulado" : "Costo acumulado"}
+                valor={dinero(data.consolidado.costo)}
+                nota={costoEsParcial ? `${porcentaje(data.consolidado.cobertura_costo)} de líneas con costo` : undefined}
+                tono="aviso"
+              />
+              <Indicador
+                etiqueta={costoEsParcial ? "Margen parcial" : "Margen"}
+                valor={porcentaje(data.consolidado.margen_porcentaje)}
+                nota={dinero(data.consolidado.margen_valor)}
+                tono={tonoMargen}
+              />
             </div>
           </Tarjeta>
           {tienePermiso("PERMISO_COSTO_POR_GRUPO") ? (
@@ -181,10 +195,10 @@ function TablaCostos({ titulo, etiqueta, filas, alta = false, variante }: { titu
                     <td className="numero">{dinero(fila.venta)}</td>
                     <td className="numero">{numero(fila.kilos)}</td>
                     <td className="numero">{dinero(fila.venta_por_kilo)}</td>
-                    <td className="numero">{dinero(fila.costo)}</td>
-                    <td className="numero">{porcentaje(fila.costo_porcentaje)}</td>
-                    <td className="numero">{dinero(fila.margen_valor)}</td>
-                    <td className="numero">{porcentaje(fila.margen_porcentaje)}</td>
+                    <td className="numero" title={fila.cobertura_costo == null ? undefined : `Cobertura: ${porcentaje(fila.cobertura_costo)}`}>{dinero(fila.costo)}</td>
+                    <td className="numero" title={fila.cobertura_costo == null ? undefined : `Cobertura: ${porcentaje(fila.cobertura_costo)}`}>{porcentaje(fila.costo_porcentaje)}</td>
+                    <td className="numero" title={fila.cobertura_costo == null ? undefined : `Cobertura: ${porcentaje(fila.cobertura_costo)}`}>{dinero(fila.margen_valor)}</td>
+                    <td className="numero" title={fila.cobertura_costo == null ? undefined : `Cobertura: ${porcentaje(fila.cobertura_costo)}`}>{porcentaje(fila.margen_porcentaje)}</td>
                   </tr>
                 ))}</tbody>
               </table>
