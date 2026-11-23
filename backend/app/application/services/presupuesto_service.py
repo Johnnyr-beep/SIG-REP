@@ -57,6 +57,7 @@ from app.infrastructure.models.presupuesto import Presupuesto, PresupuestoHistor
 from app.infrastructure.models.usuario import Usuario
 from app.infrastructure.models.venta import VentaLinea
 from app.schemas.presupuesto import (
+    EmpleadosPdvSalida,
     ErrorFila,
     HistorialSalida,
     PeriodoSalida,
@@ -226,6 +227,43 @@ class PresupuestoService:
 
     def __init__(self, sesion: Session) -> None:
         self._sesion = sesion
+
+    def empleados_pdv(
+        self, codigo_punto_venta: str, alcance: list[int] | None = None
+    ) -> EmpleadosPdvSalida:
+        punto = self._punto_venta(codigo_punto_venta)
+        self._exigir_alcance(punto, alcance)
+        return EmpleadosPdvSalida(
+            punto_venta=punto.codigo_co,
+            nombre=punto.nombre,
+            numero_empleados=punto.numero_empleados,
+        )
+
+    def guardar_empleados_pdv(
+        self,
+        punto_venta_id: int,
+        numero_empleados: int,
+        alcance: list[int] | None = None,
+    ) -> EmpleadosPdvSalida:
+        punto = self._sesion.get(PuntoVenta, punto_venta_id)
+        if punto is None:
+            raise ErrorNoEncontrado(f"No existe el punto de venta con id {punto_venta_id}.")
+        self._exigir_alcance(punto, alcance)
+        punto.numero_empleados = numero_empleados
+        self._sesion.flush()
+        return EmpleadosPdvSalida(
+            punto_venta=punto.codigo_co,
+            nombre=punto.nombre,
+            numero_empleados=punto.numero_empleados,
+        )
+
+    def _punto_venta(self, codigo: str) -> PuntoVenta:
+        punto = self._sesion.execute(
+            select(PuntoVenta).where(PuntoVenta.codigo_co == codigo.strip())
+        ).scalar_one_or_none()
+        if punto is None:
+            raise ErrorNoEncontrado(f"No existe el punto de venta {codigo!r}.")
+        return punto
 
     # ── Consulta ──────────────────────────────────────────────────────────────
 

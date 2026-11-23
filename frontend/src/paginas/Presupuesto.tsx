@@ -10,7 +10,7 @@
  * Solo la ven los roles GERENTE y ANALISTA (§8.4).
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 
 import {
@@ -18,6 +18,8 @@ import {
   useCategorias,
   useCerrarPeriodo,
   useGuardarPresupuesto,
+  useGuardarEmpleadosPuntoVenta,
+  useEmpleadosPuntoVenta,
   useHistorialPresupuesto,
   usePeriodos,
   usePresupuesto,
@@ -80,6 +82,7 @@ export function Presupuesto() {
   const puntoVenta = filtros.punto_venta ?? "";
   const { data: puntos } = usePuntosVenta();
   const { data: categorias } = useCategorias();
+  const empleadosPdv = useEmpleadosPuntoVenta(puntoVenta);
   const { data: periodos } = usePeriodos();
   const {
     data: filas,
@@ -92,12 +95,22 @@ export function Presupuesto() {
   );
 
   const guardar = useGuardarPresupuesto(filtros.periodo, puntoVenta);
+  const guardarEmpleados = useGuardarEmpleadosPuntoVenta(puntoVenta);
   const cargaMasiva = useCargaMasivaPresupuesto(filtros.periodo, puntoVenta);
   const cerrar = useCerrarPeriodo();
 
   const [edicion, setEdicion] = useState<EdicionActiva | null>(null);
   const [errorFormulario, setErrorFormulario] = useState<string | null>(null);
   const [archivo, setArchivo] = useState<File | null>(null);
+  const [numeroEmpleados, setNumeroEmpleados] = useState("");
+
+  useEffect(() => {
+    setNumeroEmpleados(
+      empleadosPdv.data?.numero_empleados == null
+        ? ""
+        : String(empleadosPdv.data.numero_empleados),
+    );
+  }, [empleadosPdv.data?.numero_empleados, puntoVenta]);
 
   const periodoActualInfo = periodos?.find(
     (item) => item.periodo === filtros.periodo,
@@ -250,6 +263,8 @@ export function Presupuesto() {
       </section>
 
       <AvisoError error={error} />
+      <AvisoError error={empleadosPdv.error} />
+      <AvisoError error={guardarEmpleados.error} />
       <AvisoError error={cerrar.error} />
 
       {cerrado ? (
@@ -275,6 +290,46 @@ export function Presupuesto() {
           />
         </Tarjeta>
       ) : (
+        <>
+        <Tarjeta
+          titulo={`Empleados de ${puntoSeleccionado?.nombre ?? puntoVenta}`}
+          descripcion="Número vigente de empleados asignados al punto de venta."
+        >
+          <form
+            className="filtros"
+            onSubmit={(evento) => {
+              evento.preventDefault();
+              if (!puntoSeleccionado || !/^\\d+$/.test(numeroEmpleados)) return;
+              guardarEmpleados.mutate({
+                punto_venta_id: puntoSeleccionado.id,
+                numero_empleados: Number(numeroEmpleados),
+              });
+            }}
+          >
+            <label className="filtros__campo">
+              <span>Número de empleados</span>
+              <input
+                className="campo__control"
+                type="number"
+                min="0"
+                step="1"
+                required
+                value={numeroEmpleados}
+                onChange={(evento) => setNumeroEmpleados(evento.target.value)}
+              />
+            </label>
+            <button
+              type="submit"
+              className="boton boton--pequeno"
+              disabled={guardarEmpleados.isPending || numeroEmpleados === ""}
+            >
+              {guardarEmpleados.isPending ? "Guardando…" : "Guardar empleados"}
+            </button>
+            {guardarEmpleados.isSuccess ? (
+              <span className="tenue" role="status">Número de empleados actualizado.</span>
+            ) : null}
+          </form>
+        </Tarjeta>
         <Tarjeta
           titulo={`Presupuesto de ${puntoSeleccionado?.nombre ?? puntoVenta}`}
           descripcion={`${periodoLargo(filtros.periodo)} · en pesos y en kilos`}
@@ -343,6 +398,7 @@ export function Presupuesto() {
             </div>
           )}
         </Tarjeta>
+        </>
       )}
 
       <Tarjeta

@@ -35,6 +35,17 @@ class PresupuestoEntrada(BaseModel):
     motivo: str = Field(min_length=5, max_length=400)
 
 
+class EmpleadosPdvEntrada(BaseModel):
+    punto_venta_id: int
+    numero_empleados: int = Field(ge=0)
+
+
+class EmpleadosPdvSalida(EsquemaBase):
+    punto_venta: str
+    nombre: str
+    numero_empleados: int | None
+
+
 class HistoriaVentaEntrada(BaseModel):
     """Total histórico de un PDV para alimentar la comparación interanual."""
 

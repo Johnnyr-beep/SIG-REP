@@ -21,6 +21,7 @@ import type {
   CorridaIngesta,
   CorteClientes,
   EntradaCalendario,
+  EntradaEmpleadosPuntoVenta,
   EntradaIngesta,
   EntradaHistoriaVenta,
   EntradaPresupuesto,
@@ -29,6 +30,7 @@ import type {
   FilaCalendario,
   RespuestaInventarioPdv,
   FilaPresupuesto,
+  EmpleadosPuntoVenta,
   Grupo,
   HistoriaVenta,
   MapeoCategoria,
@@ -130,6 +132,7 @@ export const claves = {
     ["presupuesto", periodo, puntoVenta] as const,
   historialPresupuesto: (periodo: string, puntoVenta: string) =>
     ["presupuesto-historial", periodo, puntoVenta] as const,
+  empleadosPdv: (puntoVenta: string) => ["presupuesto-empleados", puntoVenta] as const,
   historiaVenta: (periodo: string) => ["historia-venta", periodo] as const,
   inventarioPdv: ["inventario", "pdv"] as const,
   inventarioBodegaAgro: ["inventario", "bodega", "agropecuaria"] as const,
@@ -455,6 +458,36 @@ export function useGuardarCalendario(
 }
 
 // ── Presupuesto ──────────────────────────────────────────────────────────────
+
+export function useEmpleadosPuntoVenta(
+  puntoVenta: string,
+): UseQueryResult<EmpleadosPuntoVenta> {
+  return useQuery({
+    queryKey: claves.empleadosPdv(puntoVenta),
+    queryFn: () =>
+      peticion<EmpleadosPuntoVenta>("/presupuesto/empleados", {
+        parametros: { punto_venta: puntoVenta },
+      }),
+    enabled: puntoVenta !== "",
+  });
+}
+
+export function useGuardarEmpleadosPuntoVenta(
+  puntoVenta: string,
+): UseMutationResult<EmpleadosPuntoVenta, Error, EntradaEmpleadosPuntoVenta> {
+  const cliente = useQueryClient();
+  return useMutation({
+    mutationFn: (datos) =>
+      peticion<EmpleadosPuntoVenta>("/presupuesto/empleados", {
+        metodo: "PUT",
+        cuerpo: datos,
+      }),
+    onSuccess: (datos) => {
+      cliente.setQueryData(claves.empleadosPdv(puntoVenta), datos);
+      void cliente.invalidateQueries({ queryKey: ["reporte"] });
+    },
+  });
+}
 
 export function usePresupuesto(
   periodo: string,

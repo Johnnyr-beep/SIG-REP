@@ -57,6 +57,10 @@ PUT    /calendario/{zona_id}?periodo=2026-08
 ```
 GET    /presupuesto?periodo=2026-08&punto_venta=405
        -> [{punto_venta, categoria, monto, kilos, actualizado_en, actualizado_por}]
+GET    /presupuesto/empleados?punto_venta=405
+  -> {punto_venta, nombre, numero_empleados}
+PUT    /presupuesto/empleados  (ANALISTA)
+  {punto_venta_id, numero_empleados}
 PUT    /presupuesto  (ANALISTA)
        {periodo, punto_venta_id, categoria_id, monto, kilos, motivo}
 POST   /presupuesto/carga-masiva  (ANALISTA)  multipart .xlsx/.csv
@@ -195,7 +199,7 @@ Frontend: un solo tipo y un solo componente de fila.
 
 ```
 GET /reportes/cumplimiento?periodo=2026-08[&grupo=001]
-    -> { fecha_corte, medida, filas: [ {punto_venta, ...FilaIndicadores,
+  -> { fecha_corte, medida, filas: [ {punto_venta, numero_empleados, ...FilaIndicadores,
                                         categorias: [ {categoria, ...FilaIndicadores} ]} ] }
 
 GET /reportes/venta-diaria?periodo=2026-08[&desde=2026-07-25&hasta=2026-08-05]

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Boolean, ForeignKey, String
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
@@ -59,6 +59,12 @@ class PuntoVenta(Base, TimestampMixin):
     """
 
     __tablename__ = "puntos_venta"
+    __table_args__ = (
+        CheckConstraint(
+            "numero_empleados IS NULL OR numero_empleados >= 0",
+            name="ck_pdv_numero_empleados_no_negativo",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     codigo_co: Mapped[str] = mapped_column(String(3), unique=True, nullable=False, index=True)
@@ -75,6 +81,7 @@ class PuntoVenta(Base, TimestampMixin):
     #: está presupuestado (§3.1): su venta se reporta aparte, nunca se descarta
     #: en silencio ni descuadra el consolidado.
     presupuestado: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    numero_empleados: Mapped[int | None] = mapped_column(nullable=True)
 
     grupo: Mapped[Grupo | None] = relationship(back_populates="puntos_venta", lazy="joined")
     zona: Mapped[Zona | None] = relationship(back_populates="puntos_venta", lazy="joined")

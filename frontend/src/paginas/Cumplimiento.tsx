@@ -123,6 +123,7 @@ export function Cumplimiento() {
                     <th scope="col" className="columna-ancla">
                       Punto de venta
                     </th>
+                    <th scope="col" className="numero">Empleados</th>
                     <EncabezadosIndicadores medida={medida} margenParcial />
                   </tr>
                 </thead>
@@ -146,6 +147,11 @@ export function Cumplimiento() {
                     <th scope="row" className="columna-ancla">
                       <span className="fila-totales__nombre">Total</span>
                     </th>
+                    <td className="numero">
+                      {filas.length > 0 && filas.every((fila) => fila.numero_empleados !== null)
+                        ? String(filas.reduce((total, fila) => total + (fila.numero_empleados ?? 0), 0))
+                        : "—"}
+                    </td>
                     <CeldasIndicadores fila={data.consolidado} medida={medida} margenParcial />
                   </tr>
                 </tfoot>
@@ -267,6 +273,7 @@ function FilaPdv({
             </span>
           )}
         </th>
+        <td className="numero">{fila.numero_empleados ?? "—"}</td>
         <CeldasIndicadores fila={fila} medida={medida} margenParcial />
       </tr>
 
@@ -281,6 +288,7 @@ function FilaPdv({
                   {etiquetaDe(categoria.categoria)}
                 </span>
               </th>
+              <td />
               <CeldasIndicadores fila={categoria} medida={medida} margenParcial />
             </tr>
           ))
@@ -290,7 +298,7 @@ function FilaPdv({
         <tr className="fila-hija">
           <td
             className="columna-ancla columna-ancla--hija"
-            colSpan={COLUMNAS_INDICADORES + 1}
+            colSpan={COLUMNAS_INDICADORES + 2}
           >
             <span className="tenue">
               Este punto de venta no tiene desglose por categoría.

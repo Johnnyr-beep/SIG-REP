@@ -377,7 +377,19 @@ export interface FilaPuntoVentaReporte extends FilaIndicadores {
   /** Código C.O. de SIESA: `402`, `405`, … */
   punto_venta: string;
   nombre: string;
+  numero_empleados: number | null;
   categorias: FilaCategoriaReporte[] | null;
+}
+
+export interface EmpleadosPuntoVenta {
+  punto_venta: string;
+  nombre: string;
+  numero_empleados: number | null;
+}
+
+export interface EntradaEmpleadosPuntoVenta {
+  punto_venta_id: number;
+  numero_empleados: number;
 }
 
 export interface RespuestaCumplimiento {

@@ -62,6 +62,7 @@ class FilaCategoria(FilaIndicadores):
 class FilaPuntoVenta(FilaIndicadores):
     punto_venta: str = Field(description="Código C.O.")
     nombre: str
+    numero_empleados: int | None = None
     categorias: list[FilaCategoria] = Field(default_factory=list)
 
 

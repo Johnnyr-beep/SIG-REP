@@ -683,6 +683,7 @@ function cumplimiento(opciones: Opciones): RespuestaCumplimiento {
     return {
       punto_venta: pdv.codigo_co,
       nombre: pdv.nombre,
+      numero_empleados: null,
       ...armarIndicadores({
         presupuesto,
         venta,

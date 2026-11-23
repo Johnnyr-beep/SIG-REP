@@ -718,6 +718,7 @@ class ReportesService:
                 FilaPuntoVenta(
                     punto_venta=punto.codigo_co,
                     nombre=punto.nombre,
+                    numero_empleados=punto.numero_empleados,
                     categorias=categorias,
                     **base.model_dump(),
                 ).model_copy(

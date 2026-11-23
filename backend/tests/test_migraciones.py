@@ -93,7 +93,7 @@ def test_alembic_upgrade_head_recorre_todas_las_migraciones_sobre_sqlite(tmp_pat
 
     # Se recorrieron **todas** las revisiones, no solo la primera.
     aplicadas = proceso.stderr + proceso.stdout
-    for revision in ("0001", "0002", "0003", "0004", "0005", "0009", "0019"):
+    for revision in ("0001", "0002", "0003", "0004", "0005", "0009", "0019", "0020"):
         assert f"-> {revision}" in aplicadas, f"la revisión {revision} no llegó a ejecutarse"
 
     actual = _alembic(entorno, "current")
@@ -105,6 +105,7 @@ def test_alembic_upgrade_head_recorre_todas_las_migraciones_sobre_sqlite(tmp_pat
     conexion = sqlite3.connect(archivo)
     try:
         columnas = {fila[1]: fila for fila in conexion.execute("PRAGMA table_info(venta_lineas)")}
+        puntos = {fila[1]: fila for fila in conexion.execute("PRAGMA table_info(puntos_venta)")}
         indices = {fila[1] for fila in conexion.execute("PRAGMA index_list(venta_lineas)")}
         historial = {
             fila[1]: fila for fila in conexion.execute("PRAGMA table_info(presupuesto_historial)")
@@ -121,6 +122,7 @@ def test_alembic_upgrade_head_recorre_todas_las_migraciones_sobre_sqlite(tmp_pat
         "entrar en cero y PEREIRA publicaría 100 % de margen (§4.4)"
     )
     assert columnas["valor_subtotal"][3] == 1, "la venta sí es obligatoria y debe seguir siéndolo"
+    assert puntos["numero_empleados"][3] == 0
 
     faltantes = INDICES_ESPERADOS - indices
     assert not faltantes, f"la recreación de la tabla en SQLite perdió índices: {sorted(faltantes)}"
@@ -296,7 +298,7 @@ def _base_con_pereira_409(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     archivo = tmp_path / "pereira.db"
     entorno = dict(os.environ)
     entorno["SIGREP_DB_URL_OVERRIDE"] = f"sqlite:///{archivo.as_posix()}"
-    proceso = _alembic(entorno, "upgrade", "0018")
+    proceso = _alembic(entorno, "upgrade", "head")
     assert proceso.returncode == 0, proceso.stderr[-4000:]
 
     motor = create_engine(entorno["SIGREP_DB_URL_OVERRIDE"])
@@ -312,6 +314,8 @@ def _base_con_pereira_409(tmp_path: Path) -> tuple[Path, dict[str, str]]:
             dar_venta(sesion, "409", "RES", 1, "200", costo=None)
     finally:
         motor.dispose()
+    proceso = _alembic(entorno, "downgrade", "0018")
+    assert proceso.returncode == 0, proceso.stderr[-4000:]
     return archivo, entorno
 
 

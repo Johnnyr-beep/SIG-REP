@@ -17,6 +17,8 @@ from app.application.services.historia_venta_service import HistoriaVentaService
 from app.application.services.presupuesto_service import PresupuestoService
 from app.core.deps import SesionDep, alcance_escritura, alcance_puntos_venta, leer_subida
 from app.schemas.presupuesto import (
+    EmpleadosPdvEntrada,
+    EmpleadosPdvSalida,
     HistorialSalida,
     HistoriaVentaEntrada,
     HistoriaVentaSalida,
@@ -31,6 +33,33 @@ periodos_router = APIRouter(prefix="/periodos", tags=["Presupuesto"])
 historia_router = APIRouter(prefix="/historia-venta", tags=["Historia de venta"])
 
 PeriodoQuery = Query(pattern=r"^\d{4}-(0[1-9]|1[0-2])$", examples=["2026-08"])
+
+
+@router.get("/empleados", response_model=EmpleadosPdvSalida, summary="Empleados del punto de venta")
+def empleados_pdv(
+    usuario: LecturaDep,
+    sesion: SesionDep,
+    punto_venta: str = Query(min_length=1, max_length=3),
+) -> EmpleadosPdvSalida:
+    return PresupuestoService(sesion).empleados_pdv(
+        punto_venta, alcance=alcance_puntos_venta(usuario)
+    )
+
+
+@router.put(
+    "/empleados", response_model=EmpleadosPdvSalida, summary="Actualizar empleados del punto"
+)
+def guardar_empleados_pdv(
+    datos: EmpleadosPdvEntrada,
+    usuario: AnalistaDep,
+    sesion: SesionDep,
+) -> EmpleadosPdvSalida:
+    return PresupuestoService(sesion).guardar_empleados_pdv(
+        datos.punto_venta_id,
+        datos.numero_empleados,
+        alcance=alcance_escritura(usuario),
+    )
+
 
 #: Tope del archivo de carga masiva.
 #:
