@@ -50,7 +50,7 @@ const MENU_CARNES: GrupoNav[] = [
       { ruta: "/cumplimiento", etiqueta: "Cumplimiento por PDV", icono: "▤", permiso: "PERMISO_CONSULTAR_CUMPLIMIENTO" },
       { ruta: "/costos", etiqueta: "Costos y margen", icono: "◒", permiso: "PERMISO_CONSULTAR_COSTOS" },
       { ruta: "/inventario-pdv", etiqueta: "Inventario por punto de venta", icono: "▦", permiso: "PERMISO_CONSULTAR_INVENTARIO" },
-      { ruta: "/venta-diaria", etiqueta: "Venta diaria", icono: "▦", permiso: "PERMISO_CONSULTAR_VENTA_DIARIA" },
+      { ruta: "/venta-diaria", etiqueta: "Venta diaria acumulada", icono: "▦", permiso: "PERMISO_CONSULTAR_VENTA_DIARIA" },
       {
         ruta: "/venta-diaria-asadero",
         etiqueta: "Venta diaria Asadero",
@@ -241,7 +241,7 @@ const TITULOS: Record<string, string> = {
   "/inventario-pdv": "Inventario por punto de venta",
   "/inventario-agropecuaria": "Inventario de Agropecuaria por bodega",
   "/inventario-historico": "Inventario histórico",
-  "/venta-diaria": "Venta diaria",
+  "/venta-diaria": "Venta diaria acumulada",
   "/venta-diaria-asadero": "Venta diaria Asadero",
   "/clientes": "Clientes y vendedores",
   "/presupuesto": "Parametrización de presupuesto",

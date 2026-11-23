@@ -31,6 +31,7 @@
  */
 
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import {
   useExportar,
@@ -94,6 +95,15 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
   const { tienePermiso } = useAuth();
 
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
+  const [parametros, fijarParametros] = useSearchParams();
+  const vistaDiaDia = parametros.get("vista_venta_diaria") === "dia-dia";
+
+  function cambiarVistaDiaDia(diaDia: boolean) {
+    const siguientes = new URLSearchParams(parametros);
+    if (diaDia) siguientes.set("vista_venta_diaria", "dia-dia");
+    else siguientes.delete("vista_venta_diaria");
+    fijarParametros(siguientes);
+  }
 
   const medida = data?.medida ?? filtros.medida;
   const formatear = (valor: string | null) => porMedida(valor, medida);
@@ -212,6 +222,30 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
         </div>
       ) : null}
 
+      <section className="filtros" aria-label="Vistas de venta diaria">
+        <fieldset className="segmentado">
+          <legend className="solo-lectores">Vista de venta diaria</legend>
+          <label className={`segmentado__opcion${!vistaDiaDia ? " segmentado__opcion--activa" : ""}`}>
+            <input
+              type="radio"
+              name="vista-venta-diaria"
+              checked={!vistaDiaDia}
+              onChange={() => cambiarVistaDiaDia(false)}
+            />
+            Venta diaria acumulada
+          </label>
+          <label className={`segmentado__opcion${vistaDiaDia ? " segmentado__opcion--activa" : ""}`}>
+            <input
+              type="radio"
+              name="vista-venta-diaria"
+              checked={vistaDiaDia}
+              onChange={() => cambiarVistaDiaDia(true)}
+            />
+            Venta día a día
+          </label>
+        </fieldset>
+      </section>
+
       <AvisoError error={error} />
       <AvisoError error={exportar.error} />
       <AvisoError error={exportarAsadero.error} />
@@ -222,6 +256,72 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
 
       {data ? (
         <>
+          {vistaDiaDia ? (
+            <Tarjeta
+              titulo="Venta día a día"
+              descripcion={`Ventas individuales por fecha ${descripcionRango}.`}
+              sinRelleno
+            >
+              {data.filas.length === 0 ? (
+                <Vacio
+                  titulo="Sin venta registrada"
+                  detalle="El rango seleccionado no tiene días con venta ingerida."
+                />
+              ) : (
+                <div className="tabla-envoltorio tabla-envoltorio--alta">
+                  <table className="tabla tabla--anclada tabla--venta-dia-dia">
+                    <caption className="solo-lectores">
+                      Venta día a día por punto de venta
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th scope="col" className="columna-ancla">PDV</th>
+                        {data.fechas.map((fecha) => (
+                          <th key={fecha} scope="col" className="numero">
+                            {String(Number(fecha.slice(8, 10)))}
+                          </th>
+                        ))}
+                        <th scope="col" className="numero">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.filas.map((fila) => (
+                        <tr key={fila.punto_venta}>
+                          <th scope="row" className="columna-ancla">
+                            {fila.nombre}
+                          </th>
+                          {data.fechas.map((fecha, indice) => (
+                            <td key={fecha} className="numero">
+                              {formatear(fila.valores[indice] ?? null)}
+                            </td>
+                          ))}
+                          <td className="numero"><strong>{formatear(fila.total)}</strong></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    {data.totales ? (
+                      <tfoot>
+                        <tr className="fila-totales">
+                          <th scope="row" className="columna-ancla">Total</th>
+                          {data.fechas.map((fecha, indice) => (
+                            <td key={fecha} className="numero">
+                              {formatear(data.totales.valores[indice] ?? null)}
+                            </td>
+                          ))}
+                          <td className="numero">
+                            <strong>{formatear(data.totales.total)}</strong>
+                          </td>
+                        </tr>
+                      </tfoot>
+                    ) : null}
+                  </table>
+                </div>
+              )}
+            </Tarjeta>
+          ) : null}
+
+          {!vistaDiaDia ? (
+            <>
           {filaSeleccionada ? (
             <Tarjeta
               titulo={`Detalle diario · ${filaSeleccionada.nombre}`}
@@ -466,6 +566,8 @@ export function VentaDiaria({ asadero = false }: { asadero?: boolean }) {
               })()
             )}
           </Tarjeta>
+            </>
+          ) : null}
         </>
       ) : null}
     </div>
