@@ -1370,7 +1370,7 @@ class ReportesService:
         """
         ids = set(puntos_ids)
         venta = Totales()
-        comparable = Totales()
+        costo_sin_pereira = Totales()
         anterior = Totales()
         presu = Presupuestado()
         con_historia = {punto_id for (punto_id, _cat) in ctx.venta_anterior} | set(
@@ -1380,8 +1380,9 @@ class ReportesService:
         for (punto_id, _cat), totales in ctx.venta.items():
             if punto_id in ids:
                 venta.sumar(totales)
-                if punto_id in con_historia:
-                    comparable.sumar(totales)
+                punto = ctx.puntos.get(punto_id)
+                if punto is None or punto.codigo_co != "411":
+                    costo_sin_pereira.sumar(totales)
         for (punto_id, _cat), totales in ctx.venta_anterior.items():
             if punto_id in ids:
                 anterior.sumar(totales)
@@ -1395,19 +1396,19 @@ class ReportesService:
         hay_anterior = bool(con_historia & ids)
         habiles, trabajados, ideal_ponderado = self._dias_agregados(ctx, puntos_ids)
 
+        pereira_solo = len(ids) == 1 and any(
+            ctx.puntos[punto_id].codigo_co == "411" for punto_id in ids
+        )
+        costo_margen = venta if pereira_solo else costo_sin_pereira
+        venta_margen = venta if pereira_solo else costo_sin_pereira
+
         return self._a_fila(
             ctx,
             InsumosIndicadores(
                 venta=venta.medida(ctx.medida),
-                venta_valor=venta.valor,
-                costo=venta.costo,
-                # Basta una línea sin costo en cualquiera de los puntos del
-                # conjunto para que el agregado no tenga margen calculable. En
-                # el consolidado de la compañía eso significa, hoy, que PEREIRA
-                # deja al consolidado sin margen: es la consecuencia correcta
-                # —no se puede calcular— y la que crea la presión para que la
-                # API entregue el costo (§4.4).
-                costo_completo=venta.costo_completo,
+                venta_valor=venta_margen.valor,
+                costo=costo_margen.costo,
+                costo_completo=costo_margen.costo_completo,
                 presupuesto=presu.medida(ctx.medida),
                 venta_anio_anterior=anterior.medida(ctx.medida) if hay_anterior else None,
                 dias_habiles=habiles,

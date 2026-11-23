@@ -203,7 +203,7 @@ def test_una_sola_linea_sin_costo_anula_el_margen_de_todo_el_conjunto(
     assert fila.venta == D("100000.00"), "la venta sin costo sigue contando como venta"
 
 
-def test_el_consolidado_pierde_el_margen_mientras_pereira_no_traiga_costo(
+def test_el_consolidado_calcula_el_margen_sin_pereira_cuando_pereira_no_tiene_costo(
     sesion: Session, estructura: None
 ) -> None:
     """Consecuencia deliberada de la regla, y la que crea la presión sobre la API.
@@ -220,8 +220,8 @@ def test_el_consolidado_pierde_el_margen_mientras_pereira_no_traiga_costo(
     con_pereira = _tablero(sesion, CON_COSTO, SIN_COSTO).consolidado
     sin_pereira = _tablero(sesion, CON_COSTO).consolidado
 
-    assert con_pereira.margen_porcentaje is None, "el margen de la compañía no es calculable"
-    assert con_pereira.venta == D("510000.00"), "la venta consolidada no pierde nada"
+    assert con_pereira.margen_porcentaje == D("0.4000")
+    assert con_pereira.venta == D("510000.00"), "la venta consolidada no pierde PEREIRA"
     assert con_pereira.cumplimiento == D("0.5000"), "510 000 / 1 020 000"
 
     assert sin_pereira.margen_porcentaje == D("0.4000"), (
