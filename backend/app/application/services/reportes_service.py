@@ -925,13 +925,22 @@ class ReportesService:
         if ctx.categoria_id is not None:
             consulta = consulta.where(VentaLinea.categoria_id == ctx.categoria_id)
 
+        filas = self._sesion.execute(consulta)
         return {
             referencia: (
                 nombre,
                 _totales_de(valor, valor_con_costo, kilos, costo, lineas, con_costo),
             )
-            for referencia, nombre, valor, valor_con_costo, kilos, costo, lineas, con_costo
-            in self._sesion.execute(consulta)
+            for (
+                referencia,
+                nombre,
+                valor,
+                valor_con_costo,
+                kilos,
+                costo,
+                lineas,
+                con_costo,
+            ) in filas
         }
 
     # ── Venta diaria ──────────────────────────────────────────────────────────
@@ -1360,12 +1369,19 @@ class ReportesService:
         if categoria_id is not None:
             consulta = consulta.where(VentaLinea.categoria_id == categoria_id)
 
+        filas = self._sesion.execute(consulta)
         return {
-            (punto_id, cat_id): _totales_de(
-                valor, valor_con_costo, kilos, costo, lineas, con_costo
-            )
-            for punto_id, cat_id, valor, valor_con_costo, kilos, costo, lineas, con_costo
-            in self._sesion.execute(consulta)
+            (punto_id, cat_id): _totales_de(valor, valor_con_costo, kilos, costo, lineas, con_costo)
+            for (
+                punto_id,
+                cat_id,
+                valor,
+                valor_con_costo,
+                kilos,
+                costo,
+                lineas,
+                con_costo,
+            ) in filas
         }
 
     def _agregar_presupuesto(
@@ -1425,12 +1441,18 @@ class ReportesService:
         )
         if ctx.categoria_id is not None:
             consulta = consulta.where(VentaLinea.categoria_id == ctx.categoria_id)
+        filas = self._sesion.execute(consulta)
         return {
-            punto_id: _totales_de(
-                valor, valor_con_costo, kilos, costo, lineas, con_costo
-            )
-            for punto_id, valor, valor_con_costo, kilos, costo, lineas, con_costo
-            in self._sesion.execute(consulta)
+            punto_id: _totales_de(valor, valor_con_costo, kilos, costo, lineas, con_costo)
+            for (
+                punto_id,
+                valor,
+                valor_con_costo,
+                kilos,
+                costo,
+                lineas,
+                con_costo,
+            ) in filas
         }
 
     def _aplicar_filtro_puntos(self, consulta: Select, ctx: _Contexto) -> Select:  # type: ignore[type-arg]
