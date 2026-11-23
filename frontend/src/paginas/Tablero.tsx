@@ -23,9 +23,11 @@ import {
 } from "@/componentes/indicadores";
 import { FORMULAS } from "@/utilidades/dominio";
 import {
+  dinero,
   dineroCorto,
   kilos,
   mesCorto,
+  numero,
   porMedida,
   porcentaje,
   puntos,
@@ -252,6 +254,20 @@ export function Tablero() {
                   </p>
                 }
                 tono={tonoProyeccionVsPromedioDesdeMayo}
+              />
+              <Indicador
+                etiqueta="Documentos y ticket promedio"
+                valor={data.numero_documentos === null ? "—" : numero(String(data.numero_documentos))}
+                nota={
+                  data.ticket_promedio === null
+                    ? "Ticket promedio: —"
+                    : `Ticket promedio: ${dinero(data.ticket_promedio)}`
+                }
+                pista={
+                  <p className="formula">
+                    Número de documentos facturados al corte. Ticket promedio = venta acumulada / número de documentos.
+                  </p>
+                }
               />
               <Indicador
                 etiqueta="Margen"

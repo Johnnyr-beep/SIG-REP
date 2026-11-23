@@ -363,6 +363,28 @@ class ReportesService:
             ctx, por_pdv, consolidado.proyeccion
         )
         promedio_venta_desde_mayo = self._promedio_venta_desde_mayo(ctx, set(por_pdv))
+
+        rango_documentos = RangoDiario(
+            desde=ctx.periodo.primer_dia,
+            hasta=ctx.fecha_corte,
+            periodos=(ctx.periodo.codigo,),
+        )
+        documentos_por_dia = self._documentos_por_dia(ctx, rango_documentos)
+        numero_documentos = sum(
+            cantidad
+            for por_dia in documentos_por_dia.values()
+            for cantidad in por_dia.values()
+            if cantidad is not None
+        )
+        numero_documentos = numero_documentos if numero_documentos > 0 else None
+        ticket_promedio = (
+            redondear_no_nulo(consolidado.venta_valor / Decimal(numero_documentos), 2)
+            if ctx.medida == Medida.VALOR
+            and consolidado.venta_valor is not None
+            and numero_documentos is not None
+            else None
+        )
+
         razon_proyeccion_promedio = dividir(
             consolidado.proyeccion,
             promedio_venta_desde_mayo.promedio,
@@ -397,6 +419,8 @@ class ReportesService:
             venta_ultimo_mes_cerrado=promedio_venta_desde_mayo.venta_ultimo_mes,
             variacion_venta_mayo_a_ultimo_mes=promedio_venta_desde_mayo.variacion_mayo_a_ultimo_mes,
             variacion_proyeccion_vs_promedio_desde_mayo=variacion_proyeccion_vs_promedio_desde_mayo,
+            numero_documentos=numero_documentos,
+            ticket_promedio=ticket_promedio,
             consolidado=consolidado,
             grupos=grupos,
             ventas_anuales=self._ventas_anuales(ctx),

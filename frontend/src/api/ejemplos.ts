@@ -611,6 +611,9 @@ function tablero(opciones: Opciones): RespuestaTablero {
       variacionProyeccionVsPromedioDesdeMayo === null
         ? null
         : cadena(variacionProyeccionVsPromedioDesdeMayo, 4),
+    numero_documentos: 28_420,
+    ticket_promedio:
+      cadena(Number(consolidado.venta) / 28_420, 2),
     consolidado,
     grupos,
     ventas_anuales: {

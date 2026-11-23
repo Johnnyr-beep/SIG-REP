@@ -27,6 +27,7 @@ from app.application.services.reportes_service import FiltrosReporte, ReportesSe
 from app.domain import indicadores as ind
 from app.domain.enums import AgrupacionClientes, Medida
 from app.domain.semaforo import UmbralesSemaforo
+from app.infrastructure.models.documentos import NumeroDocumentosDiarios
 from app.infrastructure.models.historia_venta import HistoriaVentaManual
 from app.infrastructure.models.organizacion import Grupo, PuntoVenta
 from app.infrastructure.models.periodo import CalendarioZona, Periodo
@@ -83,6 +84,31 @@ def _tablero(
     return ReportesService(sesion).tablero(
         FiltrosReporte(periodo=periodo, hasta=hasta, alcance=alcance, grupo=grupo, medida=medida)
     )
+
+
+def test_tablero_suma_documentos_y_calcula_ticket_promedio(
+    sesion: Session, estructura: None
+) -> None:
+    dar_presupuesto(sesion, "402", "RES", "10000")
+    dar_venta(sesion, "402", "RES", 1, "200000")
+    dar_venta(sesion, "402", "RES", 2, "300000")
+    punto = id_punto_venta(sesion, "402")
+    sesion.add_all(
+        [
+            NumeroDocumentosDiarios(
+                punto_venta_id=punto, fecha=date(2026, 8, 1), cantidad=2, origen="siesa"
+            ),
+            NumeroDocumentosDiarios(
+                punto_venta_id=punto, fecha=date(2026, 8, 2), cantidad=3, origen="siesa"
+            ),
+        ]
+    )
+    sesion.commit()
+
+    tablero = _tablero(sesion, hasta=date(2026, 8, 2))
+
+    assert tablero.numero_documentos == 5
+    assert tablero.ticket_promedio == D("100000.00")
 
 
 # ── §4 Dominio: ideal agregado, días exactos y crecimiento anual ──────────────

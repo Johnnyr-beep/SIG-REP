@@ -204,6 +204,8 @@ class RespuestaTablero(BaseModel):
     venta_ultimo_mes_cerrado: DecimalStr | None = None
     variacion_venta_mayo_a_ultimo_mes: DecimalStr | None = None
     variacion_proyeccion_vs_promedio_desde_mayo: DecimalStr | None = None
+    numero_documentos: int | None = None
+    ticket_promedio: DecimalStr | None = None
     consolidado: FilaIndicadores
     grupos: list[FilaGrupo]
     ventas_anuales: ResumenVentasAnuales
