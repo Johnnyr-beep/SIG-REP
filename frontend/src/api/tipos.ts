@@ -279,6 +279,11 @@ export interface FilaIndicadores {
   crecimiento: string | null;
   margen_valor: string | null;
   margen_porcentaje: string | null;
+  margen_parcial_valor?: string | null;
+  margen_parcial_porcentaje?: string | null;
+  cobertura_costo_parcial?: string | null;
+  lineas_con_costo?: number | null;
+  lineas_totales?: number | null;
   dias_habiles: string | null;
   dias_trabajados: string | null;
 }

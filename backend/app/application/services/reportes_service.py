@@ -687,7 +687,11 @@ class ReportesService:
     def cumplimiento(self, filtros: FiltrosReporte) -> RespuestaCumplimiento:
         """La tabla del Excel, viva: un punto por fila, expandible a categorías."""
         ctx = self._construir_contexto(filtros)
-        consolidado = self._fila_agregada(ctx, list(ctx.puntos))
+        margenes_parciales = self._margenes_parciales_por_celda(ctx)
+        puntos_consolidado = list(ctx.puntos)
+        consolidado = self._fila_agregada(ctx, puntos_consolidado).model_copy(
+            update=self._campos_margen_parcial(ctx, puntos_consolidado, margenes_parciales)
+        )
 
         filas: list[FilaPuntoVenta] = []
         for punto in sorted(ctx.puntos.values(), key=lambda p: p.codigo_co):
@@ -695,7 +699,13 @@ class ReportesService:
             categorias = [
                 FilaCategoria(
                     categoria=ctx.categorias[cat_id].nombre,
-                    **self._fila_celda(ctx, punto.id, cat_id).model_dump(),
+                    **self._fila_celda(ctx, punto.id, cat_id)
+                    .model_copy(
+                        update=self._campos_margen_parcial(
+                            ctx, [punto.id], margenes_parciales, categoria_id=cat_id
+                        )
+                    )
+                    .model_dump(),
                 )
                 for cat_id in self._categorias_con_dato(ctx, punto.id)
             ]
@@ -705,6 +715,8 @@ class ReportesService:
                     nombre=punto.nombre,
                     categorias=categorias,
                     **base.model_dump(),
+                ).model_copy(
+                    update=self._campos_margen_parcial(ctx, [punto.id], margenes_parciales)
                 )
             )
 
@@ -717,6 +729,71 @@ class ReportesService:
             sin_presupuesto=self._filas_sin_presupuesto(ctx),
             parametros_calculo=self._parametros(ctx, consolidado),
         )
+
+    def _margenes_parciales_por_celda(
+        self, ctx: _Contexto
+    ) -> dict[tuple[int, int], tuple[Decimal, Decimal]]:
+        """Venta y costo de líneas con costo informado, agrupados una sola vez."""
+        consulta = select(
+            VentaLinea.punto_venta_id,
+            VentaLinea.categoria_id,
+            func.sum(VentaLinea.valor_subtotal),
+            func.sum(VentaLinea.costo_promedio),
+        ).where(
+            VentaLinea.periodo_id == ctx.periodo.id,
+            VentaLinea.fecha <= ctx.fecha_corte,
+            VentaLinea.costo_promedio.is_not(None),
+        )
+        consulta = self._aplicar_filtro_puntos(consulta, ctx)
+        if ctx.categoria_id is not None:
+            consulta = consulta.where(VentaLinea.categoria_id == ctx.categoria_id)
+        return {
+            (punto_id, categoria_id): (Decimal(venta or 0), Decimal(costo or 0))
+            for punto_id, categoria_id, venta, costo in self._sesion.execute(
+                consulta.group_by(VentaLinea.punto_venta_id, VentaLinea.categoria_id)
+            )
+        }
+
+    @staticmethod
+    def _campos_margen_parcial(
+        ctx: _Contexto,
+        puntos_ids: list[int],
+        por_celda: dict[tuple[int, int], tuple[Decimal, Decimal]],
+        *,
+        categoria_id: int | None = None,
+    ) -> dict[str, Decimal | int | None]:
+        ids = set(puntos_ids)
+        venta_con_costo = CERO
+        costo_conocido = CERO
+        lineas_totales = 0
+        lineas_con_costo = 0
+        for (punto_id, categoria), totales in ctx.venta.items():
+            if punto_id not in ids or (categoria_id is not None and categoria != categoria_id):
+                continue
+            lineas_totales += totales.lineas
+            lineas_con_costo += totales.lineas_con_costo
+            venta_celda, costo_celda = por_celda.get((punto_id, categoria), (CERO, CERO))
+            venta_con_costo += venta_celda
+            costo_conocido += costo_celda
+
+        hay_costo = lineas_con_costo > 0
+        return {
+            "margen_parcial_valor": (
+                redondear(margen_valor(venta_con_costo, costo_conocido), 2) if hay_costo else None
+            ),
+            "margen_parcial_porcentaje": (
+                redondear_porcentaje(margen_porcentaje(venta_con_costo, costo_conocido))
+                if hay_costo
+                else None
+            ),
+            "cobertura_costo_parcial": redondear_porcentaje(
+                dividir(Decimal(lineas_con_costo), Decimal(lineas_totales))
+                if lineas_totales > 0
+                else None
+            ),
+            "lineas_con_costo": lineas_con_costo,
+            "lineas_totales": lineas_totales,
+        }
 
     # ── Costos y margen ─────────────────────────────────────────────────────
 

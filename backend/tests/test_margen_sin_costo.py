@@ -241,6 +241,33 @@ def test_el_consolidado_calcula_el_margen_sin_pereira_cuando_pereira_no_tiene_co
     )
 
 
+def test_cumplimiento_muestra_margen_parcial_y_cobertura_por_pdv(
+    sesion: Session, estructura: None
+) -> None:
+    dar_presupuesto(sesion, CON_COSTO, "RES", "20000")
+    dar_venta(sesion, CON_COSTO, "RES", 5, valor="10000", costo="6000")
+    _escenario_pereira(sesion)
+
+    respuesta = ReportesService(sesion).cumplimiento(
+        FiltrosReporte(
+            periodo=PERIODO,
+            hasta=CORTE,
+            alcance=[id_punto_venta(sesion, CON_COSTO), id_punto_venta(sesion, SIN_COSTO)],
+        )
+    )
+    filas = {fila.punto_venta: fila for fila in respuesta.filas}
+    malambo = filas[CON_COSTO]
+    pereira = filas[SIN_COSTO]
+
+    assert malambo.margen_porcentaje == D("0.4000")
+    assert malambo.margen_parcial_porcentaje == D("0.4000")
+    assert malambo.cobertura_costo_parcial == D("1.0000")
+    assert pereira.margen_parcial_porcentaje is None
+    assert pereira.cobertura_costo_parcial == D("0.0000")
+    assert respuesta.consolidado.margen_parcial_porcentaje == D("0.4000")
+    assert respuesta.consolidado.cobertura_costo_parcial == D("0.5000")
+
+
 def test_el_grupo_sin_pereira_conserva_su_margen(sesion: Session, estructura: None) -> None:
     """El contagio llega hasta donde llega el conjunto, ni una fila más.
 

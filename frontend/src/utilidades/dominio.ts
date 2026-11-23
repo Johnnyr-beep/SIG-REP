@@ -194,6 +194,8 @@ export const FORMULAS: Record<string, string> = {
     "variación % = ((proyección de venta ÷ venta promedio mensual desde mayo) − 1) × 100",
   margen_valor: "margen = Σ valor subtotal − Σ costo promedio",
   margen_porcentaje: "margen % = margen ÷ venta",
+  margen_parcial:
+    "Margen parcial = venta y costo de líneas con costo informado. Cobertura = líneas con costo / líneas totales.",
   presupuesto_diario: "presupuesto diario = presupuesto mensual ÷ días hábiles",
 };
 

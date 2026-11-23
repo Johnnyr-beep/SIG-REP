@@ -123,7 +123,7 @@ export function Cumplimiento() {
                     <th scope="col" className="columna-ancla">
                       Punto de venta
                     </th>
-                    <EncabezadosIndicadores medida={medida} />
+                    <EncabezadosIndicadores medida={medida} margenParcial />
                   </tr>
                 </thead>
                 <tbody>
@@ -146,7 +146,7 @@ export function Cumplimiento() {
                     <th scope="row" className="columna-ancla">
                       <span className="fila-totales__nombre">Total</span>
                     </th>
-                    <CeldasIndicadores fila={data.consolidado} medida={medida} />
+                    <CeldasIndicadores fila={data.consolidado} medida={medida} margenParcial />
                   </tr>
                 </tfoot>
               </table>
@@ -165,38 +165,34 @@ function VisualMargen({
   total,
 }: {
   filas: FilaPuntoVentaReporte[];
-  total: { margen_valor: string | null; margen_porcentaje: string | null };
+  total: Pick<FilaPuntoVentaReporte, "margen_parcial_valor" | "margen_parcial_porcentaje">;
 }) {
-  const conMargen = filas.filter((fila) => fila.margen_porcentaje !== null);
-
   return (
     <section className="margen-visual" aria-labelledby="margen-visual-titulo">
       <div className="margen-visual__cabecera">
         <div>
-          <h3 id="margen-visual-titulo">Margen por punto de venta</h3>
+          <h3 id="margen-visual-titulo">Margen parcial por punto de venta</h3>
           <p className="tenue">
-            {conMargen.length === filas.length
-              ? "Calculado sobre venta y costo acumulados."
-              : "Los puntos sin costo completo se muestran sin margen para no publicar una cifra parcial."}
+            Calculado solo sobre líneas con costo informado; se muestra la cobertura de cada punto.
           </p>
         </div>
         <p className="margen-visual__total">
-          <span>Margen total</span>
-          <strong>{porcentaje(total.margen_porcentaje)}</strong>
-          <small>{dinero(total.margen_valor)}</small>
+          <span>Margen parcial total</span>
+          <strong>{porcentaje(total.margen_parcial_porcentaje)}</strong>
+          <small>{dinero(total.margen_parcial_valor)}</small>
         </p>
       </div>
 
       <div className="margen-visual__filas">
         {filas.map((fila) => {
-          const valor = Number(fila.margen_porcentaje ?? 0);
+          const valor = Number(fila.margen_parcial_porcentaje ?? 0);
           const ancho = Math.min(Math.abs(valor) * 100, 100);
           const tono = valor < 0 ? "negativo" : "positivo";
 
           return (
             <div className="margen-visual__fila" key={fila.punto_venta}>
               <span>{fila.nombre}</span>
-              {fila.margen_porcentaje === null ? (
+              {fila.margen_parcial_porcentaje == null ? (
                 <span className="margen-visual__sin-dato">Sin costo</span>
               ) : (
                 <span className="margen-visual__pista" aria-hidden="true">
@@ -206,7 +202,10 @@ function VisualMargen({
                   />
                 </span>
               )}
-              <strong>{porcentaje(fila.margen_porcentaje)}</strong>
+              <strong>{porcentaje(fila.margen_parcial_porcentaje)}</strong>
+              <small>
+                {porcentaje(fila.cobertura_costo_parcial)} · {fila.lineas_con_costo ?? 0}/{fila.lineas_totales ?? 0} líneas
+              </small>
             </div>
           );
         })}
@@ -268,7 +267,7 @@ function FilaPdv({
             </span>
           )}
         </th>
-        <CeldasIndicadores fila={fila} medida={medida} />
+        <CeldasIndicadores fila={fila} medida={medida} margenParcial />
       </tr>
 
       {desplegada
@@ -282,7 +281,7 @@ function FilaPdv({
                   {etiquetaDe(categoria.categoria)}
                 </span>
               </th>
-              <CeldasIndicadores fila={categoria} medida={medida} />
+              <CeldasIndicadores fila={categoria} medida={medida} margenParcial />
             </tr>
           ))
         : null}

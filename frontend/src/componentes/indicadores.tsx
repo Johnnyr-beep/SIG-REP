@@ -128,14 +128,24 @@ const COLUMNAS: DefinicionColumna[] = [
 ];
 
 /** Encabezados de la tabla de indicadores, con la fórmula de cada columna. */
-export function EncabezadosIndicadores({ medida }: { medida: Medida }) {
+export function EncabezadosIndicadores({
+  medida,
+  margenParcial = false,
+}: {
+  medida: Medida;
+  margenParcial?: boolean;
+}) {
   return (
     <>
       {COLUMNAS.map((columna) => (
         <th key={columna.clave} scope="col" className="numero">
           <span className="encabezado">
             <span>
-              {columna.titulo}
+              {margenParcial && columna.clave === "margen_valor"
+                ? "Margen*"
+                : margenParcial && columna.clave === "margen_porcentaje"
+                  ? "Margen %*"
+                  : columna.titulo}
               {columna.clave === "presupuesto" || columna.clave === "venta" ? (
                 <span className="encabezado__unidad">
                   {" "}
@@ -145,7 +155,11 @@ export function EncabezadosIndicadores({ medida }: { medida: Medida }) {
             </span>
             {columna.formula ? (
               <Pista etiqueta={columna.titulo} alineacion="derecha">
-                <p className="formula">{columna.formula}</p>
+                <p className="formula">
+                  {margenParcial && columna.soloValor
+                    ? FORMULAS.margen_parcial
+                    : columna.formula}
+                </p>
                 {columna.soloValor && medida === "kilos" ? (
                   <p className="tenue">
                     El margen es un concepto monetario: midiendo en kilos no
@@ -174,9 +188,11 @@ export const COLUMNAS_INDICADORES = COLUMNAS.length;
 export function CeldasIndicadores({
   fila,
   medida,
+  margenParcial = false,
 }: {
   fila: FilaIndicadores;
   medida: Medida;
+  margenParcial?: boolean;
 }) {
   return (
     <>
@@ -204,8 +220,12 @@ export function CeldasIndicadores({
         {porMedida(fila.venta_anio_anterior, medida)}
       </td>
       <td className="numero">{porcentaje(fila.crecimiento)}</td>
-      <td className="numero suave">{porMedida(fila.margen_valor, "valor")}</td>
-      <td className="numero">{porcentaje(fila.margen_porcentaje)}</td>
+      <td className="numero suave">
+        {porMedida(margenParcial ? fila.margen_parcial_valor ?? null : fila.margen_valor, "valor")}
+      </td>
+      <td className="numero">
+        {porcentaje(margenParcial ? fila.margen_parcial_porcentaje ?? null : fila.margen_porcentaje)}
+      </td>
     </>
   );
 }

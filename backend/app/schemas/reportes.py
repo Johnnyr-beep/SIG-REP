@@ -46,6 +46,11 @@ class FilaIndicadores(EsquemaBase):
     crecimiento: DecimalStr | None = None
     margen_valor: DecimalStr | None = None
     margen_porcentaje: DecimalStr | None = None
+    margen_parcial_valor: DecimalStr | None = None
+    margen_parcial_porcentaje: DecimalStr | None = None
+    cobertura_costo_parcial: DecimalStr | None = None
+    lineas_con_costo: int | None = None
+    lineas_totales: int | None = None
     dias_habiles: DecimalStr | None = None
     dias_trabajados: DecimalStr | None = None
 

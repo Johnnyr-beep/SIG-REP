@@ -179,7 +179,9 @@ alguna base o el promedio es cero.
 `margen_parcial_valor` y `margen_parcial_porcentaje` se calculan solo con las
 líneas que traen costo. No sustituyen el margen total: `cobertura_costo_parcial`
 es la fracción de líneas con costo sobre `lineas_totales`, y ambos conteos se
-devuelven para que la tarjeta identifique claramente el alcance del margen.
+devuelven para que la tarjeta identifique claramente el alcance del margen. En
+`/reportes/cumplimiento`, las filas de PDV y categoría incluyen estos mismos
+campos parciales; las columnas `Margen*` y `Margen %*` usan ese valor parcial.
 
 `ventas_anuales` presenta los doce meses del año de `periodo`, en la medida
 solicitada (`valor` o `kilos`). Cada fila incluye el total del punto y el bloque

@@ -336,6 +336,13 @@ function armarIndicadores(entrada: EntradaIndicadores): FilaIndicadores {
     medida === "kilos" ? null : 0.3 + (semilla % 11) / 100;
   const margenValor =
     margenPorcentaje === null ? null : venta * margenPorcentaje;
+  const margenParcialPorcentaje =
+    medida === "kilos" ? null : 0.26 + (semilla % 7) / 100;
+  const margenParcialValor =
+    margenParcialPorcentaje === null ? null : venta * margenParcialPorcentaje;
+  const lineasTotales = 800 + semilla * 17;
+  const coberturaCosto = semilla % 5 === 0 ? 0.82 : 1;
+  const lineasConCosto = Math.round(lineasTotales * coberturaCosto);
 
   const decimales = medida === "kilos" ? 2 : 2;
 
@@ -363,6 +370,15 @@ function armarIndicadores(entrada: EntradaIndicadores): FilaIndicadores {
     margen_valor: margenValor === null ? null : cadena(margenValor, decimales),
     margen_porcentaje:
       margenPorcentaje === null ? null : cadena(margenPorcentaje, 4),
+    margen_parcial_valor:
+      margenParcialValor === null ? null : cadena(margenParcialValor, decimales),
+    margen_parcial_porcentaje:
+      margenParcialPorcentaje === null
+        ? null
+        : cadena(margenParcialPorcentaje, 4),
+    cobertura_costo_parcial: cadena(coberturaCosto, 4),
+    lineas_con_costo: lineasConCosto,
+    lineas_totales: lineasTotales,
     dias_habiles: cadena(habiles, 1),
     dias_trabajados: cadena(trabajados, 1),
   };
