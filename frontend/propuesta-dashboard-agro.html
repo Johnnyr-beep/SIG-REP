@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Propuesta · Dashboard Agropecuaria</title>
+    <title>Glassy Dashboard V30 · Grupo Santa Cruz</title>
     <style>
       :root {
         --ink: #14231a;
@@ -107,53 +107,287 @@
       .month-bar--62 { height: 62%; }
       .footer { color: var(--muted); font: 11px "Segoe UI", Tahoma, sans-serif; margin-top: 16px; }
       .tag { display: inline-block; padding: 3px 6px; color: var(--green); background: var(--green-pale); border-radius: 3px; font: 700 10px "Segoe UI", Tahoma, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+      :root {
+        color-scheme: light;
+        --ink: #1d302d;
+        --muted: #5d706c;
+        --line: rgb(38 78 68 / 16%);
+        --paper: rgb(250 253 250 / 74%);
+        --wash: #e7efeb;
+        --green: #246d61;
+        --green-bright: #1f6257;
+        --green-pale: rgb(36 109 97 / 11%);
+        --lime: #dfa94f;
+        --red: #b94e49;
+        --amber: #965d27;
+        --blue: #47788b;
+        --glass-edge: rgb(255 255 255 / 72%);
+        --glass-shadow: 0 18px 44px rgb(27 55 48 / 12%);
+        font-family: "Segoe UI", Tahoma, sans-serif;
+      }
+
+      body {
+        min-width: 0;
+        min-height: 100vh;
+        background: linear-gradient(118deg, #e2ece7 0%, #f1f4ef 48%, #e8eeea 100%);
+        color: var(--ink);
+        font-family: "Segoe UI", Tahoma, sans-serif;
+      }
+
+      body::before {
+        position: fixed;
+        z-index: -1;
+        inset: 0;
+        background: repeating-linear-gradient(0deg, transparent 0 31px, rgb(38 78 68 / 3%) 32px);
+        content: "";
+        pointer-events: none;
+      }
+
+      .sans { font-family: "Segoe UI", Tahoma, sans-serif; }
+      .top {
+        position: sticky;
+        z-index: 5;
+        top: 0;
+        border-bottom: 1px solid var(--glass-edge);
+        background: rgb(27 46 41 / 88%);
+        color: #edf3ee;
+        padding: 13px 32px;
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+      }
+      .brand { letter-spacing: 0; }
+      .brand img { background: #f3f7f3; }
+      .brand small { color: #c6d6cc; letter-spacing: 0; }
+      .top-right { color: #d1ded6; }
+      .page { padding-top: 30px; }
+      .eyebrow { color: var(--green); letter-spacing: 0; }
+      h1 { max-width: 22ch; font-family: "Segoe UI", Tahoma, sans-serif; font-size: 32px; line-height: 1.15; letter-spacing: 0; }
+      .subtitle { color: var(--muted); line-height: 1.55; }
+      .cut { color: var(--ink); }
+      .filters,
+      .kpi,
+      .panel {
+        border: 1px solid var(--glass-edge);
+        background: var(--paper);
+        box-shadow: var(--glass-shadow);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+      }
+      .filters { border-radius: 8px; }
+      .filter { border-color: var(--line); }
+      .filter label,
+      .kpi .label { color: var(--muted); letter-spacing: 0; }
+      .filter strong { color: var(--ink); }
+      .filter strong::after { color: var(--green); }
+      .clear {
+        border: 1px solid rgb(194 223 132 / 42%);
+        border-radius: 5px;
+        color: var(--green);
+        background: rgb(194 223 132 / 8%);
+        cursor: pointer;
+      }
+      .clear:hover { background: rgb(194 223 132 / 16%); }
+      .clear:focus-visible { outline: 2px solid var(--green-bright); outline-offset: 3px; }
+      .kpis { gap: 10px; }
+      .kpi { border-radius: 7px; }
+      .kpi::before { display: none; }
+      .kpi .label { color: var(--muted); }
+      .kpi .number { color: var(--ink); font-family: "Segoe UI", Tahoma, sans-serif; font-size: 24px; font-variant-numeric: tabular-nums; }
+      .kpi .note { color: var(--muted); }
+      .kpi .delta { color: var(--red); }
+      .section-line { border-color: var(--line); }
+      h2 { font-family: "Segoe UI", Tahoma, sans-serif; font-size: 18px; }
+      .section-line span,
+      .panel .detail { color: var(--muted); }
+      .panel { border-radius: 7px; }
+      .panel h3 { font-family: "Segoe UI", Tahoma, sans-serif; font-size: 15px; }
+      .legend { color: var(--muted); }
+      .chart {
+        border-color: var(--line);
+        background: repeating-linear-gradient(to bottom, transparent 0, transparent 49px, rgb(38 78 68 / 10%) 50px);
+      }
+      .line-a { box-shadow: 0 0 14px rgb(36 109 97 / 20%); }
+      .line-b { box-shadow: 0 0 14px rgb(71 120 139 / 20%); }
+      .gauge { background: conic-gradient(from 270deg at 50% 100%, var(--green) 0 64%, rgb(38 78 68 / 10%) 64% 100%); }
+      .gauge::after { background: #f7faf7; }
+      .gauge b { color: var(--ink); font-family: "Segoe UI", Tahoma, sans-serif; }
+      .gauge-note { color: var(--muted); }
+      .days { border-color: var(--line); }
+      .days b { color: var(--green); }
+      .track { background: rgb(38 78 68 / 11%); }
+      .bar { background: var(--green); }
+      .bar.alt { background: var(--blue); }
+      .bar.soft { background: var(--amber); }
+      .rank li { border-color: var(--line); }
+      .rank .pos { color: var(--green); }
+      .rank .money { color: var(--ink); }
+      .matrix { color: var(--ink); }
+      .matrix th,
+      .matrix td { border-color: var(--line); }
+      .matrix thead { color: var(--muted); }
+      .matrix .total { border-color: var(--green); }
+      .monthly {
+        border-color: var(--line);
+        background: repeating-linear-gradient(to bottom, transparent 0, transparent 45px, rgb(220 238 224 / 9%) 46px);
+      }
+      .month-bar { background: var(--green); }
+      .month-bar.current { background: var(--amber); }
+      .month-bar i { color: var(--muted); }
+      .tag { border-radius: 4px; color: var(--green); background: var(--green-pale); letter-spacing: 0; }
+      .footer { color: var(--muted); }
+
+      @media (max-width: 1000px) {
+        .page { padding-right: 22px; padding-left: 22px; }
+        .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .grid-main { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .grid-main > .panel:first-child { grid-column: 1 / -1; }
+        .below { grid-template-columns: minmax(0, 1fr); }
+      }
+
+      @media (max-width: 640px) {
+        .top { align-items: flex-start; gap: 12px; padding: 12px 16px; }
+        .top-right { flex-direction: column; gap: 3px; align-items: flex-end; text-align: right; }
+        .top-right span:first-child { display: none; }
+        .brand img { width: 30px; height: 30px; }
+        .page { padding: 22px 14px 34px; }
+        h1 { font-size: 26px; }
+        .subtitle { font-size: 13px; }
+        .filters { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 8px 12px; }
+        .filter { border-right: 0; border-bottom: 1px solid var(--line); padding: 9px 2px; }
+        .filter:last-of-type { border-bottom: 0; }
+        .clear { justify-self: start; margin: 8px 0 2px; }
+        .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 14px 0; }
+        .kpi { min-height: 96px; padding: 12px; }
+        .kpi .number { font-size: 20px; white-space: normal; }
+        .kpi:last-child { grid-column: 1 / -1; }
+        .section-line { align-items: flex-start; flex-direction: column; gap: 4px; margin-top: 22px; }
+        .grid-main { grid-template-columns: minmax(0, 1fr); gap: 9px; }
+        .grid-main > .panel:first-child { grid-column: auto; }
+        .below { gap: 9px; }
+        .panel { padding: 13px; }
+        .below > .panel:first-child { overflow-x: auto; }
+        .matrix { min-width: 510px; }
+        .bar-row { grid-template-columns: 58px minmax(0, 1fr) auto; gap: 6px; font-size: 10px; }
+        .bar-row b { font-size: 10px; }
+        .footer { line-height: 1.5; }
+      }
+
+      .rent-filters { grid-template-columns: 1fr 1.25fr 1fr auto; }
+      .rent-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .rent-kpis .kpi:nth-child(3) .number { color: var(--amber); }
+      .rent-kpis .kpi:nth-child(4) .number { color: var(--green); }
+      .rent-section { margin-top: 24px; }
+      .rent-section-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin: 0 0 10px; }
+      .rent-section-head h2 { margin: 0; }
+      .rent-section-head p { margin: 0; color: var(--muted); font-size: 12px; }
+      .rent-table-panel { padding: 0; overflow: hidden; }
+      .rent-table-head { display: flex; align-items: start; justify-content: space-between; gap: 16px; padding: 15px 16px 10px; }
+      .rent-table-head h3 { margin: 0; font-size: 15px; }
+      .rent-table-head p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+      .rent-table-wrap { overflow-x: auto; padding: 0 14px 14px; }
+      .rent-table { width: 100%; min-width: 1230px; border-collapse: collapse; font: 11px "Segoe UI", Tahoma, sans-serif; font-variant-numeric: tabular-nums; }
+      .rent-table th, .rent-table td { padding: 8px 7px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+      .rent-table thead th { color: var(--muted); font-size: 9px; font-weight: 700; line-height: 1.25; text-transform: uppercase; white-space: normal; }
+      .rent-table th:first-child, .rent-table td:first-child { width: 190px; text-align: left; }
+      .rent-table tbody th { color: var(--ink); font-weight: 650; }
+      .rent-table .group-row th, .rent-table .group-row td { background: rgb(36 109 97 / 7%); }
+      .rent-table .group-row th { color: var(--green); }
+      .rent-table .sub-row th { padding-left: 25px; color: var(--muted); font-weight: 550; }
+      .rent-table .product-row th { padding-left: 44px; color: var(--muted); font-weight: 450; }
+      .rent-table .total-row th, .rent-table .total-row td { border-top: 2px solid var(--green); border-bottom: 0; font-weight: 800; }
+      .rent-table .positive { color: var(--green); font-weight: 700; }
+      .signal { display: inline-flex; width: 18px; height: 18px; align-items: center; justify-content: center; border-radius: 50%; color: var(--green); background: var(--green-pale); font-size: 10px; }
+      .rent-lower { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; margin-top: 12px; }
+      .rent-lower .panel { min-width: 0; }
+      .daily-bars { display: flex; height: 150px; align-items: end; gap: 8px; padding: 12px 4px 22px; border-bottom: 1px solid var(--line); background: repeating-linear-gradient(to bottom, transparent 0, transparent 36px, rgb(38 78 68 / 9%) 37px); }
+      .daily-bars span { position: relative; flex: 1; min-width: 5px; border-radius: 3px 3px 0 0; background: var(--green); }
+      .daily-bars span:nth-child(3n) { background: var(--blue); }
+      .daily-bars span:last-child { background: var(--amber); }
+      .daily-bars i { position: absolute; bottom: -19px; left: 50%; color: var(--muted); font-size: 9px; font-style: normal; transform: translateX(-50%); }
+      .species-line { display: grid; grid-template-columns: 56px minmax(0, 1fr) 56px; gap: 9px; align-items: center; margin: 14px 0; font-size: 11px; }
+      .species-line strong { text-align: right; font-variant-numeric: tabular-nums; }
+      .species-track { height: 8px; border-radius: 5px; background: rgb(38 78 68 / 10%); }
+      .species-fill { height: 100%; border-radius: inherit; background: var(--green); }
+      .species-fill.alt { background: var(--amber); }
+      @media (max-width: 1000px) {
+        .rent-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .rent-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .rent-lower { grid-template-columns: minmax(0, 1fr); }
+      }
+      @media (max-width: 640px) {
+        .rent-filters { grid-template-columns: minmax(0, 1fr); }
+        .rent-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .rent-section-head { align-items: start; flex-direction: column; gap: 4px; }
+        .rent-table-head { align-items: start; flex-direction: column; }
+        .rent-table-wrap { padding-right: 10px; padding-left: 10px; }
+        .rent-lower > .panel:first-child { overflow-x: auto; }
+        .rent-lower .matrix { min-width: 510px; }
+        .daily-bars { gap: 5px; }
+      }
     </style>
   </head>
   <body>
     <header class="top">
-      <div class="brand"><img src="/src/recursos/frigorifico-agropecuaria.png" alt="" /><span>SIGREP<small>Agropecuaria Santacruz</small></span></div>
-      <div class="top-right"><span>Dashboard gerencial</span><span>Datos de demostración</span></div>
+      <div class="brand"><img src="./src/recursos/grupo-santacruz.png" alt="" /><span>SIGREP<small>Grupo Santa Cruz</small></span></div>
+      <div class="top-right"><span>Rentabilidad mensual</span><span>Datos de demostración</span></div>
     </header>
     <main class="page">
-      <p class="eyebrow">Propuesta de portada</p>
-      <h1>Ventas, presupuesto y prioridades comerciales</h1>
-      <p class="subtitle">Agosto de 2026 · <span class="cut">corte: lunes, 31 de agosto</span> · Valores netos, impuestos excluidos.</p>
+      <p class="eyebrow">Glassy Dashboard V30 · Grupo Santa Cruz</p>
+      <h1>VENTA - RENTABILIDAD MES</h1>
+      <p class="subtitle">Noviembre de 2026 · <span class="cut">corte ilustrativo al 13 de noviembre</span> · Valores netos, cifras ficticias.</p>
 
-      <section class="filters sans" aria-label="Filtros de demostración">
-        <div class="filter"><label>Año</label><strong>2026</strong></div>
-        <div class="filter"><label>Período</label><strong>Agosto</strong></div>
-        <div class="filter"><label>Centro de operación</label><strong>Todos los centros</strong></div>
-        <div class="filter"><label>Especie</label><strong>Todas las especies</strong></div>
-        <button class="clear" type="button">Limpiar filtros</button>
+      <section class="filters rent-filters sans" aria-label="Filtros de demostración">
+        <div class="filter"><label>Mes</label><strong>Noviembre de 2026</strong></div>
+        <div class="filter"><label>Empresa</label><strong>Agropecuaria · 3</strong></div>
+        <div class="filter"><label>Origen</label><strong>SIESA · datos de ejemplo</strong></div>
+        <span class="tag">Demo visual</span>
       </section>
 
-      <section class="kpis">
-        <article class="kpi"><div class="label">Presupuesto</div><div class="number">$ 17,16 mil M</div><div class="note">Meta mensual capturada</div></article>
-        <article class="kpi"><div class="label">Ventas acumuladas</div><div class="number">$ 10,68 mil M</div><div class="note">2,05 millones de Kg</div></article>
-        <article class="kpi alert"><div class="label">Brecha</div><div class="number">-$ 6,48 mil M</div><div class="note"><span class="delta">37,8 %</span> pendiente de meta</div></article>
-        <article class="kpi"><div class="label">Proyección al cierre</div><div class="number">$ 13,89 mil M</div><div class="note">80,9 % de cumplimiento</div></article>
-        <article class="kpi"><div class="label">Días operados</div><div class="number">17 / 22</div><div class="note">77,3 % del mes</div></article>
+      <section class="kpis rent-kpis" aria-label="Indicadores del mes">
+        <article class="kpi"><div class="label">Vlr Facturado</div><div class="number">$ 10,68 mil M</div><div class="note">Facturación neta del período</div></article>
+        <article class="kpi"><div class="label">%Rent</div><div class="number">28,5 %</div><div class="note">Utilidad sobre venta</div></article>
+        <article class="kpi"><div class="label">Costo inventario</div><div class="number">$ 7,64 mil M</div><div class="note">Costo total de las líneas</div></article>
+        <article class="kpi"><div class="label">Utilidad de línea</div><div class="number">$ 3,04 mil M</div><div class="note">39,8 % sobre costo</div></article>
       </section>
 
-      <div class="section-line"><h2>Seguimiento del mes</h2><span>Lectura para comité comercial</span></div>
+      <section class="rent-section" aria-labelledby="bienes-title">
+        <div class="rent-section-head">
+          <h2 id="bienes-title">Facturación BIENES</h2>
+          <p>La rentabilidad de cada línea se calcula sobre el costo del inventario.</p>
+        </div>
+        <article class="panel rent-table-panel">
+          <div class="rent-table-head">
+            <div><h3>Detalle por especie, comercial y producto</h3><p>Expansión jerárquica representada para la propuesta visual.</p></div>
+            <span class="tag">Cifras ficticias</span>
+          </div>
+          <div class="rent-table-wrap" tabindex="0" aria-label="Tabla desplazable de rentabilidad mensual">
+            <table class="rent-table">
+              <thead><tr><th>Especie / detalle</th><th>Q (kg)</th><th>Ingresos</th><th>UT.</th><th aria-label="Semáforo de utilidad"></th><th>%Rentb.</th><th aria-label="Semáforo de rentabilidad"></th><th>Costo unit. prom.</th><th>Costo total línea</th><th>Costo unitario línea</th><th>Utilidad línea</th><th>Rentabilidad línea</th></tr></thead>
+              <tbody>
+                <tr class="group-row"><th scope="row"><span aria-hidden="true">⌄</span> RES</th><td>1.350.000</td><td>$ 7.750 M</td><td>$ 2.350 M</td><td><span class="signal" aria-label="Rentabilidad positiva">+</span></td><td>30,3 %</td><td><span class="signal" aria-label="Rentabilidad positiva">+</span></td><td>$ 4.000</td><td>$ 5.400 M</td><td>$ 4.000</td><td class="positive">$ 2.350 M</td><td class="positive">43,5 %</td></tr>
+                <tr class="sub-row"><th scope="row"><span aria-hidden="true">⌄</span> Cortes</th><td>700.000</td><td>$ 4.200 M</td><td>$ 1.250 M</td><td><span class="signal" aria-label="Rentabilidad positiva">+</span></td><td>29,8 %</td><td><span class="signal" aria-label="Rentabilidad positiva">+</span></td><td>$ 4.214</td><td>$ 2.950 M</td><td>$ 4.214</td><td class="positive">$ 1.250 M</td><td class="positive">42,4 %</td></tr>
+                <tr class="product-row"><th scope="row">Corte especial</th><td>225.000</td><td>$ 1.380 M</td><td>$ 450 M</td><td><span class="signal" aria-label="Rentabilidad positiva">+</span></td><td>32,6 %</td><td><span class="signal" aria-label="Rentabilidad positiva">+</span></td><td>$ 4.133</td><td>$ 930 M</td><td>$ 4.133</td><td class="positive">$ 450 M</td><td class="positive">48,4 %</td></tr>
+                <tr class="group-row"><th scope="row"><span aria-hidden="true">⌄</span> CERDO</th><td>700.000</td><td>$ 2.930 M</td><td>$ 690 M</td><td><span class="signal" aria-label="Rentabilidad positiva">+</span></td><td>23,5 %</td><td><span class="signal" aria-label="Rentabilidad positiva">+</span></td><td>$ 3.200</td><td>$ 2.240 M</td><td>$ 3.200</td><td class="positive">$ 690 M</td><td class="positive">30,8 %</td></tr>
+                <tr class="sub-row"><th scope="row"><span aria-hidden="true">⌄</span> Canal porcino</th><td>450.000</td><td>$ 1.760 M</td><td>$ 430 M</td><td><span class="signal" aria-label="Rentabilidad positiva">+</span></td><td>24,4 %</td><td><span class="signal" aria-label="Rentabilidad positiva">+</span></td><td>$ 2.956</td><td>$ 1.330 M</td><td>$ 2.956</td><td class="positive">$ 430 M</td><td class="positive">32,3 %</td></tr>
+              </tbody>
+              <tfoot><tr class="total-row"><th scope="row">Total</th><td>2.050.000</td><td>$ 10.680 M</td><td>$ 3.040 M</td><td><span class="signal" aria-label="Rentabilidad positiva">+</span></td><td>28,5 %</td><td><span class="signal" aria-label="Rentabilidad positiva">+</span></td><td>$ 3.727</td><td>$ 7.640 M</td><td>$ 3.727</td><td class="positive">$ 3.040 M</td><td class="positive">39,8 %</td></tr></tfoot>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <div class="section-line"><h2>Evolución del mes</h2><span>Lectura diaria de rentabilidad y venta</span></div>
       <section class="grid-main">
-        <article class="panel"><h3>Venta acumulada vs presupuesto</h3><p class="detail">La distancia visible es la brecha que queda por recuperar.</p><p class="legend"><span><i class="dot dot--green"></i>Venta acumulada</span><span><i class="dot dot--blue"></i>Meta acumulada</span></p><div class="chart"><div class="line-a"></div><div class="line-b"></div></div><div class="months"><span>01 ago</span><span>08 ago</span><span>15 ago</span><span>22 ago</span><span>31 ago</span></div></article>
-        <article class="panel"><h3>Cumplimiento en pesos</h3><div class="gauge"><b>62,2 %</b></div><p class="gauge-note">Meta ideal a hoy: 77,3 %</p><div class="days"><div><span>Planta</span><b>61,5 %</b></div><div><span>Montería</span><b>71,6 %</b></div></div></article>
-        <article class="panel"><h3>Venta por centro</h3><p class="detail">Pesos netos del corte actual</p><div class="bar-row"><span>Planta</span><div class="track"><div class="bar bar--88"></div></div><b>$9,81 B</b></div><div class="bar-row"><span>Montería</span><div class="track"><div class="bar alt bar--16"></div></div><b>$0,86 B</b></div><div class="bar-row"><span>Servicios</span><div class="track"><div class="bar soft bar--22"></div></div><b>$2,34 B</b></div><p class="detail detail--separated"><span class="tag">Prioridad</span> Planta concentra la mayor brecha absoluta.</p></article>
+        <article class="panel"><h3>Rentabilidad diaria</h3><p class="detail">Porcentaje calculado sobre la venta de cada día.</p><p class="legend"><span><i class="dot dot--green"></i>Rentabilidad</span><span><i class="dot dot--blue"></i>Promedio del mes</span></p><div class="chart"><div class="line-a"></div><div class="line-b"></div></div><div class="months"><span>01 nov</span><span>04 nov</span><span>07 nov</span><span>10 nov</span><span>13 nov</span></div></article>
+        <article class="panel"><h3>Venta diaria</h3><p class="detail">Facturación neta en millones de pesos.</p><div class="daily-bars"><span style="height:44%"><i>01</i></span><span style="height:62%"><i>03</i></span><span style="height:52%"><i>05</i></span><span style="height:74%"><i>07</i></span><span style="height:58%"><i>09</i></span><span style="height:86%"><i>11</i></span><span style="height:69%"><i>13</i></span></div><p class="detail">Corte ilustrativo al 13 de noviembre.</p></article>
+        <article class="panel"><h3>Kilos por especie</h3><p class="detail">Participación de las líneas facturadas.</p><div class="species-line"><span>RES</span><div class="species-track"><div class="species-fill" style="width:72%"></div></div><strong>1,35 M</strong></div><div class="species-line"><span>CERDO</span><div class="species-track"><div class="species-fill alt" style="width:38%"></div></div><strong>0,70 M</strong></div><p class="detail detail--separated">Costo unitario promedio total: <strong>$ 3.727 / kg</strong></p></article>
       </section>
 
-      <div class="section-line"><h2>Composición comercial</h2><span>Qué vendió la compañía y dónde mirar primero</span></div>
-      <section class="below">
-        <article class="panel"><h3>Categorías y procesos</h3><p class="detail">Participación en ventas netas del período.</p><table class="matrix"><thead><tr><th>Proceso</th><th>Ventas $</th><th>Kg</th><th>Participación</th></tr></thead><tbody><tr><td>Cortes</td><td>$ 4,08 B</td><td>250.899</td><td>38,2 %</td></tr><tr><td>Canales</td><td>$ 3,55 B</td><td>290.607</td><td>33,2 %</td></tr><tr><td>Desposte</td><td>$ 1,87 B</td><td>347.000</td><td>17,5 %</td></tr><tr><td>Sacrificio</td><td>$ 1,75 B</td><td>84.961</td><td>16,4 %</td></tr><tr class="total"><td>Total</td><td>$ 10,68 B</td><td>2.050.000</td><td>100,0 %</td></tr></tbody></table></article>
-        <article class="panel"><h3>Venta mensual</h3><p class="detail">Enero a agosto, pesos netos.</p><div class="monthly"><span class="month-bar month-bar--64"><i>ENE</i></span><span class="month-bar month-bar--69"><i>FEB</i></span><span class="month-bar month-bar--75"><i>MAR</i></span><span class="month-bar month-bar--71"><i>ABR</i></span><span class="month-bar month-bar--80"><i>MAY</i></span><span class="month-bar month-bar--74"><i>JUN</i></span><span class="month-bar month-bar--83"><i>JUL</i></span><span class="month-bar current month-bar--62"><i>AGO</i></span></div></article>
+      <section class="rent-lower">
+        <article class="panel"><h3>Total Fact Agropecuaria</h3><p class="detail">Resumen comercial del período, valores netos.</p><table class="matrix"><thead><tr><th>Tipo item</th><th>Q (kg)</th><th>Ingresos</th><th>%Rentb.</th></tr></thead><tbody><tr><td>Bienes</td><td>2.050.000</td><td>$ 10.680 M</td><td>28,5 %</td></tr><tr><td>Servicios</td><td>—</td><td>$ 820 M</td><td>34,1 %</td></tr><tr class="total"><td>Total</td><td>2.050.000</td><td>$ 11.500 M</td><td>28,9 %</td></tr></tbody></table></article>
+        <article class="panel"><h3>Ranking clientes</h3><p class="detail">Venta neta del período, muestra ilustrativa.</p><ol class="rank"><li><span class="pos">01</span><span>Cliente mayorista A</span><span class="money">$ 1.374 M</span></li><li><span class="pos">02</span><span>Distribuidor regional B</span><span class="money">$ 684 M</span></li><li><span class="pos">03</span><span>Comercializadora C</span><span class="money">$ 521 M</span></li></ol></article>
       </section>
-
-      <div class="section-line"><h2>Responsables y clientes</h2><span>Priorizar la conversación comercial</span></div>
-      <section class="below">
-        <article class="panel"><h3>Vendedores con mayor venta</h3><p class="detail">Ranking por pesos netos, período seleccionado.</p><ol class="rank"><li><span class="pos">01</span><span>Africano Frías Zulma Ester</span><span class="money">$ 1.374 M</span></li><li><span class="pos">02</span><span>Agropecuaria Santacruz Ltda</span><span class="money">$ 684 M</span></li><li><span class="pos">03</span><span>Burgos Borrero Belkys Dayana</span><span class="money">$ 1.165 M</span></li><li><span class="pos">04</span><span>Cabarca Acero Karen Daniela</span><span class="money">$ 270 M</span></li><li><span class="pos">05</span><span>Chacón Candela Nelly Alexandra</span><span class="money">$ 179 M</span></li></ol></article>
-        <article class="panel"><h3>Lectura operativa</h3><p class="detail">Hallazgos que llevaría la portada al comité.</p><ol class="rank"><li><span class="pos">01</span><span>Planta está bajo su ideal diario.</span><span class="tag">Acción</span></li><li><span class="pos">02</span><span>Cortes y Canales explican 71,4 % de la venta.</span><span class="tag">Foco</span></li><li><span class="pos">03</span><span>Montería supera el avance esperado del corte.</span><span class="tag">Seguimiento</span></li></ol></article>
-      </section>
-      <p class="footer">Propuesta visual con cifras ilustrativas. No consulta ni modifica datos, rutas, presupuesto o ingesta de Agropecuaria.</p>
+      <p class="footer">Ejemplo visual para Grupo Santa Cruz. Todas las cifras y nombres de clientes son ficticios; no consulta datos productivos.</p>
     </main>
   </body>
 </html>

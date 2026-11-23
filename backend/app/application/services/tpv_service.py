@@ -43,14 +43,14 @@ class RespuestaTpv(BaseModel):
 def resumir_tpv(
     registros: list[RegistroTpv], nombres: dict[str, str], inicio: date, corte: date
 ) -> RespuestaTpv:
-    dias: dict[str, dict[date, bool]] = defaultdict(dict)
+    pendientes: dict[str, set[date]] = defaultdict(set)
     abiertas: dict[tuple[str, date, int, str], TpvAbierta] = {}
     for registro in registros:
         codigo = registro.codigo_co.strip().zfill(3)
         if codigo not in nombres or not inicio <= registro.fecha <= corte:
             continue
         fecha = registro.fecha
-        dias[codigo][fecha] = dias[codigo].get(fecha, True) and registro.estado == "Cerrado"
+        pendientes[codigo].add(fecha)
         if registro.estado == "Abierto":
             abiertas[codigo, fecha, registro.compania, registro.tpv] = TpvAbierta(
                 codigo_co=codigo,
@@ -62,16 +62,23 @@ def resumir_tpv(
 
     total = (corte - inicio).days + 1
     puntos = []
-    for codigo, estados in dias.items():
-        cerrados = [fecha for fecha, cerrado in estados.items() if cerrado]
+    for codigo in nombres:
+        fechas_pendientes = pendientes[codigo]
+        dias_sin_acumulacion = len(fechas_pendientes)
+        dias_acumulados = total - dias_sin_acumulacion
+        fechas_acumuladas = [
+            inicio.fromordinal(numero)
+            for numero in range(inicio.toordinal(), corte.toordinal() + 1)
+            if inicio.fromordinal(numero) not in fechas_pendientes
+        ]
         puntos.append(
             PuntoTpv(
                 codigo_co=codigo,
                 nombre=nombres[codigo],
-                fecha_acumulada=max(cerrados, default=None),
-                dias_acumulados=len(cerrados),
-                dias_sin_acumulacion=total - len(cerrados),
-                dias_sin_registros=total - len(estados),
+                fecha_acumulada=max(fechas_acumuladas, default=None),
+                dias_acumulados=dias_acumulados,
+                dias_sin_acumulacion=dias_sin_acumulacion,
+                dias_sin_registros=0,
             )
         )
 

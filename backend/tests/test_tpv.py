@@ -8,7 +8,7 @@ from app.application.services.tpv_service import RegistroTpv, resumir_tpv
 from app.infrastructure.fuentes.tpv import leer_paginas_tpv
 
 
-def test_solo_acumula_dias_con_todas_las_cajas_cerradas_y_pdvs_visibles() -> None:
+def test_cuenta_acumulados_por_dias_ausentes_del_endpoint_de_no_acumulados() -> None:
     def fila(dia: int, codigo: str, caja: str, estado: str) -> RegistroTpv:
         return RegistroTpv.model_validate(
             {
@@ -22,12 +22,9 @@ def test_solo_acumula_dias_con_todas_las_cajas_cerradas_y_pdvs_visibles() -> Non
 
     respuesta = resumir_tpv(
         [
-            fila(1, " 42 ", "TPV1", "Cerrado"),
-            fila(1, "042", "TPV2", "Cerrado"),
             fila(2, "042", "TPV1", "Cerrado"),
             fila(2, "042", "TPV2", "Abierto"),
             fila(2, "999", "TPV3", "Abierto"),
-            fila(5, "042", "TPV1", "Cerrado"),
         ],
         {"042": "PDV visible"},
         date(2026, 11, 1),
@@ -35,10 +32,10 @@ def test_solo_acumula_dias_con_todas_las_cajas_cerradas_y_pdvs_visibles() -> Non
     )
 
     (punto,) = respuesta.puntos
-    assert punto.fecha_acumulada == date(2026, 11, 1)
-    assert punto.dias_acumulados == 1
-    assert punto.dias_sin_acumulacion == 2
-    assert punto.dias_sin_registros == 1
+    assert punto.fecha_acumulada == date(2026, 11, 3)
+    assert punto.dias_acumulados == 2
+    assert punto.dias_sin_acumulacion == 1
+    assert punto.dias_sin_registros == 0
     (abierta,) = respuesta.abiertas
     assert abierta.tpv == "TPV2"
     assert abierta.fecha == date(2026, 11, 2)

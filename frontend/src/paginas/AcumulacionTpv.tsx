@@ -98,7 +98,7 @@ function InformeTpv({ datos }: { datos: RespuestaTpv }) {
       <Tarjeta
         titulo="Acumulación y cierre de TPV"
         descripcion={`${MODO_EJEMPLOS ? "Datos de ejemplo · " : ""}Corte: ${fecha(fecha_corte)}`}
-        pie="Un día se confirma cuando todas las TPV registradas están cerradas. Sin registros, queda sin confirmar."
+        pie="Los días acumulados son los que no aparecen como pendientes en el reporte de TPV no acumuladas."
       >
         <div className="rejilla rejilla--grupos">
           {mayor ? <Indicador etiqueta="Mayor acumulación" valor={`${mayor.dias_acumulados} días`} nota={mayor.nombre} /> : null}
@@ -108,8 +108,8 @@ function InformeTpv({ datos }: { datos: RespuestaTpv }) {
       </Tarjeta>
 
       <div className="rejilla rejilla--grupos">
-        <Tarjeta titulo="Días sin acumulación confirmada por PDV">
-          <BarrasRanking filas={ranking("dias_sin_acumulacion")} formatear={numero} titulo="Días sin acumulación confirmada por PDV" />
+        <Tarjeta titulo="Días pendientes de acumulación por PDV">
+          <BarrasRanking filas={ranking("dias_sin_acumulacion")} formatear={numero} titulo="Días pendientes de acumulación por PDV" />
         </Tarjeta>
         <Tarjeta titulo="Días acumulados por PDV">
           <BarrasRanking filas={ranking("dias_acumulados")} formatear={numero} titulo="Días acumulados por PDV" />
@@ -123,7 +123,7 @@ function InformeTpv({ datos }: { datos: RespuestaTpv }) {
               <th scope="col">Punto de venta</th>
               <th scope="col">Fecha acumulada</th>
               <th scope="col" className="numero">Días acumulados</th>
-              <th scope="col" className="numero">Días sin confirmar</th>
+              <th scope="col" className="numero">Días pendientes de acumulación</th>
               <th scope="col" className="numero">Días sin registros</th>
             </tr></thead>
             <tbody>{puntos.map((punto) => (
