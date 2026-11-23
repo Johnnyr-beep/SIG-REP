@@ -370,17 +370,17 @@ class ReportesService:
             periodos=(ctx.periodo.codigo,),
         )
         documentos_por_dia = self._documentos_por_dia(ctx, rango_documentos)
-        numero_documentos = sum(
+        total_documentos = sum(
             cantidad
             for por_dia in documentos_por_dia.values()
             for cantidad in por_dia.values()
             if cantidad is not None
         )
-        numero_documentos = numero_documentos if numero_documentos > 0 else None
+        numero_documentos: int | None = total_documentos if total_documentos > 0 else None
         ticket_promedio = (
-            redondear_no_nulo(consolidado.venta_valor / Decimal(numero_documentos), 2)
+            redondear_no_nulo(consolidado.venta / Decimal(numero_documentos), 2)
             if ctx.medida == Medida.VALOR
-            and consolidado.venta_valor is not None
+            and consolidado.venta is not None
             and numero_documentos is not None
             else None
         )
