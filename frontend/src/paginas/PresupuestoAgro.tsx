@@ -232,6 +232,11 @@ function TablaResumenEjecutivo({
           Ingresa los cuatro importes con máximo dos decimales.
         </p>
       ) : null}
+      {!hayCambios ? (
+        <p className="campo__ayuda" role="status">
+          Cambia al menos un importe para habilitar el guardado.
+        </p>
+      ) : null}
       <div className="tabla-envoltorio">
         <table className="tabla tabla--compacta tabla--anclada agro-presupuesto__tabla-ejecutiva">
           <thead>
