@@ -299,7 +299,7 @@ export function Presupuesto() {
             className="filtros"
             onSubmit={(evento) => {
               evento.preventDefault();
-              if (!puntoSeleccionado || !/^\\d+$/.test(numeroEmpleados)) return;
+              if (!puntoSeleccionado || !/^\d+$/.test(numeroEmpleados)) return;
               guardarEmpleados.mutate({
                 punto_venta_id: puntoSeleccionado.id,
                 numero_empleados: Number(numeroEmpleados),
