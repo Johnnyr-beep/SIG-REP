@@ -24,6 +24,7 @@ from app.application.services.agro_reportes_service import AgroReportesService, 
 from app.application.services.periodos import obtener_o_crear_periodo
 from app.domain.enums import Medida, Semaforo
 from app.infrastructure.models.agro_dimensiones import AgroDimension
+from app.infrastructure.models.agro_presupuesto_mensual import AgroPptoMensualEjecutivo
 from app.infrastructure.models.agro_venta import AgroVentaLinea
 from app.infrastructure.models.agro_vocabulario import (
     DimensionPresupuesto,
@@ -136,6 +137,49 @@ def test_el_presupuesto_del_consolidado_se_limita_a_los_centros_pedidos(
     assert respuesta.consolidado.venta == Decimal("1000.00")
     assert respuesta.consolidado.presupuesto == Decimal("2000.00")
     assert respuesta.consolidado.cumplimiento == Decimal("0.5000")
+
+
+def test_presupuesto_ejecutivo_es_referencia_del_consolidado_sin_metas_dimensionales(
+    dos_centros: Session,
+) -> None:
+    periodo_nuevo = "2026-09"
+    periodo = obtener_o_crear_periodo(dos_centros, periodo_nuevo)
+    dos_centros.add(
+        AgroPptoMensualEjecutivo(
+            periodo_id=periodo.id,
+            gerencia_comercial=Decimal("1000"),
+            oficina=Decimal("2000"),
+            servicios=Decimal("300"),
+            negocios_especiales=Decimal("400"),
+        )
+    )
+    dos_centros.flush()
+
+    respuesta = AgroReportesService(dos_centros).resumen(
+        FiltrosAgro(
+            periodo=periodo_nuevo,
+            hasta=date(2026, 9, 28),
+            centros=None,
+            medida=Medida.VALOR,
+        ),
+        EjeResumen.CENTRO_OPERACION,
+    )
+
+    assert respuesta.consolidado.presupuesto == Decimal("3300.00")
+    assert respuesta.consolidado.venta == Decimal("0.00")
+    assert respuesta.consolidado.cumplimiento == Decimal("0.0000")
+    assert all(fila.presupuesto is None for fila in respuesta.filas)
+
+    filtrado = AgroReportesService(dos_centros).resumen(
+        FiltrosAgro(
+            periodo=periodo_nuevo,
+            hasta=date(2026, 9, 28),
+            centros=(PLANTA,),
+            medida=Medida.VALOR,
+        ),
+        EjeResumen.CENTRO_OPERACION,
+    )
+    assert filtrado.consolidado.presupuesto is None
 
 
 def test_el_consolidado_filtrado_no_se_contradice_con_su_unica_fila(

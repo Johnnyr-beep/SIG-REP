@@ -76,7 +76,10 @@ from app.domain.indicadores import (
 )
 from app.domain.semaforo import UmbralesSemaforo
 from app.infrastructure.models.agro_dimensiones import AgroDimension
-from app.infrastructure.models.agro_presupuesto_mensual import AgroPptoMensualDetalle
+from app.infrastructure.models.agro_presupuesto_mensual import (
+    AgroPptoMensualDetalle,
+    AgroPptoMensualEjecutivo,
+)
 from app.infrastructure.models.agro_venta import AgroVentaLinea
 from app.infrastructure.models.agro_vocabulario import (
     DimensionPresupuesto,
@@ -417,7 +420,13 @@ class AgroReportesService:
             ctx,
             consolidado_totales,
             base,
-            presupuesto=self._meta_total(plan, ctx.medida, self._claves_del_filtro(ctx, dimension)),
+            presupuesto=self._meta_consolidada(
+                ctx,
+                plan,
+                dimension,
+                ctx.medida,
+                self._claves_del_filtro(ctx, dimension),
+            ),
             dias_habiles=habiles_cia,
             dias_trabajados=trabajados_cia,
             ideal_agregado=ideal_cia,
@@ -1398,6 +1407,38 @@ class AgroReportesService:
         if plan is None:
             return None
         return plan.monto_de(clave) if medida is Medida.VALOR else plan.kilos_de(clave)
+
+    def _meta_consolidada(
+        self,
+        ctx: _Contexto,
+        plan: PlanPresupuesto | None,
+        dimension: DimensionPresupuesto | None,
+        medida: Medida,
+        claves: set[str] | None,
+    ) -> Decimal | None:
+        """Usa el total ejecutivo solo si no existe parametrización dimensional."""
+        meta_dimensional = self._meta_total(plan, medida, claves)
+        if meta_dimensional is not None:
+            return meta_dimensional
+        if dimension is None or medida is not Medida.VALOR:
+            return None
+        if claves is not None:
+            return None
+        if plan is not None and plan.definido:
+            return None
+
+        captura = self._sesion.execute(
+            select(AgroPptoMensualEjecutivo).where(
+                AgroPptoMensualEjecutivo.periodo_id == ctx.periodo.id
+            )
+        ).scalar_one_or_none()
+        if captura is None:
+            return None
+        return (
+            Decimal(captura.gerencia_comercial)
+            + Decimal(captura.oficina)
+            + Decimal(captura.servicios)
+        )
 
     @staticmethod
     def _meta_total(
