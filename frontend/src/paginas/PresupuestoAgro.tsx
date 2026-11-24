@@ -291,7 +291,52 @@ function TablaResumenEjecutivo({
 // ── Captura ejecutiva directa ────────────────────────────────────────────────
 
 export function PresupuestoAgro() {
-  return <VistaMensual />;
+  const [parametros, setParametros] = useSearchParams();
+  const dimensionActiva = esDimensionPresupuesto(parametros.get("dimension"));
+
+  function cambiarVista(dimensional: boolean) {
+    const siguientes = new URLSearchParams(parametros);
+    if (dimensional) {
+      siguientes.set(
+        "dimension",
+        esDimensionPresupuesto(siguientes.get("dimension"))
+          ? siguientes.get("dimension")!
+          : "centro_operacion",
+      );
+    } else {
+      siguientes.delete("dimension");
+    }
+    setParametros(siguientes, { replace: true });
+  }
+
+  return (
+    <div className="pila">
+      <section className="filtros" aria-label="Tipo de presupuesto Agropecuario">
+        <fieldset className="segmentado">
+          <legend className="solo-lectores">Tipo de presupuesto</legend>
+          <label className={`segmentado__opcion${!dimensionActiva ? " segmentado__opcion--activa" : ""}`}>
+            <input
+              type="radio"
+              name="tipo-presupuesto-agro"
+              checked={!dimensionActiva}
+              onChange={() => cambiarVista(false)}
+            />
+            Presupuesto mensual ejecutivo
+          </label>
+          <label className={`segmentado__opcion${dimensionActiva ? " segmentado__opcion--activa" : ""}`}>
+            <input
+              type="radio"
+              name="tipo-presupuesto-agro"
+              checked={dimensionActiva}
+              onChange={() => cambiarVista(true)}
+            />
+            Metas por dimensión
+          </label>
+        </fieldset>
+      </section>
+      {dimensionActiva ? <VistaDimensiones /> : <VistaMensual />}
+    </div>
+  );
 }
 
 export function VistaDimensionesPresupuestoAgro() {
