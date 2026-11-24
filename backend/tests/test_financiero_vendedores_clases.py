@@ -10,8 +10,8 @@ from app.infrastructure.fuentes.agro_vendedores_clases import (
     obtener_vendedores_clases,
     parsear_vendedores_clases,
 )
-from app.infrastructure.models.agro_vocabulario import EjeResumen
 from app.infrastructure.fuentes.agropecuaria import ConfiguracionAgro, ErrorFuenteAgro
+from app.infrastructure.models.agro_vocabulario import EjeResumen
 
 
 def test_parsear_catalogo_normaliza_las_clases_requeridas() -> None:

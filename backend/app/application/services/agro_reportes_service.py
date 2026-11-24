@@ -75,6 +75,8 @@ from app.domain.indicadores import (
     redondear_porcentaje,
 )
 from app.domain.semaforo import UmbralesSemaforo
+from app.infrastructure.fuentes.agro_vendedores_clases import obtener_vendedores_clases
+from app.infrastructure.fuentes.agropecuaria import ConfiguracionAgro
 from app.infrastructure.models.agro_dimensiones import AgroDimension
 from app.infrastructure.models.agro_presupuesto_mensual import (
     AgroPptoMensualDetalle,
@@ -90,8 +92,6 @@ from app.infrastructure.models.agro_vocabulario import (
     normalizar_etiqueta,
     sin_acentos,
 )
-from app.infrastructure.fuentes.agro_vendedores_clases import obtener_vendedores_clases
-from app.infrastructure.fuentes.agropecuaria import ConfiguracionAgro
 from app.infrastructure.models.periodo import Periodo
 from app.schemas.agro import (
     ConciliacionAgro,
@@ -140,6 +140,7 @@ def clasificar_director_agro(codigo_vendedor: str | None, mapa: dict[str, str]) 
     if clase is None:
         clase = mapa.get(clave.upper())
     return clase if clase in DIRECTORES_COMERCIALES else "OTROS"
+
 
 #: Columna de `agro_venta_lineas` que corresponde a cada dimensión. Es el único
 #: sitio donde se traduce un eje pedido por la API a una columna de la base: con
