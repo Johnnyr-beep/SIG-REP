@@ -76,7 +76,7 @@ from app.domain.indicadores import (
 )
 from app.domain.semaforo import UmbralesSemaforo
 from app.infrastructure.fuentes.agro_vendedores_clases import obtener_vendedores_clases
-from app.infrastructure.fuentes.agropecuaria import ConfiguracionAgro
+from app.infrastructure.fuentes.agropecuaria import ConfiguracionAgro, ErrorFuenteAgro
 from app.infrastructure.models.agro_dimensiones import AgroDimension
 from app.infrastructure.models.agro_presupuesto_mensual import (
     AgroPptoMensualDetalle,
@@ -415,8 +415,11 @@ class AgroReportesService:
 
         nombres_derivados: dict[int, tuple[str, str]] = {}
         if por is EjeResumen.DIRECTOR_COMERCIAL:
-            configuracion = ConfiguracionAgro.desde_settings(obtener_settings())
-            mapa = obtener_vendedores_clases(configuracion)
+            try:
+                configuracion = ConfiguracionAgro.desde_settings(obtener_settings())
+                mapa = obtener_vendedores_clases(configuracion)
+            except (ErrorValidacion, ErrorFuenteAgro):
+                mapa = {}
             derivado: dict[str, TotalesAgro] = {}
             ultima_derivada: dict[str, date] = {}
             for (miembro_id,), totales in agregados.items():
