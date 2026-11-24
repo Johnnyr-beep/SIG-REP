@@ -2,10 +2,15 @@ import httpx
 import pytest
 from pydantic import SecretStr
 
+from app.application.services.agro_reportes_service import (
+    clasificar_director_agro,
+    clasificar_proyecto_agro,
+)
 from app.infrastructure.fuentes.agro_vendedores_clases import (
     obtener_vendedores_clases,
     parsear_vendedores_clases,
 )
+from app.infrastructure.models.agro_vocabulario import EjeResumen
 from app.infrastructure.fuentes.agropecuaria import ConfiguracionAgro, ErrorFuenteAgro
 
 
@@ -56,3 +61,20 @@ def test_catalogo_consulta_cia_tres_y_csv() -> None:
 def test_catalogo_falla_si_cambia_el_contrato_de_columnas() -> None:
     with pytest.raises(ErrorFuenteAgro, match="columnas reconocibles"):
         parsear_vendedores_clases("vendedor,segmento\n01,CCT\n")
+
+
+def test_nuevos_ejes_agro_derivan_sin_dimensiones_persistidas() -> None:
+    assert EjeResumen.DIRECTOR_COMERCIAL.tipo.value == "vendedor"
+    assert EjeResumen.PROYECTO.tipo.value == "tipo_comercial"
+    assert EjeResumen.DIRECTOR_COMERCIAL.dimension_presupuesto is None
+    assert EjeResumen.PROYECTO.dimension_presupuesto is None
+
+    mapa = {"01": "CCT", "02": "MAY", "03": "MON", "04": "OFI", "05": "TAT"}
+    assert clasificar_director_agro("01", mapa) == "CCT"
+    assert clasificar_director_agro("99", mapa) == "OTROS"
+    assert clasificar_proyecto_agro("Venta Ñam Ñam") == ("NAM_NAM", "Ñam Ñam")
+    assert clasificar_proyecto_agro("AGROINDUSTRIAL") == (
+        "AGROINDUSTRIAL",
+        "Agroindustrial",
+    )
+    assert clasificar_proyecto_agro("CORTE") == ("OTROS", "Otros")

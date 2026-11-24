@@ -87,7 +87,11 @@ from app.infrastructure.models.agro_vocabulario import (
     EjeResumen,
     TipoDimension,
     normalizar_clave,
+    normalizar_etiqueta,
+    sin_acentos,
 )
+from app.infrastructure.fuentes.agro_vendedores_clases import obtener_vendedores_clases
+from app.infrastructure.fuentes.agropecuaria import ConfiguracionAgro
 from app.infrastructure.models.periodo import Periodo
 from app.schemas.agro import (
     ConciliacionAgro,
@@ -112,6 +116,30 @@ from app.schemas.agro import (
 )
 
 CERO = Decimal("0")
+
+DIRECTORES_COMERCIALES = ("CCT", "MAY", "MON", "OFI", "TAT")
+PROYECTOS_COMERCIALES = ("NAM_NAM", "AGROINDUSTRIAL", "OTROS")
+
+
+def clasificar_proyecto_agro(tipo_comercial: str | None) -> tuple[str, str]:
+    """Clasifica el proyecto desde el tipo comercial sin persistir una dimensión nueva."""
+    texto = sin_acentos(normalizar_etiqueta(tipo_comercial) or "").upper()
+    if "NAM" in texto:
+        return "NAM_NAM", "Ñam Ñam"
+    if "AGROIND" in texto:
+        return "AGROINDUSTRIAL", "Agroindustrial"
+    return "OTROS", "Otros"
+
+
+def clasificar_director_agro(codigo_vendedor: str | None, mapa: dict[str, str]) -> str:
+    """Resuelve el vendedor a una de las clases CCT/MAY/MON/OFI/TAT."""
+    clave = normalizar_etiqueta(codigo_vendedor)
+    if clave is None:
+        return "OTROS"
+    clase = mapa.get(clave)
+    if clase is None:
+        clase = mapa.get(clave.upper())
+    return clase if clase in DIRECTORES_COMERCIALES else "OTROS"
 
 #: Columna de `agro_venta_lineas` que corresponde a cada dimensión. Es el único
 #: sitio donde se traduce un eje pedido por la API a una columna de la base: con
@@ -383,6 +411,57 @@ class AgroReportesService:
         columna = COLUMNA_DIMENSION[por.tipo]
         agregados = self._agregar(ctx, [columna])
         ultimas = self._ultima_venta(ctx, columna)
+
+        nombres_derivados: dict[int, tuple[str, str]] = {}
+        if por is EjeResumen.DIRECTOR_COMERCIAL:
+            configuracion = ConfiguracionAgro.desde_settings(obtener_settings())
+            mapa = obtener_vendedores_clases(configuracion)
+            derivado: dict[str, TotalesAgro] = {}
+            ultima_derivada: dict[str, date] = {}
+            for (miembro_id,), totales in agregados.items():
+                miembro = ctx.catalogo.get(miembro_id)
+                clase = clasificar_director_agro(miembro.clave if miembro else None, mapa)
+                if clase != "OTROS":
+                    derivado.setdefault(clase, TotalesAgro()).sumar(totales)
+                    ultima = ultimas.get(miembro_id)
+                    if ultima is not None:
+                        ultima_derivada[clase] = max(ultima_derivada.get(clase, ultima), ultima)
+            agregados_derivados: dict[tuple[int, ...], TotalesAgro] = {}
+            for indice, clase in enumerate(DIRECTORES_COMERCIALES, start=1):
+                if clase in derivado:
+                    agregados_derivados[(indice,)] = derivado[clase]
+                    nombres_derivados[indice] = (clase, clase)
+            agregados = agregados_derivados
+            ultimas = {
+                indice: ultima_derivada[clase]
+                for indice, (clase, _) in nombres_derivados.items()
+                if clase in ultima_derivada
+            }
+
+        if por is EjeResumen.PROYECTO:
+            derivado = {}
+            ultima_derivada = {}
+            nombres_por_clave: dict[str, str] = {}
+            for (miembro_id,), totales in agregados.items():
+                miembro = ctx.catalogo.get(miembro_id)
+                clave, nombre = clasificar_proyecto_agro(miembro.nombre if miembro else None)
+                derivado.setdefault(clave, TotalesAgro()).sumar(totales)
+                nombres_por_clave[clave] = nombre
+                ultima = ultimas.get(miembro_id)
+                if ultima is not None:
+                    ultima_derivada[clave] = max(ultima_derivada.get(clave, ultima), ultima)
+            agregados_derivados = {}
+            for indice, clave in enumerate(PROYECTOS_COMERCIALES, start=1):
+                if clave in derivado:
+                    agregados_derivados[(indice,)] = derivado[clave]
+                    nombres_derivados[indice] = (clave, nombres_por_clave[clave])
+            agregados = agregados_derivados
+            ultimas = {
+                indice: ultima_derivada[clave]
+                for indice, (clave, _) in nombres_derivados.items()
+                if clave in ultima_derivada
+            }
+
         consolidado_totales = TotalesAgro()
         for totales in agregados.values():
             consolidado_totales.sumar(totales)
@@ -393,7 +472,13 @@ class AgroReportesService:
         filas: list[FilaResumenAgro] = []
         for llave, totales in agregados.items():
             miembro = ctx.catalogo.get(llave[0])
-            clave = miembro.clave if miembro is not None else str(llave[0])
+            if por in (EjeResumen.DIRECTOR_COMERCIAL, EjeResumen.PROYECTO):
+                clave, nombre = nombres_derivados[llave[0]]
+                ultima = None
+            else:
+                clave = miembro.clave if miembro is not None else str(llave[0])
+                nombre = miembro.nombre if miembro is not None else clave
+                ultima = ultimas.get(llave[0])
             if por is EjeResumen.CENTRO_OPERACION:
                 habiles, trabajados, ideal_fila = self._dias_centro(ctx, llave[0])
             else:
@@ -401,8 +486,8 @@ class AgroReportesService:
             filas.append(
                 FilaResumenAgro(
                     clave=clave,
-                    nombre=miembro.nombre if miembro is not None else clave,
-                    ultima_venta=ultimas.get(llave[0]),
+                    nombre=nombre,
+                    ultima_venta=ultima,
                     **self._indicadores(
                         ctx,
                         totales,

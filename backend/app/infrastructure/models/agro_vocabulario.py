@@ -116,7 +116,7 @@ DIMENSIONES_PRESUPUESTO: tuple[str, ...] = tuple(d.value for d in DimensionPresu
 
 
 class EjeResumen(StrEnum):
-    """Ejes del reporte de resumen: los siete que pidió el negocio."""
+    """Ejes del reporte de resumen, directos y derivados."""
 
     CENTRO_OPERACION = "centro_operacion"
     TIPO_ITEM = "tipo_item"
@@ -125,9 +125,15 @@ class EjeResumen(StrEnum):
     GRUPO = "grupo"
     VENDEDOR = "vendedor"
     CLIENTE = "cliente"
+    DIRECTOR_COMERCIAL = "director_comercial"
+    PROYECTO = "proyecto"
 
     @property
     def tipo(self) -> TipoDimension:
+        if self is EjeResumen.DIRECTOR_COMERCIAL:
+            return TipoDimension.VENDEDOR
+        if self is EjeResumen.PROYECTO:
+            return TipoDimension.TIPO_COMERCIAL
         return TipoDimension(self.value)
 
     @property

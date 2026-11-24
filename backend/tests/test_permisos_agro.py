@@ -39,6 +39,38 @@ def test_consulta_agro_tat_no_puede_abrir_resumen(
     assert resumen.status_code == 403
 
 
+def test_consulta_agro_resumen_acepta_director_y_proyecto(
+    cliente_http: TestClient, sesion: Session, monkeypatch
+) -> None:
+    monkeypatch.setattr(
+        "app.application.services.agro_reportes_service.ConfiguracionAgro.desde_settings",
+        lambda _: object(),
+    )
+    monkeypatch.setattr(
+        "app.application.services.agro_reportes_service.obtener_vendedores_clases",
+        lambda _: {"01": "CCT", "02": "MAY", "03": "MON", "04": "OFI", "05": "TAT"},
+    )
+    cabeceras = _consulta_agro(
+        sesion,
+        cliente_http,
+        "PERMISO_AGRO_CONSULTAR_RESUMEN",
+        "PERMISO_AGRO_FILTRAR_PERIODO",
+        "PERMISO_AGRO_CONFIGURAR_EJE_RESUMEN",
+    )
+
+    director = cliente_http.get(
+        "/api/v1/agro/resumen?periodo=2026-08&por=director_comercial",
+        headers=cabeceras,
+    )
+    proyecto = cliente_http.get(
+        "/api/v1/agro/resumen?periodo=2026-08&por=proyecto",
+        headers=cabeceras,
+    )
+
+    assert director.status_code == 200, director.text
+    assert proyecto.status_code == 200, proyecto.text
+
+
 def test_consulta_agro_resumen_rechaza_filtro_centro_sin_permiso(
     cliente_http: TestClient, sesion: Session
 ) -> None:

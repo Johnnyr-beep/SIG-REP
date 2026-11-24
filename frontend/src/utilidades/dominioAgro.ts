@@ -102,6 +102,20 @@ export const EJES_RESUMEN: readonly OpcionEje[] = [
     ayuda:
       "Cientos de miembros. La fuente no entrega NIT ni código de cliente.",
   },
+  {
+    valor: "director_comercial",
+    etiqueta: "Director comercial",
+    singular: "director comercial",
+    ayuda:
+      "CCT, MAY, MON, OFI y TAT. Se deriva de la clase asignada al vendedor en SIESA.",
+  },
+  {
+    valor: "proyecto",
+    etiqueta: "Proyecto",
+    singular: "proyecto",
+    ayuda:
+      "Clasifica la venta por tipo comercial: Ñam Ñam, Agroindustrial y Otros.",
+  },
 ];
 
 export function esEjeResumen(valor: string | null): valor is EjeResumenAgro {
@@ -134,6 +148,9 @@ export function dimensionDeEje(
     case "tipo_comercial":
     case "vendedor":
       return eje;
+    case "director_comercial":
+    case "proyecto":
+      return null;
     default:
       return null;
   }
@@ -149,7 +166,7 @@ export function dimensionDeEje(
  * falte cargar, es un dato que la fuente no da.
  */
 export function ejeSinClavePropia(eje: EjeResumenAgro): boolean {
-  return eje === "cliente";
+  return eje === "cliente" || eje === "director_comercial" || eje === "proyecto";
 }
 
 // ── Cruces ───────────────────────────────────────────────────────────────────

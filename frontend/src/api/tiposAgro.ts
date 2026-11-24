@@ -121,7 +121,9 @@ export type EjeResumenAgro =
   | "tipo_comercial"
   | "grupo"
   | "vendedor"
-  | "cliente";
+  | "cliente"
+  | "director_comercial"
+  | "proyecto";
 
 /**
  * Los dos cruces, y solo esos dos.
