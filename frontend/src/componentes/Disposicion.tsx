@@ -102,7 +102,7 @@ const MENU_AGRO: GrupoNav[] = [
   {
     titulo: "Gerencia",
     items: [
-      { ruta: "/agro", etiqueta: "Resumen de ventas", icono: "◱", permiso: "PERMISO_AGRO_CONSULTAR_RESUMEN" },
+      { ruta: "/agro", etiqueta: "Dashboard", icono: "◱", permiso: "PERMISO_AGRO_CONSULTAR_RESUMEN" },
       { ruta: "/agro/reportes-ventas", etiqueta: "Reportes de ventas", icono: "▤", permiso: "PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS" },
       { ruta: "/agro/cubo-comercial", etiqueta: "Cubo comercial", icono: "▥", permiso: "PERMISO_AGRO_CONSULTAR_CUBO_COMERCIAL" },
       { ruta: "/agro/cruce", etiqueta: "Vendedor, cliente y producto", icono: "◇", permiso: "PERMISO_AGRO_CONSULTAR_CRUCE_COMERCIAL" },
@@ -218,7 +218,7 @@ function menuDe(marca: ClaveMarca): GrupoNav[] {
 }
 
 const TITULOS: Record<string, string> = {
-  "/agro": "Resumen de ventas",
+  "/agro": "Dashboard",
   "/agro/reportes-ventas": "Reportes de ventas",
   "/agro/cubo-comercial": "Cubo comercial",
   "/agro/cruce": "Vendedor, cliente y producto",
