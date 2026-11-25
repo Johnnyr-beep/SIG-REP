@@ -159,7 +159,7 @@ export const claves = {
 export function usePerfil(habilitado: boolean): UseQueryResult<Usuario> {
   return useQuery({
     queryKey: claves.perfil,
-    queryFn: () => peticion<Usuario>("/auth/yo"),
+    queryFn: () => peticion<Usuario>("/auth/yo", { timeoutMs: 10_000 }),
     enabled: habilitado,
     staleTime: 5 * 60_000,
     retry: false,

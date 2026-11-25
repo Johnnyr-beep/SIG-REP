@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import {
+  ErrorApi,
   almacenTokens,
   iniciarSesion,
   registrarExpiracionSesion,
@@ -23,6 +24,8 @@ interface ValorAuth {
   usuario: Usuario | null;
   cargando: boolean;
   autenticado: boolean;
+  falloValidacionSesion: unknown | null;
+  reintentarValidacionSesion: () => void;
   entrar: (usuario: string, clave: string) => Promise<void>;
   salir: () => void;
 
@@ -51,7 +54,13 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
   );
   const clienteConsultas = useQueryClient();
 
-  const { data: usuario, isLoading, isError } = usePerfil(hayToken);
+  const {
+    data: usuario,
+    isLoading,
+    isError,
+    error,
+    refetch: refetchPerfil,
+  } = usePerfil(hayToken);
 
   const salir = useCallback(() => {
     almacenTokens.limpiar();
@@ -66,10 +75,17 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
     registrarExpiracionSesion(salir);
   }, [salir]);
 
-  // Si el perfil no se puede recuperar, el token guardado ya no sirve.
+  // Solo un 401 confirma que la sesión expiró. Fallos de red/servidor conservan
+  // el token para que el usuario pueda reintentar sin autenticarse de nuevo.
   useEffect(() => {
-    if (isError && hayToken) salir();
-  }, [isError, hayToken, salir]);
+    if (isError && hayToken && error instanceof ErrorApi && error.esSesionExpirada) {
+      salir();
+    }
+  }, [isError, hayToken, error, salir]);
+
+  const reintentarValidacionSesion = useCallback(() => {
+    void refetchPerfil();
+  }, [refetchPerfil]);
 
   const entrar = useCallback(
     async (nombreUsuario: string, clave: string) => {
@@ -90,6 +106,8 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
       usuario: usuario ?? null,
       cargando: hayToken && isLoading,
       autenticado: hayToken && usuario !== undefined,
+      falloValidacionSesion: isError ? error : null,
+      reintentarValidacionSesion,
       entrar,
       salir,
 
@@ -107,7 +125,17 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
       tienePermiso: (codigo) =>
         usuario?.rol === "ADMIN" || usuario?.permisos.includes(codigo) === true,
     }),
-    [usuario, hayToken, isLoading, entrar, salir, tieneRol],
+    [
+      usuario,
+      hayToken,
+      isLoading,
+      isError,
+      error,
+      reintentarValidacionSesion,
+      entrar,
+      salir,
+      tieneRol,
+    ],
   );
 
   return (

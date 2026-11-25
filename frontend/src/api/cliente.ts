@@ -15,6 +15,7 @@
 import type { CuerpoError, TokenRenovado, TokensAcceso } from "./tipos";
 
 const BASE = "/api/v1";
+const TIMEOUT_VALIDACION_SESION_MS = 10_000;
 
 /**
  * Modo de datos de ejemplo.
@@ -106,6 +107,11 @@ async function renovarSesion(): Promise<boolean> {
   if (!refresco) return false;
 
   renovacionEnCurso ??= (async () => {
+    const controlador = new AbortController();
+    const temporizador = window.setTimeout(
+      () => controlador.abort(),
+      TIMEOUT_VALIDACION_SESION_MS,
+    );
     try {
       const respuesta = await fetch(`${BASE}/auth/refrescar`, {
         method: "POST",
@@ -114,6 +120,7 @@ async function renovarSesion(): Promise<boolean> {
         // armar cabeceras es una menos que revisar cuando algo no cuadra.
         headers: { ...cabecerasBase(), "Content-Type": "application/json" },
         body: JSON.stringify({ token_refresco: refresco }),
+        signal: controlador.signal,
       });
       if (!respuesta.ok) return false;
 
@@ -124,6 +131,7 @@ async function renovarSesion(): Promise<boolean> {
     } catch {
       return false;
     } finally {
+      window.clearTimeout(temporizador);
       // Se libera en el siguiente tick para que los que esperaban lean el token nuevo.
       queueMicrotask(() => {
         renovacionEnCurso = null;

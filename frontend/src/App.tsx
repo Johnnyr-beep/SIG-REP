@@ -123,7 +123,15 @@ function AccesoModulo({ permiso, children }: { permiso: string; children: ReactN
 
 export function App() {
   const { marca } = useMarca();
-  const { autenticado, cargando, debeCambiarClave, usuario } = useAuth();
+  const {
+    autenticado,
+    cargando,
+    debeCambiarClave,
+    falloValidacionSesion,
+    reintentarValidacionSesion,
+    salir,
+    usuario,
+  } = useAuth();
 
   // Primer corte, antes que ninguno: sin unidad de negocio elegida no hay logo
   // que enseñar ni paleta que aplicar, y el acceso pediría credenciales sin
@@ -133,6 +141,33 @@ export function App() {
   // Mientras se resuelve el perfil no se decide nada: renderizar el acceso por
   // un instante y sacarlo después produce un parpadeo desconcertante.
   if (cargando) return <Cargando texto="Verificando sesión…" />;
+
+  if (falloValidacionSesion) {
+    return (
+      <div className="acceso">
+        <section className="acceso__tarjeta" role="alert">
+          <h1>No se pudo verificar la sesión</h1>
+          <p>Compruebe la conexión e intente nuevamente.</p>
+          <div className="acceso__formulario">
+            <button
+              type="button"
+              className="boton boton--principal boton--bloque"
+              onClick={reintentarValidacionSesion}
+            >
+              Reintentar
+            </button>
+            <button
+              type="button"
+              className="boton boton--sutil boton--bloque"
+              onClick={salir}
+            >
+              Volver al acceso
+            </button>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   if (!autenticado) return <Acceso />;
 
