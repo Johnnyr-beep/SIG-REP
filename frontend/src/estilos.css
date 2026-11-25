@@ -755,6 +755,11 @@ textarea {
   align-items: start;
 }
 
+.reportes-tat__indicadores {
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .reportes-comerciales__lista {
   display: grid;
   gap: var(--espacio-2);

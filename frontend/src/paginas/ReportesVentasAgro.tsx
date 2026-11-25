@@ -186,7 +186,7 @@ function DesgloseTAT({
 }) {
   if (!filas.length) return <Vacio titulo="Sin ventas TAT en este corte" />;
   return (
-    <div className="rejilla rejilla--indicadores">
+    <div className="rejilla reportes-tat__indicadores">
       <div className="indicador">
         <span className="indicador__etiqueta">Cantidad total</span>
         <strong className="indicador__valor indicador__valor--mediano">
