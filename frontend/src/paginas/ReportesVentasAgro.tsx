@@ -63,12 +63,8 @@ export function ReportesVentasAgro() {
           <section className="rejilla rejilla--indicadores" aria-label="Resumen de ventas">
             <Indicador
               etiqueta="Total comercial"
-              valor={dinero(
-                totalCuatroComponentes(tipoItem.data.filas, especie.data.filas, "venta_valor"),
-              )}
-              nota={`${kilos(
-                totalCuatroComponentes(tipoItem.data.filas, especie.data.filas, "kilos"),
-              )} en Bienes, Servicios, Res y Cerdo`}
+              valor={dinero(tipoItem.data.consolidado.venta_valor)}
+              nota={`${kilos(tipoItem.data.consolidado.kilos)} vendidos en el corte`}
               tono="exito"
             />
             {tipoItem.data.filas.map((fila) => (
@@ -117,28 +113,6 @@ export function ReportesVentasAgro() {
         </>
       ) : null}
     </div>
-  );
-}
-
-/**
- * Total que pidió gerencia para la cabecera: Bienes + Servicios + venta de Res
- * + venta de Cerdo. Las cuatro cifras se conservan separadas justo después para
- * que su composición permanezca comprobable a simple vista.
- */
-function totalCuatroComponentes(
-  tiposItem: { nombre: string; venta_valor: string; kilos: string }[],
-  especies: { nombre: string; venta_valor: string; kilos: string }[],
-  medida: "venta_valor" | "kilos",
-) {
-  const bienesServicios = tiposItem.filter((fila) =>
-    ["BIENES", "SERVICIOS"].includes(normalizar(fila.nombre)),
-  );
-  const resCerdo = especies.filter((fila) =>
-    ["RES", "CERDO"].includes(normalizar(fila.nombre)),
-  );
-  return [...bienesServicios, ...resCerdo].reduce(
-    (total, fila) => sumar(total, fila[medida]) ?? total,
-    "0",
   );
 }
 
