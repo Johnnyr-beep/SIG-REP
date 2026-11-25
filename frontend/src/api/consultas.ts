@@ -729,7 +729,11 @@ export function useCrearUsuario(): UseMutationResult<
   const invalidar = useInvalidarUsuarios();
   return useMutation({
     mutationFn: (datos) =>
-      peticion<UsuarioCreado>("/usuarios", { metodo: "POST", cuerpo: datos }),
+      peticion<UsuarioCreado>("/usuarios", {
+        metodo: "POST",
+        cuerpo: datos,
+        timeoutMs: 30_000,
+      }),
     gcTime: 0,
     onSuccess: invalidar,
   });

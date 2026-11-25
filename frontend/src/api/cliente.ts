@@ -143,6 +143,8 @@ export interface Opciones {
   metodo?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   cuerpo?: unknown;
   parametros?: Record<string, ValorParametro>;
+  /** Tiempo máximo en milisegundos antes de cancelar la solicitud. */
+  timeoutMs?: number;
   /** Uso interno: evita reintentar en bucle tras una renovación fallida. */
   esReintento?: boolean;
 }
@@ -232,16 +234,36 @@ export async function peticion<T>(
     return responder<T>(ruta, opciones);
   }
 
-  const { metodo = "GET", cuerpo, parametros, esReintento = false } = opciones;
+  const { metodo = "GET", cuerpo, parametros, esReintento = false, timeoutMs } = opciones;
 
   const cabeceras = cabecerasBase();
   if (cuerpo !== undefined) cabeceras["Content-Type"] = "application/json";
 
-  const respuesta = await fetch(construirUrl(ruta, parametros), {
-    method: metodo,
-    headers: cabeceras,
-    body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
-  });
+  const controlador = timeoutMs ? new AbortController() : null;
+  const temporizador = controlador
+    ? window.setTimeout(() => controlador.abort(), timeoutMs)
+    : null;
+
+  let respuesta: Response;
+  try {
+    respuesta = await fetch(construirUrl(ruta, parametros), {
+      method: metodo,
+      headers: cabeceras,
+      body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
+      signal: controlador?.signal,
+    });
+  } catch (fallo) {
+    if (controlador?.signal.aborted) {
+      throw new ErrorApi(
+        504,
+        "tiempo_agotado",
+        "La operación tardó demasiado. Inténtela de nuevo.",
+      );
+    }
+    throw fallo;
+  } finally {
+    if (temporizador !== null) window.clearTimeout(temporizador);
+  }
 
   if (respuesta.status === 401 && !esReintento && almacenTokens.refresco()) {
     if (await renovarSesion()) {
