@@ -78,10 +78,7 @@ from app.domain.semaforo import UmbralesSemaforo
 from app.infrastructure.fuentes.agro_vendedores_clases import obtener_vendedores_clases
 from app.infrastructure.fuentes.agropecuaria import ConfiguracionAgro, ErrorFuenteAgro
 from app.infrastructure.models.agro_dimensiones import AgroDimension
-from app.infrastructure.models.agro_presupuesto_mensual import (
-    AgroPptoMensualDetalle,
-    AgroPptoMensualEjecutivo,
-)
+from app.infrastructure.models.agro_presupuesto_mensual import AgroPptoMensualDetalle
 from app.infrastructure.models.agro_venta import AgroVentaLinea
 from app.infrastructure.models.agro_vocabulario import (
     DimensionPresupuesto,
@@ -1561,29 +1558,10 @@ class AgroReportesService:
         medida: Medida,
         claves: set[str] | None,
     ) -> Decimal | None:
-        """Usa el total ejecutivo solo si no existe parametrización dimensional."""
-        meta_dimensional = self._meta_total(plan, medida, claves)
-        if meta_dimensional is not None:
-            return meta_dimensional
+        """Resuelve el presupuesto solo desde la dimensión activa del reporte."""
         if dimension is None or medida is not Medida.VALOR:
             return None
-        if claves is not None:
-            return None
-        if plan is not None and plan.definido:
-            return None
-
-        captura = self._sesion.execute(
-            select(AgroPptoMensualEjecutivo).where(
-                AgroPptoMensualEjecutivo.periodo_id == ctx.periodo.id
-            )
-        ).scalar_one_or_none()
-        if captura is None:
-            return None
-        return (
-            Decimal(captura.gerencia_comercial)
-            + Decimal(captura.oficina)
-            + Decimal(captura.servicios)
-        )
+        return self._meta_total(plan, medida, claves)
 
     @staticmethod
     def _meta_total(

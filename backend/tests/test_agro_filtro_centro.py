@@ -140,7 +140,7 @@ def test_el_presupuesto_del_consolidado_se_limita_a_los_centros_pedidos(
     assert respuesta.consolidado.cumplimiento == Decimal("0.5000")
 
 
-def test_presupuesto_ejecutivo_es_referencia_del_consolidado_sin_metas_dimensionales(
+def test_presupuesto_ejecutivo_no_alimenta_el_consolidado_sin_metas_dimensionales(
     dos_centros: Session,
 ) -> None:
     periodo_nuevo = "2026-09"
@@ -166,9 +166,9 @@ def test_presupuesto_ejecutivo_es_referencia_del_consolidado_sin_metas_dimension
         EjeResumen.CENTRO_OPERACION,
     )
 
-    assert respuesta.consolidado.presupuesto == Decimal("3300.00")
+    assert respuesta.consolidado.presupuesto is None
     assert respuesta.consolidado.venta == Decimal("0.00")
-    assert respuesta.consolidado.cumplimiento == Decimal("0.0000")
+    assert respuesta.consolidado.cumplimiento is None
     assert all(fila.presupuesto is None for fila in respuesta.filas)
 
     filtrado = AgroReportesService(dos_centros).resumen(
