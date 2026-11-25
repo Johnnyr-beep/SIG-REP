@@ -75,7 +75,7 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
     async (nombreUsuario: string, clave: string) => {
       await iniciarSesion(nombreUsuario, clave);
       setHayToken(true);
-      await clienteConsultas.invalidateQueries();
+      void clienteConsultas.invalidateQueries({ refetchType: "active" });
     },
     [clienteConsultas],
   );

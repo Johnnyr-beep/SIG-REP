@@ -377,11 +377,29 @@ export async function iniciarSesion(
   // cabecera decide algo, porque es la única que ocurre sin token. Sin ella el
   // servidor valida las credenciales contra la base de carnes, y quien eligió
   // agropecuaria acabaría con un token de la otra compañía.
-  const respuesta = await fetch(`${BASE}/auth/acceso`, {
-    method: "POST",
-    headers: { ...cabecerasBase(), "Content-Type": "application/json" },
-    body: JSON.stringify({ usuario, clave }),
-  });
+  const controlador = new AbortController();
+  const temporizador = window.setTimeout(() => controlador.abort(), 15_000);
+
+  let respuesta: Response;
+  try {
+    respuesta = await fetch(`${BASE}/auth/acceso`, {
+      method: "POST",
+      headers: { ...cabecerasBase(), "Content-Type": "application/json" },
+      body: JSON.stringify({ usuario, clave }),
+      signal: controlador.signal,
+    });
+  } catch (fallo) {
+    if (controlador.signal.aborted) {
+      throw new ErrorApi(
+        504,
+        "tiempo_acceso_agotado",
+        "El acceso tardó demasiado. Intente nuevamente.",
+      );
+    }
+    throw fallo;
+  } finally {
+    window.clearTimeout(temporizador);
+  }
 
   if (!respuesta.ok) throw await extraerError(respuesta);
 
