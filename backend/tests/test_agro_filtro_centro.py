@@ -31,6 +31,7 @@ from app.infrastructure.models.agro_vocabulario import (
     EjeResumen,
     TipoDimension,
 )
+from app.schemas.agro import CategoriaVentaComercialAgro
 from tests.conftest import PERIODO
 
 ANIO, MES = (int(parte) for parte in PERIODO.split("-"))
@@ -180,6 +181,86 @@ def test_presupuesto_ejecutivo_es_referencia_del_consolidado_sin_metas_dimension
         EjeResumen.CENTRO_OPERACION,
     )
     assert filtrado.consolidado.presupuesto is None
+
+
+def test_detalle_categoria_comercial_devuelve_productos_solo_de_la_categoria(
+    dos_centros: Session,
+) -> None:
+    periodo = obtener_o_crear_periodo(dos_centros, PERIODO)
+    dimensiones = {
+        tipo: dos_centros.query(AgroDimension).filter_by(tipo=tipo.value, clave="SIN_DATO").one()
+        for tipo in _ACCESORIAS
+    }
+    centro = (
+        dos_centros.query(AgroDimension)
+        .filter_by(tipo=TipoDimension.CENTRO_OPERACION.value, clave=PLANTA)
+        .one()
+    )
+    cortes = _miembro(dos_centros, TipoDimension.TIPO_COMERCIAL, "CORTES", "CORTES")
+    canales = _miembro(dos_centros, TipoDimension.TIPO_COMERCIAL, "CANALES", "CANALES")
+    especie_res = _miembro(dos_centros, TipoDimension.ESPECIE, "RES", "RES")
+    especie_cerdo = _miembro(dos_centros, TipoDimension.ESPECIE, "CERDO", "CERDO")
+    productos = (
+        (
+            _miembro(dos_centros, TipoDimension.ITEM, "PUNTA", "PUNTA DE ANCA"),
+            cortes,
+            especie_res,
+            "100",
+        ),
+        (
+            _miembro(dos_centros, TipoDimension.ITEM, "LOMO", "LOMO FINO"),
+            cortes,
+            especie_cerdo,
+            "200",
+        ),
+        (
+            _miembro(dos_centros, TipoDimension.ITEM, "CANAL", "CANAL RES"),
+            canales,
+            especie_res,
+            "900",
+        ),
+    )
+    for producto, tipo_comercial, especie, monto in productos:
+        dos_centros.add(
+            AgroVentaLinea(
+                periodo_id=periodo.id,
+                fecha=date(ANIO, MES, 10),
+                centro_id=centro.id,
+                tipo_item_id=dimensiones[TipoDimension.TIPO_ITEM].id,
+                especie_id=especie.id,
+                tipo_comercial_id=tipo_comercial.id,
+                grupo_id=dimensiones[TipoDimension.GRUPO].id,
+                vendedor_id=dimensiones[TipoDimension.VENDEDOR].id,
+                cliente_id=dimensiones[TipoDimension.CLIENTE].id,
+                item_id=producto.id,
+                valor_bruto=Decimal(monto),
+                descuentos=Decimal("0"),
+                valor_subtotal=Decimal(monto),
+                total_neto=Decimal(monto),
+                total_costo=Decimal("0"),
+                kilos_total=Decimal("10"),
+                cantidad_inv=Decimal("1"),
+                lineas_facturadas=1,
+                es_impuesto=False,
+            )
+        )
+    dos_centros.flush()
+
+    respuesta = AgroReportesService(dos_centros).detalle_ventas_comerciales(
+        FiltrosAgro(
+            periodo=PERIODO,
+            hasta=date(ANIO, MES, 28),
+            centros=None,
+            medida=Medida.VALOR,
+        ),
+        CategoriaVentaComercialAgro.CORTES,
+    )
+
+    assert {fila.producto for fila in respuesta.filas} == {"PUNTA DE ANCA", "LOMO FINO"}
+    assert {fila.especie for fila in respuesta.filas} == {"RES", "CERDO"}
+    assert sum((Decimal(fila.venta_valor) for fila in respuesta.filas), Decimal("0")) == Decimal(
+        "300.00"
+    )
 
 
 def test_el_consolidado_filtrado_no_se_contradice_con_su_unica_fila(

@@ -84,6 +84,27 @@ def test_consulta_agro_resumen_rechaza_filtro_centro_sin_permiso(
     assert respuesta.status_code == 403
 
 
+def test_detalle_categoria_comercial_usa_permiso_de_reportes(
+    cliente_http: TestClient, sesion: Session
+) -> None:
+    cabeceras = _consulta_agro(
+        sesion,
+        cliente_http,
+        "PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS",
+        "PERMISO_AGRO_FILTRAR_PERIODO",
+    )
+
+    respuesta = cliente_http.get(
+        "/api/v1/agro/ventas-comerciales/detalle",
+        params={"periodo": "2026-08", "categoria": "cortes"},
+        headers=cabeceras,
+    )
+
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json()["categoria"] == "cortes"
+    assert respuesta.json()["filas"] == []
+
+
 def test_exportacion_agro_requiere_permiso_de_descarga(
     cliente_http: TestClient, sesion: Session
 ) -> None:
@@ -94,3 +115,24 @@ def test_exportacion_agro_requiere_permiso_de_descarga(
     )
 
     assert respuesta.status_code == 403
+
+
+def test_detalle_categoria_comercial_requiere_permiso_de_reportes(
+    cliente_http: TestClient, sesion: Session
+) -> None:
+    cabeceras = _consulta_agro(
+        sesion,
+        cliente_http,
+        "PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS",
+        "PERMISO_AGRO_FILTRAR_PERIODO",
+    )
+
+    respuesta = cliente_http.get(
+        "/api/v1/agro/ventas-comerciales/detalle",
+        params={"periodo": "2026-08", "categoria": "cortes"},
+        headers=cabeceras,
+    )
+
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json()["categoria"] == "cortes"
+    assert respuesta.json()["filas"] == []

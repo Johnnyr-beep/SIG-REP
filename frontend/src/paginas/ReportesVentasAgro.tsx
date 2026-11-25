@@ -1,9 +1,17 @@
-import { useMemo } from "react";
+import { Fragment, useMemo, useState } from "react";
 
-import { useResumenAgro, useVentasComercialesAgro } from "@/api/consultasAgro";
+import {
+  useDetalleVentasComercialesAgro,
+  useResumenAgro,
+  useVentasComercialesAgro,
+} from "@/api/consultasAgro";
+import type { FiltrosAgro } from "@/api/consultasAgro";
 import { useVentasTat } from "@/api/consultasTat";
 import type { AgroTatVenta } from "@/api/tipos";
-import type { FilaVentaComercialAgro } from "@/api/tiposAgro";
+import type {
+  CategoriaVentaComercialAgro,
+  FilaVentaComercialAgro,
+} from "@/api/tiposAgro";
 import { useMarcaElegida } from "@/marca/ContextoMarca";
 import { AvisoError, Cargando, Tarjeta, Vacio } from "@/componentes/comunes";
 import { BarraFiltrosAgro, filtrosAgroDe, useFiltros } from "@/componentes/filtros";
@@ -11,11 +19,11 @@ import { Indicador } from "@/componentes/indicadores";
 import { dinero, finDeMes, kilos, numero, sumar } from "@/utilidades/formato";
 
 const CATEGORIAS = [
-  ["CORT", "Cortes"],
-  ["SUBPRODUCT", "Subproductos"],
-  ["SACRIFIC", "Sacrificio"],
-  ["DESPOST", "Desposte"],
-  ["CANAL", "Canales"],
+  { categoria: "cortes", patron: "CORT", etiqueta: "Cortes" },
+  { categoria: "subproductos", patron: "SUBPRODUCT", etiqueta: "Subproductos" },
+  { categoria: "sacrificio", patron: "SACRIFIC", etiqueta: "Sacrificio" },
+  { categoria: "desposte", patron: "DESPOST", etiqueta: "Desposte" },
+  { categoria: "canales", patron: "CANAL", etiqueta: "Canales" },
 ] as const;
 
 export function ReportesVentasAgro() {
@@ -91,7 +99,7 @@ export function ReportesVentasAgro() {
               descripcion="Comparación directa de res y cerdo por cada línea comercial."
               sinRelleno
             >
-              <MatrizCategorias filas={comerciales.data.filas} />
+              <MatrizCategorias filas={comerciales.data.filas} filtros={filtros} />
             </Tarjeta>
             {esAgropecuaria && tat.data ? (
               <Tarjeta
@@ -134,15 +142,22 @@ function totalCuatroComponentes(
   );
 }
 
-function MatrizCategorias({ filas }: { filas: FilaVentaComercialAgro[] }) {
-  const categorias = CATEGORIAS.map(([patron, etiqueta], indice) => {
-    const categoria = filtrar(filas, patron);
+function MatrizCategorias({
+  filas,
+  filtros,
+}: {
+  filas: FilaVentaComercialAgro[];
+  filtros: FiltrosAgro;
+}) {
+  const [expandida, setExpandida] = useState<CategoriaVentaComercialAgro | null>(null);
+  const categorias = CATEGORIAS.map(({ categoria, patron, etiqueta }, indice) => {
+    const grupo = filtrar(filas, patron);
     return {
-      patron,
+      categoria,
       etiqueta,
-      res: porEspecie(categoria, "RES"),
-      cerdo: porEspecie(categoria, "CERDO"),
-      total: sumaVenta(categoria),
+      res: porEspecie(grupo, "RES"),
+      cerdo: porEspecie(grupo, "CERDO"),
+      total: sumaVenta(grupo),
       indice,
     };
   }).sort((a, b) => Number(b.total) - Number(a.total) || a.indice - b.indice);
@@ -159,16 +174,79 @@ function MatrizCategorias({ filas }: { filas: FilaVentaComercialAgro[] }) {
           </tr>
         </thead>
         <tbody>
-          {categorias.map(({ patron, etiqueta, res, cerdo, total }) => {
+          {categorias.map(({ categoria, etiqueta, res, cerdo, total }) => {
+            const abierta = expandida === categoria;
+            const idDetalle = `detalle-categoria-${categoria}`;
             return (
-              <tr key={patron}>
-                <th scope="row">{etiqueta}</th>
-                <td className="numero">{res ? dinero(res.venta_valor) : "—"}</td>
-                <td className="numero">{cerdo ? dinero(cerdo.venta_valor) : "—"}</td>
-                <td className="numero">{dinero(total)}</td>
-              </tr>
+              <Fragment key={categoria}>
+                <tr>
+                  <th scope="row">
+                    <button
+                      type="button"
+                      className="matriz-categorias__toggle"
+                      aria-expanded={abierta}
+                      aria-controls={idDetalle}
+                      onClick={() => setExpandida(abierta ? null : categoria)}
+                    >
+                      <span aria-hidden="true">{abierta ? "▾" : "▸"}</span>
+                      {etiqueta}
+                    </button>
+                  </th>
+                  <td className="numero">{res ? dinero(res.venta_valor) : "—"}</td>
+                  <td className="numero">{cerdo ? dinero(cerdo.venta_valor) : "—"}</td>
+                  <td className="numero">{dinero(total)}</td>
+                </tr>
+                {abierta ? (
+                  <tr id={idDetalle} className="matriz-categorias__detalle">
+                    <td colSpan={4}>
+                      <DetalleCategoria filtros={filtros} categoria={categoria} />
+                    </td>
+                  </tr>
+                ) : null}
+              </Fragment>
             );
           })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function DetalleCategoria({
+  filtros,
+  categoria,
+}: {
+  filtros: FiltrosAgro;
+  categoria: CategoriaVentaComercialAgro;
+}) {
+  const detalle = useDetalleVentasComercialesAgro(filtros, categoria);
+
+  if (detalle.isLoading) return <Cargando texto="Cargando productos de la categoría…" />;
+  if (detalle.error) return <AvisoError error={detalle.error} />;
+  if (!detalle.data?.filas.length) {
+    return <Vacio titulo="No hay productos para esta categoría en el período." />;
+  }
+
+  return (
+    <div className="tabla-envoltorio matriz-categorias__detalle-tabla">
+      <table className="tabla tabla--compacta">
+        <thead>
+          <tr>
+            <th>Producto / corte</th>
+            <th>Especie</th>
+            <th className="numero">Venta subtotal</th>
+            <th className="numero">Kilos</th>
+          </tr>
+        </thead>
+        <tbody>
+          {detalle.data.filas.map((fila) => (
+            <tr key={`${fila.producto}-${fila.especie}`}>
+              <th scope="row">{fila.producto}</th>
+              <td>{fila.especie}</td>
+              <td className="numero">{dinero(fila.venta_valor)}</td>
+              <td className="numero">{kilos(fila.kilos)}</td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>

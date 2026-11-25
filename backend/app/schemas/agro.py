@@ -29,6 +29,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -65,6 +66,28 @@ class RespuestaVentasComercialesAgro(EsquemaBase):
     periodo: str
     fecha_corte: date
     filas: list[FilaVentaComercialAgro]
+
+
+class CategoriaVentaComercialAgro(StrEnum):
+    CORTES = "cortes"
+    CANALES = "canales"
+    SACRIFICIO = "sacrificio"
+    SUBPRODUCTOS = "subproductos"
+    DESPOSTE = "desposte"
+
+
+class FilaDetalleVentaComercialAgro(EsquemaBase):
+    producto: str
+    especie: str
+    venta_valor: DecimalStr
+    kilos: DecimalStr
+
+
+class RespuestaDetalleVentaComercialAgro(EsquemaBase):
+    periodo: str
+    fecha_corte: date
+    categoria: CategoriaVentaComercialAgro
+    filas: list[FilaDetalleVentaComercialAgro]
 
 
 # ── Presupuesto ───────────────────────────────────────────────────────────────

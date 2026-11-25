@@ -760,6 +760,34 @@ textarea {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.matriz-categorias__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.matriz-categorias__toggle:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 3px;
+}
+
+.matriz-categorias__detalle > td {
+  padding: var(--espacio-3);
+  background: var(--superficie-2);
+}
+
+.matriz-categorias__detalle-tabla {
+  background: var(--superficie);
+}
+
 .reportes-comerciales__lista {
   display: grid;
   gap: var(--espacio-2);

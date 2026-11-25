@@ -17,6 +17,7 @@ import type { Medida } from "./tipos";
 import type {
   BloqueMensual,
   CalendarioAgro,
+  CategoriaVentaComercialAgro,
   CanalMapeoMensual,
   CorridaAgro,
   CuadrePresupuestoAgro,
@@ -40,6 +41,7 @@ import type {
   RespuestaCruceAgro,
   RespuestaComparativoDiarioCruce,
   RespuestaCuboAgro,
+  RespuestaDetalleVentaComercialAgro,
   RespuestaInteligencia,
   RespuestaResumenAgro,
   RespuestaSerieMensualAgro,
@@ -115,6 +117,8 @@ export const clavesAgro = {
     ["agro", "reporte", "venta-diaria", filtros] as const,
   ventasComerciales: (filtros: FiltrosAgro) =>
     ["agro", "reporte", "ventas-comerciales", filtros] as const,
+  detalleVentasComerciales: (filtros: FiltrosAgro, categoria: CategoriaVentaComercialAgro) =>
+    ["agro", "reporte", "ventas-comerciales-detalle", categoria, filtros] as const,
   // La serie anual no lleva período ni medida: su unidad es el año y publica las
   // dos medidas. La clave lleva lo que de verdad la distingue —año, eje, corte y
   // centros— y nada más, o dos peticiones idénticas ocuparían dos entradas.
@@ -207,6 +211,20 @@ export function useVentasComercialesAgro(
     queryFn: () =>
       peticion<RespuestaVentasComercialesAgro>("/agro/ventas-comerciales", {
         parametros: comoParametros(filtros),
+      }),
+    staleTime: 60_000,
+  });
+}
+
+export function useDetalleVentasComercialesAgro(
+  filtros: FiltrosAgro,
+  categoria: CategoriaVentaComercialAgro,
+): UseQueryResult<RespuestaDetalleVentaComercialAgro> {
+  return useQuery({
+    queryKey: clavesAgro.detalleVentasComerciales(filtros, categoria),
+    queryFn: () =>
+      peticion<RespuestaDetalleVentaComercialAgro>("/agro/ventas-comerciales/detalle", {
+        parametros: { ...comoParametros(filtros), categoria },
       }),
     staleTime: 60_000,
   });

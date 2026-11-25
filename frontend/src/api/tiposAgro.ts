@@ -67,6 +67,27 @@ export interface RespuestaVentasComercialesAgro {
   filas: FilaVentaComercialAgro[];
 }
 
+export type CategoriaVentaComercialAgro =
+  | "cortes"
+  | "canales"
+  | "sacrificio"
+  | "subproductos"
+  | "desposte";
+
+export interface FilaDetalleVentaComercialAgro {
+  producto: string;
+  especie: string;
+  venta_valor: string;
+  kilos: string;
+}
+
+export interface RespuestaDetalleVentaComercialAgro {
+  periodo: string;
+  fecha_corte: string;
+  categoria: CategoriaVentaComercialAgro;
+  filas: FilaDetalleVentaComercialAgro[];
+}
+
 // ── Cubo de ventas ──────────────────────────────────────────────────────────
 
 /** Las ocho dimensiones disponibles en el cubo comercial de SIESA/SIGREP. */

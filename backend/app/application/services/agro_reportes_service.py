@@ -94,9 +94,11 @@ from app.infrastructure.models.agro_vocabulario import (
 )
 from app.infrastructure.models.periodo import Periodo
 from app.schemas.agro import (
+    CategoriaVentaComercialAgro,
     ConciliacionAgro,
     FilaCruceAgro,
     FilaCuboAgro,
+    FilaDetalleVentaComercialAgro,
     FilaResumenAgro,
     FilaSerieAgro,
     FilaVentaComercialAgro,
@@ -108,6 +110,7 @@ from app.schemas.agro import (
     RespuestaComparativoDiarioCruce,
     RespuestaCruceAgro,
     RespuestaCuboAgro,
+    RespuestaDetalleVentaComercialAgro,
     RespuestaResumenAgro,
     RespuestaSerieMensualAgro,
     RespuestaVentaDiariaAgro,
@@ -560,6 +563,59 @@ class AgroReportesService:
         filas.sort(key=lambda fila: (fila.tipo_comercial, fila.especie))
         return RespuestaVentasComercialesAgro(
             periodo=ctx.periodo.codigo, fecha_corte=ctx.fecha_corte, filas=filas
+        )
+
+    def detalle_ventas_comerciales(
+        self, filtros: FiltrosAgro, categoria: CategoriaVentaComercialAgro
+    ) -> RespuestaDetalleVentaComercialAgro:
+        """Detalle completo por producto de una categoría de la matriz comercial."""
+        patrones = {
+            CategoriaVentaComercialAgro.CORTES: "CORT",
+            CategoriaVentaComercialAgro.CANALES: "CANAL",
+            CategoriaVentaComercialAgro.SACRIFICIO: "SACRIFIC",
+            CategoriaVentaComercialAgro.SUBPRODUCTOS: "SUBPRODUCT",
+            CategoriaVentaComercialAgro.DESPOSTE: "DESPOST",
+        }
+        patron = patrones[categoria]
+        ctx = self._contexto(filtros)
+        tipos_comerciales = [
+            miembro.id
+            for miembro in ctx.catalogo.values()
+            if miembro.tipo == TipoDimension.TIPO_COMERCIAL.value
+            and patron in sin_acentos(miembro.nombre).upper()
+        ]
+        filas: list[FilaDetalleVentaComercialAgro] = []
+        if tipos_comerciales:
+            consulta = (
+                select(
+                    AgroVentaLinea.item_id,
+                    AgroVentaLinea.especie_id,
+                    *COLUMNAS_TOTALES,
+                )
+                .where(
+                    *self._filtros_base(ctx),
+                    AgroVentaLinea.tipo_comercial_id.in_(tipos_comerciales),
+                )
+                .group_by(AgroVentaLinea.item_id, AgroVentaLinea.especie_id)
+            )
+            for item_id, especie_id, *valores in self._sesion.execute(consulta):
+                producto = ctx.catalogo.get(int(item_id))
+                especie = ctx.catalogo.get(int(especie_id))
+                totales = _totales_de(valores)
+                filas.append(
+                    FilaDetalleVentaComercialAgro(
+                        producto=producto.nombre if producto is not None else str(item_id),
+                        especie=especie.nombre if especie is not None else str(especie_id),
+                        venta_valor=redondear_no_nulo(totales.valor, 2),
+                        kilos=redondear_no_nulo(totales.kilos, 3),
+                    )
+                )
+        filas.sort(key=lambda fila: (-Decimal(fila.venta_valor), fila.producto, fila.especie))
+        return RespuestaDetalleVentaComercialAgro(
+            periodo=ctx.periodo.codigo,
+            fecha_corte=ctx.fecha_corte,
+            categoria=categoria,
+            filas=filas,
         )
 
     # ── Serie mensual del año ─────────────────────────────────────────────────

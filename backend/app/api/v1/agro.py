@@ -71,6 +71,7 @@ from app.schemas.agro import (
     CalendarioAgroSalida,
     CanalMapeoMensualEntrada,
     CanalMapeoMensualSalida,
+    CategoriaVentaComercialAgro,
     CorridaAgroSalida,
     CuadrePresupuestoSalida,
     DetalleMensualEntrada,
@@ -87,6 +88,7 @@ from app.schemas.agro import (
     RespuestaComparativoDiarioCruce,
     RespuestaCruceAgro,
     RespuestaCuboAgro,
+    RespuestaDetalleVentaComercialAgro,
     RespuestaResumenAgro,
     RespuestaSerieMensualAgro,
     RespuestaVentaDiariaAgro,
@@ -264,6 +266,30 @@ def ventas_comerciales(
     validar_filtros_agro(usuario, peticion)
     return AgroReportesService(sesion).ventas_comerciales(
         _filtros(periodo, hasta, desde, centro, medida)
+    )
+
+
+@router.get(
+    "/ventas-comerciales/detalle",
+    response_model=RespuestaDetalleVentaComercialAgro,
+    summary="Detalle por producto de una categoría comercial",
+)
+def detalle_ventas_comerciales(
+    usuario: Annotated[
+        Usuario, Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS))
+    ],
+    sesion: SesionDep,
+    peticion: Request,
+    categoria: CategoriaVentaComercialAgro,
+    periodo: str = PeriodoQuery,
+    hasta: date | None = None,
+    desde: date | None = None,
+    centro: str | None = None,
+    medida: Medida = Medida.VALOR,
+) -> RespuestaDetalleVentaComercialAgro:
+    validar_filtros_agro(usuario, peticion)
+    return AgroReportesService(sesion).detalle_ventas_comerciales(
+        _filtros(periodo, hasta, desde, centro, medida), categoria
     )
 
 
