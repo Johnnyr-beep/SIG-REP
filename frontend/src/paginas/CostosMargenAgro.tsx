@@ -95,7 +95,10 @@ function TablaCostosAgro({
                   <tr>
                     <th scope="col">{productos ? "Producto" : "Descripción"}</th>
                     <th scope="col" className="numero">Venta</th>
+                    <th scope="col" className="numero">Kilos</th>
+                    <th scope="col" className="numero">Venta kilo</th>
                     <th scope="col" className="numero">Costo</th>
+                    <th scope="col" className="numero">Costo %</th>
                     <th scope="col" className="numero">Margen</th>
                     <th scope="col" className="numero">Margen %</th>
                   </tr>
@@ -120,13 +123,16 @@ function TablaCostosAgro({
                             ) : fila.nombre}
                           </th>
                           <td className="numero">{dinero(fila.venta)}</td>
+                          <td className="numero">{fila.kilos}</td>
+                          <td className="numero">{fila.venta_por_kilo == null ? "—" : dinero(fila.venta_por_kilo)}</td>
                           <td className="numero">{fila.costo == null ? "—" : dinero(fila.costo)}</td>
+                          <td className="numero">{fila.costo_porcentaje == null ? "—" : porcentaje(fila.costo_porcentaje)}</td>
                           <td className="numero">{fila.margen_valor == null ? "—" : dinero(fila.margen_valor)}</td>
                           <td className="numero">{fila.margen_porcentaje == null ? "—" : porcentaje(fila.margen_porcentaje)}</td>
                         </tr>
                         {esCategoria && abierta ? (
                           <tr key={`${fila.clave}-detalle`} className="matriz-categorias__detalle">
-                            <td colSpan={5}>
+                            <td colSpan={8}>
                               {(fila.productos?.length ?? 0) === 0 ? (
                                 <Vacio titulo="Sin productos en esta categoría" />
                               ) : (
@@ -135,7 +141,10 @@ function TablaCostosAgro({
                                     <tr>
                                       <th scope="col">Producto</th>
                                       <th scope="col" className="numero">Venta</th>
+                                      <th scope="col" className="numero">Kilos</th>
+                                      <th scope="col" className="numero">Venta kilo</th>
                                       <th scope="col" className="numero">Costo</th>
+                                      <th scope="col" className="numero">Costo %</th>
                                       <th scope="col" className="numero">Margen</th>
                                       <th scope="col" className="numero">Margen %</th>
                                     </tr>
@@ -145,7 +154,10 @@ function TablaCostosAgro({
                                       <tr key={producto.clave}>
                                         <th scope="row">{producto.nombre}</th>
                                         <td className="numero">{dinero(producto.venta)}</td>
+                                        <td className="numero">{producto.kilos}</td>
+                                        <td className="numero">{producto.venta_por_kilo == null ? "—" : dinero(producto.venta_por_kilo)}</td>
                                         <td className="numero">{producto.costo == null ? "—" : dinero(producto.costo)}</td>
+                                        <td className="numero">{producto.costo_porcentaje == null ? "—" : porcentaje(producto.costo_porcentaje)}</td>
                                         <td className="numero">{producto.margen_valor == null ? "—" : dinero(producto.margen_valor)}</td>
                                         <td className="numero">{producto.margen_porcentaje == null ? "—" : porcentaje(producto.margen_porcentaje)}</td>
                                       </tr>

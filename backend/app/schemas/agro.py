@@ -309,7 +309,10 @@ class FilaCostoAgro(EsquemaBase):
     clave: str
     nombre: str
     venta: DecimalStr
+    kilos: DecimalStr
+    venta_por_kilo: DecimalStr | None
     costo: DecimalStr | None
+    costo_porcentaje: DecimalStr | None
     impuesto: DecimalStr
     margen_valor: DecimalStr | None
     margen_porcentaje: DecimalStr | None

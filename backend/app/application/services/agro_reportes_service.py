@@ -413,11 +413,25 @@ class AgroReportesService:
                 if totales.costo_completo and totales.valor
                 else None
             )
+            costo_pct = (
+                redondear_porcentaje(dividir(totales.costo, totales.valor))
+                if totales.costo_completo and totales.valor
+                else None
+            )
+            venta_por_kilo_valor = dividir(totales.valor, totales.kilos)
+            venta_por_kilo = (
+                redondear_no_nulo(venta_por_kilo_valor, 2)
+                if venta_por_kilo_valor is not None
+                else None
+            )
             return FilaCostoAgro(
                 clave=clave,
                 nombre=nombre,
                 venta=redondear_no_nulo(totales.valor, 2) or CERO,
+                kilos=redondear_no_nulo(totales.kilos, 3) or CERO,
+                venta_por_kilo=venta_por_kilo,
                 costo=costo,
+                costo_porcentaje=costo_pct,
                 impuesto=redondear_no_nulo(impuesto_fila, 2) or CERO,
                 margen_valor=margen,
                 margen_porcentaje=margen_pct,

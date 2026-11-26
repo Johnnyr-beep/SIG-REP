@@ -266,7 +266,10 @@ export interface FilaCostoAgro {
   clave: string;
   nombre: string;
   venta: string;
+  kilos: string;
+  venta_por_kilo: string | null;
   costo: string | null;
+  costo_porcentaje: string | null;
   impuesto: string;
   margen_valor: string | null;
   margen_porcentaje: string | null;
