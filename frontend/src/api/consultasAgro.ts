@@ -45,6 +45,7 @@ import type {
   RespuestaInteligencia,
   RespuestaResumenAgro,
   RespuestaSerieMensualAgro,
+  RespuestaCostosAgro,
   RespuestaVentaDiariaAgro,
   RespuestaVentasComercialesAgro,
   ResultadoCargaAgro,
@@ -198,6 +199,19 @@ export function useSerieMensualAgro(
     queryFn: () =>
       peticion<RespuestaSerieMensualAgro>("/agro/serie-mensual", {
         parametros: { anio, por, hasta, centro },
+      }),
+    staleTime: 60_000,
+  });
+}
+
+export function useCostosMargenAgro(
+  filtros: FiltrosAgro,
+): UseQueryResult<RespuestaCostosAgro> {
+  return useQuery({
+    queryKey: ["agro", "costos-margen", filtros],
+    queryFn: () =>
+      peticion<RespuestaCostosAgro>("/agro/costos-margen", {
+        parametros: comoParametros(filtros),
       }),
     staleTime: 60_000,
   });

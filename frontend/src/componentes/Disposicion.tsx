@@ -104,6 +104,7 @@ const MENU_AGRO: GrupoNav[] = [
     items: [
       { ruta: "/agro", etiqueta: "Dashboard", icono: "◱", permiso: "PERMISO_AGRO_CONSULTAR_RESUMEN" },
       { ruta: "/agro/reportes-ventas", etiqueta: "Reportes de ventas", icono: "▤", permiso: "PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS" },
+      { ruta: "/agro/costos-margen", etiqueta: "Costos y margen", icono: "◒", permiso: "PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS" },
       { ruta: "/agro/cubo-comercial", etiqueta: "Cubo comercial", icono: "▥", permiso: "PERMISO_AGRO_CONSULTAR_CUBO_COMERCIAL" },
       { ruta: "/agro/cruce", etiqueta: "Vendedor, cliente y producto", icono: "◇", permiso: "PERMISO_AGRO_CONSULTAR_CRUCE_COMERCIAL" },
       { ruta: "/agro/venta-diaria", etiqueta: "Venta diaria", icono: "▦", permiso: "PERMISO_AGRO_CONSULTAR_VENTA_DIARIA" },
@@ -220,6 +221,7 @@ function menuDe(marca: ClaveMarca): GrupoNav[] {
 const TITULOS: Record<string, string> = {
   "/agro": "Dashboard",
   "/agro/reportes-ventas": "Reportes de ventas",
+  "/agro/costos-margen": "Costos y margen",
   "/agro/cubo-comercial": "Cubo comercial",
   "/agro/cruce": "Vendedor, cliente y producto",
   "/agro/venta-diaria": "Venta diaria por centro de operación",

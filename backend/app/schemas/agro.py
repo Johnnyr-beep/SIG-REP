@@ -305,6 +305,25 @@ class FilaResumenAgro(IndicadoresAgro):
     ultima_venta: date | None = None
 
 
+class FilaCostoAgro(EsquemaBase):
+    clave: str
+    nombre: str
+    venta: DecimalStr
+    costo: DecimalStr | None
+    impuesto: DecimalStr
+    margen_valor: DecimalStr | None
+    margen_porcentaje: DecimalStr | None
+    cobertura_costo: DecimalStr | None
+
+
+class RespuestaCostosAgro(EsquemaBase):
+    fecha_corte: date
+    consolidado: FilaCostoAgro
+    centros: list[FilaCostoAgro]
+    categorias: list[FilaCostoAgro]
+    productos: list[FilaCostoAgro]
+
+
 class ConciliacionAgro(EsquemaBase):
     """Lo que se dejó fuera de los totales, y por qué.
 

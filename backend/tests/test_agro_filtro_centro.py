@@ -124,6 +124,35 @@ def _resumen(sesion: Session, centros: tuple[str, ...] | None):
     return AgroReportesService(sesion).resumen(filtros, EjeResumen.CENTRO_OPERACION)
 
 
+def test_costos_margen_agro_devuelve_consolidado_y_tres_desgloses(
+    dos_centros: Session,
+) -> None:
+    respuesta = AgroReportesService(dos_centros).costos_margen(
+        FiltrosAgro(
+            periodo=PERIODO,
+            hasta=date(ANIO, MES, 28),
+            centros=None,
+            medida=Medida.VALOR,
+        )
+    )
+
+    assert respuesta.consolidado.venta == Decimal("1200.00")
+    assert respuesta.consolidado.costo == Decimal("0.00")
+    assert set(respuesta.consolidado.model_fields_set) >= {
+        "clave",
+        "nombre",
+        "venta",
+        "costo",
+        "impuesto",
+        "margen_valor",
+        "margen_porcentaje",
+        "cobertura_costo",
+    }
+    assert {fila.clave for fila in respuesta.centros} == {PLANTA, MONTERIA}
+    assert len(respuesta.categorias) == 1
+    assert len(respuesta.productos) == 1
+
+
 def test_el_presupuesto_del_consolidado_se_limita_a_los_centros_pedidos(
     dos_centros: Session,
 ) -> None:

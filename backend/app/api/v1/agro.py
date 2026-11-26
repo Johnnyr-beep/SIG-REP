@@ -86,6 +86,7 @@ from app.schemas.agro import (
     PresupuestoEjecutivoMensualEntrada,
     RechazoAgroSalida,
     RespuestaComparativoDiarioCruce,
+    RespuestaCostosAgro,
     RespuestaCruceAgro,
     RespuestaCuboAgro,
     RespuestaDetalleVentaComercialAgro,
@@ -244,6 +245,27 @@ def resumen(
         EjeResumen.CENTRO_OPERACION.value,
     )
     return AgroReportesService(sesion).resumen(_filtros(periodo, hasta, desde, centro, medida), por)
+
+
+@router.get(
+    "/costos-margen", response_model=RespuestaCostosAgro, summary="Costos y margen Agropecuaria"
+)
+def costos_margen_agro(
+    usuario: Annotated[
+        Usuario, Depends(exigir_permiso_consulta_agro(PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS))
+    ],
+    sesion: SesionDep,
+    peticion: Request,
+    periodo: str = PeriodoQuery,
+    hasta: date | None = None,
+    desde: date | None = None,
+    centro: str | None = None,
+    medida: Medida = Medida.VALOR,
+) -> RespuestaCostosAgro:
+    validar_filtros_agro(usuario, peticion)
+    return AgroReportesService(sesion).costos_margen(
+        _filtros(periodo, hasta, desde, centro, medida)
+    )
 
 
 @router.get(

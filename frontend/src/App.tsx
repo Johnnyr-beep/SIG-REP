@@ -19,6 +19,7 @@ import { IngestaAgro } from "@/paginas/IngestaAgro";
 import { InteligenciaAgro } from "@/paginas/InteligenciaAgro";
 import { PresupuestoAgro } from "@/paginas/PresupuestoAgro";
 import { ReportesVentasAgro } from "@/paginas/ReportesVentasAgro";
+import { CostosMargenAgro } from "@/paginas/CostosMargenAgro";
 import { ResumenAgro } from "@/paginas/ResumenAgro";
 import { VentaDiariaAgro } from "@/paginas/VentaDiariaAgro";
 import { VentasTat } from "@/paginas/VentasTat";
@@ -282,6 +283,7 @@ export function App() {
               <Route path="cubo-comercial" element={<AccesoModulo permiso="PERMISO_AGRO_CONSULTAR_CUBO_COMERCIAL"><CuboComercialAgro /></AccesoModulo>} />
               <Route path="venta-diaria" element={<AccesoModulo permiso="PERMISO_AGRO_CONSULTAR_VENTA_DIARIA"><VentaDiariaAgro /></AccesoModulo>} />
               <Route path="reportes-ventas" element={<AccesoModulo permiso="PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS"><ReportesVentasAgro /></AccesoModulo>} />
+              <Route path="costos-margen" element={<AccesoModulo permiso="PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS"><CostosMargenAgro /></AccesoModulo>} />
               <Route
                 path="presupuesto"
                 element={

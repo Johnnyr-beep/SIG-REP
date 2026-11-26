@@ -93,6 +93,7 @@ from app.infrastructure.models.periodo import Periodo
 from app.schemas.agro import (
     CategoriaVentaComercialAgro,
     ConciliacionAgro,
+    FilaCostoAgro,
     FilaCruceAgro,
     FilaCuboAgro,
     FilaDetalleVentaComercialAgro,
@@ -105,6 +106,7 @@ from app.schemas.agro import (
     ParametrosCalculoAgro,
     PuntoComparativoDiarioCruce,
     RespuestaComparativoDiarioCruce,
+    RespuestaCostosAgro,
     RespuestaCruceAgro,
     RespuestaCuboAgro,
     RespuestaDetalleVentaComercialAgro,
@@ -385,6 +387,77 @@ class AgroReportesService:
         self._presupuesto = AgroPresupuestoService(sesion)
 
     # ── Resumen por cualquiera de los siete ejes ──────────────────────────────
+
+    def costos_margen(self, filtros: FiltrosAgro) -> RespuestaCostosAgro:
+        """Costos, venta e impuesto por consolidado y tres desglose de lectura."""
+
+        ctx = self._contexto(filtros)
+
+        impuesto, _, _ = totales_impuesto(
+            self._sesion,
+            ctx.periodo.id,
+            ctx.fecha_corte,
+        )
+
+        def fila(
+            clave: str, nombre: str, totales: TotalesAgro, impuesto_fila: Decimal = CERO
+        ) -> FilaCostoAgro:
+            costo = redondear_no_nulo(totales.costo, 2) if totales.costo_completo else None
+            margen = (
+                redondear_no_nulo(totales.valor - totales.costo, 2)
+                if totales.costo_completo
+                else None
+            )
+            margen_pct = (
+                redondear_porcentaje(dividir(totales.valor - totales.costo, totales.valor))
+                if totales.costo_completo and totales.valor
+                else None
+            )
+            return FilaCostoAgro(
+                clave=clave,
+                nombre=nombre,
+                venta=redondear_no_nulo(totales.valor, 2) or CERO,
+                costo=costo,
+                impuesto=redondear_no_nulo(impuesto_fila, 2) or CERO,
+                margen_valor=margen,
+                margen_porcentaje=margen_pct,
+                cobertura_costo=(
+                    redondear_porcentaje(Decimal("1"))
+                    if totales.costo_completo and totales.lineas
+                    else None
+                ),
+            )
+
+        consolidado = TotalesAgro()
+        agregados_centro = self._agregar(ctx, [COLUMNA_DIMENSION[TipoDimension.CENTRO_OPERACION]])
+        agregados_categoria = self._agregar(ctx, [COLUMNA_DIMENSION[TipoDimension.TIPO_ITEM]])
+        agregados_producto = self._agregar(ctx, [COLUMNA_DIMENSION[TipoDimension.ITEM]])
+
+        for totales in agregados_centro.values():
+            consolidado.sumar(totales)
+
+        def por_eje(
+            totales_por: dict[tuple[int, ...], TotalesAgro], tipo: TipoDimension
+        ) -> list[FilaCostoAgro]:
+            resultado: list[FilaCostoAgro] = []
+            for (miembro_id,), totales in sorted(totales_por.items(), key=lambda par: par[0][0]):
+                miembro = ctx.catalogo.get(miembro_id)
+                resultado.append(
+                    fila(
+                        miembro.clave if miembro else str(miembro_id),
+                        miembro.nombre if miembro else str(miembro_id),
+                        totales,
+                    )
+                )
+            return resultado
+
+        return RespuestaCostosAgro(
+            fecha_corte=ctx.fecha_corte,
+            consolidado=fila("CONSOLIDADO", "Consolidado", consolidado, impuesto),
+            centros=por_eje(agregados_centro, TipoDimension.CENTRO_OPERACION),
+            categorias=por_eje(agregados_categoria, TipoDimension.TIPO_ITEM),
+            productos=por_eje(agregados_producto, TipoDimension.ITEM),
+        )
 
     def resumen(self, filtros: FiltrosAgro, por: EjeResumen) -> RespuestaResumenAgro:
         """Venta, kilos y margen por centro, tipo de ítem, especie, tipo

@@ -262,6 +262,25 @@ export interface FilaResumenAgro extends IndicadoresAgro {
  * adivinar la diferencia. No se esconde en una pista: va escrito al pie de cada
  * reporte.
  */
+export interface FilaCostoAgro {
+  clave: string;
+  nombre: string;
+  venta: string;
+  costo: string | null;
+  impuesto: string;
+  margen_valor: string | null;
+  margen_porcentaje: string | null;
+  cobertura_costo: string | null;
+}
+
+export interface RespuestaCostosAgro {
+  fecha_corte: string;
+  consolidado: FilaCostoAgro;
+  centros: FilaCostoAgro[];
+  categorias: FilaCostoAgro[];
+  productos: FilaCostoAgro[];
+}
+
 export interface ConciliacionAgro {
   impuesto_valor: string;
   impuesto_kilos: string;
