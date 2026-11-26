@@ -153,6 +153,7 @@ export interface AgroTatResumen {
   total_cantidad: string;
   total_subtotal: string;
   tipos_comerciales: string[];
+  respaldo_local: boolean;
 }
 
 export interface AgroTatIngesta {

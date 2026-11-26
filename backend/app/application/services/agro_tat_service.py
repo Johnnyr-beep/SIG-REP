@@ -31,12 +31,16 @@ class AgroTatService:
         total_cantidad = Decimal(0)
         total_subtotal = Decimal(0)
         indice_filtrado = 0
+        respaldo_local = False
         try:
             try:
                 filas_fuente = origen.obtener_ventas(desde, hasta)
                 registros = list(filas_fuente)
             except ErrorFuenteTat:
                 registros = self._leer_local(desde, hasta)
+                if not registros:
+                    raise
+                respaldo_local = True
         finally:
             if origen_propio:
                 origen.cerrar()
@@ -61,6 +65,7 @@ class AgroTatService:
             total_cantidad=total_cantidad.quantize(Decimal("0.001")),
             total_subtotal=total_subtotal.quantize(Decimal("0.01")),
             tipos_comerciales=sorted(tipos_comerciales),
+            respaldo_local=respaldo_local,
         )
 
     def _leer_local(self, desde: date, hasta: date) -> list[LineaTat]:
@@ -93,7 +98,11 @@ class AgroTatService:
         corrida = AgroTatCorrida(desde=desde, hasta=hasta)
         self.sesion.add(corrida)
         self.sesion.flush()
-        filas = list(origen.obtener_ventas(desde, hasta))
+        try:
+            filas = list(origen.obtener_ventas(desde, hasta))
+        finally:
+            if fuente is None:
+                origen.cerrar()
         self.sesion.execute(
             delete(AgroTatVenta).where(AgroTatVenta.fecha_documento.between(desde, hasta))
         )
@@ -119,8 +128,6 @@ class AgroTatService:
         corrida.filas_leidas = len(filas)
         corrida.filas_insertadas = len(filas)
         self.sesion.flush()
-        if fuente is None:
-            origen.cerrar()
         return AgroTatIngestaSalida(
             corrida_id=corrida.id,
             filas_leidas=len(filas),

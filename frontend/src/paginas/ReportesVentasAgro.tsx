@@ -108,6 +108,11 @@ export function ReportesVentasAgro() {
                     Las ventas TAT no están disponibles en este momento. El resto del reporte sí está actualizado.
                   </p>
                 ) : null}
+                {tat.data?.respaldo_local ? (
+                  <p className="aviso aviso--advertencia" role="status">
+                    SIESA no está disponible. Se muestran datos guardados previamente; su fecha de actualización no está disponible.
+                  </p>
+                ) : null}
                 {tat.data ? (
                   <DesgloseTAT
                     filas={tat.data.filas}

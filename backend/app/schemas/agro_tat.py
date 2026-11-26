@@ -24,6 +24,7 @@ class AgroTatResumen(EsquemaBase):
     total_cantidad: DecimalStr
     total_subtotal: DecimalStr
     tipos_comerciales: list[str]
+    respaldo_local: bool = False
 
 
 class AgroTatIngestaSalida(EsquemaBase):

@@ -2,6 +2,7 @@ from datetime import date, time
 from decimal import Decimal
 
 import httpx
+import pytest
 from pydantic import SecretStr
 
 from app.application.services.agro_tat_service import AgroTatService
@@ -237,3 +238,45 @@ def test_listar_tat_cae_a_datos_locales_si_siesa_falla(sesion) -> None:
     assert resultado.filas[0].nro_documento == "F-LOCAL"
     assert resultado.total_cantidad == Decimal("3.000")
     assert resultado.total_subtotal == Decimal("450.25")
+    assert resultado.respaldo_local is True
+
+
+def test_listar_tat_propaga_error_si_no_hay_respaldo_local(sesion) -> None:
+    class FuenteQueFalla:
+        def obtener_ventas(self, desde: date, hasta: date):
+            raise ErrorFuenteTat("SIESA TAT respondió HTTP 500.")
+
+        def cerrar(self) -> None:
+            pass
+
+    with pytest.raises(ErrorFuenteTat):
+        AgroTatService(sesion).listar(
+            date(2026, 9, 1),
+            date(2026, 9, 1),
+            None,
+            100,
+            0,
+            fuente=FuenteQueFalla(),
+        )
+
+
+def test_ingesta_tat_cierra_fuente_si_siesa_falla(sesion, monkeypatch) -> None:
+    class FuenteQueFalla:
+        cerrada = False
+
+        def obtener_ventas(self, desde: date, hasta: date):
+            raise ErrorFuenteTat("SIESA TAT respondió HTTP 500.")
+
+        def cerrar(self) -> None:
+            self.cerrada = True
+
+    fuente = FuenteQueFalla()
+    monkeypatch.setattr(
+        "app.application.services.agro_tat_service.FuenteVentasTat",
+        lambda: fuente,
+    )
+
+    with pytest.raises(ErrorFuenteTat):
+        AgroTatService(sesion).ingerir(date(2026, 9, 1), date(2026, 9, 1))
+
+    assert fuente.cerrada is True
