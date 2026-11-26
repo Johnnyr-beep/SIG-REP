@@ -14,8 +14,13 @@ export interface FiltrosTat {
 export function useVentasTat(filtros: FiltrosTat, habilitado = true) {
   return useQuery({
     queryKey: ["agro", "tat", filtros],
-    queryFn: () => peticion<AgroTatResumen>("/agro/tat", { parametros: { ...filtros } }),
+    queryFn: () =>
+      peticion<AgroTatResumen>("/agro/tat", {
+        parametros: { ...filtros },
+        timeoutMs: 15_000,
+      }),
     enabled: habilitado && Boolean(filtros.fecha_inicio && filtros.fecha_fin),
+    retry: false,
   });
 }
 

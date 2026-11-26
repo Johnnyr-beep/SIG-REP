@@ -4,12 +4,15 @@ from decimal import Decimal
 import httpx
 from pydantic import SecretStr
 
+from app.application.services.agro_tat_service import AgroTatService
 from app.infrastructure.fuentes.agro_tat import (
     COLUMNAS_TAT,
     ConfiguracionTat,
+    ErrorFuenteTat,
     FuenteVentasTat,
     LineaTat,
 )
+from app.infrastructure.models.agro_tat import AgroTatCorrida, AgroTatVenta
 
 
 def test_fuente_tat_envia_contrato_real_y_parsea_csv() -> None:
@@ -190,3 +193,47 @@ def test_listar_tat_lee_fuente_directa_y_filtra_tipo_comercial(
     assert {fila["tipo_comercial"] for fila in filtradas.json()["filas"]} == {"TAT"}
     assert filtradas.json()["total_cantidad"] == "101.000"
     assert filtradas.json()["total_subtotal"] == "1010.00"
+
+
+def test_listar_tat_cae_a_datos_locales_si_siesa_falla(sesion) -> None:
+    corrida = AgroTatCorrida(desde=date(2026, 9, 1), hasta=date(2026, 9, 1))
+    sesion.add(corrida)
+    sesion.flush()
+    sesion.add(
+        AgroTatVenta(
+            corrida_id=corrida.id,
+            fecha_documento=date(2026, 9, 1),
+            hora_documento=time(8, 30),
+            nro_documento="F-LOCAL",
+            tipo_comercial="TAT",
+            cliente_factura="C-1",
+            razon_social_cliente="Cliente local",
+            codigo_sucursal="S-1",
+            descripcion_sucursal="Sucursal local",
+            direccion_sucursal="Calle 1",
+            cantidad_inv=Decimal("3"),
+            valor_subtotal=Decimal("450.25"),
+        )
+    )
+    sesion.flush()
+
+    class FuenteQueFalla:
+        def obtener_ventas(self, desde: date, hasta: date):
+            raise ErrorFuenteTat("SIESA TAT respondió HTTP 500.")
+
+        def cerrar(self) -> None:
+            pass
+
+    resultado = AgroTatService(sesion).listar(
+        date(2026, 9, 1),
+        date(2026, 9, 1),
+        None,
+        100,
+        0,
+        fuente=FuenteQueFalla(),
+    )
+
+    assert len(resultado.filas) == 1
+    assert resultado.filas[0].nro_documento == "F-LOCAL"
+    assert resultado.total_cantidad == Decimal("3.000")
+    assert resultado.total_subtotal == Decimal("450.25")

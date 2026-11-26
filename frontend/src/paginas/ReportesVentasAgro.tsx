@@ -44,8 +44,8 @@ export function ReportesVentasAgro() {
   return (
     <div className="pila">
       <BarraFiltrosAgro control={control} mostrar={{ rango: true }} />
-      <AvisoError error={comerciales.error ?? tipoItem.error ?? especie.error ?? tat.error} />
-      {comerciales.isLoading || tipoItem.isLoading || especie.isLoading || tat.isLoading ? (
+      <AvisoError error={comerciales.error ?? tipoItem.error ?? especie.error} />
+      {comerciales.isLoading || tipoItem.isLoading || especie.isLoading ? (
         <Cargando texto="Preparando reportes de ventas…" />
       ) : null}
       {comerciales.data && tipoItem.data && especie.data ? (
@@ -97,16 +97,24 @@ export function ReportesVentasAgro() {
             >
               <MatrizCategorias filas={comerciales.data.filas} filtros={filtros} />
             </Tarjeta>
-            {esAgropecuaria && tat.data ? (
+            {esAgropecuaria ? (
               <Tarjeta
                 titulo="Ventas TAT"
                 descripcion="Facturación TAT separada para lectura rápida."
               >
-                <DesgloseTAT
-                  filas={tat.data.filas}
-                  totalCantidad={tat.data.total_cantidad}
-                  totalSubtotal={tat.data.total_subtotal}
-                />
+                {tat.isLoading ? <Cargando texto="Consultando ventas TAT…" /> : null}
+                {tat.error ? (
+                  <p className="aviso aviso--advertencia" role="status">
+                    Las ventas TAT no están disponibles en este momento. El resto del reporte sí está actualizado.
+                  </p>
+                ) : null}
+                {tat.data ? (
+                  <DesgloseTAT
+                    filas={tat.data.filas}
+                    totalCantidad={tat.data.total_cantidad}
+                    totalSubtotal={tat.data.total_subtotal}
+                  />
+                ) : null}
               </Tarjeta>
             ) : null}
           </div>

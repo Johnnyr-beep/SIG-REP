@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.infrastructure.fuentes.agro_tat import FuenteVentasTat
+from app.infrastructure.fuentes.agro_tat import ErrorFuenteTat, FuenteVentasTat, LineaTat
 from app.infrastructure.models.agro_tat import AgroTatCorrida, AgroTatVenta
 from app.schemas.agro_tat import AgroTatIngestaSalida, AgroTatResumen, AgroTatVentaSalida
 
@@ -32,23 +32,29 @@ class AgroTatService:
         total_subtotal = Decimal(0)
         indice_filtrado = 0
         try:
-            for fila in origen.obtener_ventas(desde, hasta):
-                if fila.tipo_comercial is not None:
-                    tipos_comerciales.add(fila.tipo_comercial)
-                if tipo_comercial is not None and fila.tipo_comercial != tipo_comercial:
-                    continue
-
-                total_cantidad += fila.cantidad_inv
-                total_subtotal += fila.valor_subtotal
-                dentro_de_pagina = indice_filtrado >= offset and (
-                    limite is None or indice_filtrado < offset + limite
-                )
-                if dentro_de_pagina:
-                    filas.append(AgroTatVentaSalida.model_validate(fila))
-                indice_filtrado += 1
+            try:
+                filas_fuente = origen.obtener_ventas(desde, hasta)
+                registros = list(filas_fuente)
+            except ErrorFuenteTat:
+                registros = self._leer_local(desde, hasta)
         finally:
             if origen_propio:
                 origen.cerrar()
+
+        for fila in registros:
+            if fila.tipo_comercial is not None:
+                tipos_comerciales.add(fila.tipo_comercial)
+            if tipo_comercial is not None and fila.tipo_comercial != tipo_comercial:
+                continue
+
+            total_cantidad += fila.cantidad_inv
+            total_subtotal += fila.valor_subtotal
+            dentro_de_pagina = indice_filtrado >= offset and (
+                limite is None or indice_filtrado < offset + limite
+            )
+            if dentro_de_pagina:
+                filas.append(AgroTatVentaSalida.model_validate(fila))
+            indice_filtrado += 1
 
         return AgroTatResumen(
             filas=filas,
@@ -56,6 +62,29 @@ class AgroTatService:
             total_subtotal=total_subtotal.quantize(Decimal("0.01")),
             tipos_comerciales=sorted(tipos_comerciales),
         )
+
+    def _leer_local(self, desde: date, hasta: date) -> list[LineaTat]:
+        filas = self.sesion.execute(
+            select(AgroTatVenta)
+            .where(AgroTatVenta.fecha_documento.between(desde, hasta))
+            .order_by(AgroTatVenta.fecha_documento, AgroTatVenta.nro_documento)
+        ).scalars()
+        return [
+            LineaTat(
+                fecha_documento=fila.fecha_documento,
+                hora_documento=fila.hora_documento,
+                nro_documento=fila.nro_documento,
+                tipo_comercial=fila.tipo_comercial,
+                cliente_factura=fila.cliente_factura,
+                razon_social_cliente=fila.razon_social_cliente,
+                codigo_sucursal=fila.codigo_sucursal,
+                descripcion_sucursal=fila.descripcion_sucursal,
+                direccion_sucursal=fila.direccion_sucursal,
+                cantidad_inv=Decimal(fila.cantidad_inv),
+                valor_subtotal=Decimal(fila.valor_subtotal),
+            )
+            for fila in filas
+        ]
 
     def ingerir(
         self, desde: date, hasta: date, fuente: FuenteVentasTat | None = None
