@@ -22,6 +22,8 @@ function TablaCostosAgro({
 }) {
   const [busqueda, setBusqueda] = useState("");
   const [disponibilidad, setDisponibilidad] = useState<"todos" | "con-costo" | "sin-costo">("todos");
+  const [expandida, setExpandida] = useState<string | null>(null);
+  const esCategoria = titulo === "Costo por categoría";
   const patron = normalizar(busqueda.trim());
 
   const visibles = useMemo(
@@ -99,15 +101,64 @@ function TablaCostosAgro({
                   </tr>
                 </thead>
                 <tbody>
-                  {visibles.map((fila) => (
-                    <tr key={fila.clave}>
-                      <th scope="row" title={fila.nombre}>{fila.nombre}</th>
-                      <td className="numero">{dinero(fila.venta)}</td>
-                      <td className="numero">{fila.costo == null ? "—" : dinero(fila.costo)}</td>
-                      <td className="numero">{fila.margen_valor == null ? "—" : dinero(fila.margen_valor)}</td>
-                      <td className="numero">{fila.margen_porcentaje == null ? "—" : porcentaje(fila.margen_porcentaje)}</td>
-                    </tr>
-                  ))}
+                  {visibles.map((fila) => {
+                    const abierta = expandida === fila.clave;
+                    return (
+                      <>
+                        <tr key={fila.clave}>
+                          <th scope="row" title={fila.nombre}>
+                            {esCategoria ? (
+                              <button
+                                type="button"
+                                className="matriz-categorias__toggle"
+                                aria-expanded={abierta}
+                                onClick={() => setExpandida(abierta ? null : fila.clave)}
+                              >
+                                <span aria-hidden="true">{abierta ? "▾" : "▸"}</span>
+                                {fila.nombre}
+                              </button>
+                            ) : fila.nombre}
+                          </th>
+                          <td className="numero">{dinero(fila.venta)}</td>
+                          <td className="numero">{fila.costo == null ? "—" : dinero(fila.costo)}</td>
+                          <td className="numero">{fila.margen_valor == null ? "—" : dinero(fila.margen_valor)}</td>
+                          <td className="numero">{fila.margen_porcentaje == null ? "—" : porcentaje(fila.margen_porcentaje)}</td>
+                        </tr>
+                        {esCategoria && abierta ? (
+                          <tr key={`${fila.clave}-detalle`} className="matriz-categorias__detalle">
+                            <td colSpan={5}>
+                              {(fila.productos?.length ?? 0) === 0 ? (
+                                <Vacio titulo="Sin productos en esta categoría" />
+                              ) : (
+                                <table className="tabla tabla--costos">
+                                  <thead>
+                                    <tr>
+                                      <th scope="col">Producto</th>
+                                      <th scope="col" className="numero">Venta</th>
+                                      <th scope="col" className="numero">Costo</th>
+                                      <th scope="col" className="numero">Margen</th>
+                                      <th scope="col" className="numero">Margen %</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {fila.productos.map((producto) => (
+                                      <tr key={producto.clave}>
+                                        <th scope="row">{producto.nombre}</th>
+                                        <td className="numero">{dinero(producto.venta)}</td>
+                                        <td className="numero">{producto.costo == null ? "—" : dinero(producto.costo)}</td>
+                                        <td className="numero">{producto.margen_valor == null ? "—" : dinero(producto.margen_valor)}</td>
+                                        <td className="numero">{producto.margen_porcentaje == null ? "—" : porcentaje(producto.margen_porcentaje)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              )}
+                            </td>
+                          </tr>
+                        ) : null}
+                      </>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

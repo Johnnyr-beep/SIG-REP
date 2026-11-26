@@ -432,6 +432,13 @@ class AgroReportesService:
         agregados_centro = self._agregar(ctx, [COLUMNA_DIMENSION[TipoDimension.CENTRO_OPERACION]])
         agregados_categoria = self._agregar(ctx, [COLUMNA_DIMENSION[TipoDimension.TIPO_ITEM]])
         agregados_producto = self._agregar(ctx, [COLUMNA_DIMENSION[TipoDimension.ITEM]])
+        agregados_categoria_producto = self._agregar(
+            ctx,
+            [
+                COLUMNA_DIMENSION[TipoDimension.TIPO_ITEM],
+                COLUMNA_DIMENSION[TipoDimension.ITEM],
+            ],
+        )
 
         for totales in agregados_centro.values():
             consolidado.sumar(totales)
@@ -451,11 +458,35 @@ class AgroReportesService:
                 )
             return resultado
 
+        categorias = por_eje(agregados_categoria, TipoDimension.TIPO_ITEM)
+        productos_por_categoria: dict[int, list[FilaCostoAgro]] = defaultdict(list)
+        for (categoria_id, item_id), totales in agregados_categoria_producto.items():
+            producto = ctx.catalogo.get(item_id)
+            productos_por_categoria[categoria_id].append(
+                fila(
+                    producto.clave if producto else str(item_id),
+                    producto.nombre if producto else str(item_id),
+                    totales,
+                )
+            )
+        categoria_por_clave = {
+            miembro.clave: miembro.id
+            for miembro in ctx.catalogo.values()
+            if miembro.tipo == TipoDimension.TIPO_ITEM.value
+        }
+        for categoria in categorias:
+            id_categoria: int | None = categoria_por_clave.get(categoria.clave)
+            categoria.productos = (
+                sorted(productos_por_categoria.get(id_categoria or -1, []), key=lambda p: p.nombre)
+                if id_categoria is not None
+                else []
+            )
+
         return RespuestaCostosAgro(
             fecha_corte=ctx.fecha_corte,
             consolidado=fila("CONSOLIDADO", "Consolidado", consolidado, impuesto),
             centros=por_eje(agregados_centro, TipoDimension.CENTRO_OPERACION),
-            categorias=por_eje(agregados_categoria, TipoDimension.TIPO_ITEM),
+            categorias=categorias,
             productos=por_eje(agregados_producto, TipoDimension.ITEM),
         )
 

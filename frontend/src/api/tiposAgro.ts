@@ -271,6 +271,7 @@ export interface FilaCostoAgro {
   margen_valor: string | null;
   margen_porcentaje: string | null;
   cobertura_costo: string | null;
+  productos: FilaCostoAgro[];
 }
 
 export interface RespuestaCostosAgro {

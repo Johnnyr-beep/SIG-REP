@@ -314,6 +314,7 @@ class FilaCostoAgro(EsquemaBase):
     margen_valor: DecimalStr | None
     margen_porcentaje: DecimalStr | None
     cobertura_costo: DecimalStr | None
+    productos: list[FilaCostoAgro] = Field(default_factory=list)
 
 
 class RespuestaCostosAgro(EsquemaBase):
