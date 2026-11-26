@@ -90,8 +90,9 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
   const entrar = useCallback(
     async (nombreUsuario: string, clave: string) => {
       await iniciarSesion(nombreUsuario, clave);
+      await clienteConsultas.cancelQueries();
+      clienteConsultas.removeQueries({ queryKey: ["perfil"] });
       setHayToken(true);
-      void clienteConsultas.invalidateQueries({ refetchType: "active" });
     },
     [clienteConsultas],
   );

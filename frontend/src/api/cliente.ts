@@ -386,7 +386,7 @@ export async function iniciarSesion(
   // servidor valida las credenciales contra la base de carnes, y quien eligió
   // agropecuaria acabaría con un token de la otra compañía.
   const controlador = new AbortController();
-  const temporizador = window.setTimeout(() => controlador.abort(), 15_000);
+  const temporizador = window.setTimeout(() => controlador.abort(), 8_000);
 
   let respuesta: Response;
   try {
@@ -401,7 +401,7 @@ export async function iniciarSesion(
       throw new ErrorApi(
         504,
         "tiempo_acceso_agotado",
-        "El acceso tardó demasiado. Intente nuevamente.",
+        "El acceso tardó más de 8 segundos. Verifique la conexión e intente nuevamente.",
       );
     }
     throw fallo;
