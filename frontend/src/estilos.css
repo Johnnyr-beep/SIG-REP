@@ -1274,12 +1274,15 @@ textarea {
   width: 14%;
 }
 
-/* La celda del nombre hereda `nowrap` de `.tabla th` y la tabla es de layout
-   fijo: sin elipsis, un nombre largo se desborda encima de la columna de la
-   venta. El `title` conserva el nombre completo al pasar el cursor. */
+/* Los nombres largos de productos necesitan crecer en varias líneas. */
 .tabla--costos tbody th {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-height: 1.35;
+  vertical-align: top;
 }
 
 /* El nombre de un producto es mucho más largo que el de un punto de venta o

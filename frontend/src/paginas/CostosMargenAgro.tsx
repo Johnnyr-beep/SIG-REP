@@ -109,7 +109,7 @@ function TablaCostosAgro({
                     return (
                       <>
                         <tr key={fila.clave}>
-                          <th scope="row" title={fila.nombre}>
+                          <th scope="row">
                             {esCategoria ? (
                               <button
                                 type="button"
