@@ -58,7 +58,7 @@ RUN chmod 0555 /usr/local/bin/arranque.sh \
 USER sigrep
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=70s --retries=3 \
-    CMD curl -fsS http://127.0.0.1:8080/api/v1/salud >/dev/null \
+    CMD curl -fsS http://127.0.0.1:8000/listo >/dev/null \
         && curl -fsS http://127.0.0.1:8080/ >/dev/null || exit 1
 
 CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
