@@ -2755,6 +2755,7 @@ textarea.campo__control {
 .selector__lista {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
   gap: clamp(20px, 3.4vh, 30px) 2.1%;
   width: 100%;
   padding: 0;
@@ -2764,10 +2765,12 @@ textarea.campo__control {
 
 .selector__opcion {
   min-width: 0;
+  display: flex;
 }
 
 .selector__detalle {
   display: block;
+  flex: 1;
   max-width: 360px;
   color: #102e51;
   font-size: 1.0625rem;
@@ -2856,13 +2859,16 @@ textarea.campo__control {
 }
 
 .tarjeta-marca__logo {
-  width: auto;
-  max-width: 100%;
-  height: clamp(82px, 16vh, 142px);
+  width: min(100%, 240px);
+  height: clamp(92px, 15vh, 128px);
   object-fit: contain;
 }
 
 .tarjeta-marca__nombre {
+  min-height: 2.2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #08284d;
   font-weight: 750;
   font-size: 1.6875rem;
@@ -2905,23 +2911,6 @@ textarea.campo__control {
   --tono: var(--marca-500);
 }
 
-.selector__opcion:nth-child(n + 4) .tarjeta-marca {
-  min-height: clamp(150px, 23.2vh, 205px);
-  gap: 9px;
-  padding: 25px 22px 15px;
-}
-
-.selector__opcion:nth-child(n + 4) .tarjeta-marca__logo {
-  height: clamp(88px, 16vh, 142px);
-  max-width: 94%;
-}
-
-.selector__opcion:nth-child(n + 4) .tarjeta-marca__nombre,
-.selector__opcion:nth-child(n + 4) .tarjeta-marca:not([aria-disabled]) .distintivo,
-.selector__opcion:nth-child(n + 4) .tarjeta-marca .selector__detalle {
-  display: none;
-}
-
 @media (max-width: 900px) {
   .selector {
     place-items: start center;
@@ -2934,10 +2923,7 @@ textarea.campo__control {
 
   .selector__lista {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .selector__opcion:nth-child(n + 4) .tarjeta-marca {
-    min-height: 230px;
+    grid-auto-rows: minmax(350px, auto);
   }
 }
 
@@ -2988,19 +2974,16 @@ textarea.campo__control {
 
   .selector__lista {
     grid-template-columns: 1fr;
+    grid-auto-rows: minmax(300px, auto);
   }
 
-  .tarjeta-marca,
-  .selector__opcion:nth-child(n + 4) .tarjeta-marca {
-    min-height: 230px;
-  }
-
-  .selector__opcion:nth-child(n + 4) .tarjeta-marca .selector__detalle {
-    display: none;
+  .tarjeta-marca {
+    min-height: 300px;
   }
 
   .tarjeta-marca__logo {
-    height: 64px;
+    width: min(100%, 220px);
+    height: 92px;
   }
 }
 
