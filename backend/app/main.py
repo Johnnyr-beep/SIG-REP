@@ -179,6 +179,6 @@ app.include_router(api)
 
 
 @app.get("/listo", tags=["Sistema"], summary="Sonda de preparación")
-def listo() -> dict[str, str]:
+async def listo() -> dict[str, str]:
     """Sonda ligera para el balanceador, fuera del prefijo versionado."""
     return {"estado": "listo"}

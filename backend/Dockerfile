@@ -91,12 +91,10 @@ ENV SIGREP_VERSION=${SIGREP_VERSION}
 USER sigrep
 EXPOSE 8000
 
-# Sonda de **vida**, no de preparación. `/api/v1/salud` responde 200 con
-# `estado: "degradado"` cuando la base no contesta, y eso es deliberado: si el
-# contenedor se marcara enfermo por una caída momentánea de PostgreSQL, el
-# orquestador reiniciaría todas las réplicas en cadena justo cuando la base
-# menos lo necesita. Lo que esta sonda comprueba es que Uvicorn atiende.
+# Sonda de vida, independiente de la base. `/api/v1/salud` es readiness y puede
+# esperar a PostgreSQL; usarla aquí causaría reinicios de Swarm durante una
+# degradación de base. `/listo` solo comprueba que la aplicación atiende.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
-    CMD curl -fsS http://127.0.0.1:8000/api/v1/salud || exit 1
+    CMD curl -fsS http://127.0.0.1:8000/listo || exit 1
 
 ENTRYPOINT ["/usr/local/bin/arranque.sh"]

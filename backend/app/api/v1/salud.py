@@ -7,6 +7,7 @@ from datetime import datetime
 from fastapi import APIRouter
 from pydantic import BaseModel
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.application.services.ingesta_service import IngestaService
 from app.core.config import obtener_settings
@@ -51,7 +52,8 @@ def salud(sesion: SesionDep) -> EstadoSalud:
     try:
         sesion.execute(text("SELECT 1"))
         estado_bd = "disponible"
-    except Exception:
+    except SQLAlchemyError:
+        sesion.rollback()
         return EstadoSalud(
             estado="degradado",
             unidad=settings.unidad,

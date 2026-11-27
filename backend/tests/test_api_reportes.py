@@ -11,8 +11,10 @@ from decimal import Decimal
 
 from fastapi.testclient import TestClient
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
+from app.api.v1.salud import salud
 from app.core.deps import (
     PERMISO_CONSULTAR_COSTOS,
     PERMISO_CONSULTAR_TABLERO,
@@ -476,6 +478,31 @@ def test_salud_responde_sin_autenticacion(cliente_http: TestClient) -> None:
     cuerpo = cliente_http.get("/api/v1/salud").json()
     assert cuerpo["estado"] == "operativo"
     assert cuerpo["base_datos"] == "disponible"
+
+
+def test_sonda_liveness_no_depende_de_la_base(cliente_http: TestClient) -> None:
+    respuesta = cliente_http.get("/listo")
+
+    assert respuesta.status_code == 200
+    assert respuesta.json() == {"estado": "listo"}
+
+
+def test_salud_revierte_sesion_si_falla_la_consulta_a_base() -> None:
+    class SesionBaseInaccesible:
+        revirtio = False
+
+        def execute(self, *_args: object) -> None:
+            raise OperationalError("SELECT 1", {}, RuntimeError("base no disponible"))
+
+        def rollback(self) -> None:
+            self.revirtio = True
+
+    sesion = SesionBaseInaccesible()
+    respuesta = salud(sesion)  # type: ignore[arg-type]
+
+    assert respuesta.estado == "degradado"
+    assert respuesta.base_datos == "no disponible"
+    assert sesion.revirtio is True
 
 
 def test_todos_los_puntos_de_venta_tienen_zona_con_calendario(
