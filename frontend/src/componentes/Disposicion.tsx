@@ -44,7 +44,7 @@ interface GrupoNav {
  */
 const MENU_CARNES: GrupoNav[] = [
   {
-    titulo: "Gerencia",
+    titulo: "Tableros gerenciales",
     items: [
       { ruta: "/", etiqueta: "Tablero", icono: "◱", permiso: "PERMISO_CONSULTAR_TABLERO" },
       { ruta: "/cumplimiento", etiqueta: "Cumplimiento por PDV", icono: "▤", permiso: "PERMISO_CONSULTAR_CUMPLIMIENTO" },
@@ -100,7 +100,7 @@ const MENU_CARNES: GrupoNav[] = [
 /** Las de agropecuaria, sobre `/agro`. Mismos roles que exige `api/v1/agro.py`. */
 const MENU_AGRO: GrupoNav[] = [
   {
-    titulo: "Gerencia",
+    titulo: "Tableros gerenciales",
     items: [
       { ruta: "/agro", etiqueta: "Dashboard", icono: "◱", permiso: "PERMISO_AGRO_CONSULTAR_RESUMEN" },
       { ruta: "/agro/reportes-ventas", etiqueta: "Reportes de ventas", icono: "▤", permiso: "PERMISO_AGRO_CONSULTAR_REPORTES_VENTAS" },
@@ -138,7 +138,7 @@ const MENU_AGRO: GrupoNav[] = [
 /** Grupo Santacruz: el tablero financiero consolidado, sobre el libro mayor. */
 const MENU_FINANCIERO: GrupoNav[] = [
   {
-    titulo: "Gerencia",
+    titulo: "Tableros gerenciales",
     items: [
       { ruta: "/", etiqueta: "Resumen financiero", icono: "◱", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
       { ruta: "/rentabilidad-mes", etiqueta: "Rentabilidad mes", icono: "◷", permiso: "PERMISO_CONSULTAR_FINANCIERO" },
@@ -176,7 +176,7 @@ const MENU_SOLO_ACCESO: GrupoNav[] = [
 
 const MENU_CARNES_FRIAS: GrupoNav[] = [
   {
-    titulo: "Gerencia",
+    titulo: "Tableros gerenciales",
     items: [
       { ruta: "/frias", etiqueta: "Resumen de ventas", icono: "◱" },
       { ruta: "/frias/reportes-ventas", etiqueta: "Reportes de ventas", icono: "▤" },

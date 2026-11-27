@@ -707,6 +707,45 @@ textarea {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
+.accesos-gerenciales {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--espacio-3);
+}
+
+.acceso-gerencial {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  padding: var(--espacio-3) var(--espacio-4);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-sm);
+  background: var(--superficie-2);
+  color: var(--texto);
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+}
+
+.acceso-gerencial:hover {
+  border-color: var(--marca-500);
+  background: var(--marca-suave-claro);
+  color: var(--texto);
+}
+
+@media (max-width: 900px) {
+  .accesos-gerenciales {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 500px) {
+  .accesos-gerenciales {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── Inteligencia comercial ─────────────────────────────────────────────── */
 
 .inteligencia__encabezado {

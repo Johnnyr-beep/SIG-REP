@@ -40,7 +40,29 @@ export function Tablero() {
   const { filtros } = control;
   const { data, isLoading, error } = useTablero(filtros);
   const exportar = useExportar();
-  const { tienePermiso } = useAuth();
+  const { tienePermiso, tieneRol } = useAuth();
+  const accesosGerenciales = [
+    {
+      ruta: "/cumplimiento",
+      etiqueta: "Cumplimiento",
+      permiso: "PERMISO_CONSULTAR_CUMPLIMIENTO",
+    },
+    {
+      ruta: "/costos",
+      etiqueta: "Costos y margen",
+      permiso: "PERMISO_CONSULTAR_COSTOS",
+    },
+    {
+      ruta: "/venta-diaria",
+      etiqueta: "Venta diaria",
+      permiso: "PERMISO_CONSULTAR_VENTA_DIARIA",
+    },
+    {
+      ruta: "/clientes",
+      etiqueta: "Clientes y vendedores",
+      permiso: "PERMISO_CONSULTAR_CLIENTES",
+    },
+  ].filter((acceso) => tienePermiso(acceso.permiso));
 
   const medida = data?.medida ?? filtros.medida;
   const grande = (valor: string | null) =>
@@ -97,6 +119,21 @@ export function Tablero() {
 
       <AvisoError error={error} />
       <AvisoError error={exportar.error} />
+
+      {tieneRol("ADMIN", "GERENTE", "ANALISTA") && accesosGerenciales.length > 0 ? (
+        <Tarjeta
+          titulo="Accesos gerenciales"
+          descripcion="Tableros relacionados para pasar del consolidado al detalle sin volver al menú."
+        >
+          <nav className="accesos-gerenciales" aria-label="Tableros gerenciales">
+            {accesosGerenciales.map((acceso) => (
+              <Link key={acceso.ruta} className="acceso-gerencial" to={acceso.ruta}>
+                {acceso.etiqueta}
+              </Link>
+            ))}
+          </nav>
+        </Tarjeta>
+      ) : null}
 
       {isLoading ? <Cargando texto="Consolidando el período…" /> : null}
 
