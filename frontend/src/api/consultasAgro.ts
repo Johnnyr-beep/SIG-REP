@@ -552,6 +552,10 @@ export function useCorridasAgro(): UseQueryResult<CorridaAgro[]> {
     queryKey: clavesAgro.corridas,
     queryFn: () => peticion<CorridaAgro[]>("/agro/ingesta/corridas"),
     staleTime: 30_000,
+    refetchInterval: (consulta) =>
+      consulta.state.data?.some((corrida) => corrida.estado === "EN_CURSO")
+        ? 3_000
+        : false,
   });
 }
 
@@ -576,14 +580,14 @@ export function useRechazosAgro(
 
 /** Reprocesar un rango lo reemplaza; no duplica. Los dos extremos se incluyen. */
 export function useEjecutarIngestaAgro(): UseMutationResult<
-  CorridaAgro,
+  { estado: string; desde: string; hasta: string },
   Error,
   { desde: string; hasta: string }
 > {
   const cliente = useQueryClient();
   return useMutation({
     mutationFn: ({ desde, hasta }) =>
-      peticion<CorridaAgro>("/agro/ingesta/ejecutar", {
+      peticion<{ estado: string; desde: string; hasta: string }>("/agro/ingesta/ejecutar", {
         metodo: "POST",
         parametros: { desde, hasta },
       }),

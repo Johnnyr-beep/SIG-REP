@@ -727,3 +727,32 @@ def test_el_403_no_cuenta_que_existe_el_recurso(
     respuesta = cliente_http.get("/api/v1/ingesta/corridas/1/rechazos", headers=jefe_pdv)
     assert respuesta.status_code == 403
     assert respuesta.json()["codigo"] == "no_autorizado"
+
+
+def test_ingesta_agro_acepta_la_corrida_sin_esperar_a_siesa(
+    cliente_http: TestClient,
+    analista: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.api.v1 import agro as agro_api
+
+    llamadas: list[tuple[object, ...]] = []
+
+    def tarea(*args: object) -> None:
+        llamadas.append(args)
+
+    monkeypatch.setattr(agro_api, "_ejecutar_ingesta_agro", tarea)
+
+    respuesta = cliente_http.post(
+        "/api/v1/agro/ingesta/ejecutar",
+        params={"desde": "2026-01-01", "hasta": "2026-11-27"},
+        headers=analista,
+    )
+
+    assert respuesta.status_code == 202
+    assert respuesta.json() == {
+        "estado": "ACEPTADA",
+        "desde": "2026-01-01",
+        "hasta": "2026-11-27",
+    }
+    assert len(llamadas) == 1

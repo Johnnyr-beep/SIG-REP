@@ -22,7 +22,17 @@ from datetime import date
 from enum import StrEnum
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, Query, Request, Response, UploadFile
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    Query,
+    Request,
+    Response,
+    UploadFile,
+)
 
 from app.api.v1 import AnalistaDep, GerenteDep
 from app.application.services import agro_exportacion_service
@@ -34,6 +44,7 @@ from app.application.services.agro_presupuesto_mensual_service import (
 from app.application.services.agro_presupuesto_service import AgroPresupuestoService
 from app.application.services.agro_reportes_service import AgroReportesService, FiltrosAgro
 from app.application.services.inteligencia_comercial_service import InteligenciaComercialService
+from app.core.db import UnidadDatos, sesion_ambito
 from app.core.deps import (
     PERMISO_AGRO_CONFIGURAR_DIMENSIONES_CUBO,
     PERMISO_AGRO_CONFIGURAR_EJE_CRUCE,
@@ -51,6 +62,7 @@ from app.core.deps import (
     PERMISO_AGRO_DESCARGAR_RESUMEN,
     PERMISO_AGRO_DESCARGAR_VENTA_DIARIA,
     SesionDep,
+    UnidadDep,
     UsuarioDep,
     exigir_permiso_consulta_agro,
     exigir_permiso_descarga_agro,
@@ -732,10 +744,33 @@ def actualizar_calendario(
 # ── Ingesta ───────────────────────────────────────────────────────────────────
 
 
-@router.post("/ingesta/ejecutar", response_model=CorridaAgroSalida, summary="Cargar desde SIESA")
-def ingerir(usuario: AnalistaDep, sesion: SesionDep, desde: date, hasta: date) -> CorridaAgroSalida:
-    """Reprocesar un rango lo reemplaza; no duplica."""
-    return AgroIngestaService(sesion).ejecutar(desde, hasta, usuario=usuario)
+def _ejecutar_ingesta_agro(
+    desde: date,
+    hasta: date,
+    usuario_id: int,
+    unidad: UnidadDatos,
+) -> None:
+    """Ejecuta la corrida fuera del request para no exponerse al timeout HTTP."""
+    with sesion_ambito(unidad) as sesion:
+        usuario = sesion.get(Usuario, usuario_id)
+        AgroIngestaService(sesion).ejecutar(desde, hasta, usuario=usuario)
+
+
+@router.post("/ingesta/ejecutar", status_code=202, summary="Cargar desde SIESA")
+def ingerir(
+    usuario: AnalistaDep,
+    desde: date,
+    hasta: date,
+    unidad: UnidadDep,
+    tareas: BackgroundTasks,
+) -> dict[str, str]:
+    """Acepta la corrida y la ejecuta en segundo plano.
+
+    Reprocesar un rango lo reemplaza; no duplica. La respuesta ya no espera a
+    SIESA ni a PostgreSQL, por lo que el proxy no puede cortar una carga válida.
+    """
+    tareas.add_task(_ejecutar_ingesta_agro, desde, hasta, usuario.id, unidad)
+    return {"estado": "ACEPTADA", "desde": desde.isoformat(), "hasta": hasta.isoformat()}
 
 
 @router.get("/ingesta/corridas", response_model=list[CorridaAgroSalida], summary="Corridas")
