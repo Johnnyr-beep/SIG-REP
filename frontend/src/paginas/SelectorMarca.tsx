@@ -58,13 +58,16 @@ export function SelectorMarca() {
     <div className="selector">
       <main className="selector__panel">
         <header className="selector__cabecera">
-          <h1 className="selector__titulo">SIGREP</h1>
-          <p className="tenue">
+          <div className="selector__marca">
+            <span className="selector__isotipo" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
+            <h1 className="selector__titulo">SIGREP</h1>
+          </div>
+          <p className="selector__subtitulo">
             Sistema Gerencial de Reportes · Grupo Santa Cruz
-          </p>
-          <p className="selector__instruccion">
-            Elija la unidad de negocio. La aplicación adopta su logo, su nombre
-            y sus colores, y recuerda la elección para las próximas veces.
           </p>
         </header>
 
@@ -107,11 +110,10 @@ export function SelectorMarca() {
                     <span aria-hidden="true">{activa ? "✓" : "◷"}</span>
                     {activa ? "Disponible" : "Próximamente"}
                   </span>
+                  <span className="selector__detalle" id={idDetalle}>
+                    {marca.descripcion}
+                  </span>
                 </button>
-
-                <p className="selector__detalle tenue" id={idDetalle}>
-                  {marca.descripcion}
-                </p>
               </li>
             );
           })}
