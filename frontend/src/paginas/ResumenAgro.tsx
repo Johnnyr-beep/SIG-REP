@@ -216,7 +216,7 @@ export function ResumenAgro() {
   }
 
   return (
-    <div className="pila">
+    <div className="pila pila--dashboard-agro">
       <BarraFiltrosAgro
         control={control}
         mostrar={{ medida: false }}
@@ -497,40 +497,14 @@ function ConsolidadoResumenAgro({
   const margen = enPesos?.margen_porcentaje;
   const tonoMargen =
     margen == null ? undefined : margen.trim().startsWith("-") ? "peligro" : "exito";
+  const cumplimientoVisual = Math.max(
+    0,
+    Math.min(100, Number(enPesos?.cumplimiento ?? 0)),
+  );
 
   return (
-    <Tarjeta
-      titulo={titulo}
-      descripcion={`Venta acumulada contra presupuesto del mes, al ${fechaCorte}.`}
-    >
-      <div className="consolidado">
-        <div className="consolidado__foco">
-          <p className="consolidado__etiqueta">Cumplimiento</p>
-          <p className={`consolidado__cifra${tonoSemaforo ? ` consolidado__cifra--${tonoSemaforo}` : ""}`}>
-            {porcentaje(enPesos?.cumplimiento ?? null)}
-          </p>
-          <Semaforo estado={enPesos?.semaforo ?? "SIN_PRESUPUESTO"} sujeto={sujeto} />
-          {enPesos?.brecha ? (
-            <p className="consolidado__brecha">
-              {porcentaje(enPesos.brecha)} frente al ideal
-            </p>
-          ) : null}
-          <p className="tenue">
-            {notaComparativa(enPesos?.cumplimiento ?? null, enPesos?.ideal ?? null)}
-          </p>
-        </div>
-
-        <div className="consolidado__barra">
-          <BarraContraIdeal
-            cumplimiento={enPesos?.cumplimiento ?? null}
-            ideal={enPesos?.ideal ?? null}
-            semaforo={enPesos?.semaforo ?? "SIN_PRESUPUESTO"}
-            etiqueta={titulo}
-          />
-        </div>
-      </div>
-
-      <div className="rejilla rejilla--indicadores">
+    <>
+      <div className="dashboard-agro__metricas" aria-label="Indicadores gerenciales">
         <Indicador
           etiqueta="Presupuesto del mes"
           valor={dinero(enPesos?.presupuesto ?? null)}
@@ -579,7 +553,49 @@ function ConsolidadoResumenAgro({
           tono={tonoMargen}
         />
       </div>
-    </Tarjeta>
+
+      <Tarjeta
+        className="dashboard-agro__cumplimiento"
+        titulo="Cumplimiento del presupuesto"
+        descripcion={`Venta acumulada contra presupuesto del mes, al ${fechaCorte}.`}
+      >
+        <div className="consolidado">
+          <div className="consolidado__foco">
+            <p className="consolidado__etiqueta">Cumplimiento</p>
+            <div
+              className={`cumplimiento-agro__anillo${tonoSemaforo ? ` cumplimiento-agro__anillo--${tonoSemaforo}` : ""}`}
+              style={{
+                background: `conic-gradient(var(--anillo-color) ${cumplimientoVisual}%, #e8e9ee ${cumplimientoVisual}% 100%)`,
+              }}
+            >
+              <div className="cumplimiento-agro__anillo-interior">
+                <p className={`consolidado__cifra${tonoSemaforo ? ` consolidado__cifra--${tonoSemaforo}` : ""}`}>
+                  {porcentaje(enPesos?.cumplimiento ?? null)}
+                </p>
+                <Semaforo estado={enPesos?.semaforo ?? "SIN_PRESUPUESTO"} sujeto={sujeto} />
+              </div>
+            </div>
+            {enPesos?.brecha ? (
+              <p className="consolidado__brecha">
+                {porcentaje(enPesos.brecha)} frente al ideal
+              </p>
+            ) : null}
+            <p className="tenue">
+              {notaComparativa(enPesos?.cumplimiento ?? null, enPesos?.ideal ?? null)}
+            </p>
+          </div>
+
+          <div className="consolidado__barra">
+            <BarraContraIdeal
+              cumplimiento={enPesos?.cumplimiento ?? null}
+              ideal={enPesos?.ideal ?? null}
+              semaforo={enPesos?.semaforo ?? "SIN_PRESUPUESTO"}
+              etiqueta={titulo}
+            />
+          </div>
+        </div>
+      </Tarjeta>
+    </>
   );
 }
 

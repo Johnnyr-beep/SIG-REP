@@ -219,7 +219,7 @@ function menuDe(marca: ClaveMarca): GrupoNav[] {
 }
 
 const TITULOS: Record<string, string> = {
-  "/agro": "Dashboard",
+  "/agro": "Dashboard Gerencial",
   "/agro/reportes-ventas": "Reportes de ventas",
   "/agro/costos-margen": "Costos y margen",
   "/agro/cubo-comercial": "Cubo comercial",
@@ -411,23 +411,51 @@ function BarraLateral() {
 
   return (
     <aside className="barra-lateral">
-      <div className="marca">
-        <img
-          className="marca__logo"
-          src={marca.logo}
-          alt=""
-          width={anchoLogo(marca, ALTO_LOGO)}
-          height={ALTO_LOGO}
-        />
-        <span>
-          <span className="marca__nombre">SIGREP</span>
-          <br />
-          {/* El nombre de la unidad, no el del grupo: es lo que distingue a
-              esta instancia de las otras dos, y el logo de al lado ya lo dice
-              en imagen —por eso su `alt` va vacío, para no repetirlo—. */}
-          <span className="marca__lema">{marca.nombre}</span>
-        </span>
-      </div>
+      {marca.clave === "agropecuaria" ? (
+        <>
+          <div className="marca marca--sigrep">
+            <span className="marca__grafico" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
+            <span>
+              <span className="marca__nombre">SIGREP</span>
+              <span className="marca__lema">Sistema Gerencial de Reportes</span>
+            </span>
+          </div>
+          <div className="marca__empresa">
+            <img
+              src={marca.logo}
+              alt=""
+              width={54}
+              height={54}
+            />
+            <span>
+              <strong>Frigorífico Agropecuaria</strong>
+              <small>Santa Cruz</small>
+            </span>
+          </div>
+        </>
+      ) : (
+        <div className="marca">
+          <img
+            className="marca__logo"
+            src={marca.logo}
+            alt=""
+            width={anchoLogo(marca, ALTO_LOGO)}
+            height={ALTO_LOGO}
+          />
+          <span>
+            <span className="marca__nombre">SIGREP</span>
+            <br />
+            {/* El nombre de la unidad, no el del grupo: es lo que distingue a
+                esta instancia de las otras dos, y el logo de al lado ya lo dice
+                en imagen —por eso su `alt` va vacío, para no repetirlo—. */}
+            <span className="marca__lema">{marca.nombre}</span>
+          </span>
+        </div>
+      )}
 
       <button
         type="button"
@@ -508,7 +536,7 @@ function Corte() {
 }
 
 export function Disposicion({ children }: { children?: ReactNode }) {
-  const { salir } = useAuth();
+  const { salir, usuario } = useAuth();
   const { pathname } = useLocation();
   const marca = useMarcaElegida();
   // "/" es el índice de varias unidades distintas: el título no puede salir de
@@ -527,7 +555,14 @@ export function Disposicion({ children }: { children?: ReactNode }) {
 
       <div className="principal">
         <header className="cabecera">
-          <h1 className="cabecera__titulo">{titulo}</h1>
+          <div className="cabecera__identidad">
+            <h1 className="cabecera__titulo">{titulo}</h1>
+            {pathname === "/agro" ? (
+              <p className="cabecera__subtitulo">
+                Seguimiento de ventas, presupuesto y desempeño comercial
+              </p>
+            ) : null}
+          </div>
           <Corte />
           <div className="cabecera__acciones">
             {MODO_EJEMPLOS ? (
@@ -538,14 +573,39 @@ export function Disposicion({ children }: { children?: ReactNode }) {
                 ⚠ Datos de ejemplo
               </span>
             ) : null}
-            <SelectorTema />
-            <button
-              type="button"
-              className="boton boton--pequeno"
-              onClick={salir}
-            >
-              Cerrar sesión
-            </button>
+            {marca.clave === "agropecuaria" ? (
+              <>
+                <span
+                  className="cabecera__notificacion"
+                  title="Sin notificaciones pendientes"
+                  aria-label="Sin notificaciones pendientes"
+                >
+                  ♢
+                  <i aria-hidden="true" />
+                </span>
+                <button
+                  type="button"
+                  className="cabecera__perfil"
+                  onClick={salir}
+                  title="Cerrar sesión"
+                >
+                  <span className="cabecera__avatar" aria-hidden="true">●</span>
+                  <span>{usuario?.nombre ?? "Administrador"}</span>
+                  <span aria-hidden="true">⌄</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <SelectorTema />
+                <button
+                  type="button"
+                  className="boton boton--pequeno"
+                  onClick={salir}
+                >
+                  Cerrar sesión
+                </button>
+              </>
+            )}
           </div>
         </header>
 
