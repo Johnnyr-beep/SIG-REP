@@ -82,6 +82,29 @@ export function CruceAgro() {
   const medida = data?.medida ?? filtros.medida;
   const filas = data?.filas ?? [];
   const conMeta = false; // Ningún cruce se presupuesta: la meta no se reparte por pares.
+  const agruparPorVendedor = eje === "vendedor-cliente-producto";
+  const gruposVendedor = useMemo(() => {
+    const grupos = new Map<
+      string,
+      { clave: string; nombre: string; filas: typeof filas; clientes: Set<string> }
+    >();
+    for (const fila of filas) {
+      const clave = fila.claves[0] ?? "";
+      let grupo = grupos.get(clave);
+      if (!grupo) {
+        grupo = {
+          clave,
+          nombre: fila.nombres[0] ?? "Vendedor",
+          filas: [],
+          clientes: new Set<string>(),
+        };
+        grupos.set(clave, grupo);
+      }
+      grupo.filas.push(fila);
+      grupo.clientes.add(fila.claves[1] ?? "");
+    }
+    return Array.from(grupos.values());
+  }, [filas]);
 
   function cambiarEje(valor: string) {
     const siguientes = new URLSearchParams(parametros);
@@ -219,61 +242,111 @@ export function CruceAgro() {
                       />
                     </tr>
 
-                    {filas.map((fila) => {
-                      const claveFila = `${eje}:${fila.claves.join("·")}`;
-                      const expandida = filaExpandida === claveFila;
-                      const vendedor = fila.claves[0] ?? "";
-                      const cliente = fila.claves[1] ?? "";
-                      const nombreVendedor = fila.nombres[0] ?? "Vendedor";
-                      const nombreCliente = fila.nombres[1] ?? "Cliente";
-
-                      return (
-                        <Fragment key={claveFila}>
-                          <tr>
-                            {fila.nombres.map((nombre, indice) => (
-                              <th
-                                key={`${fila.claves.join("·")}-${indice}`}
-                                scope={indice === 0 ? "row" : undefined}
-                                className={
-                                  indice === 0 ? "columna-ancla" : "columna-texto"
-                                }
-                              >
-                                {eje === "vendedor-cliente" && indice === 0 ? (
+                    {agruparPorVendedor
+                      ? gruposVendedor.map((grupo) => {
+                          const claveGrupo = `vendedor:${grupo.clave}`;
+                          const expandida = filaExpandida === claveGrupo;
+                          return (
+                            <Fragment key={claveGrupo}>
+                              <tr className="fila-total">
+                                <th scope="row" className="columna-ancla">
                                   <button
                                     type="button"
                                     aria-expanded={expandida}
-                                    aria-label={`${expandida ? "Ocultar" : "Ver"} comparativo diario de ${nombreVendedor} con ${nombreCliente}`}
+                                    aria-label={`${expandida ? "Contraer" : "Desplegar"} clientes de ${grupo.nombre}`}
                                     className="cruce-agro__detalle-toggle"
-                                    onClick={() => setFilaExpandida(expandida ? null : claveFila)}
+                                    onClick={() => setFilaExpandida(expandida ? null : claveGrupo)}
                                   >
-                                    <span aria-hidden="true">{expandida ? "⊟" : "⊞"}</span>
-                                    {nombre}
+                                    <span aria-hidden="true">{expandida ? "▾" : "▸"}</span>
+                                    {grupo.nombre}
                                   </button>
-                                ) : nombre}
-                              </th>
-                            ))}
-                            <CeldasIndicadoresAgro
-                              fila={fila}
-                              medida={medida}
-                              conMeta={conMeta}
-                              sujeto="esta combinación"
-                            />
-                          </tr>
-                          {expandida ? (
-                            <tr className="cruce-agro__detalle-diario">
-                              <td colSpan={data.ejes.length + (conMeta ? 16 : 7)}>
-                                <ComparativoDiarioVendedorCliente
-                                  filtros={filtrosAgro}
-                                  vendedor={vendedor}
-                                  cliente={cliente}
+                                </th>
+                                <td
+                                  className="tenue"
+                                  colSpan={data.ejes.length + (conMeta ? 16 : 7) - 1}
+                                >
+                                  {numero(String(grupo.clientes.size))} clientes · {numero(String(grupo.filas.length))} combinaciones visibles
+                                </td>
+                              </tr>
+                              {expandida
+                                ? grupo.filas.map((fila) => (
+                                    <tr key={`${claveGrupo}:${fila.claves.slice(1).join("·")}`}>
+                                      <th scope="row" className="columna-ancla" />
+                                      {fila.nombres.slice(1).map((nombre, indice) => (
+                                        <td
+                                          key={`${fila.claves.slice(1).join("·")}-${indice}`}
+                                          className="columna-texto"
+                                        >
+                                          {nombre}
+                                        </td>
+                                      ))}
+                                      <CeldasIndicadoresAgro
+                                        fila={fila}
+                                        medida={medida}
+                                        conMeta={conMeta}
+                                        sujeto="esta combinación"
+                                      />
+                                    </tr>
+                                  ))
+                                : null}
+                            </Fragment>
+                          );
+                        })
+                      : filas.map((fila) => {
+                          const claveFila = `${eje}:${fila.claves.join("·")}`;
+                          const expandida = filaExpandida === claveFila;
+                          const vendedor = fila.claves[0] ?? "";
+                          const cliente = fila.claves[1] ?? "";
+                          const nombreVendedor = fila.nombres[0] ?? "Vendedor";
+                          const nombreCliente = fila.nombres[1] ?? "Cliente";
+
+                          return (
+                            <Fragment key={claveFila}>
+                              <tr>
+                                {fila.nombres.map((nombre, indice) => (
+                                  <th
+                                    key={`${fila.claves.join("·")}-${indice}`}
+                                    scope={indice === 0 ? "row" : undefined}
+                                    className={
+                                      indice === 0 ? "columna-ancla" : "columna-texto"
+                                    }
+                                  >
+                                    {eje === "vendedor-cliente" && indice === 0 ? (
+                                      <button
+                                        type="button"
+                                        aria-expanded={expandida}
+                                        aria-label={`${expandida ? "Ocultar" : "Ver"} comparativo diario de ${nombreVendedor} con ${nombreCliente}`}
+                                        className="cruce-agro__detalle-toggle"
+                                        onClick={() => setFilaExpandida(expandida ? null : claveFila)}
+                                      >
+                                        <span aria-hidden="true">{expandida ? "⊟" : "⊞"}</span>
+                                        {nombre}
+                                      </button>
+                                    ) : nombre}
+                                  </th>
+                                ))}
+                                <CeldasIndicadoresAgro
+                                  fila={fila}
                                   medida={medida}
+                                  conMeta={conMeta}
+                                  sujeto="esta combinación"
                                 />
-                              </td>
-                            </tr>
-                          ) : null}
-                        </Fragment>
-                      );
-                    })}
+                              </tr>
+                              {expandida ? (
+                                <tr className="cruce-agro__detalle-diario">
+                                  <td colSpan={data.ejes.length + (conMeta ? 16 : 7)}>
+                                    <ComparativoDiarioVendedorCliente
+                                      filtros={filtrosAgro}
+                                      vendedor={vendedor}
+                                      cliente={cliente}
+                                      medida={medida}
+                                    />
+                                  </td>
+                                </tr>
+                              ) : null}
+                            </Fragment>
+                          );
+                        })}
                   </tbody>
                 </table>
               </div>
