@@ -530,11 +530,14 @@ export function BarrasRanking({
   filas,
   formatear,
   titulo,
+  numerado = false,
 }: {
   filas: FilaRanking[];
   formatear: (valor: string | null) => string;
   /** Qué se está ordenando; entra en la descripción accesible. */
   titulo: string;
+  /** Muestra el puesto (1, 2, 3…) delante de cada fila. */
+  numerado?: boolean;
 }) {
   if (filas.length === 0) {
     return <p className="tenue">Sin categorías con venta en este corte.</p>;
@@ -546,9 +549,14 @@ export function BarrasRanking({
   );
 
   return (
-    <ol className="ranking" aria-label={titulo}>
-      {filas.map((fila) => (
+    <ol className={`ranking${numerado ? " ranking--numerado" : ""}`} aria-label={titulo}>
+      {filas.map((fila, indice) => (
         <li key={fila.clave} className="ranking__fila">
+          {numerado ? (
+            <span className="ranking__puesto" aria-hidden="true">
+              {indice + 1}
+            </span>
+          ) : null}
           <span className="ranking__etiqueta">{fila.etiqueta}</span>
           <span className="ranking__pista" aria-hidden="true">
             <span
@@ -702,6 +710,8 @@ export interface PuntoAcumulado {
   acumulado: string | null;
   /** Meta acumulada hasta ese día. `null` si no hay presupuesto. */
   meta: string | null;
+  /** Rótulo del eje X («Ene», «15»). Sin él, el punto no lleva etiqueta. */
+  etiqueta?: string;
 }
 
 /**
@@ -721,14 +731,24 @@ export function TendenciaAcumulada({
   puntos,
   titulo,
   formatear,
+  formatearEje,
 }: {
   puntos: PuntoAcumulado[];
   titulo: string;
   formatear: (valor: string | null) => string;
+  /** Formato corto para las marcas del eje Y («14.000 M»); por defecto `formatear`. */
+  formatearEje?: (valor: string) => string;
 }) {
   const ANCHO = 720;
   const ALTO = 220;
-  const MARGEN = { arriba: 12, derecha: 8, abajo: 28, izquierda: 8 };
+  const conEjeY = formatearEje !== undefined;
+  const conEtiquetas = puntos.some((punto) => punto.etiqueta);
+  const MARGEN = {
+    arriba: 12,
+    derecha: 12,
+    abajo: conEtiquetas ? 30 : 12,
+    izquierda: conEjeY ? 66 : 8,
+  };
 
   if (puntos.length === 0) {
     return <p className="tenue">Sin días en el rango seleccionado.</p>;
@@ -784,6 +804,14 @@ export function TendenciaAcumulada({
   const puntosDibujados = puntos.filter(
     (punto) => punto.acumulado !== null,
   ).length;
+  // Los puntos marcados solo caben cuando la serie es corta (meses); en una
+  // serie diaria de treinta días se amontonarían sobre la línea.
+  const conPuntos = puntos.length <= 14;
+  const suelo = MARGEN.arriba + util.alto;
+  const area = linea("acumulado");
+  const primerIndice = indiceUnico;
+  const ultimoIndice = puntos.length - 1 - [...puntos].reverse().findIndex((p) => p.acumulado !== null);
+  const fracciones = conEjeY ? [0, 0.25, 0.5, 0.75, 1] : [0.25, 0.5, 0.75];
 
   return (
     <figure className="tendencia">
@@ -798,16 +826,35 @@ export function TendenciaAcumulada({
             : ".")
         }
       >
-        {[0.25, 0.5, 0.75].map((fraccion) => (
-          <line
-            key={fraccion}
-            x1={MARGEN.izquierda}
-            x2={ANCHO - MARGEN.derecha}
-            y1={MARGEN.arriba + util.alto * fraccion}
-            y2={MARGEN.arriba + util.alto * fraccion}
-            className="tendencia__guia"
-          />
+        {fracciones.map((fraccion) => (
+          <g key={fraccion}>
+            <line
+              x1={MARGEN.izquierda}
+              x2={ANCHO - MARGEN.derecha}
+              y1={MARGEN.arriba + util.alto * (1 - fraccion)}
+              y2={MARGEN.arriba + util.alto * (1 - fraccion)}
+              className="tendencia__guia"
+            />
+            {conEjeY ? (
+              <text
+                x={MARGEN.izquierda - 8}
+                y={MARGEN.arriba + util.alto * (1 - fraccion)}
+                className="tendencia__eje"
+                textAnchor="end"
+                dominantBaseline="middle"
+              >
+                {formatearEje(String(techo * fraccion))}
+              </text>
+            ) : null}
+          </g>
         ))}
+
+        {puntosDibujados > 1 ? (
+          <polygon
+            points={`${x(primerIndice)},${suelo} ${area} ${x(ultimoIndice)},${suelo}`}
+            className="tendencia__area"
+          />
+        ) : null}
 
         {hayMeta ? (
           <polyline
@@ -822,17 +869,48 @@ export function TendenciaAcumulada({
           fill="none"
         />
 
-        {/* El día 1 del mes la serie tiene un solo punto y una polilínea de un
-            punto no dibuja nada: el gerente abría el tablero el primero y veía
-            el recuadro vacío. Con un punto suelto hay marca. */}
-        {puntosDibujados === 1 ? (
-          <circle
-            cx={x(indiceUnico)}
-            cy={y(puntos[indiceUnico]?.acumulado ?? null)}
-            r="4"
-            className="tendencia__punto"
-          />
-        ) : null}
+        {conPuntos || puntosDibujados === 1
+          ? puntos.map((punto, indice) =>
+              punto.acumulado === null ? null : (
+                <circle
+                  key={`v-${punto.fecha}`}
+                  cx={x(indice)}
+                  cy={y(punto.acumulado)}
+                  r="4"
+                  className="tendencia__punto"
+                />
+              ),
+            )
+          : null}
+        {conPuntos && hayMeta
+          ? puntos.map((punto, indice) =>
+              punto.meta === null ? null : (
+                <circle
+                  key={`m-${punto.fecha}`}
+                  cx={x(indice)}
+                  cy={y(punto.meta)}
+                  r="3.5"
+                  className="tendencia__punto tendencia__punto--meta"
+                />
+              ),
+            )
+          : null}
+
+        {conEtiquetas
+          ? puntos.map((punto, indice) =>
+              punto.etiqueta ? (
+                <text
+                  key={`e-${punto.fecha}`}
+                  x={x(indice)}
+                  y={ALTO - 8}
+                  className="tendencia__eje"
+                  textAnchor="middle"
+                >
+                  {punto.etiqueta}
+                </text>
+              ) : null,
+            )
+          : null}
       </svg>
 
       <figcaption className="tendencia__leyenda">

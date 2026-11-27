@@ -17,7 +17,10 @@ export default defineConfig({
     // para poder tener GSC ONE (5173) y SIGREP levantados a la vez.
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        // `SIGREP_API_PROXY` permite apuntar el proxy a otra API (por ejemplo
+        // la de producción) para revisar pantallas con datos reales sin
+        // levantar el backend en local.
+        target: process.env.SIGREP_API_PROXY ?? "http://localhost:8000",
         changeOrigin: true,
       },
     },

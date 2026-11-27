@@ -23,7 +23,6 @@ import {
   useCruceAgro,
   useResumenAgro,
   useSerieMensualAgro,
-  useVentaDiariaAgro,
   useVentasComercialesAgro,
 } from "@/api/consultasAgro";
 import type { IndicadoresAgro } from "@/api/tiposAgro";
@@ -40,7 +39,7 @@ import type { ColumnaComparada, FilaRanking, PuntoAcumulado } from "@/componente
 import {
   dinero,
   kilos,
-  multiplicar,
+  mesCorto,
   porcentaje,
   porMedida,
   sumar,
@@ -114,11 +113,6 @@ export function ResumenAgro() {
     { hasta: filtros.hasta, centro: filtros.centro },
   );
 
-  // La tendencia sale de la serie diaria, que es otro reporte. Se pide con el
-  // mismo periodo y el mismo corte para que las dos figuras de la pantalla
-  // hablen del mismo trozo de mes.
-  const { data: diaria } = useVentaDiariaAgro(filtrosAgro);
-
   const exportar = useExportarAgro();
 
   const medida = data?.medida ?? filtros.medida;
@@ -128,39 +122,41 @@ export function ResumenAgro() {
   const conMeta = data ? data.consolidado.presupuesto !== null : false;
 
   /**
-   * La serie diaria convertida en dos acumulados.
+   * La serie mensual convertida en dos acumulados, de enero al mes del corte.
    *
    * Se acumula **aqui y no en el servidor** porque no es un calculo de negocio:
-   * es la misma cifra que ya publica la respuesta, sumada para dibujarla. El
-   * total del ultimo punto tiene que coincidir con el que ensena la tabla, y
-   * coincide por construccion: sale de los mismos valores.
+   * es la misma cifra que ya publica la respuesta, sumada para dibujarla. Solo
+   * entran los meses abiertos —los que ya tienen fila—: un mes futuro no vendio
+   * cero, todavia no existe, y pintarlo plano se leeria como una caida.
    *
-   * Los dias sin venta registrada llegan `null`, que no es lo mismo que un dia
-   * de venta cero. Para el acumulado se tratan como que no aportan —la linea
-   * sigue plana— en lugar de romper la serie: un hueco en una linea acumulada
-   * se leeria como una caida, y no la hubo.
+   * La meta se acumula igual, mes a mes, para que la distancia vertical entre
+   * las dos lineas sea exactamente lo que falta para la meta del año corrido.
    */
   const acumulados = useMemo<PuntoAcumulado[]>(() => {
-    if (!diaria) return [];
+    const meses = serieMensual.data?.totales.meses ?? [];
+    let ventaCorrida: string | null = "0";
+    let metaCorrida: string | null = "0";
 
-    const metaDiaria = diaria.totales.presupuesto_diario;
-    let corrido: string | null = "0";
+    return meses
+      .filter((mes) => mes.abierto)
+      .map((mes) => {
+        // Suma exacta sobre las cadenas del contrato, sin pasar por `Number`:
+        // once meses de cifras de mil millones acumulados en coma flotante
+        // acaban desviando la línea de la cifra que publica la tabla de abajo.
+        ventaCorrida = sumar(ventaCorrida, mes.venta_valor);
+        metaCorrida =
+          mes.presupuesto === null || metaCorrida === null
+            ? null
+            : sumar(metaCorrida, mes.presupuesto);
 
-    return diaria.fechas.map((fecha, indice) => {
-      const valor = diaria.totales.valores[indice] ?? null;
-      // Suma exacta sobre las cadenas del contrato, sin pasar por `Number`.
-      // Acumulando en coma flotante, veintiún días de cifras de mil millones
-      // acaban desviando la línea de la cifra que publica la tabla de abajo, y
-      // la pantalla se contradice consigo misma por un problema de binario.
-      if (valor !== null) corrido = sumar(corrido, valor);
-
-      return {
-        fecha,
-        acumulado: corrido,
-        meta: multiplicar(metaDiaria, String(indice + 1)),
-      };
-    });
-  }, [diaria]);
+        return {
+          fecha: mes.periodo,
+          acumulado: ventaCorrida,
+          meta: metaCorrida,
+          etiqueta: mesCorto(mes.periodo),
+        };
+      });
+  }, [serieMensual.data]);
 
   // Cual de las dos respuestas trae los pesos y cual los kilos. Se resuelve una
   // vez: repetir el condicional en cada figura es como se acaba con una en pesos
@@ -270,6 +266,48 @@ export function ResumenAgro() {
 
       {data ? (
         <>
+          <ConsolidadoResumenAgro
+            titulo={`Consolidado por ${opcion.singular}`}
+            fechaCorte={data.fecha_corte}
+            enPesos={consolidadoPesos}
+            enKilos={consolidadoKilos}
+            sujeto={opcion.singular}
+          />
+
+          <div className="rejilla rejilla--panel">
+            <Tarjeta
+              className="tarjeta--tendencia"
+              titulo="Tendencia de ventas"
+              descripcion="Las dos series van acumuladas: la distancia entre ellas es lo que falta para la meta."
+            >
+              <TendenciaAcumulada
+                puntos={acumulados}
+                titulo="Venta acumulada del año contra meta acumulada"
+                formatear={dinero}
+                formatearEje={(valor) =>
+                  `${(Number(valor) / 1_000_000).toLocaleString("es-CO", { maximumFractionDigits: 0 })} M`
+                }
+              />
+            </Tarjeta>
+
+            <Tarjeta
+              className="tarjeta--ranking"
+              titulo="Vendedores con mayor venta"
+              descripcion="Los cinco responsables con mayor venta neta del corte."
+              sinRelleno
+            >
+              <BarrasRanking
+                filas={rankingVendedores}
+                titulo="Vendedores con mayor venta"
+                formatear={dinero}
+                numerado
+              />
+            </Tarjeta>
+          </div>
+
+          {/* Los avisos de calidad del dato van despues de la primera pantalla:
+              siguen a la vista al desplazarse, pero no empujan las cifras
+              gerenciales por debajo del pliegue. */}
           {eje === "vendedor" ? (
             <AlertaClientesSinPresupuesto datos={cruceVendedorCliente.data} />
           ) : null}
@@ -290,39 +328,6 @@ export function ResumenAgro() {
           ) : (
             <AvisoEjeSinMeta eje={opcion.singular} />
           )}
-
-          <ConsolidadoResumenAgro
-            titulo={`Consolidado por ${opcion.singular}`}
-            fechaCorte={data.fecha_corte}
-            enPesos={consolidadoPesos}
-            enKilos={consolidadoKilos}
-            sujeto={opcion.singular}
-          />
-
-          <div className="rejilla rejilla--panel">
-            <Tarjeta
-              titulo="Tendencia de ventas"
-              descripcion="Las dos series van acumuladas: la distancia entre ellas es lo que falta para la meta."
-            >
-              <TendenciaAcumulada
-                puntos={acumulados}
-                titulo="Venta acumulada contra meta acumulada"
-                formatear={(valor) => porMedida(valor, medida)}
-              />
-            </Tarjeta>
-
-            <Tarjeta
-              titulo="Vendedores con mayor venta"
-              descripcion="Los cinco responsables con mayor venta neta del corte."
-              sinRelleno
-            >
-              <BarrasRanking
-                filas={rankingVendedores}
-                titulo="Vendedores con mayor venta"
-                formatear={dinero}
-              />
-            </Tarjeta>
-          </div>
 
           <div className="rejilla rejilla--panel">
             <Tarjeta
@@ -557,15 +562,14 @@ function ConsolidadoResumenAgro({
       <Tarjeta
         className="dashboard-agro__cumplimiento"
         titulo="Cumplimiento del presupuesto"
-        descripcion={`Venta acumulada contra presupuesto del mes, al ${fechaCorte}.`}
       >
         <div className="consolidado">
           <div className="consolidado__foco">
-            <p className="consolidado__etiqueta">Cumplimiento</p>
+            <p className="solo-lectores">Cumplimiento al {fechaCorte}</p>
             <div
               className={`cumplimiento-agro__anillo${tonoSemaforo ? ` cumplimiento-agro__anillo--${tonoSemaforo}` : ""}`}
               style={{
-                background: `conic-gradient(var(--anillo-color) ${cumplimientoVisual}%, #e8e9ee ${cumplimientoVisual}% 100%)`,
+                background: `conic-gradient(var(--anillo-color) ${cumplimientoVisual}%, var(--anillo-surco) ${cumplimientoVisual}% 100%)`,
               }}
             >
               <div className="cumplimiento-agro__anillo-interior">
@@ -575,17 +579,17 @@ function ConsolidadoResumenAgro({
                 <Semaforo estado={enPesos?.semaforo ?? "SIN_PRESUPUESTO"} sujeto={sujeto} />
               </div>
             </div>
-            {enPesos?.brecha ? (
-              <p className="consolidado__brecha">
-                {porcentaje(enPesos.brecha)} frente al ideal
-              </p>
-            ) : null}
-            <p className="tenue">
-              {notaComparativa(enPesos?.cumplimiento ?? null, enPesos?.ideal ?? null)}
-            </p>
           </div>
 
           <div className="consolidado__barra">
+            {enPesos?.brecha ? (
+              <p className={`consolidado__brecha${tonoSemaforo ? ` consolidado__brecha--${tonoSemaforo}` : ""}`}>
+                <strong>{porcentaje(enPesos.brecha)}</strong> frente al ideal
+              </p>
+            ) : null}
+            <p className="consolidado__ideal">
+              {notaComparativa(enPesos?.cumplimiento ?? null, enPesos?.ideal ?? null)}
+            </p>
             <BarraContraIdeal
               cumplimiento={enPesos?.cumplimiento ?? null}
               ideal={enPesos?.ideal ?? null}

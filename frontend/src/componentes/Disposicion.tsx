@@ -315,8 +315,8 @@ function SelectorTema() {
  * la interfaz, para no reimplementar el foco ni el cierre con Escape.
  */
 
-function MenuUsuario() {
-  const { usuario } = useAuth();
+function MenuUsuario({ enCabecera = false }: { enCabecera?: boolean }) {
+  const { usuario, salir } = useAuth();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [dialogoAbierto, setDialogoAbierto] = useState(false);
   const [cambiada, setCambiada] = useState(false);
@@ -329,18 +329,28 @@ function MenuUsuario() {
   }
 
   return (
-    <div className="barra-lateral__usuario">
+    <div className={enCabecera ? "cabecera__usuario" : "barra-lateral__usuario"}>
       <details
-        className="menu-usuario"
+        className={`menu-usuario${enCabecera ? " menu-usuario--cabecera" : ""}`}
         open={menuAbierto}
         onToggle={(evento) => setMenuAbierto(evento.currentTarget.open)}
       >
         <summary className="menu-usuario__disparador">
+          {enCabecera ? (
+            <span className="cabecera__avatar" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 20c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5v1H4z" />
+              </svg>
+            </span>
+          ) : null}
           <span className="menu-usuario__identidad">
             <span className="barra-lateral__nombre">{usuario.nombre}</span>
-            <span className="tenue">
-              {usuario.rol.replaceAll("_", " ").toLowerCase()}
-            </span>
+            {enCabecera ? null : (
+              <span className="tenue">
+                {usuario.rol.replaceAll("_", " ").toLowerCase()}
+              </span>
+            )}
           </span>
           <span className="menu-usuario__signo" aria-hidden="true">
             ▾
@@ -360,6 +370,21 @@ function MenuUsuario() {
           >
             Cambiar mi clave
           </button>
+          {enCabecera ? (
+            <>
+              <div className="menu-usuario__fila">
+                <span className="tenue">Tema</span>
+                <SelectorTema />
+              </div>
+              <button
+                type="button"
+                className="boton boton--pequeno boton--bloque"
+                onClick={salir}
+              >
+                Cerrar sesión
+              </button>
+            </>
+          ) : null}
         </div>
       </details>
 
@@ -505,7 +530,13 @@ function BarraLateral() {
         })}
       </nav>
 
-      <MenuUsuario />
+      {/* En Agropecuaria el usuario vive en la cabecera, junto al corte, y la
+          barra lateral termina en la ola decorativa. */}
+      {marca.clave === "agropecuaria" ? (
+        <span className="barra-lateral__ola" aria-hidden="true" />
+      ) : (
+        <MenuUsuario />
+      )}
     </aside>
   );
 }
@@ -536,7 +567,7 @@ function Corte() {
 }
 
 export function Disposicion({ children }: { children?: ReactNode }) {
-  const { salir, usuario } = useAuth();
+  const { salir } = useAuth();
   const { pathname } = useLocation();
   const marca = useMarcaElegida();
   // "/" es el índice de varias unidades distintas: el título no puede salir de
@@ -580,19 +611,13 @@ export function Disposicion({ children }: { children?: ReactNode }) {
                   title="Sin notificaciones pendientes"
                   aria-label="Sin notificaciones pendientes"
                 >
-                  ♢
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" />
+                    <path d="M10 20a2 2 0 0 0 4 0" />
+                  </svg>
                   <i aria-hidden="true" />
                 </span>
-                <button
-                  type="button"
-                  className="cabecera__perfil"
-                  onClick={salir}
-                  title="Cerrar sesión"
-                >
-                  <span className="cabecera__avatar" aria-hidden="true">●</span>
-                  <span>{usuario?.nombre ?? "Administrador"}</span>
-                  <span aria-hidden="true">⌄</span>
-                </button>
+                <MenuUsuario enCabecera />
               </>
             ) : (
               <>
