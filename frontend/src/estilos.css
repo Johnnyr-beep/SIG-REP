@@ -2655,49 +2655,30 @@ textarea.campo__control {
   place-items: center;
   min-height: 100vh;
   overflow: hidden;
-  padding: 28px 32px 36px;
-  background:
-    linear-gradient(145deg, transparent 0 68%, rgba(48, 111, 181, 0.07) 68% 100%),
-    linear-gradient(325deg, transparent 0 82%, rgba(42, 102, 168, 0.06) 82% 100%),
-    linear-gradient(180deg, #fbfdff 0%, #f2f7fc 100%);
-}
-
-.selector::before,
-.selector::after {
-  position: absolute;
-  z-index: 0;
-  width: 72vw;
-  height: 34vh;
-  pointer-events: none;
-  content: "";
-}
-
-.selector::before {
-  top: -12vh;
-  left: -22vw;
-  background: linear-gradient(155deg, rgba(23, 105, 173, 0.82) 0 42%, rgba(105, 163, 216, 0.56) 42% 58%, rgba(185, 208, 234, 0.38) 58% 72%, transparent 72%);
-  clip-path: polygon(0 0, 100% 0, 68% 82%, 0 100%);
-  opacity: 0.78;
-}
-
-.selector::after {
-  right: -24vw;
-  bottom: -15vh;
-  background: linear-gradient(155deg, transparent 0 14%, rgba(194, 218, 242, 0.48) 14% 29%, rgba(109, 163, 209, 0.42) 29% 48%, rgba(23, 105, 173, 0.58) 48% 66%, transparent 66%);
-  clip-path: polygon(30% 34%, 100% 0, 100% 100%, 0 100%);
-  opacity: 0.82;
+  padding: 17px 0 30px;
+  font-family: "Outfit Variable", sans-serif;
+  color: #08284d;
+  background: #e8f2fd url("./recursos/sigrep-entorno-panel.webp") center / 100% 100% no-repeat;
 }
 
 .selector__panel {
   position: relative;
   z-index: 1;
-  width: 100%;
-  max-width: 1180px;
+  width: min(84%, 1288px);
 }
 
 .selector__cabecera {
-  margin-bottom: 34px;
+  margin-bottom: clamp(26px, 5.65vh, 50px);
   text-align: center;
+}
+
+.selector__cabecera h1 { margin: 0; }
+
+.selector__cabecera-imagen {
+  display: block;
+  width: min(100%, 92vh, 816px);
+  height: auto;
+  margin: 0 auto;
 }
 
 .selector__marca {
@@ -2764,15 +2745,17 @@ textarea.campo__control {
 }
 
 .selector__instruccion {
-  max-width: 54ch;
-  margin: var(--espacio-4) auto 0;
-  color: var(--texto-suave);
+  max-width: 650px;
+  margin: 15px auto 0;
+  font-size: 1.3125rem;
+  line-height: 1.32;
+  text-wrap: balance;
 }
 
 .selector__lista {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 26px 28px;
+  gap: clamp(20px, 3.4vh, 30px) 2.1%;
   width: 100%;
   padding: 0;
   margin: 0;
@@ -2785,11 +2768,9 @@ textarea.campo__control {
 
 .selector__detalle {
   display: block;
-  max-width: 260px;
-  min-height: 42px;
-  margin-top: 12px;
-  color: var(--texto-suave);
-  font-size: 0.86rem;
+  max-width: 360px;
+  color: #102e51;
+  font-size: 1.0625rem;
   line-height: 1.35;
   text-align: center;
 }
@@ -2806,6 +2787,8 @@ textarea.campo__control {
   text-align: left;
 }
 
+.selector__aviso:empty { min-height: 0; margin: 0; }
+
 /* La tarjeta es un `<button>` real: se alcanza con el tabulador, se activa con
    Enter y con espacio, y la anuncia el lector como lo que es. */
 .tarjeta-marca {
@@ -2820,17 +2803,19 @@ textarea.campo__control {
   gap: 12px;
   align-items: center;
   justify-content: center;
-  min-height: 274px;
+  min-height: clamp(273px, 40vh, 354px);
   width: 100%;
-  padding: 28px 24px 22px;
+  height: 100%;
+  padding: clamp(24px, 4.3vh, 38px) 16px 16px;
+  font-family: inherit;
   overflow: hidden;
   text-align: center;
-  background: rgba(255, 255, 255, 0.92);
+  background: linear-gradient(160deg, #fff 60%, #fafbfe);
   border: 1px solid rgba(18, 62, 116, 0.10);
-  border-radius: 12px;
+  border-radius: 22px;
   box-shadow:
-    0 14px 32px rgba(18, 62, 116, 0.10),
-    0 3px 10px rgba(18, 62, 116, 0.06);
+    0 7px 15px rgba(17, 65, 119, 0.24),
+    0 2px 4px rgba(18, 62, 116, 0.10);
   backdrop-filter: blur(4px);
   cursor: pointer;
   transition:
@@ -2847,7 +2832,7 @@ textarea.campo__control {
   top: 0;
   right: 0;
   left: 0;
-  height: 6px;
+  height: 13px;
   background: linear-gradient(
     90deg,
     var(--marca-700),
@@ -2873,14 +2858,15 @@ textarea.campo__control {
 .tarjeta-marca__logo {
   width: auto;
   max-width: 100%;
-  height: 92px;
+  height: clamp(82px, 16vh, 142px);
   object-fit: contain;
 }
 
 .tarjeta-marca__nombre {
-  color: #123e74;
-  font-weight: 800;
-  font-size: 1.18rem;
+  color: #08284d;
+  font-weight: 750;
+  font-size: 1.6875rem;
+  line-height: 1.1;
   letter-spacing: 0;
 }
 
@@ -2919,6 +2905,23 @@ textarea.campo__control {
   --tono: var(--marca-500);
 }
 
+.selector__opcion:nth-child(n + 4) .tarjeta-marca {
+  min-height: clamp(150px, 23.2vh, 205px);
+  gap: 9px;
+  padding: 25px 22px 15px;
+}
+
+.selector__opcion:nth-child(n + 4) .tarjeta-marca__logo {
+  height: clamp(88px, 16vh, 142px);
+  max-width: 94%;
+}
+
+.selector__opcion:nth-child(n + 4) .tarjeta-marca__nombre,
+.selector__opcion:nth-child(n + 4) .tarjeta-marca:not([aria-disabled]) .distintivo,
+.selector__opcion:nth-child(n + 4) .tarjeta-marca .selector__detalle {
+  display: none;
+}
+
 @media (max-width: 900px) {
   .selector {
     place-items: start center;
@@ -2926,20 +2929,31 @@ textarea.campo__control {
 
   .selector__panel {
     max-width: 760px;
+    width: 94%;
   }
 
   .selector__lista {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .selector__opcion:nth-child(n + 4) .tarjeta-marca {
+    min-height: 230px;
   }
 }
 
 @media (max-width: 600px) {
   .selector {
     padding: 22px 16px 32px;
+    background-size: auto 100vh;
+    background-position: center top;
   }
 
   .selector__marca {
     gap: 8px;
+  }
+
+  .selector__cabecera-imagen {
+    width: 100%;
   }
 
   .selector__isotipo {
@@ -2976,8 +2990,13 @@ textarea.campo__control {
     grid-template-columns: 1fr;
   }
 
-  .tarjeta-marca {
+  .tarjeta-marca,
+  .selector__opcion:nth-child(n + 4) .tarjeta-marca {
     min-height: 230px;
+  }
+
+  .selector__opcion:nth-child(n + 4) .tarjeta-marca .selector__detalle {
+    display: none;
   }
 
   .tarjeta-marca__logo {
@@ -2986,6 +3005,19 @@ textarea.campo__control {
 }
 
 /* ── Diálogo ─────────────────────────────────────────────────────────────── */
+.tarjeta-marca .distintivo {
+  font: 650 1.0625rem/1.2 "Outfit Variable", sans-serif;
+  border-radius: 13px;
+  padding: 8px 13px;
+}
+.tarjeta-marca .distintivo--exito {
+  background: #e3f8df;
+  border: 1px solid #8ce18d;
+  color: #006451;
+}
+@media (max-width: 600px) {
+  .selector__instruccion { font-size: 1rem; }
+}
 
 .dialogo {
   width: min(520px, 100%);

@@ -25,6 +25,8 @@ import { useSalud } from "@/api/consultas";
 import { useMarca } from "@/marca/ContextoMarca";
 import { MARCAS, anchoLogo } from "@/marca/marcas";
 import type { Marca } from "@/marca/marcas";
+import "@fontsource-variable/outfit";
+import cabeceraSigrep from "@/recursos/sigrep-marca-panel.webp";
 
 /** El mismo que fija `.tarjeta-marca__logo` en la hoja. */
 const ALTO_LOGO = 84;
@@ -58,17 +60,12 @@ export function SelectorMarca() {
     <div className="selector">
       <main className="selector__panel">
         <header className="selector__cabecera">
-          <div className="selector__marca">
-            <span className="selector__isotipo" aria-hidden="true">
-              <i />
-              <i />
-              <i />
-            </span>
-            <h1 className="selector__titulo">SIGREP</h1>
-          </div>
-          <p className="selector__subtitulo">
-            Sistema Gerencial de Reportes · Grupo Santa Cruz
-          </p>
+          <h1><img
+            className="selector__cabecera-imagen"
+            src={cabeceraSigrep}
+            alt="SIGREP · Sistema Gerencial de Reportes · Grupo Santa Cruz"
+          /></h1>
+          <p className="selector__instruccion">Elija la unidad de negocio. La aplicación adopta su logo, su nombre y sus colores, y recuerda la elección para las próximas veces.</p>
         </header>
 
         <ul className="selector__lista">
@@ -82,6 +79,7 @@ export function SelectorMarca() {
                   type="button"
                   className={`tarjeta-marca${activa ? "" : " tarjeta-marca--pendiente"}`}
                   data-marca-tarjeta={marca.clave}
+                  aria-label={marca.nombre}
                   aria-disabled={activa ? undefined : true}
                   aria-describedby={idDetalle}
                   onClick={() => {

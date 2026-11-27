@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="es-CO">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vista previa · Comparativo de venta mensual</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #132d4a;
+        --muted: #527094;
+        --line: #d7e2ee;
+        --surface: #ffffff;
+        --canvas: #f1f5f9;
+        --green: #0aaf50;
+        --red: #ef202a;
+        --amber: #eb7800;
+        --blue: #1b55a5;
+        font-family: "Segoe UI", Arial, sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; min-width: 320px; background: var(--canvas); color: var(--ink); }
+      .frame { width: min(100%, 1680px); margin: 0 auto; padding: 0 8px 18px; }
+      .report { background: var(--surface); border: 1px solid var(--line); }
+      .report-head { padding: 12px 20px 10px; border-bottom: 1px solid var(--line); }
+      .brand { display: flex; align-items: center; gap: 10px; }
+      .brand img { width: 25px; height: 25px; object-fit: contain; }
+      .brand strong { font-size: 15px; }
+      .report-head p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+      .summary { display: grid; grid-template-columns: minmax(220px, 270px) minmax(0, 1fr); gap: 24px; align-items: center; padding: 20px; }
+      .summary-label { margin: 0 0 10px; color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+      .summary-value { margin: 0; color: var(--red); font-size: 46px; line-height: 1; font-weight: 750; }
+      .status { display: inline-flex; align-items: center; gap: 6px; margin-top: 7px; padding: 3px 9px; border: 1px solid #ffa5a1; border-radius: 999px; background: #fff0ef; color: #b90009; font-size: 11px; font-weight: 700; }
+      .gap { margin: 10px 0 0; font-size: 13px; font-weight: 650; }
+      .ideal-note { margin: 12px 0 0; color: var(--muted); font-size: 12px; }
+      .bar { position: relative; height: 25px; overflow: hidden; border: 1px solid #c8d6e5; border-radius: 5px; background: #fbfdff; }
+      .bar-fill { width: 44.1%; height: 100%; background: #ea686a; }
+      .bar-marker { position: absolute; top: -1px; bottom: -1px; left: 56.6%; width: 3px; background: #162a42; }
+      .bar-labels { display: flex; justify-content: space-between; margin-top: 7px; color: var(--muted); font-size: 10px; }
+      .bar-ideal { position: absolute; left: 56.6%; bottom: 0; transform: translateX(-50%); white-space: nowrap; color: var(--blue); }
+      .indicators { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; padding: 20px; border-top: 1px solid var(--line); }
+      .indicator { display: flex; min-width: 0; min-height: 106px; flex-direction: column; gap: 5px; padding: 14px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+      .indicator--good { border-color: #9ce8b6; }
+      .indicator--bad { border-color: #ffaaa6; }
+      .indicator--warning { border-color: #ffbd7b; }
+      .label { display: flex; min-height: 22px; align-items: start; gap: 5px; color: var(--muted); font-size: 9px; line-height: 1.35; letter-spacing: .08em; text-transform: uppercase; }
+      .info { display: inline-grid; width: 13px; height: 13px; flex: 0 0 13px; place-items: center; border: 1px solid currentColor; border-radius: 50%; font-size: 9px; font-weight: 700; line-height: 1; }
+      .value { color: #101b2c; font-size: clamp(16px, 1.25vw, 21px); font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .indicator--good .value { color: var(--green); }
+      .indicator--bad .value { color: var(--red); }
+      .indicator--warning .value { color: var(--amber); }
+      .note { color: #304f75; font-size: 10px; line-height: 1.4; }
+      .comparison { display: inline-flex; width: fit-content; align-items: center; gap: 4px; margin-top: 1px; padding: 3px 6px; border-radius: 4px; background: #fff0ef; color: #bd1119; font-size: 10px; font-weight: 750; font-variant-numeric: tabular-nums; }
+      .comparison--good { background: #e8f9ee; color: #087c3b; }
+      .comparison-mark { font-size: 9px; }
+      .preview-note { margin: 0; padding: 0 20px 14px; color: #607995; font-size: 10px; }
+
+      @media (max-width: 1180px) {
+        .indicators { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+      }
+      @media (max-width: 700px) {
+        .summary { grid-template-columns: minmax(0, 1fr); gap: 18px; padding: 16px; }
+        .summary-value { font-size: 40px; }
+        .indicators { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; padding: 14px; }
+        .indicator { min-height: 102px; padding: 11px 9px; }
+        .value { font-size: 17px; }
+        .preview-note { padding: 0 14px 12px; line-height: 1.45; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="frame">
+      <section class="report" aria-label="Vista previa del tablero de Carnes Santacruz">
+        <header class="report-head">
+          <div class="brand">
+            <img src="./src/recursos/carnes-santacruz.png" alt="" />
+            <strong>Consolidado de la compa&ntilde;&iacute;a</strong>
+          </div>
+          <p>Venta acumulada contra presupuesto del mes, al 2026-11-17.</p>
+        </header>
+
+        <section class="summary" aria-label="Cumplimiento del mes">
+          <div>
+            <p class="summary-label">Cumplimiento</p>
+            <p class="summary-value">44,1 %</p>
+            <span class="status"><span aria-hidden="true">&#9660;</span> Atrasado</span>
+            <p class="gap">-12,6 pp frente al ideal</p>
+            <p class="ideal-note">Ideal del per&iacute;odo: 56,6 %</p>
+          </div>
+          <div>
+            <div class="bar" aria-label="Cumplimiento 44,1 por ciento, ideal 56,6 por ciento">
+              <div class="bar-fill"></div>
+              <div class="bar-marker"></div>
+            </div>
+            <div class="bar-labels"><span>0 %</span><span class="bar-ideal">&#9474; &nbsp;Ideal 56,6 %</span><span>100 %</span></div>
+          </div>
+        </section>
+
+        <section class="indicators" aria-label="Indicadores del mes">
+          <article class="indicator">
+            <span class="label">Presupuesto del mes</span>
+            <strong class="value">$ 18,7 MM</strong>
+            <span class="note">$ 18.680.350.000</span>
+          </article>
+          <article class="indicator indicator--good">
+            <span class="label">Venta acumulada</span>
+            <strong class="value">$ 8,2 MM</strong>
+            <span class="note">$ 8.234.636.575</span>
+          </article>
+          <article class="indicator indicator--bad">
+            <span class="label">Venta acumulada al corte del mes anterior</span>
+            <strong class="value">$ 9,1 MM</strong>
+            <span class="comparison"><span class="comparison-mark" aria-hidden="true">&#9660;</span> 9,5 % vs. actual</span>
+            <span class="note">Al 17 oct. Actual: $ 8,2 MM</span>
+          </article>
+          <article class="indicator indicator--bad">
+            <span class="label">Proyecci&oacute;n al cierre <span class="info" title="Proyecci&oacute;n calculada con el ritmo actual">i</span></span>
+            <strong class="value">$ 14,5 MM</strong>
+            <span class="note">77,8 % del presupuesto</span>
+          </article>
+          <article class="indicator indicator--good">
+            <span class="label">Proyecci&oacute;n al cierre vs. mes anterior</span>
+            <strong class="value">$ 14,5 MM</strong>
+            <span class="comparison comparison--good"><span class="comparison-mark" aria-hidden="true">&#9650;</span> +8,2 % vs. mes anterior</span>
+            <span class="note">Cierre mes anterior: $ 13,4 MM</span>
+          </article>
+          <article class="indicator indicator--warning">
+            <span class="label">Venta diaria requerida <span class="info" title="Para llegar al presupuesto con los d&iacute;as que quedan">i</span></span>
+            <strong class="value">$ 809,8 M</strong>
+            <span class="note">Para llegar al presupuesto con los d&iacute;as que quedan</span>
+          </article>
+          <article class="indicator indicator--good">
+            <span class="label">Venta diaria promedio <span class="info" title="Ritmo actual">i</span></span>
+            <strong class="value">$ 488,7 M</strong>
+            <span class="note">Ritmo actual</span>
+          </article>
+          <article class="indicator indicator--bad">
+            <span class="label">Crecimiento a&ntilde;o anterior <span class="info" title="Comparaci&oacute;n interanual">i</span></span>
+            <strong class="value">-5,8 %</strong>
+            <span class="note">A&ntilde;o anterior: $ 14.815.551.934</span>
+          </article>
+          <article class="indicator">
+            <span class="label">Margen <span class="info" title="Margen informado para el per&iacute;odo">i</span></span>
+            <strong class="value">&#8212;</strong>
+            <span class="note">&#8212;</span>
+          </article>
+        </section>
+        <p class="preview-note">Vista previa: el corte acumulado anterior ($ 9,1 MM) y el cierre completo anterior ($ 13,4 MM) son cifras ilustrativas. La proyecci&oacute;n de cierre tambi&eacute;n es ilustrativa.</p>
+      </section>
+    </main>
+  </body>
+</html>
