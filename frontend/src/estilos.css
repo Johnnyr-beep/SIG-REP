@@ -4686,6 +4686,14 @@ textarea.campo__control {
   gap: var(--espacio-3);
 }
 
+.tarjeta--evolucion-mensual {
+  grid-column: 1 / -1;
+}
+
+.tarjeta--evolucion-mensual .comparadas__figura {
+  min-height: 280px;
+}
+
 .comparadas__figura {
   flex: 1;
   width: 100%;
@@ -4712,8 +4720,8 @@ textarea.campo__control {
 }
 
 .comparadas__dato {
-  font-size: 9px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .comparadas__dato--valor {
@@ -4730,7 +4738,7 @@ textarea.campo__control {
 
 .comparadas__etiqueta {
   fill: var(--texto-tenue);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .comparadas__etiqueta--atenuada {
@@ -4767,6 +4775,24 @@ textarea.campo__control {
 .comparadas__clave--referencia::before {
   background: var(--texto-tenue);
   opacity: 0.5;
+}
+
+@media (max-width: 700px) {
+  .tarjeta--evolucion-mensual {
+    grid-column: 1;
+  }
+
+  .tarjeta--evolucion-mensual .comparadas__figura {
+    min-height: 220px;
+  }
+
+  .comparadas__dato {
+    font-size: 10px;
+  }
+
+  .comparadas__etiqueta {
+    font-size: 11px;
+  }
 }
 
 /* ── Ranking de barras (BarrasRanking) ────────────────────────────────────── */

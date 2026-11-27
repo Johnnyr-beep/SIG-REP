@@ -302,7 +302,7 @@ export interface ColumnaComparada {
   atenuada?: boolean;
 }
 
-const COMPARADAS = { ancho: 720, alto: 280, margenX: 10, arriba: 14, abajo: 34 };
+const COMPARADAS = { ancho: 900, alto: 300, margenX: 12, arriba: 14, abajo: 34 };
 
 /**
  * Venta contra presupuesto, categoría por categoría.

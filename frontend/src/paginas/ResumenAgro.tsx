@@ -338,6 +338,7 @@ export function ResumenAgro() {
             </Tarjeta>
 
             <Tarjeta
+              className="tarjeta--evolucion-mensual"
               titulo="Evolución mensual"
               descripcion="Venta neta y presupuesto en millones de pesos, de enero a diciembre. Los meses aún no abiertos se muestran atenuados."
             >

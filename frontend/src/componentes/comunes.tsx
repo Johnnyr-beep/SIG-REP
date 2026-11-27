@@ -84,6 +84,7 @@ export function Tarjeta({
   children,
   pie,
   sinRelleno,
+  className,
 }: {
   titulo?: ReactNode;
   descripcion?: ReactNode;
@@ -92,9 +93,10 @@ export function Tarjeta({
   pie?: ReactNode;
   /** Para tablas, que llegan al borde de la tarjeta. */
   sinRelleno?: boolean;
+  className?: string;
 }) {
   return (
-    <section className="tarjeta">
+    <section className={`tarjeta${className ? ` ${className}` : ""}`}>
       {titulo ? (
         <header className="tarjeta__cabecera">
           <div>
