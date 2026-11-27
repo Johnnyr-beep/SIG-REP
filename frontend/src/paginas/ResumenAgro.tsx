@@ -138,7 +138,7 @@ export function ResumenAgro() {
     let metaCorrida: string | null = "0";
 
     return meses
-      .filter((mes) => mes.abierto)
+      .filter((mes) => mes.abierto && mes.periodo <= filtros.periodo)
       .map((mes) => {
         // Suma exacta sobre las cadenas del contrato, sin pasar por `Number`:
         // once meses de cifras de mil millones acumulados en coma flotante
@@ -149,14 +149,15 @@ export function ResumenAgro() {
             ? null
             : sumar(metaCorrida, mes.presupuesto);
 
+        const corto = mesCorto(mes.periodo);
         return {
           fecha: mes.periodo,
           acumulado: ventaCorrida,
           meta: metaCorrida,
-          etiqueta: mesCorto(mes.periodo),
+          etiqueta: corto.charAt(0).toUpperCase() + corto.slice(1),
         };
       });
-  }, [serieMensual.data]);
+  }, [serieMensual.data, filtros.periodo]);
 
   // Cual de las dos respuestas trae los pesos y cual los kilos. Se resuelve una
   // vez: repetir el condicional en cada figura es como se acaba con una en pesos
@@ -539,7 +540,7 @@ function ConsolidadoResumenAgro({
         <Indicador
           etiqueta="Venta diaria requerida"
           valor={dinero(enPesos?.venta_diaria_requerida ?? null)}
-          nota="Para llegar al presupuesto con los días que quedan"
+          nota="Para llegar al presupuesto"
           pista={<p className="formula">{FORMULAS.venta_diaria_requerida}</p>}
           tono="aviso"
         />

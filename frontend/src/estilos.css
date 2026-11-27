@@ -6137,6 +6137,10 @@ textarea.campo__control {
   letter-spacing: -0.03em;
 }
 
+.dashboard-agro__cumplimiento .consolidado__cifra--peligro { color: #e4304f; }
+.dashboard-agro__cumplimiento .consolidado__cifra--aviso { color: #d98a0d; }
+.dashboard-agro__cumplimiento .consolidado__cifra--exito { color: #16934d; }
+
 .cumplimiento-agro__anillo-interior .semaforo {
   max-width: 78px;
   padding: 2px 7px;

@@ -704,6 +704,16 @@ export function AnilloCumplimiento({
 
 // ── Tendencia acumulada ──────────────────────────────────────────────────────
 
+/** El menor de 1, 2, 2.5 o 5 × 10ⁿ que no queda por debajo del valor. */
+function techoRedondo(valor: number): number {
+  if (valor <= 0) return 1;
+  const magnitud = 10 ** Math.floor(Math.log10(valor));
+  const normalizado = valor / magnitud;
+  const factor =
+    normalizado <= 1 ? 1 : normalizado <= 2 ? 2 : normalizado <= 2.5 ? 2.5 : normalizado <= 5 ? 5 : 10;
+  return factor * magnitud;
+}
+
 export interface PuntoAcumulado {
   fecha: string;
   /** Venta acumulada hasta ese día, inclusive. `null` si el día no tiene dato. */
@@ -770,12 +780,16 @@ export function TendenciaAcumulada({
   // La escala la fija el mayor de las dos series: si la fijara solo la venta, la
   // meta se saldría del marco, y si la fijara solo la meta, un mes que la supera
   // se vería recortado justo cuando es la buena noticia.
-  const techo = Math.max(
+  const maximo = Math.max(
     ...puntos.map((p) =>
       Math.max(Number(p.acumulado ?? 0), Number(p.meta ?? 0)),
     ),
     1,
   );
+  // Con eje Y el techo se redondea a una cifra «bonita» (1, 2, 2.5, 5 × 10ⁿ)
+  // para que las marcas lean 50.000 M y no 37.418 M; sin eje, el techo exacto
+  // aprovecha todo el alto del lienzo.
+  const techo = conEjeY ? techoRedondo(maximo) : maximo;
 
   const util = {
     ancho: ANCHO - MARGEN.izquierda - MARGEN.derecha,
