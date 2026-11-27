@@ -526,6 +526,7 @@ curl -X POST "http://<host-dokploy>:3000/api/deploy/compose/<identificador>" \
 | El frontend carga pero toda petición falla con CORS | `SIGREP_CORS_ORIGENES` no coincide con el dominio | Origen exacto, con `https://` y sin barra final |
 | PostgreSQL aborta con «there appears to be PostgreSQL data in `/var/lib/postgresql/data` (unused mount/volume)» | Desde la imagen 18 el volumen se monta en `/var/lib/postgresql`, no en `.../data` | Ya corregido en `docker-compose.yml`; si reaparece, revise el punto de montaje |
 | Una ruta sirve la SPA sin CSP ni `X-Frame-Options` | `add_header` de nginx **no se hereda** en un `location` que declare cabeceras propias | Incluya `cabeceras-seguridad.inc` también en ese `location` |
+| `/api/v1/salud`, el acceso o cualquier consulta se **cuelgan sin error** tras un rato sin uso, mientras `/listo` responde al instante | Las URLs de base apuntan a la **IP pública** del servidor: el tráfico da la vuelta por el NAT de la nube, que descarta en silencio las conexiones inactivas (~4 min) y deja «agujeros negros» en el pool | Use el **nombre del servicio PostgreSQL** como host en `DB_*`. Mientras tanto, fije `SIGREP_DB_POOL_RECYCLE_SEG=180` (o bórrela para tomar el valor por defecto): el código ya activa keepalives TCP y `tcp_user_timeout`, pero una variable de 1800 s mantiene conexiones muertas en el pool |
 
 Para ver qué pasó: pestaña **Logs** del servicio. Los registros son JSON
 estructurado con `request_id`, así que se puede seguir una petición completa

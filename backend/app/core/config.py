@@ -175,7 +175,12 @@ class Settings(BaseSettings):
     db_trust_cert: bool = False
     db_pool_size: int = Field(default=10, ge=1, le=100)
     db_max_overflow: int = Field(default=20, ge=0, le=100)
-    db_pool_recycle_seg: int = 1800
+    #: Por debajo de los ~4 minutos tras los que el NAT de la nube descarta en
+    #: silencio una conexión inactiva. Una conexión del pool más vieja que eso
+    #: puede ser un agujero negro: la consulta nunca responde y nunca falla.
+    db_pool_recycle_seg: int = Field(default=180, ge=30, le=3600)
+    #: Segundos para abrir la conexión TCP+libpq antes de rendirse.
+    db_connect_timeout_seg: int = Field(default=10, ge=1, le=120)
     db_echo: bool = False
 
     # Permite apuntar a SQLite en pruebas sin tocar el resto de la configuración.

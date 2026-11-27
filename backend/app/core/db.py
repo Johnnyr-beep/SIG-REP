@@ -82,6 +82,27 @@ def _crear_engine(url: str) -> Engine:
         pool_recycle=settings.db_pool_recycle_seg,
         pool_pre_ping=True,  # descarta conexiones muertas tras un failover
         future=True,
+        # Las bases se alcanzan a través de un NAT que descarta en silencio las
+        # conexiones inactivas. Sin keepalives, una conexión del pool que el NAT
+        # ya olvidó sigue pareciendo viva: el `pre_ping` se queda esperando una
+        # respuesta que no va a llegar y la petición se cuelga sin error. Con
+        # keepalives el núcleo detecta el socket ocioso muerto en ~45 s y
+        # psycopg lo reporta; el `connect_timeout` acota la apertura de
+        # conexiones nuevas.
+        connect_args={
+            "connect_timeout": settings.db_connect_timeout_seg,
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 5,
+            "keepalives_count": 3,
+            # Milisegundos. Los keepalives solo vigilan sockets ociosos; una
+            # consulta ya enviada por un socket muerto dependería de las
+            # retransmisiones TCP (≈15 min). Esto la corta a los 5 s, por
+            # debajo del límite de 8 s que el acceso impone en el navegador.
+            # No limita consultas largas: mide datos sin acuse de recibo, y un
+            # servidor vivo acusa recibo aunque tarde en responder.
+            "tcp_user_timeout": 5_000,
+        },
     )
 
 
