@@ -135,7 +135,7 @@ export function CruceAgro() {
             </label> : null}
             {!granular || tienePermiso("PERMISO_AGRO_DESCARGAR_CRUCE") ? <button
               type="button"
-              className="boton boton--pequeno"
+              className="boton boton--pequeno boton--exportar"
               onClick={() =>
                 exportar.mutate({
                   reporte: "cruce",

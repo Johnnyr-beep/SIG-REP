@@ -240,7 +240,7 @@ export function ResumenAgro() {
             </label> : null}
             {!granular || tienePermiso("PERMISO_AGRO_DESCARGAR_RESUMEN") ? <button
               type="button"
-              className="boton boton--pequeno"
+              className="boton boton--pequeno boton--exportar"
               onClick={() =>
                 exportar.mutate({
                   reporte: "resumen",

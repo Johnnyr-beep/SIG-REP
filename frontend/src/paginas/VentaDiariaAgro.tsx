@@ -62,7 +62,7 @@ export function VentaDiariaAgro() {
           !granular || tienePermiso("PERMISO_AGRO_DESCARGAR_VENTA_DIARIA") ? (
             <button
               type="button"
-              className="boton boton--pequeno"
+              className="boton boton--pequeno boton--exportar"
               onClick={() =>
                 exportar.mutate({ reporte: "venta-diaria", filtros: filtrosAgro })
               }

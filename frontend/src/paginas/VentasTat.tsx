@@ -41,21 +41,21 @@ export function VentasTat() {
         }
       >
         <form
-          className="formulario formulario--linea"
+          className="filtros filtros--en-tarjeta"
           onSubmit={(evento) => {
             evento.preventDefault();
             setFiltrosConsultados(filtros);
           }}
         >
-          <label className="campo">
+          <label className="filtros__campo">
             <span>Fecha inicial</span>
             <input className="campo__control" type="date" value={fechaInicio} onChange={(evento) => setFechaInicio(evento.target.value)} required />
           </label>
-          <label className="campo">
+          <label className="filtros__campo">
             <span>Fecha final</span>
             <input className="campo__control" type="date" value={fechaFin} min={fechaInicio} onChange={(evento) => setFechaFin(evento.target.value)} required />
           </label>
-          <label className="campo">
+          <label className="filtros__campo">
             <span>Tipo comercial</span>
             <select
               className="campo__control"
@@ -70,7 +70,9 @@ export function VentasTat() {
               ))}
             </select>
           </label>
-          <button type="submit" className="boton">Consultar</button>
+          <div className="filtros__acciones">
+            <button type="submit" className="boton boton--principal">Consultar</button>
+          </div>
         </form>
       </Tarjeta>
 
