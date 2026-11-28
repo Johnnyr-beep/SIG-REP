@@ -5496,14 +5496,29 @@ textarea.campo__control {
   overflow: hidden;
 }
 
+/* La ola decorativa del fondo solo ocupa el espacio que la navegación deja
+   libre; cuando la pantalla es baja, es la navegación la que se desplaza y
+   ningún enlace queda fuera de alcance. */
+:root[data-marca="agropecuaria"] .navegacion {
+  flex: 0 1 auto;
+  gap: 1px;
+  min-height: 0;
+  padding-top: 4px;
+  padding-bottom: 12px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+}
+
 :root[data-marca="agropecuaria"] .marca--sigrep {
   display: flex;
+  flex: 0 0 auto;
   flex-direction: row;
   gap: 10px;
   align-items: center;
   justify-content: center;
   min-height: 0;
-  padding: 6px 4px 14px;
+  padding: 0 4px 10px;
   text-align: left;
   border-bottom: 1px solid rgba(190, 220, 248, 0.16);
 }
@@ -5547,15 +5562,16 @@ textarea.campo__control {
 
 .marca__empresa {
   display: flex;
+  flex: 0 0 auto;
   gap: 8px;
   align-items: center;
-  padding: 14px 8px;
+  padding: 10px 8px;
   border-bottom: 1px solid rgba(190, 220, 248, 0.16);
 }
 
 .marca__empresa img {
-  width: 46px;
-  height: 46px;
+  width: 42px;
+  height: 42px;
   object-fit: contain;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
 }
@@ -5580,15 +5596,9 @@ textarea.campo__control {
   letter-spacing: -0.01em;
 }
 
-:root[data-marca="agropecuaria"] .navegacion {
-  flex: 0 0 auto;
-  gap: 1px;
-  padding-top: 4px;
-}
-
 :root[data-marca="agropecuaria"] .navegacion__grupo {
   margin: 0;
-  padding: 14px 10px 6px;
+  padding: 10px 10px 4px;
   color: #7fb5e9;
   font-size: 0.62rem;
   font-weight: 800;
@@ -5641,8 +5651,8 @@ textarea.campo__control {
 
 .barra-lateral__ola {
   display: block;
-  flex: 1 1 auto;
-  min-height: 90px;
+  flex: 1 1 0;
+  min-height: 0;
   margin: 12px -12px 0;
   background:
     radial-gradient(70% 60% at 20% 130%, rgba(72, 168, 240, 0.62), transparent 62%),
