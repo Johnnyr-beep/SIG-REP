@@ -10,7 +10,7 @@ import { useAuth } from "@/auth/ContextoAuth";
 import { Dialogo } from "@/componentes/comunes";
 import { useFiltros } from "@/componentes/filtros";
 import { useMarcaElegida } from "@/marca/ContextoMarca";
-import { anchoLogo } from "@/marca/marcas";
+import { anchoLogo, lemaEmpresa, usaEstiloGerencial } from "@/marca/marcas";
 import type { ClaveMarca } from "@/marca/marcas";
 import { FormularioCambioClave } from "@/paginas/CambioClave";
 import { fechaLarga, periodoLargo } from "@/utilidades/formato";
@@ -436,7 +436,7 @@ function BarraLateral() {
 
   return (
     <aside className="barra-lateral">
-      {marca.clave === "agropecuaria" ? (
+      {usaEstiloGerencial(marca) ? (
         <>
           <div className="marca marca--sigrep">
             <span className="marca__grafico" aria-hidden="true">
@@ -457,8 +457,8 @@ function BarraLateral() {
               height={54}
             />
             <span>
-              <strong>Frigorífico Agropecuaria</strong>
-              <small>Santa Cruz</small>
+              <strong>{marca.nombre}</strong>
+              <small>{lemaEmpresa(marca)}</small>
             </span>
           </div>
         </>
@@ -530,9 +530,9 @@ function BarraLateral() {
         })}
       </nav>
 
-      {/* En Agropecuaria el usuario vive en la cabecera, junto al corte, y la
-          barra lateral termina en la ola decorativa. */}
-      {marca.clave === "agropecuaria" ? (
+      {/* En el estilo gerencial el usuario vive en la cabecera, junto al corte,
+          y la barra lateral termina en la ola decorativa. */}
+      {usaEstiloGerencial(marca) ? (
         <span className="barra-lateral__ola" aria-hidden="true" />
       ) : (
         <MenuUsuario />
@@ -604,7 +604,7 @@ export function Disposicion({ children }: { children?: ReactNode }) {
                 ⚠ Datos de ejemplo
               </span>
             ) : null}
-            {marca.clave === "agropecuaria" ? (
+            {usaEstiloGerencial(marca) ? (
               <>
                 <span
                   className="cabecera__notificacion"

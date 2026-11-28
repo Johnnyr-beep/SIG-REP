@@ -126,6 +126,24 @@ export const MARCAS: readonly Marca[] = [
  */
 export const MARCA_POR_DEFECTO: ClaveMarca = "carnes";
 
+/**
+ * Marcas que usan el estilo visual «gerencial»: barra lateral azul marino con
+ * el bloque SIGREP y el de la empresa, cabecera integrada al fondo, filtros con
+ * iconos y tarjetas de indicadores con degradado. `estilos.css` lo activa con
+ * `:root[data-estilo="gerencial"]`, que `ProveedorMarca` sincroniza con la
+ * marca elegida.
+ */
+const MARCAS_GERENCIALES: readonly ClaveMarca[] = ["agropecuaria", "grupo-santacruz"];
+
+export function usaEstiloGerencial(marca: Pick<Marca, "clave">): boolean {
+  return MARCAS_GERENCIALES.includes(marca.clave);
+}
+
+/** Línea pequeña bajo el nombre de la empresa en la barra lateral gerencial. */
+export function lemaEmpresa(marca: Pick<Marca, "clave">): string {
+  return marca.clave === "grupo-santacruz" ? "Corporativo" : "Santa Cruz";
+}
+
 /** Traduce lo que haya en `localStorage` a una marca real, o a `null`. */
 export function obtenerMarca(clave: string | null | undefined): Marca | null {
   if (!clave) return null;

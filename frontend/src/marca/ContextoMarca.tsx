@@ -24,7 +24,7 @@ import type { ReactNode } from "react";
 
 import type { ClaveMarca, Marca } from "@/marca/marcas";
 import { almacenTokens } from "@/api/cliente";
-import { obtenerMarca } from "@/marca/marcas";
+import { obtenerMarca, usaEstiloGerencial } from "@/marca/marcas";
 
 const CLAVE_ALMACEN = "sigrep_marca";
 
@@ -62,11 +62,17 @@ export function ProveedorMarca({ children }: { children: ReactNode }) {
     try {
       if (marca) {
         raiz.setAttribute("data-marca", marca.clave);
+        if (usaEstiloGerencial(marca)) {
+          raiz.setAttribute("data-estilo", "gerencial");
+        } else {
+          raiz.removeAttribute("data-estilo");
+        }
         localStorage.setItem(CLAVE_ALMACEN, marca.clave);
       } else {
         // Sin marca elegida, `:root` se queda con la rampa por defecto que
         // declara `estilos.css`, que es la de la instancia desplegada.
         raiz.removeAttribute("data-marca");
+        raiz.removeAttribute("data-estilo");
         localStorage.removeItem(CLAVE_ALMACEN);
       }
     } catch {
